@@ -1,0 +1,90 @@
+'use server'
+
+import { redirect } from 'next/navigation'
+import { canSeeUnit, requireManagement } from '@/lib/auth/actor'
+import { getAppointment, rescheduleAppointment } from '@/lib/booking'
+import { parseCart } from '@/lib/cart'
+import { getUnitBySlug } from '@/lib/org'
+import { isoDay } from '@/lib/time'
+
+export type RemarcarState = { error: string | null }
+
+/**
+ * Remarcar cria uma marcação NOVA a apontar para a antiga. A antiga sai
+ * da agenda com os seus blocos — não se edita o passado.
+ *
+ * Os serviços são os mesmos; o que muda é a hora e, se for preciso, quem
+ * faz. Trocar de serviço é outra marcação, não uma remarcação.
+ */
+export async function remarcarAction(
+  _previous: RemarcarState,
+  form: FormData,
+): Promise<RemarcarState> {
+  const actor = await requireManagement()
+
+  const slug = String(form.get('unit') ?? '')
+  const appointmentId = String(form.get('appointment') ?? '')
+
+  const [unit, appointment] = await Promise.all([
+    getUnitBySlug(slug),
+    getAppointment(appointmentId),
+  ])
+
+  // Marcação de outra loja, de outra rede ou inexistente: a mesma resposta.
+  if (
+    !unit ||
+    unit.org_id !== actor.orgId ||
+    !canSeeUnit(actor, unit.id) ||
+    !appointment ||
+    appointment.org_id !== actor.orgId ||
+    appointment.unit_id !== unit.id
+  ) {
+    return { error: 'Essa marcação não existe.' }
+  }
+
+  const cart = parseCart(String(form.get('cart') ?? ''))
+  const original = appointment.items.map((item) => item.service_id)
+  const sameServices =
+    cart.length === original.length &&
+    cart.every((line, index) => line.serviceId === original[index])
+  if (!sameServices) {
+    return { error: 'Os serviços da remarcação têm de ser os mesmos.' }
+  }
+
+  const startsAt = new Date(String(form.get('time') ?? ''))
+  if (Number.isNaN(startsAt.getTime())) return { error: 'Escolha a hora.' }
+
+  const result = await rescheduleAppointment({
+    appointmentId: appointment.id,
+    unit,
+    day: isoDay(startsAt, unit.timezone),
+    cart,
+    startsAt,
+    channel: 'counter',
+    source: 'counter',
+    byStaffId: actor.id,
+    reason: String(form.get('reason') ?? '').trim() || null,
+  })
+
+  if (!result.ok) {
+    switch (result.reason) {
+      case 'slot_taken':
+        return { error: 'Essa hora acabou de ser ocupada. Escolha outra.' }
+      case 'not_allowed':
+        return {
+          error:
+            'Esta marcação já não se remarca: está fechada, cancelada ou dada como falta.',
+        }
+      case 'not_found':
+        return { error: 'Essa marcação não existe.' }
+      default:
+        return {
+          error: 'Nessa hora não dá: alguém ou algum recurso não está livre.',
+        }
+    }
+  }
+
+  redirect(
+    `/agenda/${unit.slug}?d=${isoDay(startsAt, unit.timezone)}&m=${result.appointmentId}`,
+  )
+}

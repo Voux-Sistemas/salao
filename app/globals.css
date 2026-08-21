@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+/* =====================================================================
+   Duas peles, um só conjunto de fichas.
+
+   .skin-salon  — a superfície da cliente: preto e champanhe, serifada,
+                  editorial. É a montra e o funil de marcação.
+   .skin-desk   — a área da equipa: claro, denso, alto contraste. Passa-se
+                  o dia inteiro aqui dentro; o preto cansa.
+
+   Ambas leem os mesmos nomes (--surface, --ink, --accent, ...), por isso
+   um componente escrito uma vez serve as duas.
+   ===================================================================== */
+
+@theme {
+  --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --color-champagne-50: #FBF6EC;
+  --color-champagne-100: #F4E9D2;
+  --color-champagne-200: #E9D6AF;
+  --color-champagne-300: #D9C08A;
+  --color-champagne-400: #C6A96B;
+  --color-champagne-500: #AE8F50;
+  --color-champagne-600: #8E7340;
+  --color-champagne-700: #6B5730;
+
+  --color-coal-50: #F6F5F3;
+  --color-coal-100: #E8E5E1;
+  --color-coal-200: #CFCAC3;
+  --color-coal-300: #A9A29A;
+  --color-coal-400: #6F6862;
+  --color-coal-500: #4A443F;
+  --color-coal-600: #2E2A27;
+  --color-coal-700: #1C1917;
+  --color-coal-800: #141210;
+  --color-coal-900: #0E0D0C;
+
+  --radius-card: 2px;
+}
+
+:root {
+  color-scheme: dark;
+
+  --surface: #0E0D0C;
+  --surface-raised: #161412;
+  --surface-sunken: #090807;
+  --ink: #F2EEE7;
+  --ink-muted: #A9A29A;
+  --ink-faint: #6F6862;
+  --accent: #D9C08A;
+  --accent-strong: #C6A96B;
+  --accent-ink: #14120F;
+  --line: rgba(217, 192, 138, 0.18);
+  --line-soft: rgba(242, 238, 231, 0.08);
+
+  --ok: #7FB07A;
+  --warn: #D8A657;
+  --bad: #C97064;
+}
+
+.skin-desk {
+  color-scheme: light;
+
+  --surface: #FAF9F7;
+  --surface-raised: #FFFFFF;
+  --surface-sunken: #F1EEE9;
+  --ink: #1C1917;
+  --ink-muted: #6F6862;
+  --ink-faint: #A9A29A;
+  --accent: #8E7340;
+  --accent-strong: #6B5730;
+  --accent-ink: #FFFFFF;
+  --line: rgba(28, 25, 23, 0.12);
+  --line-soft: rgba(28, 25, 23, 0.06);
+
+  --ok: #3F7D3A;
+  --warn: #9A6B14;
+  --bad: #A63D2F;
+}
+
+* {
+  border-color: var(--line-soft);
+}
+
+html,
+body {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+:where(a, button, [role="button"], input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------
+   Tipografia editorial: números tabulares em todo o lado onde há
+   dinheiro ou horas, senão as colunas dançam.
+   --------------------------------------------------------------------- */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.rule {
+  height: 1px;
+  background: var(--line);
+}
+
+/* ---------------------------------------------------------------------
+   Barra de deslocamento discreta (a grelha da agenda tem muita)
+   --------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-faint) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
