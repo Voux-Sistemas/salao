@@ -106,7 +106,7 @@ export default async function TimesPage({ params, searchParams }: Params) {
             title={dict.funnel.yourVisit}
             lines={sample.items.map((item) => ({
               label: item.serviceName,
-              meta: `${item.staffName} · ${formatDuration(item.durationMinutes, language)}`,
+              meta: `${item.staffPublicName} · ${formatDuration(item.durationMinutes, language)}`,
               value: formatCents(item.priceCents, org.currency, language),
             }))}
             total={{

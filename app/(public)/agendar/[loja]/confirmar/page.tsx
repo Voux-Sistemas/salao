@@ -103,7 +103,7 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
           }
           lines={plan.items.map((item) => ({
             label: item.serviceName,
-            meta: `${formatTime(item.startsAt, unit.timezone, language)} · ${dict.common.with} ${item.staffName}`,
+            meta: `${formatTime(item.startsAt, unit.timezone, language)} · ${dict.common.with} ${item.staffPublicName}`,
             value: formatCents(item.priceCents, org.currency, language),
           }))}
           total={{

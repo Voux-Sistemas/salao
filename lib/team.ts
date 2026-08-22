@@ -116,6 +116,7 @@ export type Member = {
   id: string
   org_id: string
   name: string
+  public_alias: string | null
   phone: string
   email: string | null
   bio: string | null
@@ -133,7 +134,8 @@ export async function getMember(
   id: string,
 ): Promise<Member | null> {
   const rows = await sql<Member[]>`
-    select s.id, s.org_id, s.name, s.phone, s.email, s.bio, s.avatar_url,
+    select s.id, s.org_id, s.name, s.public_alias, s.phone, s.email,
+           s.bio, s.avatar_url,
            s.display_color, s.accepts_online_booking, s.is_active,
            s.sort_order,
            s.password_hash is not null as has_password
@@ -149,6 +151,8 @@ export async function getMember(
 
 export type MemberInput = {
   name: string
+  /** Nome mostrado a cliente. Nulo mostra o verdadeiro. */
+  publicAlias: string | null
   phone: string
   email: string | null
   bio: string | null
@@ -188,10 +192,11 @@ export async function createMember(
     return await sql.begin(async (tx) => {
       const rows = await tx<{ id: string }[]>`
         insert into staff
-          (org_id, name, phone, email, bio, display_color,
+          (org_id, name, public_alias, phone, email, bio, display_color,
            accepts_online_booking, sort_order)
         values
-          (${actor.orgId}, ${input.name.trim()}, ${input.phone.trim()},
+          (${actor.orgId}, ${input.name.trim()}, ${input.publicAlias},
+           ${input.phone.trim()},
            ${input.email}, ${input.bio}, ${input.displayColor},
            ${input.acceptsOnline},
            (select coalesce(max(sort_order), 0) + 1 from staff
@@ -232,6 +237,7 @@ export async function updateMember(
     const rows = await sql<{ id: string }[]>`
       update staff s
          set name = ${input.name.trim()},
+             public_alias = ${input.publicAlias},
              phone = ${input.phone.trim()},
              email = ${input.email},
              bio = ${input.bio},

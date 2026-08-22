@@ -114,14 +114,17 @@ export default async function StorePage({ params }: Params) {
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
+    // Alcunha, nunca o nome verdadeiro: esta página é pública. Ordenar
+    // pelo nome real também não serve — a ordem alfabética entrega-o.
     sql<TeamRow[]>`
-      select st.id, st.name, st.bio, st.avatar_url
+      select st.id, coalesce(st.public_alias, st.name) as name,
+             st.bio, st.avatar_url
         from staff st
         join staff_unit su on su.staff_id = st.id and su.unit_id = ${unit.id}
        where st.org_id = ${org.id}
          and st.is_active
          and st.accepts_online_booking
-       order by st.sort_order, st.name
+       order by st.sort_order, coalesce(st.public_alias, st.name)
     `,
     weeklyHours(unit.id),
   ])

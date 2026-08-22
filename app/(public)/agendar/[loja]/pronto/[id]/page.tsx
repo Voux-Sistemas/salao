@@ -151,7 +151,7 @@ export default async function DonePage({ params }: Params) {
                     <p className="tabular mt-0.5 text-[0.75rem] text-[var(--ink-faint)]">
                       {formatTime(item.starts_at, timezone, language)}
                       {' · '}
-                      {dict.common.with} {item.staff_name}
+                      {dict.common.with} {item.staff_public_name}
                     </p>
                   </li>
                 ))}

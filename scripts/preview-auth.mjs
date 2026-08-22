@@ -57,14 +57,31 @@ async function mint(subjectType, subjectId, file) {
   console.log(`${file} pronto`)
 }
 
-try {
-  const staff = await sql`select id, phone from staff order by phone`
-  const byPhone = Object.fromEntries(staff.map((s) => [s.phone, s.id]))
-  const [client] = await sql`select id from client where phone = '+351961000001'`
+/** joao-da-silva a partir de "João da Silva". */
+const slugify = (name) =>
+  name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
 
-  await mint('staff', byPhone['+351911000010'], 'state-dona.json')
-  await mint('staff', byPhone['+351911000011'], 'state-gerente.json')
-  await mint('staff', byPhone['+351911000012'], 'state-marta.json')
+try {
+  // Uma sessão por pessoa da equipa, seja quem for: assim o script não
+  // fica preso aos telefones de um seed em particular.
+  const staff = await sql`
+    select s.id, s.name, coalesce(r.role, 'professional') as role
+      from staff s
+      left join staff_role r on r.staff_id = s.id
+     order by case coalesce(r.role, 'professional')
+                when 'owner' then 0 when 'manager' then 1 else 2 end,
+              s.sort_order
+  `
+  for (const person of staff) {
+    await mint('staff', person.id, `state-${slugify(person.name)}.json`)
+  }
+
+  const [client] = await sql`select id from client order by created_at limit 1`
   if (client) await mint('client', client.id, 'state-cliente.json')
 } catch (error) {
   console.error('Falhou:', error?.message ?? error)

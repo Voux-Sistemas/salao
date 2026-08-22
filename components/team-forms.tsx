@@ -75,6 +75,7 @@ export type MemberFields = {
   name: string
   phone: string
   email: string | null
+  public_alias: string | null
   bio: string | null
   display_color: string
   accepts_online_booking: boolean
@@ -115,6 +116,21 @@ export function MemberForm({
               maxLength={80}
               autoComplete="off"
               required
+            />
+          </Field>
+
+          <Field
+            label="Nome público"
+            htmlFor="member-alias"
+            hint="O que a cliente vê no site. Em branco, vê o nome de cima."
+          >
+            <Input
+              id="member-alias"
+              name="alias"
+              defaultValue={member?.public_alias ?? ''}
+              maxLength={80}
+              autoComplete="off"
+              placeholder="Profissional 1"
             />
           </Field>
 

@@ -77,7 +77,9 @@ function columns() {
     u.cancel_window_hours, a.status, a.starts_at, a.ends_at,
     (select string_agg(i.service_name, ' + ' order by i.sort_order)
        from appointment_item i where i.appointment_id = a.id) as services,
-    (select string_agg(distinct s.name, ', ' order by s.name)
+    -- Alcunha, nunca o nome verdadeiro: isto é a área da cliente.
+    (select string_agg(distinct coalesce(s.public_alias, s.name), ', '
+                       order by coalesce(s.public_alias, s.name))
        from appointment_item i join staff s on s.id = i.staff_id
       where i.appointment_id = a.id) as staff_names,
     coalesce((select sum(i.price_cents) from appointment_item i

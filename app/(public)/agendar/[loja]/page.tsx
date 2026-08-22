@@ -106,14 +106,17 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
     sql<SkillRow[]>`
-      select ss.service_id, s.id as staff_id, s.name as staff_name
+      select ss.service_id, s.id as staff_id,
+             coalesce(s.public_alias, s.name) as staff_name
         from staff_skill ss
         join staff s on s.id = ss.staff_id
         join staff_unit su on su.staff_id = s.id and su.unit_id = ${unit.id}
        where s.org_id = ${org.id}
          and s.is_active
          and s.accepts_online_booking
-       order by s.sort_order, s.name
+       -- Ordenar pela alcunha também: a ordem alfabética dos nomes
+       -- verdadeiros seria, ela própria, uma pista.
+       order by s.sort_order, coalesce(s.public_alias, s.name)
     `,
   ])
 

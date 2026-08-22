@@ -57,7 +57,10 @@ export type PlannedItem = {
   serviceId: string
   serviceName: string
   staffId: string
+  /** Nome verdadeiro. Só para dentro: agenda, comanda, encaixe. */
   staffName: string
+  /** O que a cliente pode ver. Igual ao de cima quando não há alcunha. */
+  staffPublicName: string
   startsAt: Date
   endsAt: Date
   priceCents: number
@@ -101,6 +104,8 @@ type ServiceRow = {
 type StaffRow = {
   id: string
   name: string
+  /** Nome para a cliente. Nulo quando não há nada a esconder. */
+  public_alias: string | null
   sort_order: number
   accepts_online_booking: boolean
 }
@@ -185,7 +190,8 @@ export async function loadDayContext(
   const skillRows = await sql<
     (StaffRow & { service_id: string })[]
   >`
-    select ss.service_id, s.id, s.name, s.sort_order, s.accepts_online_booking
+    select ss.service_id, s.id, s.name, s.public_alias, s.sort_order,
+           s.accepts_online_booking
       from staff_skill ss
       join staff s        on s.id = ss.staff_id and s.is_active
       join staff_unit su  on su.staff_id = s.id and su.unit_id = ${unit.id}
@@ -201,6 +207,7 @@ export async function loadDayContext(
     staff.set(row.id, {
       id: row.id,
       name: row.name,
+      public_alias: row.public_alias,
       sort_order: row.sort_order,
       accepts_online_booking: row.accepts_online_booking,
     })
@@ -570,6 +577,7 @@ function assign(
       serviceName: service.name,
       staffId,
       staffName: staffRow?.name ?? '',
+      staffPublicName: staffRow?.public_alias ?? staffRow?.name ?? '',
       startsAt: new Date(startMs),
       endsAt: new Date(endMs),
       priceCents: price.priceCents,

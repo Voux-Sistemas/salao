@@ -145,14 +145,17 @@ export async function Showcase({ org }: { org: Org }) {
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
+    // Alcunha, nunca o nome verdadeiro: a montra é a primeira coisa que
+    // um estranho vê. Ordenar pelo nome real entregava-o na mesma.
     sql<TeamRow[]>`
-      select distinct s.id, s.name, s.bio, s.avatar_url, s.sort_order
+      select distinct s.id, coalesce(s.public_alias, s.name) as name,
+             s.bio, s.avatar_url, s.sort_order
         from staff s
        where s.org_id = ${org.id} and s.is_active
          and (s.accepts_online_booking
               or exists (select 1 from staff_role r
                           where r.staff_id = s.id and r.role = 'professional'))
-       order by s.sort_order, s.name
+       order by s.sort_order, coalesce(s.public_alias, s.name)
     `,
   ])
 

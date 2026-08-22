@@ -73,6 +73,7 @@ function memberFrom(form: FormData): MemberInput {
   const text = (key: string) => String(form.get(key) ?? '').trim() || null
   return {
     name: String(form.get('name') ?? '').trim(),
+    publicAlias: text('alias'),
     phone: normalisePhone(String(form.get('phone') ?? '')),
     email: text('email'),
     bio: text('bio'),

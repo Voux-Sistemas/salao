@@ -144,6 +144,7 @@ export default async function PessoaPage({
         member={{
           id: member.id,
           name: member.name,
+          public_alias: member.public_alias,
           phone: member.phone,
           email: member.email,
           bio: member.bio,

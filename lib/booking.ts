@@ -505,7 +505,10 @@ export type AppointmentItemRow = {
   id: string
   service_id: string
   staff_id: string
+  /** Nome verdadeiro. Só para dentro. */
   staff_name: string
+  /** O que a cliente pode ver. Igual ao de cima quando não há alcunha. */
+  staff_public_name: string
   service_name: string
   starts_at: Date
   ends_at: Date
@@ -563,6 +566,7 @@ export async function getAppointment(
 
   const items = await sql<AppointmentItemRow[]>`
     select i.id, i.service_id, i.staff_id, s.name as staff_name,
+           coalesce(s.public_alias, s.name) as staff_public_name,
            i.service_name, i.starts_at, i.ends_at,
            i.price_cents, i.duration_minutes, i.sort_order
       from appointment_item i
