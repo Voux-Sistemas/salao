@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import clsx from 'clsx'
 import type { ComponentProps, ReactNode } from 'react'
+import { Ornament } from '@/components/brand'
 
 /**
  * As peças de que o resto do sistema é feito. Escritas uma vez, servem
@@ -16,22 +17,31 @@ type Variant = 'primary' | 'outline' | 'quiet' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 font-medium transition-colors ' +
-  'disabled:opacity-40 disabled:pointer-events-none select-none whitespace-nowrap'
+  'inline-flex items-center justify-center gap-2 font-medium transition-all duration-300 ' +
+  'disabled:opacity-40 disabled:pointer-events-none select-none whitespace-nowrap ' +
+  'active:translate-y-px'
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[0.8125rem] rounded-[2px]',
+  sm: 'h-8 px-3.5 text-[0.8125rem] rounded-[2px]',
   md: 'h-10 px-5 text-sm rounded-[2px]',
-  lg: 'h-12 px-7 text-[0.9375rem] rounded-[2px] tracking-wide',
+  lg: 'h-[3.25rem] px-8 text-[0.9375rem] rounded-[2px] tracking-[0.04em]',
 }
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'bg-[var(--accent)] text-[var(--accent-ink)] hover:bg-[var(--accent-strong)]',
+    'sheen bg-[var(--accent)] text-[var(--accent-ink)] hover:bg-[var(--accent-strong)] ' +
+    'hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]',
   outline:
-    'border border-[var(--line)] text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+    'border border-[var(--line)] text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)] ' +
+    'hover:bg-[color-mix(in_srgb,var(--accent)_6%,transparent)]',
+  // O terciário tem de continuar a ler-se como botão em repouso. Sem
+  // fundo nenhum, um "Juntar" ou um "Copiar para…" ao lado de campos
+  // com contorno passa por legenda e ninguém lhe toca. A lavagem é
+  // feita a partir de --ink, não de um cinzento fixo: assim serve tanto
+  // a porcelana como a banda escura, onde --ink é quase branco.
   quiet:
-    'text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-sunken)]',
+    'bg-[color-mix(in_srgb,var(--ink)_4%,transparent)] text-[var(--ink-muted)] ' +
+    'hover:bg-[color-mix(in_srgb,var(--ink)_9%,transparent)] hover:text-[var(--ink)]',
   danger:
     'border border-[color-mix(in_srgb,var(--bad)_40%,transparent)] text-[var(--bad)] hover:bg-[color-mix(in_srgb,var(--bad)_10%,transparent)]',
 }
@@ -103,6 +113,11 @@ export function Empty({
 }) {
   return (
     <div className="text-center py-16 px-6">
+      {/* Um estado vazio em texto solto lê-se como uma falha. O
+          raminho diz que o ecrã está inteiro — só não tem nada dentro. */}
+      <div className="mb-5 flex justify-center text-[var(--line)]">
+        <Ornament className="scale-75" />
+      </div>
       <p className="display text-xl text-[var(--ink)]">{title}</p>
       {hint ? (
         <p className="mt-2 text-sm text-[var(--ink-muted)] max-w-sm mx-auto">{hint}</p>
@@ -150,9 +165,10 @@ export function Field({
 }
 
 const CONTROL =
-  'w-full bg-[var(--surface)] border border-[var(--line)] rounded-[2px] px-3 ' +
+  'w-full bg-[var(--surface-raised)] border border-[var(--line)] rounded-[2px] px-3 ' +
   'text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] ' +
-  'focus:border-[var(--accent)] transition-colors'
+  'transition-[border-color,box-shadow] duration-300 focus:outline-none focus:border-[var(--accent)] ' +
+  'focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]'
 
 export function Input({ className, ...props }: ComponentProps<'input'>) {
   return <input className={clsx(CONTROL, 'h-10', className)} {...props} />
@@ -164,7 +180,14 @@ export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
 
 export function Select({ className, children, ...props }: ComponentProps<'select'>) {
   return (
-    <select className={clsx(CONTROL, 'h-10 appearance-none pr-8', className)} {...props}>
+    <select
+      className={clsx(
+        CONTROL,
+        'select-chevron h-10 appearance-none pr-8',
+        className,
+      )}
+      {...props}
+    >
       {children}
     </select>
   )
@@ -197,7 +220,7 @@ export function Badge({
     <span
       className={clsx(
         'inline-flex items-center gap-1 border rounded-[2px] px-1.5 py-0.5',
-        'text-[0.6875rem] tracking-wide uppercase',
+        'text-[0.6875rem] tracking-[0.08em] uppercase',
         TONES[tone],
         className,
       )}

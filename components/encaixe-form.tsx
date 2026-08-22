@@ -8,6 +8,7 @@ import {
 } from '@/app/(desk)/agenda/[loja]/encaixe/actions'
 import { Button, Field, Input, Notice, Select, Textarea } from '@/components/ui'
 import { SOURCE_LABEL } from '@/lib/status'
+import { formatPhone } from '@/lib/text'
 
 const EMPTY: EncaixeState = { error: null }
 
@@ -51,7 +52,7 @@ export function EncaixeForm({
       {client ? (
         <p className="text-sm text-[var(--ink)]">
           {client.name}{' '}
-          <span className="tabular text-[var(--ink-muted)]">{client.phone}</span>
+          <span className="tabular text-[var(--ink-muted)]">{formatPhone(client.phone)}</span>
         </p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">

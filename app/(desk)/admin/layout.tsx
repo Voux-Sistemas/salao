@@ -7,7 +7,8 @@ import { DeskNav, type NavItem } from '@/components/desk-nav'
  *
  * As três primeiras são da dona — são decisões de rede. A Equipa
  * também a gerente pode mexer, mas só nas lojas dela. O que a pessoa
- * não pode gerir nem sequer aparece.
+ * não pode gerir nem sequer aparece. A raiz (/admin) é o painel: a
+ * rede em números antes de qualquer decisão.
  */
 export default async function AdminLayout({
   children,
@@ -33,7 +34,10 @@ export default async function AdminLayout({
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <header className="mb-6 border-b border-[var(--line-soft)] pb-2">
-        <h1 className="display mb-3 text-2xl text-[var(--ink)]">Gestão</h1>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="display text-2xl text-[var(--ink)]">Gestão</h1>
+          <p className="eyebrow-gold hidden sm:block">As duas casas</p>
+        </div>
         <DeskNav items={tabs} />
       </header>
       {children}

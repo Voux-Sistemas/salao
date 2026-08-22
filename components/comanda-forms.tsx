@@ -10,7 +10,7 @@ import {
   setDiscountAction,
   type ComandaState,
 } from '@/app/(desk)/agenda/[loja]/comanda/actions'
-import { Button, Field, Input, Notice, Select } from '@/components/ui'
+import { Button, Field, Input, Notice } from '@/components/ui'
 import { centsToInput, formatCents } from '@/lib/money'
 import { PAYMENT_METHOD_LABEL } from '@/lib/status'
 
@@ -20,14 +20,22 @@ function Submit({
   label,
   variant = 'primary',
   size = 'md',
+  className,
 }: {
   label: string
   variant?: 'primary' | 'outline' | 'quiet' | 'danger'
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
+  className?: string
 }) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" variant={variant} size={size} disabled={pending}>
+    <Button
+      type="submit"
+      variant={variant}
+      size={size}
+      className={className}
+      disabled={pending}
+    >
       {label}
     </Button>
   )
@@ -61,8 +69,8 @@ export function DiscountForm({
     <form action={action} className="space-y-3">
       <input type="hidden" name="appointment" value={appointmentId} />
       <Result state={state} />
-      <div className="grid gap-3 sm:grid-cols-[9rem_1fr_auto] sm:items-end">
-        <Field label="Desconto" htmlFor="discount-amount">
+      <div className="grid gap-3 sm:grid-cols-[8.5rem_1fr_auto] sm:items-end">
+        <Field label="Valor" htmlFor="discount-amount">
           <Input
             id="discount-amount"
             name="amount"
@@ -83,6 +91,10 @@ export function DiscountForm({
         </Field>
         <Submit label="Guardar" variant="outline" />
       </div>
+      <p className="text-[0.75rem] text-[var(--ink-faint)]">
+        Abate-se por cima da conta — o preço congelado de cada serviço não
+        se toca.
+      </p>
     </form>
   )
 }
@@ -107,17 +119,31 @@ export function PaymentForm({
     <form action={action} className="space-y-3">
       <input type="hidden" name="appointment" value={appointmentId} />
       <Result state={state} />
-      <div className="grid gap-3 sm:grid-cols-[1fr_9rem_auto] sm:items-end">
-        <Field label="Método" htmlFor="payment-method">
-          <Select id="payment-method" name="method" defaultValue="cash">
-            {Object.entries(PAYMENT_METHOD_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Valor" htmlFor="payment-amount">
+      <Field label="Método">
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="radiogroup"
+          aria-label="Método de pagamento"
+        >
+          {Object.entries(PAYMENT_METHOD_LABEL).map(([value, label]) => (
+            <label
+              key={value}
+              className="flex h-9 cursor-pointer select-none items-center border border-[var(--line-soft)] px-3 text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] has-[:checked]:border-[var(--accent)] has-[:checked]:bg-[var(--accent)] has-[:checked]:text-[var(--accent-ink)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--accent)]"
+            >
+              <input
+                type="radio"
+                name="method"
+                value={value}
+                defaultChecked={value === 'cash'}
+                className="sr-only"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </Field>
+      <div className="flex items-end gap-3">
+        <Field label="Valor" htmlFor="payment-amount" className="w-[8.5rem]">
           <Input
             id="payment-amount"
             name="amount"
@@ -179,11 +205,16 @@ export function CloseComanda({
 
   if (dueCents > 0) {
     return (
-      <div className="space-y-2">
-        <Notice tone="warn">
-          Falta receber {formatCents(dueCents)}. A comanda fecha quando a conta
-          estiver paga.
-        </Notice>
+      <div className="space-y-1.5">
+        <p className="flex items-baseline justify-between gap-3 text-[0.8125rem]">
+          <span className="text-[var(--warn)]">Falta receber</span>
+          <span className="tabular text-[var(--warn)]">
+            {formatCents(dueCents)}
+          </span>
+        </p>
+        <p className="text-[0.75rem] leading-relaxed text-[var(--ink-muted)]">
+          A comanda fecha quando a conta estiver paga.
+        </p>
       </div>
     )
   }
@@ -192,24 +223,31 @@ export function CloseComanda({
     <div className="space-y-3">
       <Result state={state} />
       {armed ? (
-        <form action={action} className="flex flex-wrap items-center gap-2">
+        <form action={action} className="space-y-2.5">
           <input type="hidden" name="appointment" value={appointmentId} />
-          <p className="w-full text-[0.8125rem] text-[var(--ink-muted)]">
-            Ao fechar geram-se as comissões e o dinheiro vivo entra na caixa.
-            Depois disto não se acrescentam pagamentos nem descontos.
+          <p className="text-[0.75rem] leading-relaxed text-[var(--ink-muted)]">
+            Ao fechar geram-se as comissões e o dinheiro vivo entra na
+            caixa. Depois disto não se acrescentam pagamentos nem
+            descontos.
           </p>
-          <Submit label="Fechar mesmo" />
+          <Submit label="Fechar mesmo" size="lg" className="w-full" />
           <Button
             type="button"
             variant="quiet"
-            size="md"
+            size="sm"
+            className="w-full"
             onClick={() => setArmed(false)}
           >
             Afinal não
           </Button>
         </form>
       ) : (
-        <Button type="button" onClick={() => setArmed(true)}>
+        <Button
+          type="button"
+          size="lg"
+          className="w-full"
+          onClick={() => setArmed(true)}
+        >
           Fechar comanda
         </Button>
       )}

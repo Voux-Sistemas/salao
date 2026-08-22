@@ -6,7 +6,7 @@ import { requireManagement } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { formatTime } from '@/lib/time'
 import { ACCESS_CODE_TEMPLATE, renderTemplate, waLink } from '@/lib/whatsapp'
-import { ButtonLink, Card, Empty } from '@/components/ui'
+import { Badge, ButtonLink, Card, Empty } from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Códigos' }
 
@@ -17,7 +17,8 @@ export const dynamic = 'force-dynamic'
  *
  * A cliente pediu para entrar na área dela. O sistema NÃO manda o
  * código sozinho — gera-o e deixa-o aqui, legível, para que uma pessoa
- * abra a conversa e o escreva. É a mesma regra de todos os avisos.
+ * o dite ao telefone ou o mande pela conversa. É a mesma regra de todos
+ * os avisos.
  *
  * A lista é da rede, não da loja: a ficha da cliente é uma só e o
  * telefone é a identidade.
@@ -40,17 +41,20 @@ export default async function CodigosPage() {
         Avisos
       </Link>
 
-      <h1 className="display text-2xl text-[var(--ink)]">Códigos de acesso</h1>
-      <p className="mt-1 mb-6 max-w-lg text-[0.8125rem] text-[var(--ink-muted)]">
-        Quem pediu para entrar na área de conta. Cada código vale 10 minutos e
-        pedir outro apaga o anterior — mande o que está aqui, não um de trás.
+      <h1 className="display text-3xl text-[var(--ink)]">Códigos de acesso</h1>
+      <p className="mb-6 mt-1 max-w-lg text-[0.8125rem] text-[var(--ink-muted)]">
+        Quem pediu para entrar na área de conta. O código está aqui legível
+        para se ditar à cliente — cada um vale 10 minutos, e pedir outro apaga
+        o anterior: mande o que está aqui, não um de trás.
       </p>
 
       {codes.length === 0 ? (
-        <Empty
-          title="Nada à espera"
-          hint="Ninguém pediu código nos últimos minutos."
-        />
+        <Card>
+          <Empty
+            title="Nada à espera"
+            hint="Ninguém pediu código nos últimos minutos."
+          />
+        </Card>
       ) : (
         <Card className="divide-y divide-[var(--line-soft)]">
           {codes.map((row) => {
@@ -66,25 +70,32 @@ export default async function CodigosPage() {
             return (
               <div
                 key={row.id}
-                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3"
+                className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3.5"
               >
-                <span className="tabular display shrink-0 text-xl tracking-[0.2em] text-[var(--accent)]">
+                <span className="tabular display shrink-0 rounded-[2px] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-1.5 text-xl tracking-[0.3em] text-[var(--accent)]">
                   {row.code}
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/clientes/${row.client_id}`}
-                    className="truncate text-sm text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
-                  >
-                    {row.client_name}
-                  </Link>
-                  <p className="tabular truncate text-[0.75rem] text-[var(--ink-muted)]">
-                    {row.target} · pedido às{' '}
-                    {formatTime(row.created_at, org.timezone)} · expira em{' '}
-                    {minutes} min
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <Link
+                      href={`/clientes/${row.client_id}`}
+                      className="truncate text-sm text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+                    >
+                      {row.client_name}
+                    </Link>
+                    <span className="tabular text-[0.75rem] text-[var(--ink-muted)]">
+                      {row.target}
+                    </span>
+                  </div>
+                  <p className="tabular truncate text-[0.75rem] text-[var(--ink-faint)]">
+                    Pedido às {formatTime(row.created_at, org.timezone)}
                   </p>
                 </div>
+
+                <Badge tone={minutes <= 3 ? 'warn' : 'neutral'}>
+                  Expira em {minutes} min
+                </Badge>
 
                 <ButtonLink
                   href={waLink(row.target, text)}
@@ -93,7 +104,7 @@ export default async function CodigosPage() {
                   variant="outline"
                   size="sm"
                 >
-                  Enviar
+                  Abrir WhatsApp
                   <ExternalLink size={13} />
                 </ButtonLink>
               </div>

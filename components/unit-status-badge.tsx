@@ -23,6 +23,7 @@ export async function UnitStatusBadge({
   if (status.open) {
     return (
       <Badge tone="ok">
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
         {dict.unit.openNow} ·{' '}
         {fill(dict.unit.closesAt, { time: formatMinutes(status.closesAtMin) })}
       </Badge>
@@ -30,7 +31,15 @@ export async function UnitStatusBadge({
   }
 
   if (status.nextDay === null) {
-    return <Badge tone="neutral">{dict.unit.closedNow}</Badge>
+    return (
+      <Badge tone="neutral">
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 rounded-full border border-current"
+        />
+        {dict.unit.closedNow}
+      </Badge>
+    )
   }
 
   const time = formatMinutes(status.nextMin)
@@ -43,5 +52,13 @@ export async function UnitStatusBadge({
           time,
         })
 
-  return <Badge tone="neutral">{text}</Badge>
+  return (
+    <Badge tone="neutral">
+      <span
+        aria-hidden
+        className="h-1.5 w-1.5 rounded-full border border-current"
+      />
+      {text}
+    </Badge>
+  )
 }

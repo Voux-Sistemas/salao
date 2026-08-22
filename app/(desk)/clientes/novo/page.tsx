@@ -23,12 +23,12 @@ export default async function NovoClientePage() {
         Clientes
       </Link>
 
-      <h1 className="display mb-1 text-2xl text-[var(--ink)]">Nova ficha</h1>
+      <h1 className="display mb-1 text-3xl text-[var(--ink)]">Nova ficha</h1>
       <p className="mb-6 text-[0.8125rem] text-[var(--ink-muted)]">
         Basta o nome e o telefone. As preferências enchem-se com o tempo.
       </p>
 
-      <Card className="px-4 py-5 sm:px-6">
+      <Card className="px-4 py-6 sm:px-6">
         <ClientForm units={units} staff={staff} submitLabel="Criar ficha" />
       </Card>
     </div>

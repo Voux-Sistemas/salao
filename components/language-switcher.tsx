@@ -1,5 +1,6 @@
 'use client'
 
+import { Fragment } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import clsx from 'clsx'
@@ -18,23 +19,29 @@ export function LanguageSwitcher({ current }: { current: Language }) {
   const next = query ? `${pathname}?${query}` : pathname
 
   return (
-    <div className="flex items-center gap-0.5" role="group" aria-label={LANGUAGE_LABEL[current]}>
-      {LANGUAGES.map((language) => (
-        <Link
-          key={language}
-          href={`/idioma?lang=${language}&next=${encodeURIComponent(next)}`}
-          hrefLang={language}
-          aria-current={language === current ? 'true' : undefined}
-          title={LANGUAGE_LABEL[language]}
-          className={clsx(
-            'px-1.5 py-1 text-[0.6875rem] tracking-[0.12em] transition-colors',
-            language === current
-              ? 'text-[var(--accent)]'
-              : 'text-[var(--ink-faint)] hover:text-[var(--ink-muted)]',
-          )}
-        >
-          {LANGUAGE_SHORT[language]}
-        </Link>
+    <div className="flex items-center" role="group" aria-label={LANGUAGE_LABEL[current]}>
+      {LANGUAGES.map((language, index) => (
+        <Fragment key={language}>
+          {index > 0 ? (
+            <span aria-hidden className="text-[0.625rem] text-[var(--ink-faint)]">
+              ·
+            </span>
+          ) : null}
+          <Link
+            href={`/idioma?lang=${language}&next=${encodeURIComponent(next)}`}
+            hrefLang={language}
+            aria-current={language === current ? 'true' : undefined}
+            title={LANGUAGE_LABEL[language]}
+            className={clsx(
+              'px-1.5 py-1 text-[0.6875rem] uppercase tracking-[0.16em] transition-colors',
+              language === current
+                ? 'text-[var(--accent)]'
+                : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
+            )}
+          >
+            {LANGUAGE_SHORT[language]}
+          </Link>
+        </Fragment>
       ))}
     </div>
   )

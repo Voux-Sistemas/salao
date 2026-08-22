@@ -4,62 +4,141 @@ import { getOrg } from '@/lib/org'
 import { BRAND } from '@/lib/branding'
 import { can, requireActor, type Actor } from '@/lib/auth/actor'
 import { signOutAction } from '@/app/(auth)/entrar/actions'
+import { formatDayLong, today } from '@/lib/time'
 import { initial } from '@/lib/text'
 import { DeskNav, type NavItem } from '@/components/desk-nav'
+import { Monogram } from '@/components/brand'
+import { IconSignOut } from '@/components/desk-icons'
 
 /**
- * A moldura da operação: pele clara, densa, sem enfeites. A barra
- * depende do degrau — a profissional vê só a agenda dela.
+ * A MOLDURA DA OPERAÇÃO — o ecrã onde a equipa vive o dia inteiro.
  *
- * A área da equipa NÃO é traduzida.
+ * No ecrã largo: uma coluna estreita à esquerda com o monograma e os
+ * ícones da casa; em cima, uma fita fina com o dia por extenso, o nome
+ * da casa e quem está ligado. No telemóvel: barra fixa no fundo, com
+ * quatro ou cinco portas.
+ *
+ * A área da equipa NÃO é traduzida — fala pt-PT.
  */
 export async function DeskChrome({ children }: { children: ReactNode }) {
   const actor = await requireActor()
   const org = await getOrg()
 
+  const home = actor.role === 'professional' ? '/agenda' : '/'
+  const houseName = org?.name ?? BRAND.fallbackName
+  const tz = org?.timezone ?? 'Europe/Lisbon'
+  const dayLabel = capitalise(formatDayLong(today(tz), tz))
+
   return (
-    <div className="skin-desk flex min-h-screen flex-col bg-[var(--surface)]">
-      <header className="sticky top-0 z-30 border-b border-[var(--line-soft)] bg-[var(--surface-raised)]">
-        <div className="mx-auto flex h-14 max-w-[110rem] items-center gap-6 px-4 sm:px-6">
-          <Link
-            href={actor.role === 'professional' ? '/agenda' : '/'}
-            className="display shrink-0 text-sm uppercase tracking-[0.16em] text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
-          >
-            {org?.name ?? BRAND.fallbackName}
-          </Link>
+    <div className="skin-desk min-h-dvh bg-[var(--surface)] text-[var(--ink)]">
+      {/* A coluna da casa — só no ecrã largo. ------------------------ */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[4.5rem] flex-col border-r border-[var(--line-soft)] bg-[var(--surface-raised)] lg:flex">
+        <Link
+          href={home}
+          title={houseName}
+          className="flex h-14 w-full shrink-0 items-center justify-center border-b border-[var(--line-soft)] transition-colors hover:text-[var(--accent)]"
+        >
+          <Monogram className="text-xl text-current" />
+        </Link>
 
-          <div className="min-w-0 flex-1">
-            <DeskNav items={navFor(actor)} />
-          </div>
-
-          <AccountMenu actor={actor} />
+        <div className="min-h-0 flex-1 overflow-y-auto py-2">
+          <DeskNav items={navFor(actor)} variant="rail" />
         </div>
-      </header>
 
-      <main className="flex-1">{children}</main>
+        <form action={signOutAction} className="w-full shrink-0">
+          <button
+            type="submit"
+            className="flex w-full flex-col items-center gap-1.5 border-t border-[var(--line-soft)] py-4 text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
+          >
+            <IconSignOut className="h-5 w-5" />
+            <span className="text-[0.5625rem] font-medium uppercase tracking-[0.1em]">
+              Sair
+            </span>
+          </button>
+        </form>
+      </aside>
+
+      <div className="flex min-h-dvh flex-col lg:pl-[4.5rem]">
+        {/* A fita de cima: o dia, a casa, a pessoa. ------------------ */}
+        <header className="sticky top-0 z-30 border-b border-[var(--line-soft)] bg-[var(--surface-raised)]">
+          <div className="flex h-14 items-center gap-3 px-4 sm:gap-5 sm:px-6">
+            <Link
+              href={home}
+              aria-label={houseName}
+              className="shrink-0 transition-colors hover:text-[var(--accent)] lg:hidden"
+            >
+              <Monogram className="text-xl text-current" />
+            </Link>
+
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="display truncate text-[0.9375rem] text-[var(--ink)]">
+                {dayLabel}
+              </p>
+              <p className="hidden truncate text-[0.625rem] uppercase tracking-[0.22em] text-[var(--ink-faint)] sm:block">
+                {houseName}
+              </p>
+            </div>
+
+            <AccountMenu actor={actor} />
+          </div>
+        </header>
+
+        {/* Folga em baixo para a barra do telemóvel. Entra também a
+            faixa do indicador do iPhone: a barra assenta no fundo do
+            ecrã e cresce por cima dela, portanto tapa mais do que os
+            4,5rem do seu corpo. */}
+        <main className="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+          {children}
+        </main>
+      </div>
+
+      {/* A barra do fundo — só no telemóvel. ------------------------- */}
+      <nav
+        aria-label="Navegação principal"
+        // Sem altura: quem a define é o DeskNav, que a soma à folga do
+        // indicador do iPhone. Com `h-[4.5rem]` aqui, essa folga era
+        // descontada aos ícones em vez de acrescentada por baixo.
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-raised)] shadow-[0_-10px_28px_-18px_rgba(40,33,24,0.35)] lg:hidden"
+      >
+        <DeskNav items={mobileNavFor(actor)} variant="bottom" />
+      </nav>
     </div>
   )
 }
 
 /**
- * Hoje · Agenda · Avisos · Caixa · Clientes, mais Gestão. A
- * profissional vê só «A minha agenda»: sem caixa, sem clientes, sem
- * gestão.
+ * Hoje · Agenda · Avisos · Caixa · Clientes · Gestão. A profissional vê
+ * só «A minha agenda»: sem caixa, sem clientes, sem gestão.
  */
 export function navFor(actor: Actor): NavItem[] {
   if (actor.role === 'professional') {
-    return [{ href: '/agenda', label: 'A minha agenda' }]
+    return [
+      { href: '/agenda', label: 'A minha agenda', short: 'Agenda', icon: 'agenda' },
+    ]
   }
 
   const items: NavItem[] = [
-    { href: '/', label: 'Hoje' },
-    { href: '/agenda', label: 'Agenda' },
+    { href: '/', label: 'Hoje', icon: 'hoje' },
+    { href: '/agenda', label: 'Agenda', icon: 'agenda' },
   ]
-  if (can.seeNotices(actor)) items.push({ href: '/avisos', label: 'Avisos' })
-  if (can.seeCash(actor)) items.push({ href: '/caixa', label: 'Caixa' })
-  if (can.seeClients(actor)) items.push({ href: '/clientes', label: 'Clientes' })
-  items.push({ href: '/admin', label: 'Gestão' })
+  if (can.seeNotices(actor)) {
+    items.push({ href: '/avisos', label: 'Avisos', icon: 'avisos' })
+  }
+  if (can.seeCash(actor)) {
+    items.push({ href: '/caixa', label: 'Caixa', icon: 'caixa' })
+  }
+  if (can.seeClients(actor)) {
+    items.push({ href: '/clientes', label: 'Clientes', icon: 'clientes' })
+  }
+  items.push({ href: '/admin', label: 'Gestão', icon: 'gestao' })
   return items
+}
+
+/** No fundo do telemóvel cabem cinco portas; os Avisos ficam para o ecrã largo. */
+function mobileNavFor(actor: Actor): NavItem[] {
+  return navFor(actor)
+    .filter((item) => item.href !== '/avisos')
+    .slice(0, 5)
 }
 
 const ROLE_LABEL = {
@@ -74,26 +153,36 @@ function AccountMenu({ actor }: { actor: Actor }) {
     <div className="flex shrink-0 items-center gap-3">
       <div className="hidden text-right leading-tight sm:block">
         <p className="text-[0.8125rem] text-[var(--ink)]">{actor.name}</p>
-        <p className="text-[0.6875rem] uppercase tracking-wide text-[var(--ink-faint)]">
+        <p className="text-[0.625rem] uppercase tracking-[0.18em] text-[var(--ink-faint)]">
           {ROLE_LABEL[actor.role]}
         </p>
       </div>
 
       <span
         aria-hidden
-        className="display flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-sunken)] text-[0.8125rem] text-[var(--ink-muted)]"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--surface-sunken)]"
       >
-        {initial(actor.name)}
+        <Monogram
+          initials={initial(actor.name)}
+          className="text-[0.875rem] text-[var(--ink-muted)]"
+        />
       </span>
 
-      <form action={signOutAction}>
+      {/* No ecrã largo o Sair vive na coluna; aqui só no telemóvel. */}
+      <form action={signOutAction} className="lg:hidden">
         <button
           type="submit"
-          className="text-[0.75rem] text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
+          aria-label="Sair"
+          title="Sair"
+          className="flex h-9 w-9 items-center justify-center text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
         >
-          Sair
+          <IconSignOut className="h-5 w-5" />
         </button>
       </form>
     </div>
   )
+}
+
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }

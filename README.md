@@ -32,22 +32,23 @@ porta própria, com código, e vê só o que é dela.
 1. Cria o projecto.
 2. **Project Settings › Database › Connection string › URI** e copia a
    ligação do *pooler* em modo transacção (porta `6543`).
-3. Corre as migrações por ordem. Estão em `supabase/migrations/` e são
-   sete ficheiros numerados — do `…120000_core.sql` ao
-   `…120600_functions_and_rls.sql`. Duas maneiras:
+3. Põe essa ligação no `.env` como `DATABASE_URL` e corre as migrações.
+   São sete ficheiros numerados em `supabase/migrations/`, do
+   `…120000_core.sql` ao `…120600_functions_and_rls.sql`:
 
    ```bash
-   # com a CLI da Supabase (precisa de Docker para o ambiente local)
-   npx supabase link --project-ref O_TEU_REF
-   npm run db:push
+   npm run db:status    # o que falta aplicar
+   npm run db:migrate   # aplica o que falta, pela ordem do nome
    ```
 
-   ```bash
-   # ou à mão, sem Docker: cola cada ficheiro no SQL Editor da Supabase,
-   # pela ordem do nome, ou
-   psql "$DATABASE_URL" -f supabase/migrations/20260820120000_core.sql
-   # …e assim por diante, um a um, pela ordem
-   ```
+   Só precisa da `DATABASE_URL` — sem Docker, sem `psql`, sem CLI da
+   Supabase. Cada ficheiro entra num lote só: ou entra todo, ou não
+   entra. O que já correu fica registado em `public.schema_migrations`,
+   por isso repetir o comando não repete trabalho.
+
+   Alternativas: `npx supabase link --project-ref O_TEU_REF && npm run
+   db:push`, ou colar cada ficheiro no SQL Editor da Supabase pela ordem
+   do nome.
 
 > **A ordem importa, e o conjunto também.** As restrições de exclusão que
 > impedem duas marcações na mesma pessoa ou no mesmo equipamento vêm com
@@ -169,6 +170,7 @@ app/
 lib/            regras — availability, booking, comanda, cash, commissions…
 components/     as peças de que os ecrãs são feitos
 supabase/       migrações
+scripts/        o que corre as migrações
 ```
 
 O nome da casa vive na base de dados (`org.name`, `unit.name`). O

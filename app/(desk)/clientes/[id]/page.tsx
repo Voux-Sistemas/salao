@@ -13,15 +13,37 @@ import {
 import { formatCents } from '@/lib/money'
 import { requireOrg } from '@/lib/org'
 import { STATUS_LABEL, STATUS_TONE } from '@/lib/status'
-import { formatDateTime, formatDayShort, isoDay } from '@/lib/time'
+import {
+  formatDateTime,
+  formatDateTimeShort,
+  formatDayShort,
+  isoDay,
+} from '@/lib/time'
 import { LANGUAGE_LABEL } from '@/lib/i18n/config'
 import { waLink } from '@/lib/whatsapp'
+import { Monogram } from '@/components/brand'
 import { ClientForm, DeleteNote, NoteForm } from '@/components/client-forms'
-import { Badge, ButtonLink, Card, Divider, Empty } from '@/components/ui'
+import { formatPhone } from '@/lib/text'
+import {
+  Badge,
+  ButtonLink,
+  buttonClass,
+  Card,
+  Divider,
+  Empty,
+} from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Ficha da cliente' }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** "Ana Sofia Marques" -> "AM", para o monograma do avatar. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  const first = parts[0]?.charAt(0) ?? ''
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.charAt(0) ?? '') : ''
+  return (first + last).toUpperCase() || '·'
+}
 
 /**
  * A FICHA.
@@ -54,6 +76,13 @@ export default async function ClientePage({
   const bookHere =
     units.find((unit) => unit.id === client.preferred_unit_id) ?? units[0]
 
+  /* A ficha pode ainda não ter as datas gravadas — o histórico sabe.
+     As visitas vêm por ordem descendente; conta só o que foi concluído. */
+  const completed = visits.filter((visit) => visit.status === 'completed')
+  const lastVisitAt = client.last_visit_at ?? completed[0]?.starts_at ?? null
+  const firstVisitAt =
+    client.first_visit_at ?? completed[completed.length - 1]?.starts_at ?? null
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <Link
@@ -66,25 +95,39 @@ export default async function ClientePage({
 
       {/* --- quem é ------------------------------------------------- */}
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="display text-2xl text-[var(--ink)]">{client.name}</h1>
-          <p className="tabular mt-1 text-sm text-[var(--ink-muted)]">
-            {client.phone}
-            {client.email ? ` · ${client.email}` : ''}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <Badge>{LANGUAGE_LABEL[client.language]}</Badge>
-            {client.no_show_count > 0 ? (
-              <Badge tone="bad">
-                {client.no_show_count} falta
-                {client.no_show_count === 1 ? '' : 's'}
-              </Badge>
-            ) : null}
-            {client.tags.map((tag) => (
-              <Badge key={tag} tone="accent">
-                {tag}
-              </Badge>
-            ))}
+        <div className="flex min-w-0 items-start gap-4">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[2px] border border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--accent)]">
+            <Monogram initials={initialsOf(client.name)} className="text-2xl" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="display text-3xl text-[var(--ink)]">
+              {client.name}
+            </h1>
+            {/* O ponto separador ficava colado ao telefone e, quando o
+                e-mail descia para a linha seguinte, a de cima acabava
+                num «·» pendurado. Preso ao e-mail, desce com ele. (O
+                número já não se parte: os espaços de `formatPhone` são
+                inquebráveis.) */}
+            <p className="mt-1 text-sm text-[var(--ink-muted)]">
+              <span className="tabular">{formatPhone(client.phone)}</span>
+              {client.email ? (
+                <span className="whitespace-nowrap"> · {client.email}</span>
+              ) : null}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <Badge>{LANGUAGE_LABEL[client.language]}</Badge>
+              {client.no_show_count > 0 ? (
+                <Badge tone="warn">
+                  {client.no_show_count} falta
+                  {client.no_show_count === 1 ? '' : 's'}
+                </Badge>
+              ) : null}
+              {client.tags.map((tag) => (
+                <Badge key={tag} tone="accent">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -93,9 +136,9 @@ export default async function ClientePage({
             href={waLink(client.phone, '')}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-10 items-center gap-1.5 border border-[var(--line)] px-3 text-[0.8125rem] text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            className={buttonClass('outline', 'md')}
           >
-            <MessageCircle size={14} />
+            <MessageCircle size={15} />
             WhatsApp
           </a>
           {bookHere ? (
@@ -110,7 +153,7 @@ export default async function ClientePage({
       </header>
 
       {/* --- o essencial -------------------------------------------- */}
-      <Card className="mb-6 px-4 py-4">
+      <Card className="mb-6 px-5 py-4">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           <Figure
             label="Visitas"
@@ -119,22 +162,26 @@ export default async function ClientePage({
           <Figure
             label="Primeira"
             value={
-              client.first_visit_at
-                ? formatDayShort(isoDay(client.first_visit_at, tz), tz)
+              firstVisitAt
+                ? formatDayShort(isoDay(firstVisitAt, tz), tz)
                 : '—'
             }
           />
           <Figure
             label="Última"
             value={
-              client.last_visit_at
-                ? formatDayShort(isoDay(client.last_visit_at, tz), tz)
-                : '—'
+              lastVisitAt ? formatDayShort(isoDay(lastVisitAt, tz), tz) : '—'
             }
           />
+          {/* As três primeiras são curtas — 20, 10/07, 21/08 — e esta
+              vinha por extenso, «22 de agosto às 15:00», a quebrar em
+              duas linhas e a desalinhar a fila toda. Aqui só se quer
+              saber quando é: 22/08 · 15:00 chega e cabe. */}
           <Figure
             label="Próxima"
-            value={client.next_at ? formatDateTime(client.next_at, tz) : '—'}
+            value={
+              client.next_at ? formatDateTimeShort(client.next_at, tz) : '—'
+            }
             accent={Boolean(client.next_at)}
           />
         </dl>
@@ -182,17 +229,30 @@ export default async function ClientePage({
               />
             </Card>
           ) : (
-            <Card className="divide-y divide-[var(--line-soft)]">
-              {visits.map((visit) => (
-                <VisitLine key={visit.appointment_id} visit={visit} />
-              ))}
+            /* Uma cliente antiga traz dezenas de visitas: o histórico rola
+               dentro da própria moldura em vez de esticar a página e
+               deixar a coluna do lado às moscas. */
+            <Card className="relative overflow-hidden">
+              <div className="max-h-[34rem] divide-y divide-[var(--line-soft)] overflow-y-auto overscroll-contain">
+                {visits.map((visit) => (
+                  <VisitLine key={visit.appointment_id} visit={visit} />
+                ))}
+              </div>
+              {/* Cortado a meio de uma linha, o rolo lia-se como avaria.
+                  Este esbatido no fim diz que a lista continua. */}
+              {visits.length > 8 ? (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[var(--surface-raised)] to-transparent"
+                />
+              ) : null}
             </Card>
           )}
         </section>
 
         {/* --- notas internas -------------------------------------- */}
         <section>
-          <h2 className="eyebrow mb-2">Notas internas</h2>
+          <h2 className="eyebrow mb-2">Notas da equipa</h2>
           <Card className="px-4 py-4">
             <p className="mb-3 text-[0.75rem] text-[var(--ink-faint)]">
               Só a equipa vê isto. A cliente nunca.
@@ -200,19 +260,22 @@ export default async function ClientePage({
             <NoteForm clientId={client.id} />
 
             {notes.length > 0 ? (
-              <ul className="mt-4 space-y-3 border-t border-[var(--line-soft)] pt-4">
+              <ul className="mt-4 space-y-2.5 border-t border-[var(--line-soft)] pt-4">
                 {notes.map((note) => (
-                  <li key={note.id} className="flex items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="whitespace-pre-wrap text-[0.8125rem] text-[var(--ink)]">
+                  <li
+                    key={note.id}
+                    className="rounded-[2px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5"
+                  >
+                    <div className="flex items-start gap-2">
+                      <p className="min-w-0 flex-1 whitespace-pre-wrap text-[0.8125rem] text-[var(--ink)]">
                         {note.body}
                       </p>
-                      <p className="mt-0.5 text-[0.6875rem] text-[var(--ink-faint)]">
-                        {note.author ?? 'Alguém'} ·{' '}
-                        {formatDateTime(note.created_at, tz)}
-                      </p>
+                      <DeleteNote clientId={client.id} noteId={note.id} />
                     </div>
-                    <DeleteNote clientId={client.id} noteId={note.id} />
+                    <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+                      {note.author ?? 'Equipa'} ·{' '}
+                      {formatDateTime(note.created_at, tz)}
+                    </p>
                   </li>
                 ))}
               </ul>
@@ -247,12 +310,14 @@ function Figure({
 }) {
   return (
     <div>
-      <dt className="eyebrow mb-0.5">{label}</dt>
+      <dt className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+        {label}
+      </dt>
       <dd
         className={
           accent
-            ? 'tabular text-sm text-[var(--accent)]'
-            : 'tabular text-sm text-[var(--ink)]'
+            ? 'tabular mt-0.5 text-sm text-[var(--accent)]'
+            : 'tabular mt-0.5 text-sm text-[var(--ink)]'
         }
       >
         {value}

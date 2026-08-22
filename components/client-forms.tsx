@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Trash2 } from 'lucide-react'
+import { FileUp, Trash2 } from 'lucide-react'
 import {
   addNoteAction,
   previewImportAction,
@@ -74,153 +74,162 @@ export function ClientForm({
   )
 
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} className="space-y-6">
       {client?.id ? <input type="hidden" name="id" value={client.id} /> : null}
       <Result state={state} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nome" htmlFor="client-name">
-          <Input
-            id="client-name"
-            name="name"
-            required
-            maxLength={120}
-            autoComplete="off"
-            defaultValue={client?.name ?? ''}
-          />
-        </Field>
-        <Field
-          label="Telefone"
-          htmlFor="client-phone"
-          hint="É a identidade da cliente e é único na rede."
-        >
-          <Input
-            id="client-phone"
-            name="phone"
-            required
-            inputMode="tel"
-            autoComplete="off"
-            placeholder="+351 912 345 678"
-            defaultValue={client?.phone ?? ''}
-          />
-        </Field>
-        <Field label="Email" htmlFor="client-email">
-          <Input
-            id="client-email"
-            name="email"
-            type="email"
-            autoComplete="off"
-            defaultValue={client?.email ?? ''}
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Língua" htmlFor="client-language">
-            <Select
-              id="client-language"
-              name="language"
-              defaultValue={client?.language ?? 'pt'}
-            >
-              {LANGUAGES.map((value) => (
-                <option key={value} value={value}>
-                  {LANGUAGE_LABEL[value]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Nascimento" htmlFor="client-birthdate">
+      <section>
+        <p className="eyebrow mb-3">Identidade</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nome" htmlFor="client-name">
             <Input
-              id="client-birthdate"
-              name="birthdate"
-              type="date"
-              defaultValue={client?.birthdate ?? ''}
+              id="client-name"
+              name="name"
+              required
+              maxLength={120}
+              autoComplete="off"
+              defaultValue={client?.name ?? ''}
+            />
+          </Field>
+          <Field
+            label="Telefone"
+            htmlFor="client-phone"
+            hint="É a identidade da cliente e é único na rede."
+          >
+            <Input
+              id="client-phone"
+              name="phone"
+              required
+              inputMode="tel"
+              autoComplete="off"
+              placeholder="+351 912 345 678"
+              defaultValue={client?.phone ?? ''}
+              className="tabular"
+            />
+          </Field>
+          <Field label="E-mail" htmlFor="client-email">
+            <Input
+              id="client-email"
+              name="email"
+              type="email"
+              autoComplete="off"
+              defaultValue={client?.email ?? ''}
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Língua" htmlFor="client-language">
+              <Select
+                id="client-language"
+                name="language"
+                defaultValue={client?.language ?? 'pt'}
+              >
+                {LANGUAGES.map((value) => (
+                  <option key={value} value={value}>
+                    {LANGUAGE_LABEL[value]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Nascimento" htmlFor="client-birthdate">
+              <Input
+                id="client-birthdate"
+                name="birthdate"
+                type="date"
+                defaultValue={client?.birthdate ?? ''}
+              />
+            </Field>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[var(--line-soft)] pt-5">
+        <p className="eyebrow mb-3">Como gosta de ser recebida</p>
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Loja de preferência" htmlFor="client-unit">
+              <Select
+                id="client-unit"
+                name="unit"
+                defaultValue={client?.preferred_unit_id ?? ''}
+              >
+                <option value="">Sem preferência</option>
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Profissional de preferência" htmlFor="client-staff">
+              <Select
+                id="client-staff"
+                name="staff"
+                defaultValue={client?.preferred_staff_id ?? ''}
+              >
+                <option value="">Sem preferência</option>
+                {staff.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Bebida" htmlFor="client-drink">
+              <Input
+                id="client-drink"
+                name="drink"
+                maxLength={80}
+                autoComplete="off"
+                placeholder="Chá verde, café sem açúcar…"
+                defaultValue={client?.drink_preference ?? ''}
+              />
+            </Field>
+            <Field
+              label="Alergias"
+              htmlFor="client-allergies"
+              hint="Aparece a quem a atende."
+            >
+              <Input
+                id="client-allergies"
+                name="allergies"
+                maxLength={160}
+                autoComplete="off"
+                defaultValue={client?.allergies ?? ''}
+              />
+            </Field>
+          </div>
+
+          <Field
+            label="Nota do serviço"
+            htmlFor="client-service-notes"
+            hint="A cor, a fórmula, o que correu bem da última vez."
+          >
+            <Textarea
+              id="client-service-notes"
+              name="service_notes"
+              maxLength={800}
+              defaultValue={client?.service_notes ?? ''}
+            />
+          </Field>
+
+          <Field
+            label="Etiquetas"
+            htmlFor="client-tags"
+            hint="Separadas por vírgula. Servem para filtrar a lista."
+          >
+            <Input
+              id="client-tags"
+              name="tags"
+              autoComplete="off"
+              placeholder="vip, noiva, coloração"
+              defaultValue={(client?.tags ?? []).join(', ')}
             />
           </Field>
         </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Loja de preferência" htmlFor="client-unit">
-          <Select
-            id="client-unit"
-            name="unit"
-            defaultValue={client?.preferred_unit_id ?? ''}
-          >
-            <option value="">Sem preferência</option>
-            {units.map((unit) => (
-              <option key={unit.id} value={unit.id}>
-                {unit.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Profissional de preferência" htmlFor="client-staff">
-          <Select
-            id="client-staff"
-            name="staff"
-            defaultValue={client?.preferred_staff_id ?? ''}
-          >
-            <option value="">Sem preferência</option>
-            {staff.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Bebida" htmlFor="client-drink">
-          <Input
-            id="client-drink"
-            name="drink"
-            maxLength={80}
-            autoComplete="off"
-            placeholder="Chá verde, café sem açúcar…"
-            defaultValue={client?.drink_preference ?? ''}
-          />
-        </Field>
-        <Field
-          label="Alergias"
-          htmlFor="client-allergies"
-          hint="Aparece a quem a atende."
-        >
-          <Input
-            id="client-allergies"
-            name="allergies"
-            maxLength={160}
-            autoComplete="off"
-            defaultValue={client?.allergies ?? ''}
-          />
-        </Field>
-      </div>
-
-      <Field
-        label="Nota do serviço"
-        htmlFor="client-service-notes"
-        hint="A cor, a fórmula, o que correu bem da última vez."
-      >
-        <Textarea
-          id="client-service-notes"
-          name="service_notes"
-          maxLength={800}
-          defaultValue={client?.service_notes ?? ''}
-        />
-      </Field>
-
-      <Field
-        label="Etiquetas"
-        htmlFor="client-tags"
-        hint="Separadas por vírgula. Servem para filtrar a lista."
-      >
-        <Input
-          id="client-tags"
-          name="tags"
-          autoComplete="off"
-          placeholder="vip, noiva, coloração"
-          defaultValue={(client?.tags ?? []).join(', ')}
-        />
-      </Field>
+      </section>
 
       <Submit label={submitLabel} />
     </form>
@@ -288,6 +297,43 @@ const VERDICT = {
 } as const
 
 /**
+ * O botão nativo de ficheiro é a única peça do sistema que o Chrome
+ * desenha por nós — cinzento, arredondado, em inglês, e a dizer "No file
+ * chosen" no meio de um ecrã que fala português. Esconde-se o campo e
+ * põe-se uma zona própria por cima, que também diz que ficheiro ficou
+ * escolhido: o nativo só o mostrava em letra de sistema.
+ */
+function CsvPicker() {
+  const [chosen, setChosen] = useState<string | null>(null)
+
+  return (
+    <label className="group flex cursor-pointer flex-col items-center justify-center gap-1.5 border border-dashed border-[var(--line)] bg-[var(--surface-2)] px-6 py-8 text-center transition-colors hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_5%,var(--surface-2))]">
+      <input
+        id="import-file"
+        name="file"
+        type="file"
+        accept=".csv,text/csv,text/plain"
+        className="sr-only"
+        onChange={(event) =>
+          setChosen(event.currentTarget.files?.[0]?.name ?? null)
+        }
+      />
+      <FileUp
+        size={20}
+        aria-hidden
+        className="text-[var(--ink-faint)] transition-colors group-hover:text-[var(--accent)]"
+      />
+      <span className="text-[0.875rem] text-[var(--ink)]">
+        {chosen ?? 'Escolher o ficheiro'}
+      </span>
+      <span className="text-[0.75rem] text-[var(--ink-faint)]">
+        {chosen ? 'Carregue outra vez para trocar' : 'CSV, até 512 KB'}
+      </span>
+    </label>
+  )
+}
+
+/**
  * Importar em dois tempos: primeiro vê-se a conta feita, linha a linha,
  * e só depois é que se grava. Quem já cá está não é tocado.
  */
@@ -324,13 +370,7 @@ export function ImportForm() {
             htmlFor="import-file"
             hint="Vírgula ou ponto-e-vírgula, até 512 KB. Colunas: nome, telefone, email, idioma, nascimento, bebida, alergias, notas, etiquetas."
           >
-            <input
-              id="import-file"
-              name="file"
-              type="file"
-              accept=".csv,text/csv,text/plain"
-              className="block w-full text-sm text-[var(--ink-muted)] file:mr-3 file:border file:border-[var(--line)] file:bg-transparent file:px-3 file:py-1.5 file:text-[0.8125rem] file:text-[var(--ink)]"
-            />
+            <CsvPicker />
           </Field>
         )}
 
@@ -348,7 +388,7 @@ export function ImportForm() {
       </form>
 
       {rows.length > 0 && !done ? (
-        <div className="space-y-4">
+        <div className="space-y-4 border-t border-[var(--line-soft)] pt-5">
           <p className="text-[0.8125rem] text-[var(--ink-muted)]">
             {preview.toCreate === 0
               ? 'Não há nada de novo neste ficheiro.'
@@ -356,10 +396,10 @@ export function ImportForm() {
             {preview.truncated ? ' O ficheiro é grande; lêem-se as primeiras 2000 linhas.' : ''}
           </p>
 
-          <div className="max-h-96 overflow-auto border border-[var(--line-soft)]">
+          <div className="max-h-96 overflow-auto rounded-[2px] border border-[var(--line-soft)]">
             <table className="w-full min-w-[32rem] text-sm">
               <thead className="sticky top-0 bg-[var(--surface)]">
-                <tr className="text-left text-[0.6875rem] uppercase tracking-wide text-[var(--ink-faint)]">
+                <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
                   <th className="px-3 py-2 font-normal">Linha</th>
                   <th className="px-3 py-2 font-normal">Nome</th>
                   <th className="px-3 py-2 font-normal">Telefone</th>

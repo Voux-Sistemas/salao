@@ -1,8 +1,9 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { requireManagement, unitsFor } from '@/lib/auth/actor'
-import { Card, Empty } from '@/components/ui'
+import { loadQueue } from '@/lib/notices'
+import { Empty } from '@/components/ui'
+import { StoreChooser } from '@/components/store-chooser'
 
 export const metadata: Metadata = { title: 'Avisos' }
 
@@ -25,21 +26,33 @@ export default async function AvisosChooser() {
     )
   }
 
+  /* A fila de amanhã, por casa — é o aviso que mais evita faltas. */
+  const reminders = await Promise.all(
+    units.map((unit) => loadQueue(unit, 'reminder_eve')),
+  )
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <h1 className="display mb-6 text-2xl text-[var(--ink)]">Que loja?</h1>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {units.map((unit) => (
-          <Link key={unit.id} href={`/avisos/${unit.slug}`}>
-            <Card className="px-4 py-5 transition-colors hover:border-[var(--accent)]">
-              <p className="display text-lg text-[var(--ink)]">{unit.name}</p>
-              <p className="mt-0.5 text-[0.8125rem] text-[var(--ink-muted)]">
-                {unit.city ?? unit.address_line ?? unit.timezone}
-              </p>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
+    <StoreChooser
+      eyebrow="Avisos"
+      title="Que loja?"
+      hint="O sistema nunca envia nada sozinho — prepara a mensagem e uma pessoa carrega no botão. Cada loja tem a sua fila."
+      cta="Ver a fila"
+      stores={units.map((unit, index) => {
+        const pending = reminders[index]?.length ?? 0
+        return {
+          href: `/avisos/${unit.slug}`,
+          name: unit.name,
+          meta: unit.city ?? unit.address_line ?? unit.timezone,
+          badge: {
+            label: pending > 0 ? `${pending} por enviar` : 'Em dia',
+            tone: pending > 0 ? ('warn' as const) : ('ok' as const),
+          },
+          line:
+            pending > 0
+              ? `${pending} lembrete${pending === 1 ? '' : 's'} da véspera para amanhã.`
+              : 'Sem lembretes da véspera pendentes.',
+        }
+      })}
+    />
   )
 }

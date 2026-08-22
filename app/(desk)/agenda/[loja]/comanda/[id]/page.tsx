@@ -13,14 +13,16 @@ import {
   STATUS_LABEL,
   STATUS_TONE,
 } from '@/lib/status'
-import { formatDayLong, formatTime, isoDay } from '@/lib/time'
+import { formatDayLong, formatDayShort, formatTime, isoDay } from '@/lib/time'
 import {
   CloseComanda,
   DiscountForm,
   PaymentForm,
   RemovePayment,
 } from '@/components/comanda-forms'
+import { Ornament } from '@/components/brand'
 import { Badge, Card, Empty } from '@/components/ui'
+import { formatPhone } from '@/lib/text'
 
 export const metadata: Metadata = { title: 'Comanda' }
 
@@ -74,6 +76,15 @@ export default async function ComandaPage({
   const commissions = closed ? await loadCommissions(appointment.id) : []
   const commissionTotal = commissions.reduce((s, c) => s + c.amount_cents, 0)
 
+  // Para o talão: quanto entrou por cada método.
+  const methodTotals = new Map<keyof typeof PAYMENT_METHOD_LABEL, number>()
+  for (const payment of payments) {
+    methodTotals.set(
+      payment.method,
+      (methodTotals.get(payment.method) ?? 0) + payment.amount_cents,
+    )
+  }
+
   const day = isoDay(appointment.starts_at, tz)
   const backHref = `/agenda/${unit.slug}?d=${day}&m=${appointment.id}`
 
@@ -87,10 +98,10 @@ export default async function ComandaPage({
         Voltar à agenda
       </Link>
 
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow mb-1">Comanda</p>
-          <h1 className="display text-2xl text-[var(--ink)]">
+          <p className="eyebrow mb-1.5">Comanda · {unit.name}</p>
+          <h1 className="display text-3xl text-[var(--ink)]">
             <Link
               href={`/clientes/${appointment.client_id}`}
               className="transition-colors hover:text-[var(--accent)]"
@@ -98,9 +109,13 @@ export default async function ComandaPage({
               {appointment.client_name}
             </Link>
           </h1>
-          <p className="mt-1 text-[0.8125rem] text-[var(--ink-muted)]">
-            {capitalise(formatDayLong(day, tz))} ·{' '}
-            {formatTime(appointment.starts_at, tz)} · {unit.name}
+          <p className="mt-1.5 text-[0.8125rem] text-[var(--ink-muted)]">
+            {capitalise(formatDayLong(day, tz))} às{' '}
+            <span className="tabular">
+              {formatTime(appointment.starts_at, tz)}
+            </span>
+            {' · '}
+            <span className="tabular">{formatPhone(appointment.client_phone)}</span>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -108,19 +123,30 @@ export default async function ComandaPage({
             {STATUS_LABEL[appointment.status]}
           </Badge>
           <Badge>{SOURCE_LABEL[appointment.source]}</Badge>
-          {closed ? <Badge tone="ok">Fechada</Badge> : null}
         </div>
       </header>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_20rem] lg:items-start">
+      {closed && appointment.closed_at ? (
+        <div className="mb-8 rounded-[2px] border border-[color-mix(in_srgb,var(--ok)_35%,transparent)] bg-[color-mix(in_srgb,var(--ok)_7%,transparent)] px-4 py-3">
+          <p className="text-sm font-medium text-[var(--ok)]">
+            Fechada às {formatTime(appointment.closed_at, tz)}
+          </p>
+          <p className="mt-0.5 text-[0.75rem] text-[var(--ink-muted)]">
+            O resumo em baixo é definitivo — depois do fecho não se mexe em
+            pagamentos nem em descontos.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-8 lg:grid-cols-[1fr_21rem] lg:items-start">
         <div className="space-y-8">
           {/* --- itens, com preço congelado ------------------------- */}
           <section>
-            <h2 className="eyebrow mb-3">Serviços</h2>
+            <SectionTitle>Serviços</SectionTitle>
             <Card className="divide-y divide-[var(--line-soft)]">
               {appointment.items.map((item) => (
                 <div key={item.id} className="flex items-baseline gap-3 px-4 py-3">
-                  <span className="tabular w-11 shrink-0 text-[0.8125rem] text-[var(--ink-muted)]">
+                  <span className="tabular w-11 shrink-0 text-[0.8125rem] text-[var(--accent)]">
                     {formatTime(item.starts_at, tz)}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -136,12 +162,21 @@ export default async function ComandaPage({
                   </span>
                 </div>
               ))}
+              <div className="flex items-baseline justify-between bg-[var(--surface-2)] px-4 py-2.5">
+                <span className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-muted)]">
+                  {appointment.items.length}{' '}
+                  {appointment.items.length === 1 ? 'serviço' : 'serviços'}
+                </span>
+                <span className="tabular text-sm text-[var(--ink)]">
+                  {formatCents(sums.itemsCents)}
+                </span>
+              </div>
             </Card>
           </section>
 
           {/* --- desconto ------------------------------------------- */}
           <section>
-            <h2 className="eyebrow mb-3">Desconto</h2>
+            <SectionTitle>Desconto</SectionTitle>
             {closed ? (
               <p className="text-sm text-[var(--ink-muted)]">
                 {appointment.discount_cents > 0
@@ -153,17 +188,19 @@ export default async function ComandaPage({
                   : 'Sem desconto.'}
               </p>
             ) : (
-              <DiscountForm
-                appointmentId={appointment.id}
-                discountCents={appointment.discount_cents}
-                discountReason={appointment.discount_reason}
-              />
+              <Card className="px-4 py-4">
+                <DiscountForm
+                  appointmentId={appointment.id}
+                  discountCents={appointment.discount_cents}
+                  discountReason={appointment.discount_reason}
+                />
+              </Card>
             )}
           </section>
 
           {/* --- pagamentos ----------------------------------------- */}
           <section>
-            <h2 className="eyebrow mb-3">Pagamentos</h2>
+            <SectionTitle>Pagamentos</SectionTitle>
             {payments.length === 0 ? (
               <p className="mb-4 text-sm text-[var(--ink-muted)]">
                 Ainda não entrou nada.
@@ -180,7 +217,9 @@ export default async function ComandaPage({
                         {PAYMENT_METHOD_LABEL[payment.method]}
                       </span>
                       <span className="block truncate text-[0.75rem] text-[var(--ink-muted)]">
-                        {formatTime(payment.received_at, tz)}
+                        <span className="tabular">
+                          {formatTime(payment.received_at, tz)}
+                        </span>
                         {payment.received_by ? ` · ${payment.received_by}` : ''}
                         {payment.note ? ` · ${payment.note}` : ''}
                       </span>
@@ -200,17 +239,19 @@ export default async function ComandaPage({
             )}
 
             {closed ? null : (
-              <PaymentForm
-                appointmentId={appointment.id}
-                dueCents={Math.max(0, sums.dueCents)}
-              />
+              <Card className="px-4 py-4">
+                <PaymentForm
+                  appointmentId={appointment.id}
+                  dueCents={Math.max(0, sums.dueCents)}
+                />
+              </Card>
             )}
           </section>
 
           {/* --- comissões geradas ---------------------------------- */}
           {closed ? (
             <section>
-              <h2 className="eyebrow mb-3">Comissões geradas</h2>
+              <SectionTitle>Comissões geradas</SectionTitle>
               {commissions.length === 0 ? (
                 <Empty
                   title="Nenhuma"
@@ -228,9 +269,11 @@ export default async function ComandaPage({
                           {entry.staff_name}
                         </span>
                         <span className="block truncate text-[0.75rem] text-[var(--ink-muted)]">
-                          {entry.service_name} · {formatCents(entry.base_cents)}
-                          {' × '}
-                          {Number(entry.percent)}%
+                          {entry.service_name} ·{' '}
+                          <span className="tabular">
+                            {formatCents(entry.base_cents)} ×{' '}
+                            {Number(entry.percent)}%
+                          </span>
                         </span>
                       </span>
                       <Badge tone={entry.status === 'paid' ? 'ok' : 'neutral'}>
@@ -241,8 +284,8 @@ export default async function ComandaPage({
                       </span>
                     </div>
                   ))}
-                  <div className="flex items-baseline justify-between px-4 py-2.5">
-                    <span className="text-[0.8125rem] text-[var(--ink-muted)]">
+                  <div className="flex items-baseline justify-between bg-[var(--surface-2)] px-4 py-2.5">
+                    <span className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-muted)]">
                       Total
                     </span>
                     <span className="tabular text-sm text-[var(--ink)]">
@@ -255,44 +298,89 @@ export default async function ComandaPage({
           ) : null}
         </div>
 
-        {/* --- a conta ---------------------------------------------- */}
+        {/* --- o talão ---------------------------------------------- */}
         <aside className="lg:sticky lg:top-20">
-          <Card className="space-y-3 px-5 py-5">
-            <Line label="Serviços" cents={sums.itemsCents} />
-            {sums.discountCents > 0 ? (
-              <Line label="Desconto" cents={-sums.discountCents} muted />
-            ) : null}
-            <div className="rule" />
-            <div className="flex items-baseline justify-between">
-              <span className="eyebrow">A pagar</span>
-              <span className="tabular display text-xl text-[var(--ink)]">
-                {formatCents(sums.totalCents)}
-              </span>
+          <Card className="overflow-hidden shadow-[var(--shadow-soft)]">
+            <div className="border-b border-dashed border-[var(--line)] px-5 pb-4 pt-5 text-center">
+              <Ornament className="scale-90" />
+              <p className="display mt-2.5 text-lg leading-tight text-[var(--ink)]">
+                {appointment.client_name}
+              </p>
+              <p className="tabular mt-1 text-[0.75rem] text-[var(--ink-muted)]">
+                {formatDayShort(day, tz)} ·{' '}
+                {formatTime(appointment.starts_at, tz)} · {unit.name}
+              </p>
             </div>
-            <Line label="Recebido" cents={sums.paidCents} muted />
-            {sums.dueCents !== 0 ? (
-              <div className="flex items-baseline justify-between">
-                <span className="text-[0.8125rem] text-[var(--ink-muted)]">
-                  {sums.dueCents > 0 ? 'Falta' : 'Troco'}
-                </span>
-                <span
-                  className="tabular text-sm"
-                  style={{
-                    color:
-                      sums.dueCents > 0 ? 'var(--warn)' : 'var(--ink-muted)',
-                  }}
-                >
-                  {formatCents(Math.abs(sums.dueCents))}
+
+            <div className="space-y-2.5 px-5 py-4">
+              <div className="space-y-1.5">
+                {appointment.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-baseline justify-between gap-3"
+                  >
+                    <span className="min-w-0 truncate text-[0.8125rem] text-[var(--ink)]">
+                      {item.service_name}
+                    </span>
+                    <span className="tabular shrink-0 text-[0.8125rem] text-[var(--ink)]">
+                      {formatCents(item.price_cents)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {sums.discountCents > 0 ? (
+                <Line label="Desconto" cents={-sums.discountCents} muted />
+              ) : null}
+
+              <div className="flex items-end justify-between gap-3 border-t border-dashed border-[var(--line)] pt-3">
+                <span className="eyebrow">A pagar</span>
+                <span className="display tabular text-4xl leading-none text-[var(--ink)]">
+                  {formatCents(sums.totalCents)}
                 </span>
               </div>
-            ) : null}
 
-            <div className="pt-2">
-              {closed ? (
-                <p className="text-[0.8125rem] text-[var(--ink-muted)]">
-                  Fechada. As comissões já foram geradas e o dinheiro vivo já
-                  entrou na caixa.
-                </p>
+              <div className="space-y-1.5 border-t border-dashed border-[var(--line)] pt-3">
+                {[...methodTotals.entries()].map(([method, cents]) => (
+                  <Line
+                    key={method}
+                    label={PAYMENT_METHOD_LABEL[method]}
+                    cents={cents}
+                    muted
+                  />
+                ))}
+                <Line label="Recebido" cents={sums.paidCents} />
+                {sums.dueCents !== 0 ? (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[0.8125rem] text-[var(--ink-muted)]">
+                      {sums.dueCents > 0 ? 'Falta' : 'Troco'}
+                    </span>
+                    <span
+                      className="tabular text-sm"
+                      style={{
+                        color:
+                          sums.dueCents > 0
+                            ? 'var(--warn)'
+                            : 'var(--ink-muted)',
+                      }}
+                    >
+                      {formatCents(Math.abs(sums.dueCents))}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="border-t border-dashed border-[var(--line)] px-5 py-4">
+              {closed && appointment.closed_at ? (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-[var(--ok)]">
+                    Fechada às {formatTime(appointment.closed_at, tz)}
+                  </p>
+                  <p className="mt-1 text-[0.75rem] leading-relaxed text-[var(--ink-muted)]">
+                    As comissões já foram geradas e o dinheiro vivo já entrou
+                    na caixa.
+                  </p>
+                </div>
               ) : (
                 <CloseComanda
                   appointmentId={appointment.id}
@@ -304,6 +392,15 @@ export default async function ComandaPage({
         </aside>
       </div>
     </div>
+  )
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 flex items-center gap-3">
+      <span className="eyebrow">{children}</span>
+      <span className="h-px flex-1 bg-[var(--line-soft)]" aria-hidden />
+    </h2>
   )
 }
 

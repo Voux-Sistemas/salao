@@ -33,6 +33,22 @@ function Result({ state }: { state: FormState }) {
   return null
 }
 
+/** Marcador de passo da instalação: número didone, título em micro-caps. */
+function Step({ number, title }: { number: string; title: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-4 first:pt-0">
+      <span
+        aria-hidden
+        className="display text-2xl leading-none text-[var(--accent)]"
+      >
+        {number}
+      </span>
+      <span className="eyebrow">{title}</span>
+      <span aria-hidden className="h-px flex-1 bg-[var(--line-soft)]" />
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------
 
 export function SignInForm() {
@@ -84,11 +100,7 @@ export function RequestResetForm() {
     <form action={action} className="space-y-5">
       <Result state={state} />
 
-      <Field
-        label="E-mail"
-        htmlFor="email"
-        hint="Enviamos-lhe um código para escrever no ecrã seguinte."
-      >
+      <Field label="E-mail" htmlFor="email">
         <Input
           id="email"
           name="email"
@@ -176,6 +188,8 @@ export function SetupForm({ timezone }: { timezone: string }) {
     <form action={action} className="space-y-5">
       <Result state={state} />
 
+      <Step number="01" title="O código" />
+
       <Field
         label="Código de instalação"
         htmlFor="setup"
@@ -184,7 +198,7 @@ export function SetupForm({ timezone }: { timezone: string }) {
         <Input id="setup" name="setup" required autoFocus autoComplete="off" />
       </Field>
 
-      <div className="rule" />
+      <Step number="02" title="A casa" />
 
       <Field label="Nome da rede" htmlFor="org" hint="Aparece na montra e nas mensagens.">
         <Input id="org" name="org" required autoComplete="organization" />
@@ -194,7 +208,7 @@ export function SetupForm({ timezone }: { timezone: string }) {
         <Input id="timezone" name="timezone" defaultValue={timezone} required />
       </Field>
 
-      <div className="rule" />
+      <Step number="03" title="A dona" />
 
       <Field label="O seu nome" htmlFor="name">
         <Input id="name" name="name" required autoComplete="name" />

@@ -177,6 +177,19 @@ export function formatDayShort(
   }).format(dayStart(day, timezone))
 }
 
+/**
+ * "2026-02-02" → "02/02/2026". Uma vigência de escala é uma data de
+ * calendário, não um instante: não há fuso nenhum a converter, só a
+ * ordem portuguesa a pôr. O ano fica — uma escala atravessa o Natal.
+ *
+ * Sem isto a ficha da profissional mostrava o ISO em cru, que é como
+ * escrever a data para a máquina e deixar a dona a decifrá-la.
+ */
+export function formatIsoDay(day: string): string {
+  const [y, m, d] = day.split('-')
+  return y && m && d ? `${d}/${m}/${y}` : day
+}
+
 export function formatWeekdayShort(
   day: IsoDay,
   timezone: string,
@@ -186,6 +199,20 @@ export function formatWeekdayShort(
     weekday: 'short',
     timeZone: timezone,
   }).format(dayStart(day, timezone))
+}
+
+/** "ago" — o mês em três letras, para os blocos de calendário. */
+export function formatMonthShort(
+  day: IsoDay,
+  timezone: string,
+  language = 'pt',
+): string {
+  return new Intl.DateTimeFormat(localeOf(language), {
+    month: 'short',
+    timeZone: timezone,
+  })
+    .format(dayStart(day, timezone))
+    .replace(/\.$/, '')
 }
 
 export function formatDateTime(
@@ -201,6 +228,24 @@ export function formatDateTime(
     hour12: false,
     timeZone: timezone,
   }).format(instant)
+}
+
+/**
+ * "22/08 · 15:00" — a mesma informação em metade da largura, para as
+ * listas no telemóvel. Por extenso ("22 de agosto às 15:00") a data
+ * roubava a linha toda ao nome e ao telefone, que ficavam cortados.
+ */
+export function formatDateTimeShort(
+  instant: Date,
+  timezone: string,
+  language = 'pt',
+): string {
+  const day = new Intl.DateTimeFormat(localeOf(language), {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: timezone,
+  }).format(instant)
+  return `${day} · ${formatTime(instant, timezone, language)}`
 }
 
 export const WEEKDAY_NAMES_PT = [

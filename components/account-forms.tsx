@@ -1,6 +1,12 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react'
 import { useFormStatus } from 'react-dom'
 import {
   cancelAction,
@@ -13,6 +19,7 @@ import {
 } from '@/app/(public)/conta/actions'
 import { LANGUAGES, LANGUAGE_LABEL, type Language } from '@/lib/i18n/config'
 import { Button, Field, Input, Notice, Select } from '@/components/ui'
+import { formatPhone } from '@/lib/text'
 
 /**
  * A superfície da cliente fala três línguas, e por isso nenhum texto
@@ -92,34 +99,130 @@ export function PhoneForm({
 
 export type CodeLabels = {
   code: string
+  hint: string
   submit: string
   resend: string
 }
 
+const CODE_LENGTH = 6
+
+/**
+ * Seis casas, um dígito em cada. Escreve-se sem pensar: o cursor
+ * avança sozinho, o backspace recua, e colar o código inteiro numa
+ * casa qualquer preenche as restantes. Quando a última casa fecha, o
+ * formulário segue por si — ela não tem de procurar o botão.
+ */
 export function CodeForm({ labels }: { labels: CodeLabels }) {
   const [state, action] = useActionState<AccountState, FormData>(
     verifyCodeAction,
     EMPTY,
   )
+  const [digits, setDigits] = useState<string[]>(() =>
+    Array(CODE_LENGTH).fill(''),
+  )
+  const boxes = useRef<(HTMLInputElement | null)[]>([])
+  const form = useRef<HTMLFormElement | null>(null)
+  const sent = useRef(false)
+
+  const code = digits.join('')
+
+  // Um código recusado limpa as casas e devolve o cursor à primeira.
+  useEffect(() => {
+    if (!state.error) return
+    sent.current = false
+    setDigits(Array(CODE_LENGTH).fill(''))
+    boxes.current[0]?.focus()
+  }, [state.error])
+
+  // Assim que as seis casas estão cheias, vai.
+  useEffect(() => {
+    if (code.length < CODE_LENGTH || sent.current) return
+    sent.current = true
+    form.current?.requestSubmit()
+  }, [code])
+
+  function focusAt(index: number) {
+    const box = boxes.current[Math.max(0, Math.min(CODE_LENGTH - 1, index))]
+    box?.focus()
+    box?.select()
+  }
+
+  function write(index: number, value: string) {
+    const typed = value.replace(/\D/g, '')
+    if (!typed) return
+    setDigits((previous) => {
+      const next = [...previous]
+      for (let i = 0; i < typed.length && index + i < CODE_LENGTH; i += 1) {
+        next[index + i] = typed[i] ?? ''
+      }
+      return next
+    })
+    focusAt(index + typed.length)
+  }
+
+  function onKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Backspace') {
+      event.preventDefault()
+      setDigits((previous) => {
+        const next = [...previous]
+        if (next[index]) next[index] = ''
+        else if (index > 0) next[index - 1] = ''
+        return next
+      })
+      if (!digits[index]) focusAt(index - 1)
+      return
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      focusAt(index - 1)
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      focusAt(index + 1)
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      <form action={action} className="space-y-5">
+    <div className="space-y-5">
+      <form ref={form} action={action} className="space-y-6">
         {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
 
-        <Field label={labels.code} htmlFor="code">
-          <Input
-            id="code"
-            name="code"
-            required
-            autoFocus
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            pattern="[0-9]*"
-            className="tabular text-center text-lg tracking-[0.5em]"
-          />
-        </Field>
+        <input type="hidden" name="code" value={code} />
+
+        <fieldset>
+          <legend className="mb-3 block w-full text-center text-[0.8125rem] font-medium text-[var(--ink)]">
+            {labels.code}
+          </legend>
+
+          <div className="flex justify-center gap-2 sm:gap-2.5">
+            {digits.map((digit, index) => (
+              <input
+                key={index}
+                ref={(node) => {
+                  boxes.current[index] = node
+                }}
+                value={digit}
+                onChange={(event) => write(index, event.target.value)}
+                onKeyDown={(event) => onKeyDown(index, event)}
+                onFocus={(event) => event.target.select()}
+                onPaste={(event) => {
+                  event.preventDefault()
+                  write(index, event.clipboardData.getData('text'))
+                }}
+                aria-label={`${labels.code} ${index + 1}`}
+                inputMode="numeric"
+                autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                autoFocus={index === 0}
+                maxLength={CODE_LENGTH}
+                className="tabular h-[3.25rem] w-11 border border-[var(--line)] bg-[var(--surface)] text-center text-xl text-[var(--ink)] transition-all outline-none focus:-translate-y-0.5 focus:border-[var(--accent)] focus:shadow-[var(--shadow-soft)] sm:w-12"
+              />
+            ))}
+          </div>
+
+          <p className="mt-3 text-center text-[0.75rem] text-[var(--ink-faint)]">
+            {labels.hint}
+          </p>
+        </fieldset>
 
         <Submit label={labels.submit} size="lg" className="w-full" />
       </form>
@@ -258,7 +361,7 @@ export function DetailsForm({
       </Field>
 
       <Field label={labels.phone} hint={labels.phoneFixed}>
-        <Input value={client.phone} readOnly disabled className="tabular" />
+        <Input value={formatPhone(client.phone)} readOnly disabled className="tabular" />
       </Field>
 
       <Field label={labels.language} htmlFor="language">

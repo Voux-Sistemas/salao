@@ -120,12 +120,11 @@ export async function loadAgendaDay(
   const tz = unit.timezone
   const only = options.onlyStaffId ?? null
 
-  // Alarga-se meio dia para cada lado: um bloco que atravessa a
-  // meia-noite continua a pertencer a este dia.
-  const windowStart = new Date(dayStart(day, tz).getTime() - 12 * 3_600_000)
-  const windowEnd = new Date(
-    dayStart(addDays(day, 1), tz).getTime() + 12 * 3_600_000,
-  )
+  // A janela é o dia local, de meia-noite a meia-noite. O teste é de
+  // sobreposição, não de início: um bloco que atravessa a meia-noite
+  // aparece nos dois dias, e nenhum bloco de outro dia entra aqui.
+  const windowStart = dayStart(day, tz)
+  const windowEnd = dayStart(addDays(day, 1), tz)
 
   const [opening, scheduleRows, blockRows] = await Promise.all([
     openingWindows(unit.id, day),

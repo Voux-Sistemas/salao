@@ -17,12 +17,18 @@ export default async function SetupPage() {
 
   return (
     <div>
-      <h1 className="display text-2xl text-[var(--ink)]">Instalação</h1>
-      <p className="mt-1 mb-8 text-sm text-[var(--ink-muted)]">
-        Cria a rede e a primeira conta. Este ecrã desaparece depois disso.
+      <p className="eyebrow eyebrow-gold">Instalação</p>
+      <h1 className="display mt-3 text-4xl text-[var(--ink)]">
+        Abrir a casa
+      </h1>
+      <p className="mt-3 text-sm leading-relaxed text-[var(--ink-muted)]">
+        Três passos criam a rede, a montra pública e a conta da dona.
+        Depois disso, este ecrã desaparece para sempre.
       </p>
 
-      <SetupForm timezone="Europe/Lisbon" />
+      <div className="mt-9">
+        <SetupForm timezone="Europe/Lisbon" />
+      </div>
     </div>
   )
 }

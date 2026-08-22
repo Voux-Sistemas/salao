@@ -1,8 +1,8 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { requireActor, unitsFor } from '@/lib/auth/actor'
-import { Card, Empty } from '@/components/ui'
+import { Empty } from '@/components/ui'
+import { StoreChooser } from '@/components/store-chooser'
 
 export const metadata: Metadata = { title: 'Agenda' }
 
@@ -29,20 +29,16 @@ export default async function AgendaChooser() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <h1 className="display mb-6 text-2xl text-[var(--ink)]">Que loja?</h1>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {units.map((unit) => (
-          <Link key={unit.id} href={`/agenda/${unit.slug}`}>
-            <Card className="px-4 py-5 transition-colors hover:border-[var(--accent)]">
-              <p className="display text-lg text-[var(--ink)]">{unit.name}</p>
-              <p className="mt-0.5 text-[0.8125rem] text-[var(--ink-muted)]">
-                {unit.city ?? unit.address_line ?? unit.timezone}
-              </p>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
+    <StoreChooser
+      eyebrow="Agenda"
+      title="Que casa?"
+      hint="O dia de cada casa corre no fuso da casa."
+      cta="Ver o dia"
+      stores={units.map((unit) => ({
+        href: `/agenda/${unit.slug}`,
+        name: unit.name,
+        meta: unit.city ?? unit.address_line ?? unit.timezone,
+      }))}
+    />
   )
 }

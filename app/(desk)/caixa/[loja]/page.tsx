@@ -7,11 +7,19 @@ import {
   loadMovements,
   openSession,
   recentSessions,
+  type CashKind,
   type CashMovement,
   type CashSession,
 } from '@/lib/cash'
+import { sql } from '@/lib/db'
 import { formatCents } from '@/lib/money'
-import { formatDayLong, formatDayShort, formatTime } from '@/lib/time'
+import { PAYMENT_METHOD_LABEL, type PaymentMethod } from '@/lib/status'
+import {
+  formatDayLong,
+  formatDayShort,
+  formatTime,
+  type IsoDay,
+} from '@/lib/time'
 import {
   CloseCashForm,
   MovementForm,
@@ -30,6 +38,34 @@ export const metadata: Metadata = { title: 'Caixa' }
  * reforços e sangrias são à mão. Fecha-se contando a gaveta: o esperado
  * está à vista, o contado grava-se, e a diferença fica escrita.
  */
+
+const METHODS = Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]
+
+type MethodTotal = { method: PaymentMethod; total: number; count: number }
+
+/** O que a loja recebeu no dia, por método. Leitura, apenas. */
+async function methodTotals(
+  unitId: string,
+  day: IsoDay,
+  timezone: string,
+): Promise<MethodTotal[]> {
+  return sql<MethodTotal[]>`
+    select p.method, sum(p.amount_cents)::int as total, count(*)::int as count
+      from payment p
+      join appointment a on a.id = p.appointment_id
+     where a.unit_id = ${unitId}
+       and (p.received_at at time zone ${timezone})::date = ${day}::date
+     group by p.method
+  `
+}
+
+const KIND_TONE: Record<CashKind, 'neutral' | 'accent' | 'ok' | 'warn'> = {
+  sale: 'ok',
+  reinforcement: 'accent',
+  withdrawal: 'warn',
+  adjustment: 'neutral',
+}
+
 export default async function CaixaPage({
   params,
 }: {
@@ -44,14 +80,19 @@ export default async function CaixaPage({
     unitsFor(actor),
     recentSessions(unit.id, 14),
   ])
-  const movements = session ? await loadMovements(session.id) : []
+  const [movements, methods] = await Promise.all([
+    session ? loadMovements(session.id) : Promise.resolve([]),
+    session
+      ? methodTotals(unit.id, session.business_date, unit.timezone)
+      : Promise.resolve([] as MethodTotal[]),
+  ])
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow mb-1">{unit.name}</p>
-          <h1 className="display text-2xl text-[var(--ink)]">Caixa</h1>
+          <h1 className="display text-3xl text-[var(--ink)]">Caixa</h1>
         </div>
         <UnitSwitcher
           units={units}
@@ -65,6 +106,7 @@ export default async function CaixaPage({
         <OpenDrawer
           session={session}
           movements={movements}
+          methods={methods}
           unitSlug={unit.slug}
           timezone={unit.timezone}
         />
@@ -74,7 +116,7 @@ export default async function CaixaPage({
             title="Caixa fechada"
             hint="Conte o que está na gaveta e abra o dia. Enquanto a caixa estiver fechada não se pode receber em dinheiro."
           />
-          <div className="mx-auto max-w-sm">
+          <div className="mx-auto max-w-sm pb-4">
             <OpenCashForm unitSlug={unit.slug} />
           </div>
         </Card>
@@ -92,11 +134,13 @@ export default async function CaixaPage({
 function OpenDrawer({
   session,
   movements,
+  methods,
   unitSlug,
   timezone,
 }: {
   session: CashSession
   movements: CashMovement[]
+  methods: MethodTotal[]
   unitSlug: string
   timezone: string
 }) {
@@ -109,91 +153,155 @@ function OpenDrawer({
     .reduce((sum, m) => sum + m.amount_cents, 0)
 
   return (
-    <div className="space-y-5">
-      <Card className="px-4 py-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
+    <div className="space-y-6">
+      {/* --- o estado da sessão, à cabeça ---------------------------- */}
+      <Card className="px-5 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="eyebrow mb-1">
+            <p className="eyebrow mb-1.5">
               {formatDayLong(session.business_date, timezone)}
             </p>
-            <p className="text-[0.8125rem] text-[var(--ink-muted)]">
-              Aberta às {formatTime(session.opened_at, timezone)}
-              {session.opened_by ? ` por ${session.opened_by}` : ''}
+            <p className="display text-xl text-[var(--ink)]">
+              Aberta desde as {formatTime(session.opened_at, timezone)}
+            </p>
+            <p className="mt-1 text-[0.8125rem] text-[var(--ink-muted)]">
+              {session.opened_by ? `Por ${session.opened_by}, ` : ''}
+              com um fundo de abertura de{' '}
+              <span className="tabular text-[var(--ink)]">
+                {formatCents(session.opening_cents)}
+              </span>
+              .
             </p>
           </div>
-          <Badge tone="ok">Aberta</Badge>
+          <Badge tone="ok">Caixa aberta</Badge>
         </div>
 
         <Divider className="my-4" />
 
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-          <Figure label="Abertura" cents={session.opening_cents} />
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+          <Figure label="Fundo de abertura" cents={session.opening_cents} />
           <Figure label="Entradas" cents={entries} />
           <Figure label="Sangrias" cents={exits} />
-          <Figure label="Esperado" cents={expected} strong />
+          <Figure label="Esperado na gaveta" cents={expected} strong />
         </dl>
       </Card>
 
-      {/* --- o que passou pela gaveta ------------------------------- */}
+      {/* --- o dia por método de pagamento --------------------------- */}
+      <section>
+        <h2 className="eyebrow mb-2">Recebido no dia, por método</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {METHODS.map((method) => {
+            const found = methods.find((m) => m.method === method)
+            const total = found?.total ?? 0
+            const count = found?.count ?? 0
+            return (
+              <Card key={method} className="px-4 py-3">
+                <p className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+                  {PAYMENT_METHOD_LABEL[method]}
+                </p>
+                <p
+                  className={
+                    total > 0
+                      ? 'tabular mt-1 text-lg text-[var(--ink)]'
+                      : 'tabular mt-1 text-lg text-[var(--ink-faint)]'
+                  }
+                >
+                  {formatCents(total)}
+                </p>
+                <p className="tabular mt-0.5 text-[0.6875rem] text-[var(--ink-faint)]">
+                  {count === 0
+                    ? 'Sem pagamentos'
+                    : `${count} pagamento${count === 1 ? '' : 's'}`}
+                </p>
+              </Card>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* --- o que passou pela gaveta -------------------------------- */}
       <Card>
-        <p className="eyebrow px-4 pt-4">Movimentos</p>
+        <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-4">
+          <h2 className="eyebrow">Movimentos da gaveta</h2>
+          <span className="tabular text-[0.75rem] text-[var(--ink-faint)]">
+            {movements.length === 0
+              ? ''
+              : `${movements.length} movimento${movements.length === 1 ? '' : 's'}`}
+          </span>
+        </div>
+
         {movements.length === 0 ? (
-          <p className="px-4 py-6 text-center text-[0.8125rem] text-[var(--ink-muted)]">
+          <p className="px-5 py-6 text-[0.8125rem] text-[var(--ink-muted)]">
             Ainda não passou nada pela gaveta hoje.
           </p>
         ) : (
-          <ul className="mt-2 divide-y divide-[var(--line-soft)]">
-            {movements.map((movement) => (
-              <li
-                key={movement.id}
-                className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5"
-              >
-                <span className="tabular w-12 shrink-0 text-[0.75rem] text-[var(--ink-faint)]">
-                  {formatTime(movement.created_at, timezone)}
-                </span>
-                <span className="text-sm text-[var(--ink)]">
-                  {KIND_LABEL[movement.kind]}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[0.75rem] text-[var(--ink-muted)]">
-                  {movement.appointment_id ? (
-                    <Link
-                      href={`/agenda/${unitSlug}/comanda/${movement.appointment_id}`}
-                      className="underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
+          <div className="mt-2 overflow-x-auto">
+            <table className="tabular w-full min-w-[34rem] text-sm">
+              <thead>
+                <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+                  <th className="px-5 py-2 font-normal">Hora</th>
+                  <th className="px-3 py-2 font-normal">Tipo</th>
+                  <th className="px-3 py-2 font-normal">Detalhe</th>
+                  <th className="px-5 py-2 text-right font-normal">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--line-soft)]">
+                {movements.map((movement) => (
+                  <tr key={movement.id}>
+                    <td className="w-16 px-5 py-2.5 text-[0.8125rem] text-[var(--ink-muted)]">
+                      {formatTime(movement.created_at, timezone)}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Badge tone={KIND_TONE[movement.kind]}>
+                        {KIND_LABEL[movement.kind]}
+                      </Badge>
+                    </td>
+                    <td className="max-w-0 px-3 py-2.5">
+                      <span className="block truncate text-[0.8125rem] text-[var(--ink-muted)]">
+                        {movement.appointment_id ? (
+                          <Link
+                            href={`/agenda/${unitSlug}/comanda/${movement.appointment_id}`}
+                            className="text-[var(--ink)] underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
+                          >
+                            {movement.client_name ?? 'Comanda'}
+                          </Link>
+                        ) : (
+                          (movement.note ?? '—')
+                        )}
+                        {movement.by_staff ? ` · ${movement.by_staff}` : ''}
+                      </span>
+                    </td>
+                    <td
+                      className="px-5 py-2.5 text-right"
+                      style={{
+                        color:
+                          movement.amount_cents < 0
+                            ? 'var(--bad)'
+                            : 'var(--ink)',
+                      }}
                     >
-                      {movement.client_name ?? 'Comanda'}
-                    </Link>
-                  ) : (
-                    (movement.note ?? '—')
-                  )}
-                  {movement.by_staff ? ` · ${movement.by_staff}` : ''}
-                </span>
-                <span
-                  className="tabular text-sm"
-                  style={{
-                    color:
-                      movement.amount_cents < 0 ? 'var(--bad)' : 'var(--ink)',
-                  }}
-                >
-                  {movement.amount_cents > 0 ? '+' : ''}
-                  {formatCents(movement.amount_cents)}
-                </span>
-              </li>
-            ))}
-          </ul>
+                      {movement.amount_cents > 0 ? '+' : ''}
+                      {formatCents(movement.amount_cents)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
-        <Divider />
+        <Divider className="my-0" />
 
-        <div className="space-y-4 px-4 py-4">
+        <div className="grid gap-6 px-5 py-5 lg:grid-cols-2">
           <MovementForm unitSlug={unitSlug} kind="reinforcement" />
           <MovementForm unitSlug={unitSlug} kind="withdrawal" />
         </div>
       </Card>
 
-      {/* --- fechar é contar --------------------------------------- */}
-      <Card className="px-4 py-4">
-        <p className="eyebrow mb-1">Fechar o dia</p>
-        <p className="mb-4 text-[0.8125rem] text-[var(--ink-muted)]">
+      {/* --- fechar é contar ----------------------------------------- */}
+      <Card className="px-5 py-5">
+        <h2 className="eyebrow mb-1.5">Fecho com contagem</h2>
+        <p className="mb-4 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
           Conte a gaveta e escreva o que lá está. A diferença fica registada —
           não se corrige nem se esconde.
         </p>
@@ -214,12 +322,14 @@ function Figure({
 }) {
   return (
     <div>
-      <dt className="eyebrow mb-0.5">{label}</dt>
+      <dt className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+        {label}
+      </dt>
       <dd
         className={
           strong
-            ? 'tabular text-lg text-[var(--accent)]'
-            : 'tabular text-sm text-[var(--ink)]'
+            ? 'tabular mt-0.5 text-xl text-[var(--accent)]'
+            : 'tabular mt-0.5 text-base text-[var(--ink)]'
         }
       >
         {formatCents(cents)}
@@ -238,17 +348,17 @@ function History({
   timezone: string
 }) {
   return (
-    <section className="mt-8">
+    <section className="mt-10">
       <h2 className="eyebrow mb-2">Dias fechados</h2>
       <Card className="overflow-x-auto">
-        <table className="w-full min-w-[30rem] text-sm">
+        <table className="tabular w-full min-w-[32rem] text-sm">
           <thead>
-            <tr className="text-left text-[0.6875rem] uppercase tracking-wide text-[var(--ink-faint)]">
-              <th className="px-4 py-2 font-normal">Dia</th>
-              <th className="px-4 py-2 font-normal">Abertura</th>
-              <th className="px-4 py-2 font-normal">Esperado</th>
-              <th className="px-4 py-2 font-normal">Contado</th>
-              <th className="px-4 py-2 font-normal">Diferença</th>
+            <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+              <th className="px-5 py-2.5 font-normal">Dia</th>
+              <th className="px-3 py-2.5 text-right font-normal">Abertura</th>
+              <th className="px-3 py-2.5 text-right font-normal">Esperado</th>
+              <th className="px-3 py-2.5 text-right font-normal">Contado</th>
+              <th className="px-5 py-2.5 text-right font-normal">Diferença</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--line-soft)]">
@@ -256,25 +366,25 @@ function History({
               const difference = session.difference_cents ?? 0
               return (
                 <tr key={session.id}>
-                  <td className="px-4 py-2 text-[var(--ink)]">
+                  <td className="px-5 py-2.5 text-[var(--ink)]">
                     {formatDayShort(session.business_date, timezone)}
                     {session.closed_by ? (
-                      <span className="block text-[0.6875rem] text-[var(--ink-faint)]">
+                      <span className="ml-2 text-[0.6875rem] text-[var(--ink-faint)]">
                         {session.closed_by}
                       </span>
                     ) : null}
                   </td>
-                  <td className="tabular px-4 py-2 text-[var(--ink-muted)]">
+                  <td className="px-3 py-2.5 text-right text-[var(--ink-muted)]">
                     {formatCents(session.opening_cents)}
                   </td>
-                  <td className="tabular px-4 py-2 text-[var(--ink-muted)]">
+                  <td className="px-3 py-2.5 text-right text-[var(--ink-muted)]">
                     {formatCents(session.expected_cents ?? 0)}
                   </td>
-                  <td className="tabular px-4 py-2 text-[var(--ink)]">
+                  <td className="px-3 py-2.5 text-right text-[var(--ink)]">
                     {formatCents(session.counted_cents ?? 0)}
                   </td>
                   <td
-                    className="tabular px-4 py-2"
+                    className="px-5 py-2.5 text-right"
                     style={{
                       color:
                         difference === 0

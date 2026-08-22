@@ -1,7 +1,5 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { ArrowLeft } from 'lucide-react'
 import { requireManagement, unitsFor } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { ABSENCE_LABEL, LEVEL_LABEL } from '@/lib/status'
@@ -26,7 +24,9 @@ import {
   ScheduleLine,
   SkillsPanel,
 } from '@/components/team-forms'
-import { Badge, Card, Divider, Notice } from '@/components/ui'
+import { BackLink, Panel } from '@/components/gestao-panel'
+import { Badge, Divider, Notice } from '@/components/ui'
+import { formatPhone } from '@/lib/text'
 
 export const metadata: Metadata = { title: 'Ficha' }
 
@@ -74,134 +74,128 @@ export default async function PessoaPage({
   )
   const mine = memberUnits.filter((unitId) => timezones.has(unitId))
 
+  const warnings: string[] = []
+  if (!member.has_password) {
+    warnings.push(
+      'Ainda não tem palavra-passe — e sem ela não entra no sistema.',
+    )
+  }
+  if (mine.length === 0) {
+    warnings.push(
+      'Não atende em loja nenhuma. Enquanto assim for, não aparece em agenda nenhuma.',
+    )
+  }
+  if (member.accepts_online_booking && skillCount === 0) {
+    warnings.push(
+      'Aceita marcação online mas não tem habilidade nenhuma: no funil público não há serviço que a ofereça.',
+    )
+  }
+  if (mine.length > 0 && schedule.length === 0) {
+    warnings.push(
+      'Sem escala aberta. A loja pode estar de portas abertas — se ela não está escalada, não há horário para dar.',
+    )
+  }
+
   return (
     <div className="space-y-10">
       <div>
-        <Link
-          href="/admin/equipe"
-          className="mb-4 inline-flex items-center gap-1.5 text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
-        >
-          <ArrowLeft size={14} />
-          Equipa
-        </Link>
+        <div className="mb-4">
+          <BackLink href="/admin/equipe" label="Equipa" />
+        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <span
-            aria-hidden
-            className="h-7 w-1 rounded-[1px]"
-            style={{ background: member.display_color }}
-          />
-          <h2 className="display text-xl text-[var(--ink)]">{member.name}</h2>
-          {roles.map((role) => (
-            <Badge key={role.id} tone={role.role === 'owner' ? 'accent' : 'neutral'}>
-              {LEVEL_LABEL[role.role]}
-              {role.unit_name ? ` · ${role.unit_name}` : ''}
-            </Badge>
-          ))}
-          {member.is_active ? null : <Badge tone="bad">Saiu</Badge>}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <span
+              aria-hidden
+              className="h-8 w-1 shrink-0 rounded-[1px]"
+              style={{ background: member.display_color }}
+            />
+            <h2 className="display text-[1.75rem] leading-tight text-[var(--ink)]">
+              {member.name}
+            </h2>
+            {roles.map((role) => (
+              <Badge
+                key={role.id}
+                tone={role.role === 'owner' ? 'accent' : 'neutral'}
+              >
+                {LEVEL_LABEL[role.role]}
+                {role.unit_name ? ` · ${role.unit_name}` : ''}
+              </Badge>
+            ))}
+            {member.is_active ? null : <Badge tone="bad">Saiu</Badge>}
+          </div>
+          <p className="tabular text-sm text-[var(--ink-muted)]">
+            {formatPhone(member.phone)}
+          </p>
         </div>
       </div>
 
-      {member.has_password ? null : (
-        <Notice tone="warn">
-          Ainda não tem palavra-passe — e sem ela não entra no sistema.
-        </Notice>
-      )}
-      {mine.length === 0 ? (
-        <Notice tone="warn">
-          Não atende em loja nenhuma. Enquanto assim for, não aparece em
-          agenda nenhuma.
-        </Notice>
-      ) : null}
-      {member.accepts_online_booking && skillCount === 0 ? (
-        <Notice tone="warn">
-          Aceita marcação online mas não tem habilidade nenhuma: no funil
-          público não há serviço que a ofereça.
-        </Notice>
-      ) : null}
-      {mine.length > 0 && schedule.length === 0 ? (
-        <Notice tone="warn">
-          Sem escala aberta. A loja pode estar de portas abertas — se ela não
-          está escalada, não há horário para dar.
-        </Notice>
+      {warnings.length > 0 ? (
+        <div className="space-y-2">
+          {warnings.map((warning) => (
+            <Notice key={warning} tone="warn">
+              {warning}
+            </Notice>
+          ))}
+        </div>
       ) : null}
 
-      <Card className="px-4 py-5 sm:px-6">
-        <MemberForm
-          member={{
-            id: member.id,
-            name: member.name,
-            phone: member.phone,
-            email: member.email,
-            bio: member.bio,
-            display_color: member.display_color,
-            accepts_online_booking: member.accepts_online_booking,
-          }}
-        />
-      </Card>
+      <MemberForm
+        member={{
+          id: member.id,
+          name: member.name,
+          phone: member.phone,
+          email: member.email,
+          bio: member.bio,
+          display_color: member.display_color,
+          accepts_online_booking: member.accepts_online_booking,
+        }}
+      />
 
       {/* --- papéis -------------------------------------------------- */}
-      <section>
-        <h3 className="eyebrow mb-1">Papéis</h3>
-        <p className="mb-3 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
-          Um papel guarda-se com uma loja. Sem loja associada significa a rede
-          toda.
-        </p>
-        <Card className="px-4 py-5 sm:px-6">
-          <RolesPanel
-            staffId={member.id}
-            roles={roles}
-            units={options}
-            canGrantNetwork={isOwner}
-          />
-        </Card>
-      </section>
+      <Panel
+        title="Papéis"
+        hint="Um papel guarda-se com uma loja. Sem loja associada vale a rede toda."
+        flush
+      >
+        <RolesPanel
+          staffId={member.id}
+          roles={roles}
+          units={options}
+          canGrantNetwork={isOwner}
+        />
+      </Panel>
 
       {/* --- lojas --------------------------------------------------- */}
-      <section>
-        <h3 className="eyebrow mb-1">Lojas onde atende</h3>
-        <p className="mb-3 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
-          Onde põe os pés — coisa diferente do papel. É daqui que a escala
-          pode partir.
-        </p>
-        <Card className="px-4 py-5 sm:px-6">
-          <MemberUnits
-            staffId={member.id}
-            units={options}
-            current={memberUnits}
-          />
-        </Card>
-      </section>
+      <Panel
+        title="Lojas onde atende"
+        hint="Onde põe os pés — coisa diferente do papel. É daqui que a escala pode partir."
+      >
+        <MemberUnits staffId={member.id} units={options} current={memberUnits} />
+      </Panel>
 
       {/* --- habilidades --------------------------------------------- */}
-      <section>
-        <h3 className="eyebrow mb-1">Habilidades</h3>
-        <p className="mb-3 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
-          Quem não tem a habilidade nunca aparece como opção nesse serviço —
-          nem no site, nem ao balcão.
-        </p>
+      <Panel
+        title="Habilidades"
+        hint="Quem não tem a habilidade nunca aparece como opção nesse serviço — nem no site, nem ao balcão."
+      >
         {skills.length === 0 ? (
           <p className="text-[0.8125rem] text-[var(--ink-faint)]">
             O catálogo ainda está vazio.
           </p>
         ) : (
-          <Card className="px-4 py-5 sm:px-6">
-            <SkillsPanel staffId={member.id} groups={skills} />
-          </Card>
+          <SkillsPanel staffId={member.id} groups={skills} />
         )}
-      </section>
+      </Panel>
 
       {/* --- escala -------------------------------------------------- */}
-      <section>
-        <h3 className="eyebrow mb-1">Escala</h3>
-        <p className="mb-3 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
-          Cada linha vale de uma data até outra. Mudar de escala é fechar a
-          antiga com um último dia e abrir uma nova — nunca corrigir a que já
-          correu.
-        </p>
-
+      <Panel
+        title="Escala"
+        hint="Cada linha vale de uma data até outra. Mudar de escala é fechar a antiga com um último dia e abrir uma nova — nunca corrigir a que já correu."
+        flush
+      >
         {schedule.length > 0 ? (
-          <Card className="mb-3 divide-y divide-[var(--line-soft)]">
+          <div className="divide-y divide-[var(--line-soft)]">
             {schedule.map((row) => (
               <ScheduleLine
                 key={row.id}
@@ -210,43 +204,40 @@ export default async function PessoaPage({
                 today={todayIso}
               />
             ))}
-          </Card>
+          </div>
         ) : null}
 
         {mine.length > 0 ? (
-          <Card className="px-4 py-5 sm:px-6">
+          <div
+            className={`bg-[var(--surface-2)] px-5 py-4 sm:px-6 ${
+              schedule.length > 0 ? 'border-t border-[var(--line-soft)]' : ''
+            }`}
+          >
             <OpenScheduleForm
               staffId={member.id}
               units={options.filter((unit) => memberUnits.includes(unit.id))}
               today={todayIso}
             />
-          </Card>
+          </div>
         ) : (
-          <p className="text-[0.8125rem] text-[var(--ink-faint)]">
+          <p className="px-5 py-4 text-[0.8125rem] text-[var(--ink-faint)] sm:px-6">
             Primeiro a loja, depois a escala.
           </p>
         )}
-      </section>
+      </Panel>
 
       {/* --- ausências ----------------------------------------------- */}
-      <section>
-        <h3 className="eyebrow mb-1">Ausências</h3>
-        <p className="mb-3 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
-          Folga, férias, formação ou um bloqueio avulso. Fecha o horário, mas
-          não desmarca ninguém: as marcações que já lá estiverem tratam-se na
-          agenda.
-        </p>
-
-        <Card className="mb-3 px-4 py-5 sm:px-6">
-          <AbsenceForm
-            staffId={member.id}
-            units={options}
-            today={todayIso}
-          />
-        </Card>
+      <Panel
+        title="Ausências"
+        hint="Folga, férias, formação ou um bloqueio avulso. Fecha o horário, mas não desmarca ninguém: as marcações que já lá estiverem tratam-se na agenda."
+        flush
+      >
+        <div className="px-5 py-5 sm:px-6">
+          <AbsenceForm staffId={member.id} units={options} today={todayIso} />
+        </div>
 
         {absences.length > 0 ? (
-          <Card className="divide-y divide-[var(--line-soft)]">
+          <div className="divide-y divide-[var(--line-soft)] border-t border-[var(--line-soft)]">
             {absences.map((row) => {
               const timezone =
                 (row.unit_id ? timezones.get(row.unit_id) : null) ??
@@ -254,9 +245,11 @@ export default async function PessoaPage({
               return (
                 <div
                   key={row.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 sm:px-6"
                 >
-                  <Badge>{ABSENCE_LABEL[row.kind]}</Badge>
+                  <Badge className="w-24 justify-center">
+                    {ABSENCE_LABEL[row.kind]}
+                  </Badge>
                   <span className="tabular shrink-0 text-[0.8125rem] text-[var(--ink)]">
                     {formatDateTime(row.starts_at, timezone)} →{' '}
                     {formatDateTime(row.ends_at, timezone)}
@@ -272,24 +265,26 @@ export default async function PessoaPage({
                 </div>
               )
             })}
-          </Card>
-        ) : null}
-      </section>
+          </div>
+        ) : (
+          <p className="border-t border-[var(--line-soft)] px-5 py-3 text-[0.8125rem] text-[var(--ink-faint)] sm:px-6">
+            Nada marcado. Quando faltar, diz-se aqui — e a agenda fecha
+            sozinha.
+          </p>
+        )}
+      </Panel>
+
+      {/* --- entrada e saída ----------------------------------------- */}
+      <Panel
+        title="Entrada no sistema"
+        hint="Entra com o telefone e a palavra-passe. Repô-la fecha todas as sessões abertas em nome dela."
+      >
+        <PasswordForm staffId={member.id} hasPassword={member.has_password} />
+      </Panel>
 
       <Divider />
 
-      {/* --- entrada e saída ----------------------------------------- */}
-      <section className="space-y-6">
-        <div>
-          <h3 className="eyebrow mb-3">Palavra-passe</h3>
-          <PasswordForm
-            staffId={member.id}
-            hasPassword={member.has_password}
-          />
-        </div>
-
-        <MemberExit staffId={member.id} isActive={member.is_active} />
-      </section>
+      <MemberExit staffId={member.id} isActive={member.is_active} />
     </div>
   )
 }

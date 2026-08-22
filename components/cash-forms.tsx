@@ -46,11 +46,11 @@ export function OpenCashForm({ unitSlug }: { unitSlug: string }) {
     <form action={action} className="space-y-3">
       <input type="hidden" name="unit" value={unitSlug} />
       <Result state={state} />
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end justify-center gap-3">
         <Field
-          label="O que está na gaveta"
+          label="Fundo de abertura"
           htmlFor="cash-open"
-          className="w-40"
+          className="w-44"
         >
           <Input
             id="cash-open"
@@ -58,10 +58,10 @@ export function OpenCashForm({ unitSlug }: { unitSlug: string }) {
             inputMode="decimal"
             placeholder="0,00"
             defaultValue="0,00"
-            className="tabular"
+            className="tabular h-11 text-right text-base"
           />
         </Field>
-        <Submit label="Abrir caixa" />
+        <Submit label="Abrir a caixa" />
       </div>
     </form>
   )
@@ -82,39 +82,50 @@ export function MovementForm({
   const withdrawal = kind === 'withdrawal'
 
   return (
-    <form action={action} className="space-y-3">
-      <input type="hidden" name="unit" value={unitSlug} />
-      <input type="hidden" name="kind" value={kind} />
-      <Result state={state} />
-      <div className="grid gap-3 sm:grid-cols-[9rem_1fr_auto] sm:items-end">
-        <Field label="Valor" htmlFor={`cash-${kind}-amount`}>
-          <Input
-            id={`cash-${kind}-amount`}
-            name="amount"
-            inputMode="decimal"
-            placeholder="0,00"
-            className="tabular"
-          />
-        </Field>
-        <Field
-          label="Motivo"
-          htmlFor={`cash-${kind}-note`}
-          hint={withdrawal ? 'Obrigatório numa sangria.' : undefined}
-        >
-          <Input
-            id={`cash-${kind}-note`}
-            name="note"
-            maxLength={120}
-            autoComplete="off"
-            placeholder={withdrawal ? 'Depósito, troco, despesa…' : 'Troco'}
-          />
-        </Field>
+    <div>
+      <p className="eyebrow">{withdrawal ? 'Sangria' : 'Reforço'}</p>
+      <p className="mb-3 mt-1 text-[0.75rem] text-[var(--ink-muted)]">
+        {withdrawal
+          ? 'Dinheiro que sai da gaveta — depósito, troco, despesa.'
+          : 'Dinheiro que entra à mão — o troco que faltava.'}
+      </p>
+      <form action={action} className="space-y-3">
+        <input type="hidden" name="unit" value={unitSlug} />
+        <input type="hidden" name="kind" value={kind} />
+        <Result state={state} />
+        <div className="grid gap-3 sm:grid-cols-[7.5rem_1fr]">
+          <Field label="Valor" htmlFor={`cash-${kind}-amount`}>
+            <Input
+              id={`cash-${kind}-amount`}
+              name="amount"
+              inputMode="decimal"
+              placeholder="0,00"
+              className="tabular text-right"
+            />
+          </Field>
+          <Field
+            label="Motivo"
+            htmlFor={`cash-${kind}-note`}
+            hint={
+              withdrawal ? 'Obrigatório numa sangria.' : 'Opcional num reforço.'
+            }
+          >
+            <Input
+              id={`cash-${kind}-note`}
+              name="note"
+              maxLength={120}
+              autoComplete="off"
+              placeholder={withdrawal ? 'Depósito, troco, despesa…' : 'Troco'}
+            />
+          </Field>
+        </div>
         <Submit
-          label={withdrawal ? 'Sangrar' : 'Reforçar'}
+          label={withdrawal ? 'Registar sangria' : 'Registar reforço'}
           variant="outline"
+          size="sm"
         />
-      </div>
-    </form>
+      </form>
+    </div>
   )
 }
 
@@ -140,11 +151,11 @@ export function CloseCashForm({
   const difference = parsed === null ? null : parsed - expectedCents
 
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} className="space-y-4">
       <input type="hidden" name="unit" value={unitSlug} />
       <Result state={state} />
 
-      <div className="grid gap-3 sm:grid-cols-[9rem_1fr] sm:items-end">
+      <div className="grid gap-3 sm:grid-cols-[11rem_1fr] sm:items-start">
         <Field label="Contado na gaveta" htmlFor="cash-counted">
           <Input
             id="cash-counted"
@@ -153,7 +164,7 @@ export function CloseCashForm({
             placeholder="0,00"
             value={counted}
             onChange={(event) => setCounted(event.target.value)}
-            className="tabular"
+            className="tabular h-11 text-right text-base"
           />
         </Field>
         <Field label="Nota do fecho" htmlFor="cash-close-note">
@@ -163,14 +174,27 @@ export function CloseCashForm({
             maxLength={160}
             autoComplete="off"
             placeholder="O que explica a diferença, se houver."
+            className="h-11"
           />
         </Field>
       </div>
 
       {difference !== null ? (
-        <p className="tabular text-[0.8125rem] text-[var(--ink-muted)]">
-          Esperado {formatCents(expectedCents)} · diferença{' '}
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 rounded-[2px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[0.8125rem]">
+          <span className="text-[var(--ink-muted)]">
+            Esperado{' '}
+            <span className="tabular text-[var(--ink)]">
+              {formatCents(expectedCents)}
+            </span>
+          </span>
+          <span className="text-[var(--ink-muted)]">
+            Contado{' '}
+            <span className="tabular text-[var(--ink)]">
+              {formatCents(parsed ?? 0)}
+            </span>
+          </span>
           <span
+            className="tabular"
             style={{
               color:
                 difference === 0
@@ -180,10 +204,11 @@ export function CloseCashForm({
                     : 'var(--bad)',
             }}
           >
-            {difference > 0 ? '+' : ''}
-            {formatCents(difference)}
+            {difference === 0
+              ? 'A gaveta bate certo'
+              : `Diferença ${difference > 0 ? '+' : ''}${formatCents(difference)}`}
           </span>
-        </p>
+        </div>
       ) : null}
 
       {armed ? (

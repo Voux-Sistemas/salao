@@ -1,9 +1,11 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { rememberedPhone } from '@/lib/account'
 import { getClientActor } from '@/lib/auth/client-actor'
 import { getDictionary } from '@/lib/i18n'
 import { PhoneForm } from '@/components/account-forms'
+import { Gate } from '@/components/account-gate'
 
 export const metadata: Metadata = { title: 'Entrar' }
 
@@ -19,14 +21,19 @@ export default async function ContaEntrarPage() {
   const [dict, phone] = await Promise.all([getDictionary(), rememberedPhone()])
 
   return (
-    <div className="mx-auto max-w-md px-5 py-20 sm:px-8 sm:py-28">
-      <h1 className="display text-3xl text-[var(--ink)]">
-        {dict.account.signInTitle}
-      </h1>
-      <p className="mt-3 mb-10 text-[0.9375rem] text-[var(--ink-muted)]">
-        {dict.account.signInSubtitle}
-      </p>
-
+    <Gate
+      eyebrow={dict.nav.account}
+      title={dict.account.signInTitle}
+      subtitle={dict.account.signInSubtitle}
+      footer={
+        <p className="text-[0.8125rem] text-[var(--ink-muted)]">
+          {dict.account.signInNoAccount}{' '}
+          <Link href="/agendar" className="link-slide text-[var(--accent)]">
+            {dict.nav.book}
+          </Link>
+        </p>
+      }
+    >
       <PhoneForm
         defaultPhone={phone}
         labels={{
@@ -35,6 +42,6 @@ export default async function ContaEntrarPage() {
           submit: dict.account.sendCode,
         }}
       />
-    </div>
+    </Gate>
   )
 }

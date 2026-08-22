@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation'
 import { ChevronRight, MapPin } from 'lucide-react'
 import { getOrg, listUnits } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
-import { Empty, Eyebrow } from '@/components/ui'
-import { FunnelSteps } from '@/components/funnel-steps'
+import { Empty } from '@/components/ui'
+import { FunnelShell } from '@/components/funnel-shell'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 
 export const metadata = { title: 'Marcar' }
@@ -29,49 +29,47 @@ export default async function ChooseStorePage() {
   if (only) redirect(`/agendar/${only.slug}`)
 
   return (
-    <div className="mx-auto max-w-3xl px-5 sm:px-8 py-14 sm:py-20">
-      <FunnelSteps current={1} dict={dict} />
-
-      <h1 className="display mt-8 text-3xl sm:text-4xl">{dict.funnel.storeTitle}</h1>
-      <p className="mt-3 text-[0.9375rem] text-[var(--ink-muted)]">
-        {dict.funnel.storeSubtitle}
-      </p>
-
+    <FunnelShell
+      step={1}
+      dict={dict}
+      title={dict.funnel.storeTitle}
+      subtitle={dict.funnel.storeSubtitle}
+    >
       {units.length === 0 ? (
         <Empty title={dict.unit.noStores} hint={dict.unit.noStoresHint} />
       ) : (
-        <div className="mt-10 divide-y divide-[var(--line-soft)] border-y border-[var(--line-soft)]">
+        <div className="grid gap-5 sm:grid-cols-2">
           {units.map((unit) => (
             <Link
               key={unit.id}
               href={`/agendar/${unit.slug}`}
-              className="group flex items-center gap-5 py-6 transition-colors hover:bg-[var(--surface-raised)]"
+              className="lift group flex flex-col border border-[var(--line)] bg-[var(--surface-raised)] px-7 py-7"
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="display text-xl group-hover:text-[var(--accent)] transition-colors">
-                    {unit.name}
-                  </h2>
-                  <UnitStatusBadge unit={unit} dict={dict} language={language} />
-                </div>
-                {unit.address_line ? (
-                  <p className="mt-2 flex items-start gap-2 text-[0.8125rem] text-[var(--ink-muted)]">
-                    <MapPin size={14} className="mt-0.5 shrink-0" />
-                    <span>
-                      {unit.address_line}
-                      {unit.city ? `, ${unit.city}` : ''}
-                    </span>
-                  </p>
-                ) : null}
-              </div>
-              <ChevronRight
-                size={18}
-                className="shrink-0 text-[var(--ink-faint)] transition-colors group-hover:text-[var(--accent)]"
-              />
+              {/* `self-start`: numa coluna flex a etiqueta esticava-se de
+                  margem a margem e deixava de parecer uma etiqueta. */}
+              <span className="self-start">
+                <UnitStatusBadge unit={unit} dict={dict} language={language} />
+              </span>
+              <h2 className="display mt-4 text-2xl transition-colors group-hover:text-[var(--accent)]">
+                {unit.name}
+              </h2>
+              {unit.address_line ? (
+                <p className="mt-3 flex items-start gap-2 text-[0.875rem] leading-relaxed text-[var(--ink-muted)]">
+                  <MapPin size={14} className="mt-1 shrink-0 text-[var(--ink-faint)]" />
+                  <span>
+                    {unit.address_line}
+                    {unit.city ? `, ${unit.city}` : ''}
+                  </span>
+                </p>
+              ) : null}
+              <span className="link-slide mt-6 inline-flex items-center gap-1.5 self-start text-[0.8125rem] tracking-[0.06em] text-[var(--accent)] uppercase">
+                {dict.funnel.storeAction}
+                <ChevronRight size={14} />
+              </span>
             </Link>
           ))}
         </div>
       )}
-    </div>
+    </FunnelShell>
   )
 }

@@ -4,14 +4,37 @@ import clsx from 'clsx'
 import { Search } from 'lucide-react'
 import { requireManagement } from '@/lib/auth/actor'
 import { listTags, searchClients, type ClientRow } from '@/lib/clients'
-import { formatDayShort, formatDateTime, isoDay } from '@/lib/time'
+import { sql } from '@/lib/db'
+import {
+  formatDayShort,
+  formatDateTime,
+  formatDateTimeShort,
+  isoDay,
+} from '@/lib/time'
 import { LANGUAGE_SHORT } from '@/lib/i18n/config'
 import { requireOrg } from '@/lib/org'
-import { ButtonLink, Badge, Card, Empty, Input } from '@/components/ui'
+import { Monogram } from '@/components/brand'
+import { formatPhone } from '@/lib/text'
+import {
+  ButtonLink,
+  Badge,
+  buttonClass,
+  Card,
+  Empty,
+  Input,
+} from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Clientes' }
 
 const PAGE = 50
+
+/** "Ana Sofia Marques" -> "AM", para o monograma do avatar. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  const first = parts[0]?.charAt(0) ?? ''
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.charAt(0) ?? '') : ''
+  return (first + last).toUpperCase() || '·'
+}
 
 /**
  * A LISTA. Procura-se pelo nome ou pelo telefone — e o telefone acha-se
@@ -43,15 +66,30 @@ export default async function ClientesPage({
 
   const pages = Math.ceil(total / PAGE)
 
+  /* A ficha pode ainda não ter a última visita gravada — a agenda sabe.
+     Uma leitura só, para as fichas desta página. */
+  const missing = rows.filter((row) => !row.last_visit_at).map((row) => row.id)
+  const found =
+    missing.length > 0
+      ? await sql<{ client_id: string; last_at: Date }[]>`
+          select a.client_id, max(a.starts_at) as last_at
+            from appointment a
+           where a.client_id = any(${missing}::uuid[])
+             and a.status = 'completed'
+           group by a.client_id
+        `
+      : []
+  const lastVisits = new Map(found.map((row) => [row.client_id, row.last_at]))
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="display text-2xl text-[var(--ink)]">Clientes</h1>
+          <h1 className="display text-3xl text-[var(--ink)]">Clientes</h1>
           <p className="mt-1 text-[0.8125rem] text-[var(--ink-muted)]">
             {total === 0
               ? 'Ainda ninguém.'
-              : `${total} ficha${total === 1 ? '' : 's'} na rede.`}
+              : `${total} ficha${total === 1 ? '' : 's'} na rede — a mesma pessoa nas duas lojas é uma só.`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -64,34 +102,31 @@ export default async function ClientesPage({
         </div>
       </header>
 
-      {/* --- procurar ------------------------------------------------ */}
+      {/* --- procurar, em grande ------------------------------------- */}
       <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
         {chosenTag ? (
           <input type="hidden" name="tag" value={chosenTag} />
         ) : null}
-        <div className="relative min-w-56 flex-1">
+        <div className="relative min-w-64 flex-1">
           <Search
-            size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-faint)]"
+            size={17}
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ink-faint)]"
           />
           <Input
             name="q"
             defaultValue={term}
-            placeholder="Nome ou telefone"
+            placeholder="Nome ou telefone — basta um pedaço"
             autoComplete="off"
-            className="pl-9"
+            className="h-12 pl-11 text-[0.9375rem]"
           />
         </div>
-        <button
-          type="submit"
-          className="h-10 border border-[var(--line)] px-4 text-[0.8125rem] text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-        >
+        <button type="submit" className={buttonClass('primary', 'md', 'h-12 px-6')}>
           Procurar
         </button>
         {term || chosenTag ? (
           <Link
             href="/clientes"
-            className="text-[0.8125rem] text-[var(--ink-muted)] underline-offset-4 hover:text-[var(--accent)] hover:underline"
+            className="text-[0.8125rem] text-[var(--ink-muted)] underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
           >
             Limpar
           </Link>
@@ -111,9 +146,9 @@ export default async function ClientesPage({
                 key={value}
                 href={href}
                 className={clsx(
-                  'border px-2.5 py-1 text-[0.75rem] transition-colors',
+                  'rounded-[2px] border px-2.5 py-1 text-[0.75rem] uppercase tracking-[0.06em] transition-colors',
                   active
-                    ? 'border-[var(--accent)] text-[var(--accent)]'
+                    ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
                     : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
                 )}
               >
@@ -139,7 +174,12 @@ export default async function ClientesPage({
       ) : (
         <Card className="divide-y divide-[var(--line-soft)]">
           {rows.map((row) => (
-            <ClientLine key={row.id} row={row} timezone={org.timezone} />
+            <ClientLine
+              key={row.id}
+              row={row}
+              lastVisitAt={row.last_visit_at ?? lastVisits.get(row.id) ?? null}
+              timezone={org.timezone}
+            />
           ))}
         </Card>
       )}
@@ -201,23 +241,37 @@ function PageLink({
   )
 }
 
-function ClientLine({ row, timezone }: { row: ClientRow; timezone: string }) {
+function ClientLine({
+  row,
+  lastVisitAt,
+  timezone,
+}: {
+  row: ClientRow
+  lastVisitAt: Date | null
+  timezone: string
+}) {
   return (
     <Link
       href={`/clientes/${row.id}`}
-      className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-[var(--surface-2)]"
+      className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--surface-2)]"
     >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[2px] border border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--accent)]">
+        <Monogram initials={initialsOf(row.name)} className="text-base" />
+      </span>
+
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <span className="truncate text-sm text-[var(--ink)]">{row.name}</span>
+        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+          <span className="truncate text-[0.9375rem] text-[var(--ink)]">
+            {row.name}
+          </span>
           <span className="tabular text-[0.75rem] text-[var(--ink-muted)]">
-            {row.phone}
+            {formatPhone(row.phone)}
           </span>
           {row.language !== 'pt' ? (
             <Badge>{LANGUAGE_SHORT[row.language]}</Badge>
           ) : null}
           {row.no_show_count > 0 ? (
-            <Badge tone="bad">
+            <Badge tone="warn">
               {row.no_show_count} falta{row.no_show_count === 1 ? '' : 's'}
             </Badge>
           ) : null}
@@ -227,20 +281,42 @@ function ClientLine({ row, timezone }: { row: ClientRow; timezone: string }) {
             </Badge>
           ))}
         </div>
-        <p className="truncate text-[0.75rem] text-[var(--ink-faint)]">
+        <p className="mt-0.5 truncate text-[0.75rem] text-[var(--ink-faint)]">
           {row.visits > 0
             ? `${row.visits} visita${row.visits === 1 ? '' : 's'}`
             : 'Ainda não veio'}
-          {row.last_visit_at
-            ? ` · última a ${formatDayShort(isoDay(row.last_visit_at, timezone), timezone)}`
+          {lastVisitAt
+            ? ` · última a ${formatDayShort(isoDay(lastVisitAt, timezone), timezone)}`
             : ''}
-          {row.preferred_unit_name ? ` · ${row.preferred_unit_name}` : ''}
+          {/* A casa preferida é o que se sacrifica primeiro: no telemóvel
+              esta linha não chega ao fim e cortava a meio da palavra. Quem
+              precisa dela abre a ficha. */}
+          {row.preferred_unit_name ? (
+            <span className="hidden sm:inline">
+              {' '}
+              · {row.preferred_unit_name}
+            </span>
+          ) : null}
         </p>
       </div>
 
+      {/* Sem legenda, esta data à direita tanto podia ser a última
+          visita como a próxima — e a linha da esquerda já fala de
+          visitas passadas. */}
       {row.next_at ? (
-        <span className="tabular shrink-0 text-[0.75rem] text-[var(--accent)]">
-          {formatDateTime(row.next_at, timezone)}
+        <span className="shrink-0 text-right leading-snug">
+          <span className="block text-[0.625rem] uppercase tracking-[0.16em] text-[var(--ink-faint)]">
+            Volta
+          </span>
+          {/* A data por extenso ocupa metade da linha num telemóvel, e o
+              que se perde do outro lado é o nome e o «última visita a».
+              Aqui vai encurtada; a partir de `sm` volta ao normal. */}
+          <span className="tabular mt-0.5 block text-[0.75rem] text-[var(--accent)] sm:hidden">
+            {formatDateTimeShort(row.next_at, timezone)}
+          </span>
+          <span className="tabular mt-0.5 hidden text-[0.75rem] text-[var(--accent)] sm:block">
+            {formatDateTime(row.next_at, timezone)}
+          </span>
         </span>
       ) : null}
     </Link>

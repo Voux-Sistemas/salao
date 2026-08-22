@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { requireActor, resolveUnit, unitsFor, can } from '@/lib/auth/actor'
 import { loadAgendaDay } from '@/lib/agenda'
 import { getAppointment } from '@/lib/booking'
@@ -13,10 +12,11 @@ import {
   today,
   type IsoDay,
 } from '@/lib/time'
-import { AgendaGrid } from '@/components/agenda-grid'
+import { AgendaGrid, AgendaList } from '@/components/agenda-grid'
 import { AppointmentPanel } from '@/components/appointment-panel'
 import { UnitSwitcher } from '@/components/unit-switcher'
 import { ButtonLink } from '@/components/ui'
+import { IconChevronLeft, IconChevronRight } from '@/components/desk-icons'
 
 export const metadata: Metadata = { title: 'Agenda' }
 
@@ -28,6 +28,9 @@ const UUID_RE =
  * A GRELHA DO DIA. A loja vive na barra de endereços; o dia e a
  * marcação aberta também — assim o retrocesso funciona e a ligação
  * pode ser partilhada.
+ *
+ * A profissional vê só a agenda dela — e no telemóvel vê o dia em
+ * lista, cartão a cartão, em vez da grelha.
  */
 export default async function AgendaDayPage({
   params,
@@ -49,10 +52,17 @@ export default async function AgendaDayPage({
   // A profissional vê só a agenda dela.
   const onlyStaffId = actor.role === 'professional' ? actor.id : null
 
-  const [agenda, units] = await Promise.all([
+  const [agenda, units, colorRows] = await Promise.all([
     loadAgendaDay(unit, day, { onlyStaffId }),
     unitsFor(actor),
+    sql<{ id: string; display_color: string }[]>`
+      select id, display_color from staff where org_id = ${unit.org_id}
+    `,
   ])
+
+  const colors = Object.fromEntries(
+    colorRows.map((r) => [r.id, r.display_color]),
+  )
 
   const selectedId = m && UUID_RE.test(m) ? m : null
   const selected = selectedId ? await getAppointment(selectedId) : null
@@ -79,28 +89,46 @@ export default async function AgendaDayPage({
     ? Math.round((now.getTime() - dayStart(day, unit.timezone).getTime()) / 60_000)
     : null
 
+  const appointmentCount = new Set(agenda.blocks.map((b) => b.appointmentId))
+    .size
+  const staffCount = agenda.columns.length
+
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--line-soft)] px-4 py-3 sm:px-6">
+    <div className="flex h-[calc(100dvh-8rem)] flex-col lg:h-[calc(100dvh-3.5rem)]">
+      {/* a fita do dia ------------------------------------------------ */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--line-soft)] bg-[var(--surface-raised)] px-4 py-3 sm:px-6">
         <div className="flex items-center gap-1">
-          <NavLink href={withDay(addDays(day, -1))} label="Dia anterior">
-            <ChevronLeft className="h-4 w-4" />
-          </NavLink>
-          <NavLink href={withDay(addDays(day, 1))} label="Dia seguinte">
-            <ChevronRight className="h-4 w-4" />
-          </NavLink>
+          <NavArrow href={withDay(addDays(day, -1))} label="Dia anterior">
+            <IconChevronLeft className="h-4 w-4" />
+          </NavArrow>
+          <NavArrow href={withDay(addDays(day, 1))} label="Dia seguinte">
+            <IconChevronRight className="h-4 w-4" />
+          </NavArrow>
         </div>
 
-        <h1 className="display text-lg text-[var(--ink)]">
-          {capitalise(formatDayLong(day, unit.timezone))}
-        </h1>
+        <div className="min-w-0 leading-tight">
+          <h1 className="display truncate text-lg text-[var(--ink)]">
+            {capitalise(formatDayLong(day, unit.timezone))}
+          </h1>
+          <p className="truncate text-[0.6875rem] text-[var(--ink-faint)]">
+            {unit.name} ·{' '}
+            {appointmentCount === 1
+              ? '1 marcação'
+              : `${appointmentCount} marcações`}
+            {onlyStaffId
+              ? ''
+              : staffCount === 1
+                ? ' · 1 profissional'
+                : ` · ${staffCount} profissionais`}
+          </p>
+        </div>
 
         {!isToday ? (
           <Link
             href={here}
-            className="text-[0.75rem] text-[var(--ink-muted)] underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
+            className="rounded-[2px] border border-[var(--accent)] px-2 py-1 text-[0.625rem] font-medium uppercase tracking-[0.1em] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
           >
-            hoje
+            Voltar a hoje
           </Link>
         ) : null}
 
@@ -119,25 +147,63 @@ export default async function AgendaDayPage({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-auto">
-          <AgendaGrid
-            agenda={agenda}
-            selectedId={selectedId}
-            hrefFor={hrefFor}
-            nowMin={nowMin}
+      {/* a grelha e o painel ----------------------------------------- */}
+      <div className="relative flex min-h-0 flex-1">
+        {/* Num ecrã estreito as colunas não cabem todas: este esbatido na
+            margem direita é o que diz que o dia continua para o lado. Só
+            faz sentido onde há mesmo mais do que uma coluna. */}
+        {!onlyStaffId && agenda.columns.length > 1 ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-[var(--surface)] to-transparent lg:hidden"
           />
+        ) : null}
+        <div className="min-w-0 flex-1 overflow-auto overscroll-contain">
+          {onlyStaffId ? (
+            <>
+              {/* no telemóvel, o dia da profissional é uma lista */}
+              <div className="md:hidden">
+                <AgendaList agenda={agenda} hrefFor={hrefFor} nowMin={nowMin} />
+              </div>
+              <div className="hidden md:block">
+                <AgendaGrid
+                  agenda={agenda}
+                  colors={colors}
+                  selectedId={selectedId}
+                  hrefFor={hrefFor}
+                  nowMin={nowMin}
+                />
+              </div>
+            </>
+          ) : (
+            <AgendaGrid
+              agenda={agenda}
+              colors={colors}
+              selectedId={selectedId}
+              hrefFor={hrefFor}
+              nowMin={nowMin}
+            />
+          )}
         </div>
 
         {selected ? (
-          <div className="w-[22rem] shrink-0 overflow-hidden">
-            <AppointmentPanel
-              actor={actor}
-              appointment={selected}
-              closeHref={withDay(day)}
-              confirmSent={confirmSent}
+          <>
+            {/* no telemóvel o painel cobre o ecrã; a sombra fecha-o */}
+            <Link
+              href={withDay(day)}
+              scroll={false}
+              aria-label="Fechar o painel"
+              className="animate-fade fixed inset-0 z-40 bg-[rgba(20,15,8,0.4)] lg:hidden"
             />
-          </div>
+            <div className="animate-fade fixed inset-y-0 right-0 z-50 w-full max-w-[24rem] overflow-hidden shadow-[var(--shadow-warm)] lg:static lg:z-auto lg:w-[23rem] lg:max-w-none lg:shrink-0 lg:animate-none lg:shadow-none">
+              <AppointmentPanel
+                actor={actor}
+                appointment={selected}
+                closeHref={withDay(day)}
+                confirmSent={confirmSent}
+              />
+            </div>
+          </>
         ) : null}
       </div>
     </div>
@@ -154,7 +220,7 @@ async function hasConfirm(appointmentId: string): Promise<boolean> {
   return rows[0]?.exists ?? false
 }
 
-function NavLink({
+function NavArrow({
   href,
   label,
   children,
@@ -167,7 +233,7 @@ function NavLink({
     <Link
       href={href}
       aria-label={label}
-      className="flex h-8 w-8 items-center justify-center rounded-[2px] border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      className="flex h-9 w-9 items-center justify-center rounded-[2px] border border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
     >
       {children}
     </Link>

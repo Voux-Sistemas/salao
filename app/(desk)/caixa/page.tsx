@@ -1,10 +1,10 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { requireManagement, unitsFor } from '@/lib/auth/actor'
 import { expectedCents, loadMovements, openSession } from '@/lib/cash'
 import { formatCents } from '@/lib/money'
-import { Badge, Card, Empty } from '@/components/ui'
+import { Empty } from '@/components/ui'
+import { StoreChooser } from '@/components/store-chooser'
 
 export const metadata: Metadata = { title: 'Caixa' }
 
@@ -37,27 +37,20 @@ export default async function CaixaChooser() {
   )
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <h1 className="display mb-6 text-2xl text-[var(--ink)]">Que loja?</h1>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {drawers.map(({ unit, open, cents }) => (
-          <Link key={unit.id} href={`/caixa/${unit.slug}`}>
-            <Card className="px-4 py-5 transition-colors hover:border-[var(--accent)]">
-              <div className="flex items-start justify-between gap-3">
-                <p className="display text-lg text-[var(--ink)]">{unit.name}</p>
-                <Badge tone={open ? 'ok' : 'neutral'}>
-                  {open ? 'Aberta' : 'Fechada'}
-                </Badge>
-              </div>
-              <p className="tabular mt-0.5 text-[0.8125rem] text-[var(--ink-muted)]">
-                {open
-                  ? `Na gaveta, esperado ${formatCents(cents)}`
-                  : 'Por abrir hoje'}
-              </p>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
+    <StoreChooser
+      eyebrow="Caixa"
+      title="Que loja?"
+      hint="Cada loja tem a sua gaveta, o seu dia e o seu fecho."
+      cta="Abrir a gaveta"
+      stores={drawers.map(({ unit, open, cents }) => ({
+        href: `/caixa/${unit.slug}`,
+        name: unit.name,
+        meta: unit.city ?? unit.address_line ?? unit.timezone,
+        badge: { label: open ? 'Aberta' : 'Fechada', tone: open ? 'ok' : 'neutral' },
+        line: open
+          ? `Na gaveta, esperado ${formatCents(cents)}`
+          : 'Por abrir hoje.',
+      }))}
+    />
   )
 }

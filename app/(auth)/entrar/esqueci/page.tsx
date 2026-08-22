@@ -10,19 +10,23 @@ export const metadata: Metadata = {
 export default function ForgotPage() {
   return (
     <div>
-      <h1 className="display text-2xl text-[var(--ink)]">
-        Recuperar palavra-passe
+      <p className="eyebrow eyebrow-gold">Área da equipa</p>
+      <h1 className="display mt-3 text-4xl text-[var(--ink)]">
+        Recuperar acesso
       </h1>
-      <p className="mt-1 mb-8 text-sm text-[var(--ink-muted)]">
-        Escreva o e-mail da sua conta.
+      <p className="mt-3 text-sm leading-relaxed text-[var(--ink-muted)]">
+        Escreva o e-mail da sua conta e enviamos-lhe um código de seis
+        dígitos.
       </p>
 
-      <RequestResetForm />
+      <div className="mt-9">
+        <RequestResetForm />
+      </div>
 
       <div className="mt-8 flex items-center justify-between text-[0.8125rem]">
         <Link
           href="/entrar/nova-senha"
-          className="text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
+          className="link-slide text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
         >
           Já tenho o código
         </Link>

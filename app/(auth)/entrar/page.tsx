@@ -19,27 +19,39 @@ export default async function SignInPage() {
 
   return (
     <div>
-      <h1 className="display text-2xl text-[var(--ink)]">Entrar</h1>
-      <p className="mt-1 mb-8 text-sm text-[var(--ink-muted)]">
-        A área da equipa.
+      <p className="eyebrow eyebrow-gold">Área da equipa</p>
+      <h1 className="display mt-3 text-4xl text-[var(--ink)]">Entrar</h1>
+      <p className="mt-3 text-sm leading-relaxed text-[var(--ink-muted)]">
+        A agenda, o caixa e a casa — tudo a partir daqui.
       </p>
 
-      <SignInForm />
+      <div className="mt-9">
+        <SignInForm />
+      </div>
 
-      <div className="mt-8 flex items-center justify-between text-[0.8125rem]">
+      {/* Um segundo bloco da largura toda debaixo do «Entrar» punha as
+          duas coisas ao mesmo peso — e esquecer-se da palavra-passe é a
+          excepção, não a acção. Fica como o que é: uma saída discreta. */}
+      <p className="mt-4 text-center">
         <Link
           href="/entrar/esqueci"
-          className="text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
+          className="link-slide text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
         >
           Esqueci-me da palavra-passe
         </Link>
+      </p>
+
+      <div className="rule mt-10" />
+      <p className="mt-5 text-center text-[0.8125rem] text-[var(--ink-faint)]">
+        É cliente?{' '}
         <Link
           href="/conta/entrar"
-          className="text-[var(--ink-faint)] transition-colors hover:text-[var(--ink-muted)]"
+          className="link-slide text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
         >
-          Sou cliente
+          Entre pela montra
         </Link>
-      </div>
+        .
+      </p>
     </div>
   )
 }

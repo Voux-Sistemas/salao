@@ -16,17 +16,22 @@ export default async function NewPasswordPage({
 
   return (
     <div>
-      <h1 className="display text-2xl text-[var(--ink)]">Nova palavra-passe</h1>
-      <p className="mt-1 mb-8 text-sm text-[var(--ink-muted)]">
-        Escreva o código que recebeu e a palavra-passe nova.
+      <p className="eyebrow eyebrow-gold">Área da equipa</p>
+      <h1 className="display mt-3 text-4xl text-[var(--ink)]">
+        Nova palavra-passe
+      </h1>
+      <p className="mt-3 text-sm leading-relaxed text-[var(--ink-muted)]">
+        O código chegou? Escreva-o e escolha a palavra-passe nova.
       </p>
 
-      <ResetPasswordForm email={email ?? ''} />
+      <div className="mt-9">
+        <ResetPasswordForm email={email ?? ''} />
+      </div>
 
       <div className="mt-8 flex items-center justify-between text-[0.8125rem]">
         <Link
           href="/entrar/esqueci"
-          className="text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
+          className="link-slide text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
         >
           Pedir outro código
         </Link>

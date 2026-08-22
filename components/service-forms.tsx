@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, type ComponentProps } from 'react'
 import { useFormStatus } from 'react-dom'
+import clsx from 'clsx'
 import { Trash2 } from 'lucide-react'
 import {
   createCategoryAction,
@@ -16,8 +17,9 @@ import {
   saveServiceAction,
   type CatalogState,
 } from '@/app/(desk)/admin/servicos/actions'
+import { Panel } from '@/components/gestao-panel'
 import { Button, Field, Input, Notice, Select, Textarea } from '@/components/ui'
-import { centsToInput } from '@/lib/money'
+import { centsToInput, formatCents, inputToCents } from '@/lib/money'
 
 const EMPTY: CatalogState = { error: null, done: null }
 
@@ -58,6 +60,25 @@ function IconSubmit({ label }: { label: string }) {
   )
 }
 
+/** Campo numérico com a unidade escrita lá dentro, à direita. */
+function SuffixInput({
+  suffix,
+  className,
+  ...props
+}: ComponentProps<'input'> & { suffix: string }) {
+  return (
+    <div className={clsx('relative', className)}>
+      <Input
+        {...props}
+        className="tabular pr-12 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+        {suffix}
+      </span>
+    </div>
+  )
+}
+
 type Option = { id: string; name: string }
 
 // ---------------------------------------------------------------------
@@ -74,7 +95,7 @@ export function CategoryForm() {
     <form action={action} className="space-y-2">
       <Result state={state} />
       <div className="flex flex-wrap items-end gap-2">
-        <Field label="Nova categoria" htmlFor="category-name" className="w-56">
+        <Field label="Nova categoria" htmlFor="category-name" className="w-64">
           <Input
             id="category-name"
             name="name"
@@ -110,8 +131,8 @@ export function CategoryLine({
   const [armed, setArmed] = useState(false)
 
   return (
-    <div className="px-4 py-2.5">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="px-5 py-3 sm:px-6">
+      <div className="flex flex-wrap items-center gap-3">
         <form action={renameAction} className="flex flex-1 items-center gap-2">
           <input type="hidden" name="id" value={id} />
           <Input
@@ -125,7 +146,7 @@ export function CategoryLine({
           <Submit label="Guardar" variant="quiet" size="sm" />
         </form>
 
-        <span className="shrink-0 text-[0.75rem] text-[var(--ink-muted)]">
+        <span className="tabular shrink-0 text-[0.75rem] text-[var(--ink-muted)]">
           {services} serviço{services === 1 ? '' : 's'}
         </span>
 
@@ -196,142 +217,174 @@ export function ServiceForm({
     service ? saveServiceAction : createServiceAction,
     EMPTY,
   )
+  const [price, setPrice] = useState(
+    service ? centsToInput(service.base_price_cents) : '0,00',
+  )
+  const preview = inputToCents(price)
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} className="space-y-5">
       {service ? (
         <input type="hidden" name="service" value={service.id} />
       ) : null}
       <Result state={state} />
 
-      <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
-        <Field label="Nome" htmlFor="service-name">
-          <Input
-            id="service-name"
-            name="name"
-            defaultValue={service?.name ?? ''}
-            maxLength={80}
-            required
-            autoComplete="off"
-          />
-        </Field>
-        <Field label="Categoria" htmlFor="service-category">
-          <Select
-            id="service-category"
-            name="category"
-            defaultValue={service?.category_id ?? categories[0]?.id ?? ''}
+      <Panel
+        title="Identidade"
+        hint="O nome que a cliente lê, a categoria onde o encontra."
+      >
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+            <Field label="Nome" htmlFor="service-name">
+              <Input
+                id="service-name"
+                name="name"
+                defaultValue={service?.name ?? ''}
+                maxLength={80}
+                required
+                autoComplete="off"
+              />
+            </Field>
+            <Field label="Categoria" htmlFor="service-category">
+              <Select
+                id="service-category"
+                name="category"
+                defaultValue={service?.category_id ?? categories[0]?.id ?? ''}
+              >
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          <Field
+            label="Descrição"
+            htmlFor="service-description"
+            hint="O que a cliente lê antes de escolher."
           >
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
+            <Textarea
+              id="service-description"
+              name="description"
+              defaultValue={service?.description ?? ''}
+              maxLength={400}
+            />
+          </Field>
 
-      <Field
-        label="Descrição"
-        htmlFor="service-description"
-        hint="O que a cliente lê antes de escolher."
+          <Field
+            label="Endereço curto"
+            htmlFor="service-slug"
+            hint="Deixe em branco para vir do nome."
+            className="max-w-xs"
+          >
+            <Input
+              id="service-slug"
+              name="slug"
+              defaultValue={service?.slug ?? ''}
+              maxLength={60}
+              autoComplete="off"
+            />
+          </Field>
+        </div>
+      </Panel>
+
+      <Panel
+        title="Preço e duração"
+        hint="O ponto de partida de toda a rede. O que muda numa loja ou numa mão diz-se depois, como excepção."
       >
-        <Textarea
-          id="service-description"
-          name="description"
-          defaultValue={service?.description ?? ''}
-          maxLength={400}
-        />
-      </Field>
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+            <Field label="Preço-base" htmlFor="service-price" className="w-32">
+              <Input
+                id="service-price"
+                name="price"
+                inputMode="decimal"
+                value={price}
+                onChange={(event) => setPrice(event.target.value)}
+                className="tabular"
+              />
+            </Field>
+            <p
+              aria-live="polite"
+              className={clsx(
+                'display pb-1.5 text-xl leading-none',
+                preview === null
+                  ? 'text-[var(--bad)]'
+                  : 'text-[var(--ink)]',
+              )}
+            >
+              {preview === null ? 'preço por acertar' : formatCents(preview)}
+            </p>
+          </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Preço-base" htmlFor="service-price">
-          <Input
-            id="service-price"
-            name="price"
-            inputMode="decimal"
-            defaultValue={
-              service ? centsToInput(service.base_price_cents) : '0,00'
-            }
-            className="tabular"
-          />
-        </Field>
-        <Field label="Duração (minutos)" htmlFor="service-duration">
-          <Input
-            id="service-duration"
-            name="duration"
-            type="number"
-            min={5}
-            step={5}
-            defaultValue={service?.duration_minutes ?? 60}
-            className="tabular"
-          />
-        </Field>
-      </div>
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+            <Field label="Duração" htmlFor="service-duration" className="w-32">
+              <SuffixInput
+                id="service-duration"
+                name="duration"
+                type="number"
+                min={5}
+                step={5}
+                defaultValue={service?.duration_minutes ?? 60}
+                suffix="min"
+              />
+            </Field>
+            <Field label="Folga antes" htmlFor="service-before" className="w-32">
+              <SuffixInput
+                id="service-before"
+                name="before"
+                type="number"
+                min={0}
+                step={5}
+                defaultValue={service?.buffer_before_minutes ?? 0}
+                suffix="min"
+              />
+            </Field>
+            <Field label="Folga depois" htmlFor="service-after" className="w-32">
+              <SuffixInput
+                id="service-after"
+                name="after"
+                type="number"
+                min={0}
+                step={5}
+                defaultValue={service?.buffer_after_minutes ?? 0}
+                suffix="min"
+              />
+            </Field>
+          </div>
+          <p className="text-[0.75rem] text-[var(--ink-faint)]">
+            As folgas ocupam a agenda da profissional — para preparar e
+            arrumar — mas a cliente nunca as vê.
+          </p>
+        </div>
+      </Panel>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Folga antes (minutos)"
-          htmlFor="service-before"
-          hint="Ocupa a agenda; a cliente não a vê."
-        >
-          <Input
-            id="service-before"
-            name="before"
-            type="number"
-            min={0}
-            step={5}
-            defaultValue={service?.buffer_before_minutes ?? 0}
-            className="tabular"
+      <Panel
+        title="Onde aparece"
+        hint="No site e no funil de marcação — ou só na mão da recepção."
+      >
+        <label className="flex items-start gap-2.5 text-sm text-[var(--ink)]">
+          <input
+            type="checkbox"
+            name="online"
+            defaultChecked={service?.bookable_online ?? true}
+            className="mt-0.5 accent-[var(--accent)]"
           />
-        </Field>
-        <Field
-          label="Folga depois (minutos)"
-          htmlFor="service-after"
-          hint="Para limpar, arrumar, respirar."
-        >
-          <Input
-            id="service-after"
-            name="after"
-            type="number"
-            min={0}
-            step={5}
-            defaultValue={service?.buffer_after_minutes ?? 0}
-            className="tabular"
-          />
-        </Field>
-      </div>
-
-      <label className="flex items-start gap-2 text-[0.8125rem] text-[var(--ink)]">
-        <input
-          type="checkbox"
-          name="online"
-          defaultChecked={service?.bookable_online ?? true}
-          className="mt-0.5"
-        />
-        <span>
-          Marcável online
-          <span className="block text-[0.75rem] text-[var(--ink-muted)]">
-            Desligado, some do funil público sem deixar de existir ao balcão.
+          <span>
+            Marcável online
+            <span className="block text-[0.75rem] text-[var(--ink-muted)]">
+              Desligado, some do funil público sem deixar de existir ao
+              balcão.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+      </Panel>
 
-      <Field
-        label="Endereço curto"
-        htmlFor="service-slug"
-        hint="Deixe em branco para vir do nome."
-        className="max-w-xs"
-      >
-        <Input
-          id="service-slug"
-          name="slug"
-          defaultValue={service?.slug ?? ''}
-          maxLength={60}
-          autoComplete="off"
-        />
-      </Field>
-
-      <Submit label={service ? 'Guardar serviço' : 'Criar serviço'} />
+      <div className="flex justify-end">
+        <Submit label={service ? 'Guardar serviço' : 'Criar serviço'} />
+      </div>
     </form>
   )
 }
@@ -396,7 +449,7 @@ export function OverrideForm({
       <input type="hidden" name="service" value={serviceId} />
       <Result state={state} />
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Loja" htmlFor="override-unit">
           <Select id="override-unit" name="unit">
             <option value="">Todas</option>
@@ -419,8 +472,13 @@ export function OverrideForm({
         </Field>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_2fr]">
-        <Field label="Preço" htmlFor="override-price" hint="Vazio = o base.">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        <Field
+          label="Preço"
+          htmlFor="override-price"
+          className="w-28"
+          hint="Vazio: o base."
+        >
           <Input
             id="override-price"
             name="price"
@@ -432,19 +490,25 @@ export function OverrideForm({
         <Field
           label="Duração"
           htmlFor="override-duration"
-          hint="Minutos. Vazio = a base."
+          className="w-32"
+          hint="Vazio: a base."
         >
-          <Input
+          <SuffixInput
             id="override-duration"
             name="duration"
             type="number"
             min={5}
             step={5}
             placeholder="—"
-            className="tabular"
+            suffix="min"
           />
         </Field>
-        <Field label="Motivo" htmlFor="override-note">
+        <Field
+          label="Motivo"
+          htmlFor="override-note"
+          className="min-w-56 flex-1"
+          hint="Fica na linha, para amanhã se saber porquê."
+        >
           <Input
             id="override-note"
             name="note"
@@ -455,12 +519,13 @@ export function OverrideForm({
         </Field>
       </div>
 
-      <p className="text-[0.75rem] text-[var(--ink-faint)]">
-        Deixar as duas em &ldquo;Todas&rdquo; não é uma excepção — é o
-        preço-base, que se muda lá em cima.
-      </p>
-
-      <Submit label="Guardar excepção" variant="outline" />
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <p className="text-[0.75rem] text-[var(--ink-faint)]">
+          Deixar as duas em &ldquo;Todas&rdquo; não é uma excepção — é o
+          preço-base, que se muda na ficha.
+        </p>
+        <Submit label="Guardar excepção" variant="outline" />
+      </div>
     </form>
   )
 }
@@ -510,8 +575,15 @@ export function RequirementForm({
     <form action={action} className="space-y-2">
       <input type="hidden" name="service" value={serviceId} />
       {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
-      <div className="grid gap-2 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
-        <Field label="Precisa de" htmlFor="requirement-type">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        {/* No telemóvel os 256px do tipo enchiam a linha e os 96px do
+            número caíam sozinhos por baixo, encostados à esquerda. O
+            tipo toma a linha; o número fica ao lado do botão. */}
+        <Field
+          label="Precisa de"
+          htmlFor="requirement-type"
+          className="w-full sm:w-64"
+        >
           <Select id="requirement-type" name="type">
             {types.map((type) => (
               <option key={type.id} value={type.id}>
@@ -520,7 +592,7 @@ export function RequirementForm({
             ))}
           </Select>
         </Field>
-        <Field label="Quantos" htmlFor="requirement-quantity">
+        <Field label="Quantos" htmlFor="requirement-quantity" className="w-24">
           <Input
             id="requirement-quantity"
             name="quantity"

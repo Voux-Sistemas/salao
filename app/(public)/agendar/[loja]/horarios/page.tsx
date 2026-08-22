@@ -18,8 +18,9 @@ import {
   type IsoDay,
 } from '@/lib/time'
 import { CART_PARAM, DAY_PARAM, first, funnelHref, parseCart } from '@/lib/cart'
-import { Empty, Eyebrow, Notice } from '@/components/ui'
-import { FunnelSteps } from '@/components/funnel-steps'
+import { Empty, Notice } from '@/components/ui'
+import { FunnelShell, VisitSummary } from '@/components/funnel-shell'
+import { Reveal } from '@/components/reveal'
 
 type Params = {
   params: Promise<{ loja: string }>
@@ -70,36 +71,66 @@ export default async function TimesPage({ params, searchParams }: Params) {
   const next = addDays(day, 7) <= lastDay ? addDays(day, 7) : null
 
   const groups: { label: string; slots: Slot[] }[] = [
-    { label: dict.funnel.morning, slots: slots.filter((s) => s.minutesOfDay < 12 * 60) },
+    {
+      label: dict.funnel.morning,
+      slots: slots.filter((s) => s.minutesOfDay < 12 * 60),
+    },
     {
       label: dict.funnel.afternoon,
       slots: slots.filter((s) => s.minutesOfDay >= 12 * 60 && s.minutesOfDay < 18 * 60),
     },
-    { label: dict.funnel.evening, slots: slots.filter((s) => s.minutesOfDay >= 18 * 60) },
+    {
+      label: dict.funnel.evening,
+      slots: slots.filter((s) => s.minutesOfDay >= 18 * 60),
+    },
   ].filter((group) => group.slots.length > 0)
 
   const sample = slots[0]?.plan
 
   return (
-    <div className="mx-auto max-w-4xl px-5 sm:px-8 py-14 sm:py-20">
-      <FunnelSteps
-        current={3}
-        dict={dict}
-        hrefs={['/agendar', funnelHref(here, { cart }), null, null]}
-      />
-
-      <header className="mt-8">
-        <Eyebrow>{unit.name}</Eyebrow>
-        <h1 className="display mt-3 text-3xl sm:text-4xl">{dict.funnel.timeTitle}</h1>
-        <p className="mt-3 text-[0.9375rem] text-[var(--ink-muted)]">
-          {dict.funnel.timeSubtitle}
-        </p>
-      </header>
-
+    <FunnelShell
+      step={3}
+      dict={dict}
+      hrefs={['/agendar', funnelHref(here, { cart }), null, null]}
+      eyebrow={unit.name}
+      title={dict.funnel.timeTitle}
+      subtitle={dict.funnel.timeSubtitle}
+      aside={
+        sample ? (
+          <VisitSummary
+            title={dict.funnel.yourVisit}
+            lines={sample.items.map((item) => ({
+              label: item.serviceName,
+              meta: `${item.staffName} · ${formatDuration(item.durationMinutes, language)}`,
+              value: formatCents(item.priceCents, org.currency, language),
+            }))}
+            total={{
+              label: dict.common.total,
+              value: formatCents(sample.totalCents, org.currency, language),
+            }}
+            footer={
+              <div className="flex items-baseline justify-between text-[0.75rem]">
+                <span className="text-[var(--ink-muted)]">{dict.common.duration}</span>
+                <span className="tabular text-[var(--ink)]">
+                  {formatDuration(
+                    Math.round(
+                      (sample.endsAt.getTime() - sample.startsAt.getTime()) / 60_000,
+                    ),
+                    language,
+                  )}
+                </span>
+              </div>
+            }
+          />
+        ) : null
+      }
+    >
       {/* -------------------------------------------------- os dias --- */}
-      <nav className="mt-10 flex items-stretch gap-2" aria-label={dict.funnel.steps.time}>
+      <nav className="flex items-stretch gap-2" aria-label={dict.funnel.steps.time}>
         <StripArrow
-          href={previous ? funnelHref(here + '/horarios', { cart, day: previous }) : null}
+          href={
+            previous ? funnelHref(here + '/horarios', { cart, day: previous }) : null
+          }
           label={dict.funnel.previousDay}
         >
           <ChevronLeft size={16} />
@@ -120,16 +151,18 @@ export default async function TimesPage({ params, searchParams }: Params) {
                   href={funnelHref(here + '/horarios', { cart, day: value })}
                   aria-current={value === day ? 'date' : undefined}
                   className={clsx(
-                    'flex h-16 flex-col items-center justify-center gap-0.5 border transition-colors',
+                    'flex h-[4.75rem] flex-col items-center justify-center gap-1 border transition-all duration-200',
                     value === day
-                      ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
-                      : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+                      ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[var(--shadow-soft)]'
+                      : 'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:-translate-y-0.5 hover:border-[var(--accent)] hover:text-[var(--accent)]',
                   )}
                 >
-                  <span className="text-[0.625rem] uppercase tracking-[0.1em]">
+                  <span className="text-[0.5625rem] uppercase tracking-[0.14em]">
                     {label ?? formatWeekdayShort(value, unit.timezone, language)}
                   </span>
-                  <span className="tabular text-sm">{dayNumber(value)}</span>
+                  <span className="tabular display text-xl leading-none">
+                    {dayNumber(value)}
+                  </span>
                 </Link>
               </li>
             )
@@ -144,9 +177,18 @@ export default async function TimesPage({ params, searchParams }: Params) {
         </StripArrow>
       </nav>
 
-      <p className="mt-5 text-[0.8125rem] text-[var(--ink-muted)]">
-        {formatDayLong(day, unit.timezone, language)}
-      </p>
+      {/* A data por extenso, em serifa: é o cabeçalho do que vem abaixo. */}
+      <div className="mt-8 flex items-baseline gap-4">
+        <h2 className="display text-xl text-[var(--ink)] first-letter:uppercase">
+          {formatDayLong(day, unit.timezone, language)}
+        </h2>
+        <span className="h-px flex-1 bg-[var(--line-soft)]" />
+        {slots.length > 0 ? (
+          <span className="tabular shrink-0 text-[0.6875rem] text-[var(--ink-faint)]">
+            {slots.length} {dict.funnel.slotsAvailable}
+          </span>
+        ) : null}
+      </div>
 
       {/* ------------------------------------------------- as horas --- */}
       {problem === 'too_far' ? (
@@ -161,41 +203,37 @@ export default async function TimesPage({ params, searchParams }: Params) {
           hint={dict.funnel.noSlotsHint}
         />
       ) : (
-        <div className="mt-8 space-y-8">
-          {groups.map((group) => (
-            <section key={group.label}>
-              <h2 className="eyebrow text-[var(--ink-faint)]">{group.label}</h2>
-              <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-                {group.slots.map((slot) => (
-                  <li key={slot.startsAt.toISOString()}>
-                    <Link
-                      href={funnelHref(here + '/confirmar', {
-                        cart,
-                        day,
-                        time: slot.startsAt.toISOString(),
-                      })}
-                      className="tabular flex h-11 items-center justify-center border border-[var(--line-soft)] text-sm text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                    >
-                      {formatMinutes(slot.minutesOfDay)}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+        <div className="mt-7 space-y-9">
+          {groups.map((group, groupIndex) => (
+            <Reveal key={group.label} delay={groupIndex * 70}>
+              <section>
+                <div className="flex items-center gap-3">
+                  <h3 className="eyebrow text-[var(--ink-faint)]">{group.label}</h3>
+                  <span className="h-px flex-1 bg-[var(--line-soft)]" />
+                </div>
+                <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                  {group.slots.map((slot) => (
+                    <li key={slot.startsAt.toISOString()}>
+                      <Link
+                        href={funnelHref(here + '/confirmar', {
+                          cart,
+                          day,
+                          time: slot.startsAt.toISOString(),
+                        })}
+                        className="tabular flex h-12 items-center justify-center border border-[var(--line-soft)] bg-[var(--surface-raised)] text-sm text-[var(--ink)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] hover:shadow-[var(--shadow-soft)]"
+                      >
+                        {formatMinutes(slot.minutesOfDay)}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </Reveal>
           ))}
         </div>
       )}
 
-      {sample ? (
-        <p className="tabular mt-10 border-t border-[var(--line-soft)] pt-5 text-[0.8125rem] text-[var(--ink-faint)]">
-          {formatDuration(
-            Math.round((sample.endsAt.getTime() - sample.startsAt.getTime()) / 60_000),
-            language,
-          )}{' '}
-          · {formatCents(sample.totalCents, org.currency, language)}
-        </p>
-      ) : null}
-    </div>
+    </FunnelShell>
   )
 }
 

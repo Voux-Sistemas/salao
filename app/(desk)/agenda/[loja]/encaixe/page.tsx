@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
+import { ArrowLeft, Plus, X } from 'lucide-react'
 import { requireManagement, resolveUnit } from '@/lib/auth/actor'
 import {
   buildPlan,
@@ -27,17 +27,22 @@ import { formatCents } from '@/lib/money'
 import {
   addDays,
   atMinutes,
+  daysBetween,
   formatDayLong,
   formatDuration,
   formatMinutes,
   formatTime,
+  isoRange,
   minutesOfDay,
   parseMinutes,
   today,
   type IsoDay,
 } from '@/lib/time'
-import { Badge, Card, Empty, Input, Notice } from '@/components/ui'
+import { Monogram } from '@/components/brand'
+import { Badge, Card, Empty, Input, Notice, buttonClass } from '@/components/ui'
+import { DeskDayStrip } from '@/components/desk-day-strip'
 import { EncaixeForm } from '@/components/encaixe-form'
+import { formatPhone } from '@/lib/text'
 
 export const metadata: Metadata = { title: 'Encaixe' }
 
@@ -211,6 +216,16 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     prices.reduce((sum, p) => sum + p.duration_minutes, 0) +
     Math.max(0, cart.length - 1) * unit.gap_between_services_minutes
 
+  // A fita de dias: sete de cada vez, ancorada em hoje.
+  const todayDay = today(tz, now)
+  const stripAnchor = addDays(
+    todayDay,
+    Math.max(0, Math.floor(daysBetween(todayDay, day) / 7)) * 7,
+  )
+  const stripDays = isoRange(stripAnchor, 7)
+  const stripPrev =
+    stripAnchor > todayDay ? maxDay(addDays(stripAnchor, -7), todayDay) : null
+
   const categories = new Map<string, { name: string; services: ServiceRow[] }>()
   for (const row of services) {
     const entry = categories.get(row.category_id) ?? {
@@ -232,9 +247,9 @@ export default async function EncaixePage({ params, searchParams }: Params) {
       </Link>
 
       <header className="mb-8">
-        <p className="eyebrow mb-1">{unit.name}</p>
-        <h1 className="display text-2xl text-[var(--ink)]">Encaixe</h1>
-        <p className="mt-1 text-[0.8125rem] text-[var(--ink-muted)]">
+        <p className="eyebrow mb-1.5">{unit.name} · Balcão</p>
+        <h1 className="display text-3xl text-[var(--ink)]">Encaixe</h1>
+        <p className="mt-1.5 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
           Do balcão marca-se tudo: serviços fechados ao online, quem não
           aceita marcação online, e sem regras de antecedência.
         </p>
@@ -244,16 +259,22 @@ export default async function EncaixePage({ params, searchParams }: Params) {
         <div className="space-y-10">
           {/* --- cliente ------------------------------------------- */}
           <section>
-            <h2 className="eyebrow mb-3">Cliente</h2>
+            <StepTitle step="1">Cliente</StepTitle>
             {client ? (
               <Card className="flex items-center justify-between gap-4 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-[var(--ink)]">
-                    {client.name}
-                  </p>
-                  <p className="tabular text-[0.75rem] text-[var(--ink-muted)]">
-                    {client.phone} · {client.visits} visitas
-                  </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-[var(--line-soft)] bg-[var(--surface-2)] text-sm text-[var(--accent)]">
+                    <Monogram initials={initialsOf(client.name)} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-[var(--ink)]">
+                      {client.name}
+                    </p>
+                    <p className="tabular text-[0.75rem] text-[var(--ink-muted)]">
+                      {formatPhone(client.phone)} · {client.visits}{' '}
+                      {client.visits === 1 ? 'visita' : 'visitas'}
+                    </p>
+                  </div>
                 </div>
                 <Link
                   href={link({ client: null, search: null })}
@@ -285,7 +306,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                   />
                   <button
                     type="submit"
-                    className="h-10 shrink-0 border border-[var(--line)] px-4 text-[0.8125rem] text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                    className={buttonClass('outline', 'md', 'shrink-0')}
                   >
                     Procurar
                   </button>
@@ -310,37 +331,51 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                               {row.name}
                             </span>
                             <span className="tabular block text-[0.75rem] text-[var(--ink-muted)]">
-                              {row.phone}
+                              {formatPhone(row.phone)}
                             </span>
                           </span>
                           <span className="shrink-0 text-[0.75rem] text-[var(--ink-faint)]">
-                            {row.visits} visitas
+                            {row.visits} {row.visits === 1 ? 'visita' : 'visitas'}
                           </span>
                         </Link>
                       ))}
                     </Card>
                   )
-                ) : null}
+                ) : (
+                  <p className="text-[0.75rem] text-[var(--ink-faint)]">
+                    Procure pela ficha — ou marque já: a ficha nasce com o
+                    nome e o telefone, no fim.
+                  </p>
+                )}
               </div>
             )}
           </section>
 
           {/* --- catálogo ------------------------------------------ */}
           <section>
-            <h2 className="eyebrow mb-3">Serviços</h2>
+            <StepTitle step="2">Serviços</StepTitle>
             {services.length === 0 ? (
               <Empty
                 title="Catálogo vazio"
                 hint="Ainda não há serviços na rede."
               />
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-7">
                 {[...categories.values()].map((category) => (
                   <div key={category.name}>
-                    <h3 className="display text-base text-[var(--accent)]">
-                      {category.name}
-                    </h3>
-                    <ul className="mt-2 border-t border-[var(--line-soft)]">
+                    <div className="flex items-center gap-3">
+                      <h3 className="display text-base text-[var(--ink)]">
+                        {category.name}
+                      </h3>
+                      <span
+                        className="h-px flex-1 bg-[var(--line-soft)]"
+                        aria-hidden
+                      />
+                      <span className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+                        {category.services.length}
+                      </span>
+                    </div>
+                    <ul className="mt-2.5 grid gap-2 sm:grid-cols-2">
                       {category.services.map((service) => {
                         const chosen = cart.some(
                           (l) => l.serviceId === service.id,
@@ -349,7 +384,12 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                         return (
                           <li
                             key={service.id}
-                            className="flex items-center gap-4 border-b border-[var(--line-soft)] py-2.5"
+                            className={clsx(
+                              'flex items-center gap-3 rounded-[2px] border px-3 py-2.5 transition-colors',
+                              chosen
+                                ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_5%,transparent)]'
+                                : 'border-[var(--line-soft)] bg-[var(--surface-raised)]',
+                            )}
                           >
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm text-[var(--ink)]">
@@ -368,13 +408,13 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                             {chosen || full ? (
                               <span
                                 className={clsx(
-                                  'shrink-0 text-[0.75rem]',
+                                  'shrink-0 text-[0.625rem] uppercase tracking-[0.08em]',
                                   chosen
                                     ? 'text-[var(--accent)]'
                                     : 'text-[var(--ink-faint)]',
                                 )}
                               >
-                                {chosen ? 'na visita' : 'cheio'}
+                                {chosen ? 'Na visita' : 'Cheio'}
                               </span>
                             ) : (
                               <Link
@@ -398,11 +438,16 @@ export default async function EncaixePage({ params, searchParams }: Params) {
 
         {/* --- a visita ------------------------------------------- */}
         <aside className="space-y-6 lg:sticky lg:top-20">
-          <Card className="px-4 py-4">
+          <Card className="px-4 py-4 shadow-[var(--shadow-soft)]">
             <h2 className="eyebrow mb-3">A visita</h2>
             {cart.length === 0 ? (
+              /* «À esquerda» só é verdade no ecrã largo: no telemóvel a
+                 lista está por cima deste cartão, e a frase mandava a
+                 pessoa olhar para uma margem vazia. */
               <p className="text-[0.8125rem] text-[var(--ink-muted)]">
-                Escolha os serviços à esquerda.
+                Escolha os serviços
+                <span className="lg:hidden"> na lista acima.</span>
+                <span className="hidden lg:inline"> à esquerda.</span>
               </p>
             ) : (
               <ul className="space-y-3">
@@ -455,38 +500,44 @@ export default async function EncaixePage({ params, searchParams }: Params) {
             )}
 
             {cart.length > 0 ? (
-              <p className="tabular mt-4 border-t border-[var(--line-soft)] pt-3 text-[0.8125rem] text-[var(--ink-muted)]">
-                {formatDuration(totalMinutes)} · {formatCents(totalCents)}
-              </p>
+              <div className="mt-4 flex items-baseline justify-between border-t border-[var(--line-soft)] pt-3">
+                <span className="text-[0.8125rem] text-[var(--ink-muted)]">
+                  {formatDuration(totalMinutes)}
+                </span>
+                <span className="display tabular text-xl text-[var(--ink)]">
+                  {formatCents(totalCents)}
+                </span>
+              </div>
             ) : null}
           </Card>
 
           {/* --- dia e hora --------------------------------------- */}
           {cart.length > 0 ? (
             <Card className="px-4 py-4">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="eyebrow">Quando</h2>
-                <div className="flex items-center gap-1">
-                  <DayArrow
-                    href={link({
-                      day: addDays(day, -1),
-                      time: null,
-                      hand: null,
-                    })}
-                    label="Dia anterior"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </DayArrow>
-                  <DayArrow
-                    href={link({ day: addDays(day, 1), time: null, hand: null })}
-                    label="Dia seguinte"
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </DayArrow>
-                </div>
-              </div>
+              <StepTitle step="3">Quando</StepTitle>
 
-              <p className="mb-3 text-[0.8125rem] text-[var(--ink-muted)]">
+              <DeskDayStrip
+                dense
+                days={stripDays}
+                active={day}
+                today={todayDay}
+                timezone={tz}
+                hrefFor={(value) =>
+                  link({ day: value, time: null, hand: null })
+                }
+                prevHref={
+                  stripPrev
+                    ? link({ day: stripPrev, time: null, hand: null })
+                    : null
+                }
+                nextHref={link({
+                  day: addDays(stripAnchor, 7),
+                  time: null,
+                  hand: null,
+                })}
+              />
+
+              <p className="mb-3 mt-3 text-[0.8125rem] text-[var(--ink-muted)]">
                 {capitalise(formatDayLong(day, tz))}
               </p>
 
@@ -530,7 +581,14 @@ export default async function EncaixePage({ params, searchParams }: Params) {
 
               {/* A hora à mão: fora da grelha, que é o que faz um encaixe
                   ser um encaixe. */}
-              <form method="get" action={here} className="mt-4 flex gap-2">
+              <form
+                method="get"
+                action={here}
+                className="mt-4 border-t border-[var(--line-soft)] pt-3"
+              >
+                <p className="eyebrow mb-2 text-[var(--ink-faint)]">
+                  Ou uma hora à mão
+                </p>
                 <input type="hidden" name={DAY_PARAM} value={day} />
                 <input
                   type="hidden"
@@ -540,30 +598,36 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                 {clientId ? (
                   <input type="hidden" name={CLIENT_PARAM} value={clientId} />
                 ) : null}
-                <Input
-                  type="time"
-                  name={HAND_PARAM}
-                  step={300}
-                  defaultValue={
-                    chosenAt ? formatMinutes(minutesOfDay(chosenAt, tz)) : ''
-                  }
-                  className="tabular max-w-[8rem]"
-                  aria-label="Hora à mão"
-                />
-                <button
-                  type="submit"
-                  className="h-10 shrink-0 border border-[var(--line)] px-3 text-[0.8125rem] text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                >
-                  Usar
-                </button>
+                <div className="flex gap-2">
+                  <Input
+                    type="time"
+                    name={HAND_PARAM}
+                    step={300}
+                    defaultValue={
+                      chosenAt ? formatMinutes(minutesOfDay(chosenAt, tz)) : ''
+                    }
+                    className="tabular max-w-[8rem]"
+                    aria-label="Hora à mão"
+                  />
+                  <button
+                    type="submit"
+                    className={buttonClass('outline', 'md', 'shrink-0')}
+                  >
+                    Usar
+                  </button>
+                </div>
               </form>
+              <p className="mt-2 text-[0.6875rem] text-[var(--ink-faint)]">
+                A hora à mão pode cair fora da grelha — é isso que faz um
+                encaixe.
+              </p>
             </Card>
           ) : null}
 
           {/* --- fechar ------------------------------------------- */}
           {cart.length > 0 && chosenAt ? (
             <Card className="px-4 py-4">
-              <h2 className="eyebrow mb-3">Confirmar</h2>
+              <StepTitle step="4">Confirmar</StepTitle>
               {plan ? (
                 <>
                   <ul className="mb-4 space-y-1.5">
@@ -572,7 +636,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                         key={`${item.serviceId}-${item.startsAt.toISOString()}`}
                         className="flex items-baseline gap-2 text-[0.8125rem]"
                       >
-                        <span className="tabular w-11 shrink-0 text-[var(--ink-muted)]">
+                        <span className="tabular w-11 shrink-0 text-[var(--accent)]">
                           {formatTime(item.startsAt, tz)}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-[var(--ink)]">
@@ -613,6 +677,27 @@ export default async function EncaixePage({ params, searchParams }: Params) {
   )
 }
 
+function StepTitle({
+  step,
+  flush = false,
+  children,
+}: {
+  step: string
+  flush?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <h2
+      className={clsx('flex items-baseline gap-2.5', flush ? null : 'mb-3')}
+    >
+      <span className="display text-lg leading-none text-[var(--accent)]">
+        {step}
+      </span>
+      <span className="eyebrow">{children}</span>
+    </h2>
+  )
+}
+
 function StaffChip({
   href,
   label,
@@ -628,31 +713,11 @@ function StaffChip({
       className={clsx(
         'border px-2 py-0.5 text-[0.6875rem] transition-colors',
         active
-          ? 'border-[var(--accent)] text-[var(--accent)]'
+          ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
           : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
       )}
     >
       {label}
-    </Link>
-  )
-}
-
-function DayArrow({
-  href,
-  label,
-  children,
-}: {
-  href: string
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      className="flex h-7 w-7 items-center justify-center border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-    >
-      {children}
     </Link>
   )
 }
@@ -690,6 +755,15 @@ async function searchClients(
      limit 8
   `
 }
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  const head = parts[0]?.[0] ?? ''
+  const tail = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
+  return (head + tail).toUpperCase() || 'NR'
+}
+
+const maxDay = (a: IsoDay, b: IsoDay): IsoDay => (a > b ? a : b)
 
 function capitalise(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)

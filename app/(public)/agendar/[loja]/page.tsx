@@ -17,7 +17,8 @@ import {
   MAX_CART_LINES,
 } from '@/lib/cart'
 import { ButtonLink, Eyebrow, Notice } from '@/components/ui'
-import { FunnelSteps } from '@/components/funnel-steps'
+import { FunnelShell, MobileVisitBar } from '@/components/funnel-shell'
+import { Reveal } from '@/components/reveal'
 
 type Params = {
   params: Promise<{ loja: string }>
@@ -134,6 +135,11 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
     prices.reduce((sum, p) => sum + p.duration_minutes, 0) +
     Math.max(0, clean.length - 1) * unit.gap_between_services_minutes
 
+  // "Escolher" no primeiro serviço, "Juntar" nos seguintes: o botão não
+  // pode oferecer "outro" enquanto não houver um.
+  const addLabel =
+    clean.length === 0 ? dict.funnel.chooseService : dict.funnel.addService
+
   const here = `/agendar/${unit.slug}`
   const categories = new Map<string, { name: string; services: ServiceRow[] }>()
   for (const row of services) {
@@ -146,91 +152,136 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-5 sm:px-8 py-14 sm:py-20">
-      <FunnelSteps
-        current={2}
-        dict={dict}
-        hrefs={['/agendar', null, null, null]}
-      />
-
-      <header className="mt-8">
-        <Eyebrow>{unit.name}</Eyebrow>
-        <h1 className="display mt-3 text-3xl sm:text-4xl">{dict.funnel.serviceTitle}</h1>
-        <p className="mt-3 text-[0.9375rem] text-[var(--ink-muted)]">
-          {dict.funnel.serviceSubtitle}
-        </p>
-      </header>
-
+    <FunnelShell
+      step={2}
+      dict={dict}
+      hrefs={['/agendar', null, null, null]}
+      eyebrow={unit.name}
+      title={dict.funnel.serviceTitle}
+      subtitle={dict.funnel.serviceSubtitle}
+    >
       {dropped ? (
-        <div className="mt-6">
+        <div className="mb-8">
           <Notice tone="warn">{dict.errors.serviceGone}</Notice>
         </div>
       ) : null}
 
-      <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_20rem]">
-        {/* ------------------------------------------------ catálogo --- */}
-        <div className="space-y-12">
-          {[...categories.values()].map((category) => (
-            <section key={category.name}>
-              <h2 className="display text-xl text-[var(--accent)]">{category.name}</h2>
-              <ul className="mt-5 border-t border-[var(--line-soft)]">
-                {category.services.map((service) => {
-                  const chosen = clean.some((l) => l.serviceId === service.id)
-                  const full = clean.length >= MAX_CART_LINES
-                  return (
-                    <li
-                      key={service.id}
-                      className="flex items-start gap-4 border-b border-[var(--line-soft)] py-4"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-[var(--ink)]">{service.name}</p>
-                        {service.description ? (
-                          <p className="mt-1 max-w-lg text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-                            {service.description}
-                          </p>
-                        ) : null}
-                        <p className="tabular mt-1.5 text-[0.75rem] text-[var(--ink-faint)]">
-                          {formatDuration(service.duration_minutes, language)} ·{' '}
-                          {formatCents(service.price_cents, org.currency, language)}
-                        </p>
-                      </div>
+      {/* Cheio: dizer-se uma vez em cima, em vez de um traço mudo em
+          cada linha do catálogo. */}
+      {clean.length >= MAX_CART_LINES ? (
+        <div className="mb-8">
+          <Notice tone="warn">{dict.funnel.cartFull}</Notice>
+        </div>
+      ) : null}
 
-                      {chosen || full ? (
-                        <span
-                          className={clsx(
-                            'mt-0.5 inline-flex h-8 items-center gap-1.5 px-3 text-[0.75rem]',
-                            chosen
-                              ? 'text-[var(--accent)]'
-                              : 'text-[var(--ink-faint)]',
-                          )}
-                        >
+      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        {/* ------------------------------------------------ catálogo --- */}
+        <div className="space-y-14">
+          {[...categories.values()].map((category, groupIndex) => (
+            <Reveal key={category.name} delay={groupIndex * 60}>
+              <section>
+                <div className="flex items-baseline gap-4">
+                  <h2 className="display text-xl text-[var(--accent)]">
+                    {category.name}
+                  </h2>
+                  <span className="h-px flex-1 bg-[var(--line-soft)]" />
+                  <span className="tabular text-[0.6875rem] text-[var(--ink-faint)]">
+                    {String(groupIndex + 1).padStart(2, '0')}
+                  </span>
+                </div>
+
+                <ul className="mt-6 space-y-6">
+                  {category.services.map((service) => {
+                    const chosenAt = clean.findIndex(
+                      (l) => l.serviceId === service.id,
+                    )
+                    const chosen = chosenAt >= 0
+                    const full = clean.length >= MAX_CART_LINES
+                    return (
+                      <li key={service.id}>
+                        {/* nome — pontilhado — preço: a leitura de uma ementa */}
+                        <div className="flex items-baseline gap-3">
+                          <p
+                            className={clsx(
+                              'text-[0.9375rem] transition-colors',
+                              chosen ? 'text-[var(--accent)]' : 'text-[var(--ink)]',
+                            )}
+                          >
+                            {service.name}
+                          </p>
+                          <span className="flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)]" />
+                          <span className="tabular shrink-0 text-[0.875rem] text-[var(--ink)]">
+                            {formatCents(service.price_cents, org.currency, language)}
+                          </span>
+                        </div>
+
+                        {/* Duração e descrição na mesma linha. Em linhas
+                            separadas, a duração ficava sozinha a meio do
+                            branco e o botão flutuava algures ao lado das
+                            duas — nada se alinhava com nada.
+
+                            No telemóvel o botão desce: ao lado, sobrava-lhe
+                            um terço da largura e a descrição escrevia-se em
+                            tiras de três palavras. */}
+                        <div className="mt-1.5 flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+                          <p className="min-w-0 max-w-md flex-1 text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
+                            <span className="tabular">
+                              {formatDuration(service.duration_minutes, language)}
+                            </span>
+                            {service.description ? ` · ${service.description}` : null}
+                          </p>
+
                           {chosen ? (
-                            <>
-                              <Check size={14} />
-                              {dict.funnel.selected}
-                            </>
-                          ) : null}
-                        </span>
-                      ) : (
-                        <Link
-                          href={funnelHref(here, { cart: addLine(clean, service.id) })}
-                          className="mt-0.5 inline-flex h-8 shrink-0 items-center gap-1.5 border border-[var(--line)] px-3 text-[0.75rem] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                        >
-                          <Plus size={14} />
-                          {dict.funnel.addService}
-                        </Link>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
-            </section>
+                            /* Segunda vez no mesmo serviço tira-o: é o que
+                               qualquer pessoa espera de uma ementa. */
+                            <Link
+                              href={funnelHref(here, {
+                                cart: removeAt(clean, chosenAt),
+                              })}
+                              aria-label={`${dict.common.remove} · ${service.name}`}
+                              // `sm:pl-3`: em linha, o avanço iguala o `px-3`
+                              // do botão com moldura e os ícones das várias
+                              // linhas ficam na mesma vertical. Empilhado no
+                              // telemóvel, esse avanço era só uma indentação
+                              // sem razão.
+                              className="group inline-flex h-8 shrink-0 items-center gap-1.5 text-[0.75rem] text-[var(--accent)] transition-colors hover:text-[var(--bad)] sm:pl-3"
+                            >
+                              <Check size={14} className="group-hover:hidden" />
+                              <X size={14} className="hidden group-hover:block" />
+                              <span className="group-hover:hidden">
+                                {dict.funnel.selected}
+                              </span>
+                              <span className="hidden group-hover:inline">
+                                {dict.common.remove}
+                              </span>
+                            </Link>
+                          ) : full ? null : (
+                            <Link
+                              href={funnelHref(here, {
+                                cart: addLine(clean, service.id),
+                              })}
+                              // O nome do serviço só existe para quem lê o
+                              // ecrã; para quem o ouve, vai no rótulo.
+                              aria-label={`${addLabel} · ${service.name}`}
+                              className="inline-flex h-8 shrink-0 items-center gap-1.5 border border-[var(--line)] px-3 text-[0.75rem] text-[var(--ink-muted)] transition-all hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+                            >
+                              <Plus size={14} />
+                              {addLabel}
+                            </Link>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            </Reveal>
           ))}
         </div>
 
         {/* -------------------------------------------------- visita --- */}
-        <aside className="lg:sticky lg:top-6 lg:self-start">
-          <div className="border border-[var(--line-soft)] bg-[var(--surface-raised)] p-6">
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="border border-[var(--line)] bg-[var(--surface-raised)] p-6 shadow-[var(--shadow-soft)]">
             <Eyebrow>{dict.funnel.yourVisit}</Eyebrow>
 
             {clean.length === 0 ? (
@@ -269,7 +320,9 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                             </p>
                           </div>
                           <Link
-                            href={funnelHref(here, { cart: removeAt(clean, index) })}
+                            href={funnelHref(here, {
+                              cart: removeAt(clean, index),
+                            })}
                             aria-label={dict.common.remove}
                             className="mt-0.5 text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
                           >
@@ -326,9 +379,14 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
               </>
             )}
 
-            <div className="mt-6">
+            {/* Só no ecrã grande. No telemóvel a barra colada ao fundo já
+                traz o total e o «continuar»; este botão aparecia-lhe um
+                ecrã acima e a mesma decisão ficava pedida duas vezes. */}
+            <div className="mt-6 hidden lg:block">
               {clean.length === 0 ? (
-                <span className="block cursor-not-allowed border border-[var(--line)] px-5 py-3 text-center text-sm text-[var(--ink-faint)]">
+                // A mesma altura do botão a sério: quando a visita deixa
+                // de estar vazia, o painel não dá um salto.
+                <span className="flex h-[3.25rem] cursor-not-allowed items-center justify-center border border-[var(--line)] px-5 text-center text-sm text-[var(--ink-faint)]">
                   {dict.common.next}
                 </span>
               ) : (
@@ -343,12 +401,28 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
             </div>
           </div>
 
-          <p className="mt-4 text-[0.6875rem] leading-relaxed text-[var(--ink-faint)]">
-            {dict.funnel.anyProfessionalHint}
-          </p>
+          {/* A nota é sobre a etiqueta «sem preferência», que só existe
+              depois de haver um serviço escolhido. Com a visita vazia
+              ficava a explicar uma coisa que ainda não está no ecrã. */}
+          {clean.length > 0 ? (
+            <p className="mt-4 text-[0.6875rem] leading-relaxed text-[var(--ink-faint)]">
+              {dict.funnel.anyProfessionalHint}
+            </p>
+          ) : null}
         </aside>
       </div>
-    </div>
+
+      {clean.length > 0 ? (
+        <MobileVisitBar
+          meta={`${clean.length} ${
+            clean.length === 1 ? dict.common.service : dict.common.services
+          } · ${formatDuration(totalMinutes, language)}`}
+          total={formatCents(totalCents, org.currency, language)}
+          href={funnelHref(`${here}/horarios`, { cart: clean })}
+          label={dict.common.next}
+        />
+      ) : null}
+    </FunnelShell>
   )
 }
 

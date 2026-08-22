@@ -22,7 +22,7 @@ export default async function Home() {
 
   if (!actor) {
     return (
-      <PublicChrome>
+      <PublicChrome hero>
         <Showcase org={org} />
       </PublicChrome>
     )

@@ -4,7 +4,8 @@ import type { Unit } from '@/lib/org'
 
 /**
  * Nas secções que são por loja, a loja está na barra de endereços e há
- * este seletor em cima. Quem só tem uma loja não vê seletor nenhum.
+ * este seletor em cima: um comutador segmentado, com um losango dourado
+ * a assinalar a casa activa. Quem só tem uma loja não vê seletor nenhum.
  */
 export function UnitSwitcher({
   units,
@@ -27,7 +28,7 @@ export function UnitSwitcher({
   if (units.length < 2) return null
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="inline-flex items-center gap-[3px] rounded-[2px] border border-[var(--line)] bg-[var(--surface-2)] p-[3px]">
       {showAll ? (
         <Tab href={base} active={current === null}>
           {allLabel}
@@ -58,13 +59,20 @@ function Tab({
   return (
     <Link
       href={href}
+      aria-current={active ? 'page' : undefined}
       className={clsx(
-        'rounded-[2px] border px-3 py-1.5 text-[0.8125rem] transition-colors',
+        'inline-flex items-center rounded-[1px] px-3 py-1.5 text-[0.8125rem] transition-colors',
         active
-          ? 'border-[var(--accent)] text-[var(--accent)]'
-          : 'border-[var(--line)] text-[var(--ink-muted)] hover:border-[var(--ink-faint)] hover:text-[var(--ink)]',
+          ? 'bg-[var(--surface-raised)] text-[var(--ink)] shadow-[0_1px_3px_rgba(28,25,23,0.1)]'
+          : 'text-[var(--ink-muted)] hover:text-[var(--ink)]',
       )}
     >
+      {active ? (
+        <span
+          aria-hidden
+          className="mr-1.5 inline-block h-1 w-1 rotate-45 bg-[var(--gold)]"
+        />
+      ) : null}
       {children}
     </Link>
   )

@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, type ComponentProps } from 'react'
 import { useFormStatus } from 'react-dom'
+import clsx from 'clsx'
 import { Trash2 } from 'lucide-react'
 import {
   addHoursAction,
@@ -19,6 +20,7 @@ import {
   type ResourceState,
   type UnitState,
 } from '@/app/(desk)/admin/unidades/actions'
+import { Panel } from '@/components/gestao-panel'
 import { Button, Field, Input, Notice, Select } from '@/components/ui'
 import { STRATEGY_LABEL } from '@/lib/status'
 import { WEEKDAY_NAMES_PT } from '@/lib/time'
@@ -47,6 +49,25 @@ function Result({ state }: { state: { error: string | null; done?: string | null
   if (state.error) return <Notice tone="bad">{state.error}</Notice>
   if (state.done) return <Notice tone="ok">{state.done}</Notice>
   return null
+}
+
+/** Campo numérico com a unidade escrita lá dentro, à direita. */
+function SuffixInput({
+  suffix,
+  className,
+  ...props
+}: ComponentProps<'input'> & { suffix: string }) {
+  return (
+    <div className={clsx('relative', className)}>
+      <Input
+        {...props}
+        className="tabular pr-14 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+        {suffix}
+      </span>
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------
@@ -83,118 +104,141 @@ export function UnitDetailsForm({
   )
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} className="space-y-5">
       {unit ? <input type="hidden" name="unit" value={unit.id} /> : null}
       <Result state={state} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nome" htmlFor="unit-name">
-          <Input
-            id="unit-name"
-            name="name"
-            defaultValue={unit?.name ?? ''}
-            maxLength={80}
-            required
-            autoComplete="off"
-          />
-        </Field>
-        <Field
-          label="Endereço curto"
-          htmlFor="unit-slug"
-          hint="É o que aparece na barra: /loja/este-pedaço."
-        >
-          <Input
-            id="unit-slug"
-            name="slug"
-            defaultValue={unit?.slug ?? ''}
-            maxLength={60}
-            autoComplete="off"
-            placeholder="deixe em branco para vir do nome"
-          />
-        </Field>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-[2fr_1fr_1fr]">
-        <Field label="Morada" htmlFor="unit-address">
-          <Input
-            id="unit-address"
-            name="address"
-            defaultValue={unit?.address_line ?? ''}
-            maxLength={160}
-            autoComplete="off"
-          />
-        </Field>
-        <Field label="Código postal" htmlFor="unit-postal">
-          <Input
-            id="unit-postal"
-            name="postal"
-            defaultValue={unit?.postal_code ?? ''}
-            maxLength={20}
-            autoComplete="off"
-          />
-        </Field>
-        <Field label="Cidade" htmlFor="unit-city">
-          <Input
-            id="unit-city"
-            name="city"
-            defaultValue={unit?.city ?? ''}
-            maxLength={60}
-            autoComplete="off"
-          />
-        </Field>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Telefone" htmlFor="unit-phone">
-          <Input
-            id="unit-phone"
-            name="phone"
-            defaultValue={unit?.phone ?? ''}
-            maxLength={30}
-            autoComplete="off"
-          />
-        </Field>
-        <Field
-          label="WhatsApp"
-          htmlFor="unit-whatsapp"
-          hint="É por aqui que a casa fala com a cliente."
-        >
-          <Input
-            id="unit-whatsapp"
-            name="whatsapp"
-            defaultValue={unit?.whatsapp_phone ?? ''}
-            maxLength={30}
-            autoComplete="off"
-          />
-        </Field>
-        <Field label="Email" htmlFor="unit-email">
-          <Input
-            id="unit-email"
-            name="email"
-            type="email"
-            defaultValue={unit?.email ?? ''}
-            maxLength={160}
-            autoComplete="off"
-          />
-        </Field>
-      </div>
-
-      <Field
-        label="Fuso horário"
-        htmlFor="unit-timezone"
-        hint="Tudo se guarda em UTC; é este fuso que decide que horas a loja vê."
-        className="max-w-xs"
+      <Panel
+        title="Identidade"
+        hint="O nome que a cliente lê e o endereço que fica na barra."
       >
-        <Input
-          id="unit-timezone"
-          name="timezone"
-          defaultValue={unit?.timezone ?? defaultTimezone}
-          maxLength={60}
-          autoComplete="off"
-        />
-      </Field>
+        <div className="grid gap-4 sm:grid-cols-[3fr_2fr]">
+          <Field label="Nome" htmlFor="unit-name">
+            <Input
+              id="unit-name"
+              name="name"
+              defaultValue={unit?.name ?? ''}
+              maxLength={80}
+              required
+              autoComplete="off"
+            />
+          </Field>
+          <Field
+            label="Endereço curto"
+            htmlFor="unit-slug"
+            hint="Aparece na barra: /loja/este-pedaço. Em branco, vem do nome."
+          >
+            <Input
+              id="unit-slug"
+              name="slug"
+              defaultValue={unit?.slug ?? ''}
+              maxLength={60}
+              autoComplete="off"
+            />
+          </Field>
+        </div>
+      </Panel>
 
-      <Submit label={unit ? 'Guardar loja' : 'Criar loja'} />
+      <Panel
+        title="Onde está"
+        hint="A morada aparece na montra pública; o fuso decide que horas a loja vê."
+      >
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,3fr)_8rem_minmax(0,1fr)]">
+            <Field label="Morada" htmlFor="unit-address">
+              <Input
+                id="unit-address"
+                name="address"
+                defaultValue={unit?.address_line ?? ''}
+                maxLength={160}
+                autoComplete="off"
+              />
+            </Field>
+            <Field label="Código postal" htmlFor="unit-postal">
+              <Input
+                id="unit-postal"
+                name="postal"
+                defaultValue={unit?.postal_code ?? ''}
+                maxLength={20}
+                autoComplete="off"
+                className="tabular"
+              />
+            </Field>
+            <Field label="Cidade" htmlFor="unit-city">
+              <Input
+                id="unit-city"
+                name="city"
+                defaultValue={unit?.city ?? ''}
+                maxLength={60}
+                autoComplete="off"
+              />
+            </Field>
+          </div>
+
+          <Field
+            label="Fuso horário"
+            htmlFor="unit-timezone"
+            hint="Tudo se guarda em UTC; converte-se sempre para este fuso."
+            className="max-w-xs"
+          >
+            <Input
+              id="unit-timezone"
+              name="timezone"
+              defaultValue={unit?.timezone ?? defaultTimezone}
+              maxLength={60}
+              autoComplete="off"
+            />
+          </Field>
+        </div>
+      </Panel>
+
+      <Panel
+        title="Contactos"
+        hint="Por onde a casa fala com a cliente — e a cliente com a casa."
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Telefone" htmlFor="unit-phone">
+            <Input
+              id="unit-phone"
+              name="phone"
+              defaultValue={unit?.phone ?? ''}
+              maxLength={30}
+              inputMode="tel"
+              autoComplete="off"
+              className="tabular"
+            />
+          </Field>
+          <Field
+            label="WhatsApp"
+            htmlFor="unit-whatsapp"
+            hint="As confirmações saem por aqui."
+          >
+            <Input
+              id="unit-whatsapp"
+              name="whatsapp"
+              defaultValue={unit?.whatsapp_phone ?? ''}
+              maxLength={30}
+              inputMode="tel"
+              autoComplete="off"
+              className="tabular"
+            />
+          </Field>
+          <Field label="E-mail" htmlFor="unit-email">
+            <Input
+              id="unit-email"
+              name="email"
+              type="email"
+              defaultValue={unit?.email ?? ''}
+              maxLength={160}
+              autoComplete="off"
+            />
+          </Field>
+        </div>
+      </Panel>
+
+      <div className="flex justify-end">
+        <Submit label={unit ? 'Guardar loja' : 'Criar loja'} />
+      </div>
     </form>
   )
 }
@@ -225,17 +269,18 @@ export function RulesForm({ unit }: { unit: RuleFields }) {
   )
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} className="space-y-5">
       <input type="hidden" name="unit" value={unit.id} />
       <Result state={state} />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
         <Field
           label="Passo dos horários"
           htmlFor="rule-granularity"
-          hint="Minutos entre horas oferecidas."
+          hint="Entre horas oferecidas."
+          className="w-40"
         >
-          <Input
+          <SuffixInput
             id="rule-granularity"
             name="granularity"
             type="number"
@@ -243,74 +288,79 @@ export function RulesForm({ unit }: { unit: RuleFields }) {
             max={120}
             step={5}
             defaultValue={unit.slot_granularity_minutes}
-            className="tabular"
+            suffix="min"
           />
         </Field>
         <Field
           label="Antecedência mínima"
           htmlFor="rule-min-lead"
-          hint="Minutos. A recepção pode ignorar."
+          hint="Antes da hora marcada."
+          className="w-40"
         >
-          <Input
+          <SuffixInput
             id="rule-min-lead"
             name="min_lead"
             type="number"
             min={0}
             step={5}
             defaultValue={unit.min_lead_minutes}
-            className="tabular"
+            suffix="min"
           />
         </Field>
         <Field
           label="Antecedência máxima"
           htmlFor="rule-max-lead"
-          hint="Dias que a agenda abre à frente."
+          hint="Quanto a agenda abre à frente."
+          className="w-40"
         >
-          <Input
+          <SuffixInput
             id="rule-max-lead"
             name="max_lead"
             type="number"
             min={1}
             defaultValue={unit.max_lead_days}
-            className="tabular"
+            suffix="dias"
           />
         </Field>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
         <Field
           label="Intervalo entre serviços"
           htmlFor="rule-gap"
-          hint="Minutos entre um serviço e o seguinte."
+          hint="De um serviço ao seguinte."
+          className="w-40"
         >
-          <Input
+          <SuffixInput
             id="rule-gap"
             name="gap"
             type="number"
             min={0}
             step={5}
             defaultValue={unit.gap_between_services_minutes}
-            className="tabular"
+            suffix="min"
           />
         </Field>
         <Field
           label="Janela de cancelamento"
           htmlFor="rule-cancel"
-          hint="Horas antes em que ainda se pode desmarcar."
+          hint="Até quando se pode desmarcar."
+          className="w-40"
         >
-          <Input
+          <SuffixInput
             id="rule-cancel"
             name="cancel_window"
             type="number"
             min={0}
             defaultValue={unit.cancel_window_hours}
-            className="tabular"
+            suffix="horas"
           />
         </Field>
         <Field
           label="Sem preferência"
           htmlFor="rule-strategy"
           hint="Como se escolhe quem atende."
+          className="w-64"
         >
           <Select
             id="rule-strategy"
@@ -328,7 +378,13 @@ export function RulesForm({ unit }: { unit: RuleFields }) {
         </Field>
       </div>
 
-      <Submit label="Guardar regras" variant="outline" />
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <p className="text-[0.75rem] text-[var(--ink-faint)]">
+          Ao balcão pode passar-se por cima da antecedência mínima — chama-se
+          encaixe, e fica registado como tal.
+        </p>
+        <Submit label="Guardar regras" variant="outline" />
+      </div>
     </form>
   )
 }
@@ -361,7 +417,7 @@ export function AddHoursForm({
           placeholder="09:00"
           maxLength={5}
           autoComplete="off"
-          className="tabular w-20"
+          className="tabular max-w-20 text-center"
           aria-label={`Abre — ${WEEKDAY_NAMES_PT[weekday]}`}
         />
         <span className="text-[var(--ink-faint)]">–</span>
@@ -370,7 +426,7 @@ export function AddHoursForm({
           placeholder="13:00"
           maxLength={5}
           autoComplete="off"
-          className="tabular w-20"
+          className="tabular max-w-20 text-center"
           aria-label={`Fecha — ${WEEKDAY_NAMES_PT[weekday]}`}
         />
         <Submit label="Juntar" variant="quiet" size="sm" />
@@ -489,7 +545,7 @@ export function AddSpecialForm({ unitId }: { unitId: string }) {
       <input type="hidden" name="unit" value={unitId} />
       <Result state={state} />
 
-      <div className="grid gap-3 sm:grid-cols-[10rem_10rem_1fr] sm:items-end">
+      <div className="grid gap-3 sm:grid-cols-[10rem_12rem_minmax(0,1fr)] sm:items-end">
         <Field label="Dia" htmlFor="special-day">
           <Input id="special-day" name="day" type="date" className="tabular" />
         </Field>
@@ -524,7 +580,7 @@ export function AddSpecialForm({ unitId }: { unitId: string }) {
             placeholder="09:00"
             maxLength={5}
             autoComplete="off"
-            className="tabular w-20"
+            className="tabular max-w-20 text-center"
             aria-label="Abre"
           />
           <span className="text-[var(--ink-faint)]">–</span>
@@ -533,7 +589,7 @@ export function AddSpecialForm({ unitId }: { unitId: string }) {
             placeholder="15:00"
             maxLength={5}
             autoComplete="off"
-            className="tabular w-20"
+            className="tabular max-w-20 text-center"
             aria-label="Fecha"
           />
         </div>

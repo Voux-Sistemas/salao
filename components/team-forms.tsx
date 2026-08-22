@@ -20,9 +20,10 @@ import {
   toggleSkillAction,
   type TeamState,
 } from '@/app/(desk)/admin/equipe/actions'
+import { Panel } from '@/components/gestao-panel'
 import { Badge, Button, Field, Input, Notice, Select, Textarea } from '@/components/ui'
 import { ABSENCE_LABEL, LEVEL_LABEL } from '@/lib/status'
-import { WEEKDAY_NAMES_PT, formatMinutes } from '@/lib/time'
+import { WEEKDAY_NAMES_PT, formatIsoDay, formatMinutes } from '@/lib/time'
 
 const EMPTY: TeamState = { error: null, done: null }
 
@@ -97,120 +98,138 @@ export function MemberForm({
   )
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} className="space-y-5">
       <Result state={state} />
       {member ? <input type="hidden" name="staff" value={member.id} /> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nome" htmlFor="member-name">
-          <Input
-            id="member-name"
-            name="name"
-            defaultValue={member?.name}
-            maxLength={80}
-            autoComplete="off"
-            required
-          />
-        </Field>
-
-        <Field
-          label="Telefone"
-          htmlFor="member-phone"
-          hint="É por aqui que entra no sistema. Não se repete na rede."
-        >
-          <Input
-            id="member-phone"
-            name="phone"
-            defaultValue={member?.phone}
-            inputMode="tel"
-            autoComplete="off"
-            required
-          />
-        </Field>
-
-        <Field
-          label="E-mail"
-          htmlFor="member-email"
-          hint="Opcional. Serve para recuperar a palavra-passe."
-        >
-          <Input
-            id="member-email"
-            name="email"
-            type="email"
-            defaultValue={member?.email ?? ''}
-            autoComplete="off"
-          />
-        </Field>
-
-        <Field
-          label="Cor na agenda"
-          htmlFor="member-color"
-          hint="É como se distingue à distância numa coluna cheia."
-        >
-          <Input
-            id="member-color"
-            name="color"
-            type="color"
-            defaultValue={member?.display_color ?? '#D9C08A'}
-            className="h-10 w-20 p-1"
-          />
-        </Field>
-      </div>
-
-      <Field
-        label="Apresentação"
-        htmlFor="member-bio"
-        hint="Uma linha ou duas, para o site. Fica visível à cliente."
+      <Panel
+        title="Identidade"
+        hint="O nome, o telefone com que entra e a cor com que aparece na agenda."
       >
-        <Textarea
-          id="member-bio"
-          name="bio"
-          defaultValue={member?.bio ?? ''}
-          maxLength={400}
-        />
-      </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nome" htmlFor="member-name">
+            <Input
+              id="member-name"
+              name="name"
+              defaultValue={member?.name}
+              maxLength={80}
+              autoComplete="off"
+              required
+            />
+          </Field>
 
-      <label className="flex items-start gap-2.5 text-sm text-[var(--ink)]">
-        <input
-          type="checkbox"
-          name="online"
-          defaultChecked={member ? member.accepts_online_booking : true}
-          className="mt-0.5 accent-[var(--accent)]"
-        />
-        <span>
-          Aceita marcação online
-          <span className="block text-[0.75rem] text-[var(--ink-muted)]">
-            Desligado, deixa de aparecer no funil público — mas continua a
-            receber marcações feitas ao balcão.
-          </span>
-        </span>
-      </label>
+          <Field
+            label="Telefone"
+            htmlFor="member-phone"
+            hint="É por aqui que entra no sistema. Não se repete na rede."
+          >
+            <Input
+              id="member-phone"
+              name="phone"
+              defaultValue={member?.phone}
+              inputMode="tel"
+              autoComplete="off"
+              required
+              className="tabular"
+            />
+          </Field>
+
+          <Field
+            label="E-mail"
+            htmlFor="member-email"
+            hint="Opcional. Serve para recuperar a palavra-passe."
+          >
+            <Input
+              id="member-email"
+              name="email"
+              type="email"
+              defaultValue={member?.email ?? ''}
+              autoComplete="off"
+            />
+          </Field>
+
+          <Field
+            label="Cor na agenda"
+            htmlFor="member-color"
+            hint="É como se distingue à distância numa coluna cheia."
+          >
+            <Input
+              id="member-color"
+              name="color"
+              type="color"
+              defaultValue={member?.display_color ?? '#D9C08A'}
+              className="h-10 max-w-24 p-1"
+            />
+          </Field>
+        </div>
+      </Panel>
+
+      <Panel
+        title="No site"
+        hint="O que a cliente vê quando escolhe por quem ser atendida."
+      >
+        <div className="space-y-4">
+          <Field
+            label="Apresentação"
+            htmlFor="member-bio"
+            hint="Uma linha ou duas. Fica visível à cliente."
+          >
+            <Textarea
+              id="member-bio"
+              name="bio"
+              defaultValue={member?.bio ?? ''}
+              maxLength={400}
+            />
+          </Field>
+
+          <label className="flex items-start gap-2.5 text-sm text-[var(--ink)]">
+            <input
+              type="checkbox"
+              name="online"
+              defaultChecked={member ? member.accepts_online_booking : true}
+              className="mt-0.5 accent-[var(--accent)]"
+            />
+            <span>
+              Aceita marcação online
+              <span className="block text-[0.75rem] text-[var(--ink-muted)]">
+                Desligado, deixa de aparecer no funil público — mas continua a
+                receber marcações feitas ao balcão.
+              </span>
+            </span>
+          </label>
+        </div>
+      </Panel>
 
       {!member && units && units.length > 0 ? (
-        <fieldset className="space-y-2">
-          <legend className="text-[0.8125rem] font-medium text-[var(--ink)]">
-            Lojas onde atende
-          </legend>
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {units.map((unit) => (
-              <label
-                key={unit.id}
-                className="flex items-center gap-2 text-sm text-[var(--ink)]"
-              >
-                <input
-                  type="checkbox"
-                  name="units"
-                  value={unit.id}
-                  className="accent-[var(--accent)]"
-                />
-                {unit.name}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <Panel
+          title="Lojas onde atende"
+          hint="Onde põe os pés. Mexe-se depois na ficha, porque tirar uma loja tem consequências na escala."
+        >
+          <fieldset>
+            <legend className="sr-only">Lojas onde atende</legend>
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {units.map((unit) => (
+                <label
+                  key={unit.id}
+                  className="flex items-center gap-2 text-sm text-[var(--ink)]"
+                >
+                  <input
+                    type="checkbox"
+                    name="units"
+                    value={unit.id}
+                    className="accent-[var(--accent)]"
+                  />
+                  {unit.name}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </Panel>
       ) : null}
 
-      <Submit label={member ? 'Guardar' : 'Criar'} />
+      <div className="flex justify-end">
+        <Submit label={member ? 'Guardar ficha' : 'Criar ficha'} />
+      </div>
     </form>
   )
 }
@@ -263,15 +282,18 @@ export function RolesPanel({
           : 'Profissional: vê a agenda dela e mais nada.'
 
   return (
-    <div className="space-y-3">
-      <Result state={add} />
-      <Result state={remove} />
-
+    <div>
       {roles.length > 0 ? (
-        <div className="divide-y divide-[var(--line-soft)] border border-[var(--line-soft)]">
+        <div className="divide-y divide-[var(--line-soft)]">
           {roles.map((row) => (
-            <div key={row.id} className="flex items-center gap-3 px-4 py-2.5">
-              <Badge tone={row.role === 'owner' ? 'accent' : 'neutral'}>
+            <div
+              key={row.id}
+              className="flex items-center gap-3 px-5 py-3 sm:px-6"
+            >
+              <Badge
+                tone={row.role === 'owner' ? 'accent' : 'neutral'}
+                className="w-28 justify-center"
+              >
                 {LEVEL_LABEL[row.role]}
               </Badge>
               <p className="min-w-0 flex-1 truncate text-sm text-[var(--ink)]">
@@ -286,15 +308,24 @@ export function RolesPanel({
           ))}
         </div>
       ) : (
-        <p className="text-[0.8125rem] text-[var(--ink-faint)]">
+        <p className="px-5 py-4 text-[0.8125rem] text-[var(--ink-faint)] sm:px-6">
           Sem papel nenhum, esta pessoa não consegue entrar.
         </p>
       )}
 
-      <form action={addAction} className="space-y-2">
+      <form
+        action={addAction}
+        className="space-y-2.5 border-t border-[var(--line-soft)] bg-[var(--surface-2)] px-5 py-4 sm:px-6"
+      >
+        <Result state={add} />
+        <Result state={remove} />
         <input type="hidden" name="staff" value={staffId} />
-        <div className="flex flex-wrap items-end gap-2">
-          <Field label="Papel" htmlFor="role-level" className="w-44">
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+          {/* As larguras fixas destes campos são para o ecrã largo, onde
+              a fila inteira cabe. No telemóvel davam uma coluna às
+              escadinhas — 176px, 224px, um botão — encostada à esquerda
+              com o resto do cartão vazio. Aqui cada um toma a linha. */}
+          <Field label="Papel" htmlFor="role-level" className="w-full sm:w-44">
             <Select
               id="role-level"
               name="level"
@@ -313,7 +344,7 @@ export function RolesPanel({
             </Select>
           </Field>
 
-          <Field label="Loja" htmlFor="role-unit" className="w-56">
+          <Field label="Loja" htmlFor="role-unit" className="w-full sm:w-56">
             <Select
               id="role-unit"
               name="unit"
@@ -359,7 +390,7 @@ export function MemberUnits({
   )
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <Result state={state} />
       <div className="flex flex-wrap gap-2">
         {units.map((unit) => {
@@ -387,11 +418,11 @@ function Toggle({ on, label }: { on: boolean; label: string }) {
       disabled={pending}
       aria-pressed={on}
       className={[
-        'inline-flex items-center gap-1.5 border rounded-[2px] px-2.5 py-1',
+        'inline-flex items-center gap-1.5 rounded-[2px] border px-3 py-1.5',
         'text-[0.8125rem] transition-colors disabled:opacity-40',
         on
-          ? 'border-[var(--accent)] text-[var(--accent)]'
-          : 'border-[var(--line)] text-[var(--ink-muted)] hover:border-[var(--ink-faint)]',
+          ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)] text-[var(--accent-strong)]'
+          : 'border-[var(--line)] text-[var(--ink-muted)] hover:border-[var(--ink-faint)] hover:text-[var(--ink)]',
       ].join(' ')}
     >
       {on ? <Check size={13} /> : null}
@@ -412,10 +443,10 @@ export function SkillsPanel({
   groups: { category: string; services: { id: string; name: string; has: boolean }[] }[]
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {groups.map((group) => (
         <div key={group.category}>
-          <p className="mb-1.5 text-[0.75rem] uppercase tracking-wide text-[var(--ink-faint)]">
+          <p className="mb-2 text-[0.6875rem] uppercase tracking-[0.18em] text-[var(--ink-faint)]">
             {group.category}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -461,8 +492,12 @@ export function OpenScheduleForm({
       <Result state={state} />
       <input type="hidden" name="staff" value={staffId} />
 
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label="Loja" htmlFor="sched-unit" className="w-52">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        {/* Loja e dia tomam a linha no telemóvel; as duas horas partem-na
+            ao meio, que é como se lê «das nove às seis». Antes eram
+            quatro larguras fixas a cair umas por baixo das outras em
+            degraus. */}
+        <Field label="Loja" htmlFor="sched-unit" className="w-full sm:w-48">
           <Select id="sched-unit" name="unit" required>
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
@@ -472,7 +507,11 @@ export function OpenScheduleForm({
           </Select>
         </Field>
 
-        <Field label="Dia" htmlFor="sched-weekday" className="w-36">
+        <Field
+          label="Dia da semana"
+          htmlFor="sched-weekday"
+          className="w-full sm:w-40"
+        >
           <Select id="sched-weekday" name="weekday" defaultValue="1">
             {WEEKDAY_NAMES_PT.map((name, index) => (
               <option key={name} value={index}>
@@ -482,32 +521,53 @@ export function OpenScheduleForm({
           </Select>
         </Field>
 
-        <Field label="Entra" htmlFor="sched-starts" className="w-28">
+        <Field
+          label="Entra"
+          htmlFor="sched-starts"
+          className="flex-1 sm:w-28 sm:flex-none"
+        >
           <Input
             id="sched-starts"
             name="starts"
             type="time"
             defaultValue="09:00"
+            className="tabular"
             required
           />
         </Field>
 
-        <Field label="Sai" htmlFor="sched-ends" className="w-28">
+        <Field
+          label="Sai"
+          htmlFor="sched-ends"
+          className="flex-1 sm:w-28 sm:flex-none"
+        >
           <Input
             id="sched-ends"
             name="ends"
             type="time"
             defaultValue="18:00"
+            className="tabular"
             required
           />
         </Field>
+      </div>
 
-        <Field label="A partir de" htmlFor="sched-from" className="w-40">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        {/* As duas datas emparelham; a nota e o botão descem para uma
+            linha inteira. No telemóvel a nota subia para o lado do
+            rótulo «Até» — ficava a explicar um campo que estava por
+            baixo dela, e o botão trepava com ela. */}
+        <Field
+          label="A partir de"
+          htmlFor="sched-from"
+          className="flex-1 sm:w-40 sm:flex-none"
+        >
           <Input
             id="sched-from"
             name="from"
             type="date"
             defaultValue={today}
+            className="tabular"
             required
           />
         </Field>
@@ -515,13 +575,17 @@ export function OpenScheduleForm({
         <Field
           label="Até"
           htmlFor="sched-to"
-          className="w-40"
-          hint="Em branco: sem fim à vista."
+          className="flex-1 sm:w-40 sm:flex-none"
         >
-          <Input id="sched-to" name="to" type="date" />
+          <Input id="sched-to" name="to" type="date" className="tabular" />
         </Field>
 
-        <Submit label="Abrir escala" variant="outline" />
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:flex-1">
+          <p className="text-[0.75rem] text-[var(--ink-faint)]">
+            &ldquo;Até&rdquo; em branco: sem fim à vista.
+          </p>
+          <Submit label="Abrir escala" variant="outline" />
+        </div>
       </div>
     </form>
   )
@@ -563,12 +627,12 @@ export function ScheduleLine({
   const [closing, setClosing] = useState(false)
 
   return (
-    <div className="px-4 py-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="w-20 shrink-0 text-sm text-[var(--ink)]">
+    <div className="px-5 py-3 sm:px-6">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="w-24 shrink-0 text-sm text-[var(--ink)]">
           {WEEKDAY_NAMES_PT[row.weekday]}
         </span>
-        <span className="tabular shrink-0 text-sm text-[var(--ink)]">
+        <span className="tabular w-28 shrink-0 text-sm text-[var(--ink)]">
           {formatMinutes(row.starts_min)}–{formatMinutes(row.ends_min)}
         </span>
         <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-[var(--ink-muted)]">
@@ -576,9 +640,12 @@ export function ScheduleLine({
         </span>
 
         {row.is_future ? <Badge tone="warn">Começa depois</Badge> : null}
+        {/* Lia-se «2026-02-02 → sem fim»: a data escrita para a máquina.
+            A vigência é uma data de calendário, não um instante — não há
+            fuso a converter, só a ordem portuguesa a pôr. */}
         <span className="tabular shrink-0 text-[0.75rem] text-[var(--ink-faint)]">
-          {row.valid_from}
-          {row.valid_to ? ` → ${row.valid_to}` : ' → sem fim'}
+          {formatIsoDay(row.valid_from)}
+          {row.valid_to ? ` → ${formatIsoDay(row.valid_to)}` : ' → sem fim'}
         </span>
 
         {row.is_future ? (
@@ -602,21 +669,22 @@ export function ScheduleLine({
       {closing ? (
         <form
           action={closeAction}
-          className="mt-2 flex flex-wrap items-end gap-2"
+          className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2"
         >
           <input type="hidden" name="staff" value={staffId} />
           <input type="hidden" name="id" value={row.id} />
           <Field
             label="Último dia"
             htmlFor={`close-${row.id}`}
-            className="w-40"
-            hint="A escala vale até este dia, inclusive."
+            className="flex-1 sm:w-40 sm:flex-none"
+            hint="Vale até este dia, inclusive."
           >
             <Input
               id={`close-${row.id}`}
               name="last"
               type="date"
               defaultValue={today}
+              className="tabular"
               required
             />
           </Field>
@@ -624,10 +692,12 @@ export function ScheduleLine({
         </form>
       ) : null}
 
-      <div className="mt-1 space-y-1">
-        <Result state={close} />
-        <Result state={remove} />
-      </div>
+      {close.error || close.done || remove.error || remove.done ? (
+        <div className="mt-2 space-y-1">
+          <Result state={close} />
+          <Result state={remove} />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -656,8 +726,12 @@ export function AbsenceForm({
       <Result state={state} />
       <input type="hidden" name="staff" value={staffId} />
 
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label="Tipo" htmlFor="abs-kind" className="w-40">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        {/* Tipo e loja tomam a linha; as duas datas — ou as duas horas,
+            quando não é dia inteiro — partem-na ao meio. Antes eram
+            quatro larguras fixas diferentes, uma escadinha encostada à
+            esquerda do cartão. */}
+        <Field label="Tipo" htmlFor="abs-kind" className="w-full sm:w-36">
           <Select id="abs-kind" name="kind" defaultValue="day_off">
             {(
               Object.keys(ABSENCE_LABEL) as (keyof typeof ABSENCE_LABEL)[]
@@ -669,12 +743,7 @@ export function AbsenceForm({
           </Select>
         </Field>
 
-        <Field
-          label="Loja"
-          htmlFor="abs-unit"
-          className="w-48"
-          hint="Em branco: falta em todas."
-        >
+        <Field label="Loja" htmlFor="abs-unit" className="w-full sm:w-44">
           <Select id="abs-unit" name="unit" defaultValue="">
             <option value="">Todas</option>
             {units.map((unit) => (
@@ -685,12 +754,17 @@ export function AbsenceForm({
           </Select>
         </Field>
 
-        <Field label="De" htmlFor="abs-from" className="w-40">
+        <Field
+          label="De"
+          htmlFor="abs-from"
+          className="flex-1 sm:w-40 sm:flex-none"
+        >
           <Input
             id="abs-from"
             name="from"
             type="date"
             defaultValue={today}
+            className="tabular"
             required
           />
         </Field>
@@ -699,34 +773,48 @@ export function AbsenceForm({
           <Field
             label="Até"
             htmlFor="abs-to"
-            className="w-40"
-            hint="Em branco: só esse dia."
+            className="flex-1 sm:w-40 sm:flex-none"
           >
-            <Input id="abs-to" name="to" type="date" />
+            <Input id="abs-to" name="to" type="date" className="tabular" />
           </Field>
         ) : (
           <>
-            <Field label="Das" htmlFor="abs-starts" className="w-28">
+            <Field
+              label="Das"
+              htmlFor="abs-starts"
+              className="flex-1 sm:w-28 sm:flex-none"
+            >
               <Input
                 id="abs-starts"
                 name="starts"
                 type="time"
                 defaultValue="12:00"
+                className="tabular"
                 required
               />
             </Field>
-            <Field label="Às" htmlFor="abs-ends" className="w-28">
+            <Field
+              label="Às"
+              htmlFor="abs-ends"
+              className="flex-1 sm:w-28 sm:flex-none"
+            >
               <Input
                 id="abs-ends"
                 name="ends"
                 type="time"
                 defaultValue="14:00"
+                className="tabular"
                 required
               />
             </Field>
           </>
         )}
       </div>
+
+      <p className="text-[0.75rem] text-[var(--ink-faint)]">
+        Loja em branco: falta em todas.
+        {allDay ? ' “Até” em branco: só esse dia.' : ''}
+      </p>
 
       <label className="flex items-center gap-2 text-sm text-[var(--ink)]">
         <input
@@ -739,8 +827,8 @@ export function AbsenceForm({
         Dia inteiro
       </label>
 
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label="Motivo" htmlFor="abs-reason" className="w-72">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        <Field label="Motivo" htmlFor="abs-reason" className="min-w-56 flex-1">
           <Input
             id="abs-reason"
             name="reason"
@@ -814,8 +902,8 @@ export function PasswordForm({
         Escreva-a aqui e diga-a à pessoa. Ao guardar, todas as sessões
         abertas em nome dela fecham-se.
       </p>
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label="Nova" htmlFor="pw-new" className="w-52">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        <Field label="Nova" htmlFor="pw-new" className="w-full sm:w-52">
           <Input
             id="pw-new"
             name="password"
@@ -824,7 +912,7 @@ export function PasswordForm({
             required
           />
         </Field>
-        <Field label="Outra vez" htmlFor="pw-again" className="w-52">
+        <Field label="Outra vez" htmlFor="pw-again" className="w-full sm:w-52">
           <Input
             id="pw-again"
             name="again"
@@ -857,7 +945,7 @@ export function MemberExit({
 
   if (!isActive) {
     return (
-      <form action={reactivateMemberAction} className="flex items-center gap-3">
+      <form action={reactivateMemberAction} className="flex flex-wrap items-center gap-3">
         <input type="hidden" name="staff" value={staffId} />
         <Submit label="Voltar a activar" variant="outline" />
         <p className="text-[0.8125rem] text-[var(--ink-muted)]">

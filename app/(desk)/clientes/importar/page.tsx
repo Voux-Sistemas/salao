@@ -28,7 +28,7 @@ export default async function ImportarPage() {
         Clientes
       </Link>
 
-      <h1 className="display mb-1 text-2xl text-[var(--ink)]">
+      <h1 className="display mb-1 text-3xl text-[var(--ink)]">
         Importar clientes
       </h1>
       <p className="mb-6 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
@@ -36,7 +36,7 @@ export default async function ImportarPage() {
         a importação só cria quem falta.
       </p>
 
-      <Card className="px-4 py-5 sm:px-6">
+      <Card className="px-4 py-6 sm:px-6">
         <ImportForm />
       </Card>
     </div>

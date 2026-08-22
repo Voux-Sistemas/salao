@@ -3,15 +3,19 @@
  * se muda. Aqui ficam só as coisas que a base de dados não guarda: o que
  * aparece antes de haver rede criada, e o texto de marca do site.
  *
- * Ao trocar de marca, é este ficheiro e o seed. Mais nada.
+ * Ao trocar de marca, é este ficheiro, o logótipo em logo.jpg (na raiz,
+ * seguido de `npm run logo:assets`) e o seed. Mais nada.
  */
 export const BRAND = {
   /** Usado enquanto o /comecar ainda não criou a rede. */
-  fallbackName: 'Maison Lumière',
-  fallbackTagline: 'Salão de beleza',
+  fallbackName: 'Nohora Ramirez',
+  fallbackTagline: 'Beauty Studio',
 
   /** Assinatura no rodapé e no título das páginas públicas. */
-  legalName: 'Maison Lumière, Lda.',
+  legalName: 'Nohora Ramirez Beauty Studio',
+
+  /** As iniciais do monograma (o logótipo é a autoridade). */
+  monogram: 'NR',
 
   social: {
     instagram: '',

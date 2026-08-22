@@ -1,10 +1,8 @@
-import Link from 'next/link'
 import type { Metadata } from 'next'
-import { ArrowLeft } from 'lucide-react'
 import { requireOrgScope } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { UnitDetailsForm } from '@/components/unit-forms'
-import { Card } from '@/components/ui'
+import { BackLink } from '@/components/gestao-panel'
 
 export const metadata: Metadata = { title: 'Nova loja' }
 
@@ -18,23 +16,19 @@ export default async function NovaUnidadePage() {
 
   return (
     <div className="max-w-2xl">
-      <Link
-        href="/admin/unidades"
-        className="mb-4 inline-flex items-center gap-1.5 text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
-      >
-        <ArrowLeft size={14} />
-        Unidades
-      </Link>
+      <div className="mb-4">
+        <BackLink href="/admin/unidades" label="Unidades" />
+      </div>
 
-      <h2 className="display mb-1 text-xl text-[var(--ink)]">Nova loja</h2>
-      <p className="mb-5 text-[0.8125rem] text-[var(--ink-muted)]">
+      <h2 className="display mb-1 text-[1.75rem] leading-tight text-[var(--ink)]">
+        Nova loja
+      </h2>
+      <p className="mb-6 text-[0.8125rem] text-[var(--ink-muted)]">
         Depois de criada abre-se o horário da semana — sem ele não há nada
         para marcar.
       </p>
 
-      <Card className="px-4 py-5 sm:px-6">
-        <UnitDetailsForm defaultTimezone={org.timezone} />
-      </Card>
+      <UnitDetailsForm defaultTimezone={org.timezone} />
     </div>
   )
 }

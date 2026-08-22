@@ -32,21 +32,29 @@ export async function HoursTable({
     <dl className="text-[0.8125rem]">
       {ORDER.map((weekday) => {
         const windows = hours.get(weekday) ?? []
+        const closed = windows.length === 0
         return (
           <div
             key={weekday}
-            className="flex items-baseline justify-between gap-4 border-b border-[var(--line-soft)] py-2.5 last:border-0"
+            className="flex items-baseline justify-between gap-6 border-b border-[var(--line-soft)] py-3 last:border-0"
           >
-            <dt className="text-[var(--ink-muted)]">{names[weekday]}</dt>
+            <dt
+              className={
+                closed ? 'text-[var(--ink-faint)]' : 'text-[var(--ink-muted)]'
+              }
+            >
+              {names[weekday]}
+            </dt>
             <dd className="tabular text-right text-[var(--ink)]">
-              {windows.length === 0 ? (
+              {closed ? (
                 <span className="text-[var(--ink-faint)]">{closedLabel}</span>
               ) : (
                 windows
                   .map(
-                    (w) => `${formatMinutes(w.openMin)}–${formatMinutes(w.closeMin)}`,
+                    (w) =>
+                      `${formatMinutes(w.openMin)}–${formatMinutes(w.closeMin)}`,
                   )
-                  .join('  ·  ')
+                  .join(' · ')
               )}
             </dd>
           </div>

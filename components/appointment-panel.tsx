@@ -1,32 +1,30 @@
 import Link from 'next/link'
-import { X } from 'lucide-react'
 import { formatCents } from '@/lib/money'
-import { formatTime } from '@/lib/time'
-import { nextStatuses, type AppointmentItemRow, type AppointmentRow, type Status } from '@/lib/booking'
-import { SOURCE_LABEL, STATUS_ACTION, STATUS_LABEL, STATUS_TONE } from '@/lib/status'
+import { formatDayLong, formatTime, isoDay } from '@/lib/time'
+import {
+  nextStatuses,
+  type AppointmentItemRow,
+  type AppointmentRow,
+} from '@/lib/booking'
+import { SOURCE_LABEL, STATUS_ACTION, STATUS_LABEL } from '@/lib/status'
 import { composeMessage, loadTemplates } from '@/lib/notify'
 import { Badge, ButtonLink } from '@/components/ui'
 import { SendWhatsApp, StatusButtons } from '@/components/desk-actions'
+import { AGENDA_TONE } from '@/components/agenda-grid'
+import { IconClose } from '@/components/desk-icons'
 import type { Actor } from '@/lib/auth/actor'
 import { can } from '@/lib/auth/actor'
+import { formatPhone } from '@/lib/text'
 
 /**
- * O painel lateral: cliente, serviços, valor, e os botões do estado
- * seguinte. Mais «Enviar confirmação», que abre o WhatsApp e NÃO muda o
- * estado — são dois factos distintos.
+ * O painel lateral: cliente, serviços, valor — e as acções por ordem de
+ * importância. Primeiro o passo natural do dia (confirmar, check-in,
+ * iniciar, concluir), depois a palavra à cliente (WhatsApp), depois o
+ * dinheiro (comanda) e só no fim o que corre mal (cancelar, falta).
+ *
+ * «Enviar confirmação» abre o WhatsApp e NÃO muda o estado — mandar a
+ * mensagem e a cliente confirmar são dois factos distintos.
  */
-
-const VARIANT: Record<Status, 'primary' | 'outline' | 'quiet' | 'danger'> = {
-  booked: 'quiet',
-  confirmed: 'primary',
-  checked_in: 'primary',
-  in_service: 'primary',
-  completed: 'primary',
-  cancelled_by_client: 'danger',
-  cancelled_by_salon: 'danger',
-  no_show: 'danger',
-}
-
 export async function AppointmentPanel({
   actor,
   appointment,
@@ -59,45 +57,68 @@ export async function AppointmentPanel({
   const options = nextStatuses(appointment.status).map((to) => ({
     to,
     label: STATUS_ACTION[to],
-    variant: VARIANT[to],
   }))
 
   const total = appointment.total_cents - appointment.discount_cents
+  const whenDay = capitalise(
+    formatDayLong(isoDay(appointment.starts_at, tz), tz),
+  )
+  const closeTab =
+    can.seeCash(actor) &&
+    appointment.status === 'completed' &&
+    !appointment.closed_at
 
   return (
-    <aside className="flex h-full flex-col border-l border-[var(--line)] bg-[var(--surface-raised)]">
-      <header className="flex items-start justify-between gap-3 border-b border-[var(--line-soft)] px-4 py-3">
-        <div className="min-w-0">
+    <div className="flex h-full flex-col border-l border-[var(--line)] bg-[var(--surface-raised)]">
+      <header className="border-b border-[var(--line-soft)] px-5 pb-4 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <p className="eyebrow">Marcação · {SOURCE_LABEL[appointment.source]}</p>
           <Link
-            href={`/clientes/${appointment.client_id}`}
-            className="display block truncate text-lg text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+            href={closeHref}
+            scroll={false}
+            aria-label="Fechar"
+            className="-mr-1 -mt-1 shrink-0 p-1 text-[var(--ink-faint)] transition-colors hover:text-[var(--ink)]"
           >
-            {appointment.client_name}
+            <IconClose className="h-4 w-4" />
           </Link>
-          <p className="tabular text-[0.75rem] text-[var(--ink-muted)]">
-            {appointment.client_phone}
-          </p>
         </div>
-        <Link
-          href={closeHref}
-          scroll={false}
-          aria-label="Fechar"
-          className="shrink-0 p-1 text-[var(--ink-faint)] transition-colors hover:text-[var(--ink)]"
-        >
-          <X className="h-4 w-4" />
-        </Link>
-      </header>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={STATUS_TONE[appointment.status]}>
+        <Link
+          href={`/clientes/${appointment.client_id}`}
+          className="display mt-1.5 block truncate text-xl leading-tight text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+        >
+          {appointment.client_name}
+        </Link>
+        <a
+          href={`https://wa.me/${appointment.client_phone.replace(/\D/g, '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Abrir conversa no WhatsApp"
+          className="tabular text-[0.75rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
+        >
+          {formatPhone(appointment.client_phone)}
+        </a>
+
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <Badge tone={AGENDA_TONE[appointment.status]}>
             {STATUS_LABEL[appointment.status]}
           </Badge>
-          <Badge>{SOURCE_LABEL[appointment.source]}</Badge>
           {confirmSent ? <Badge tone="ok">Confirmação enviada</Badge> : null}
-          {appointment.closed_at ? <Badge tone="ok">Comanda fechada</Badge> : null}
+          {appointment.closed_at ? (
+            <Badge tone="ok">Comanda fechada</Badge>
+          ) : null}
           {appointment.rescheduled_from_id ? <Badge>Remarcada</Badge> : null}
         </div>
+      </header>
+
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+        <p className="text-[0.8125rem] text-[var(--ink)]">
+          {whenDay} ·{' '}
+          <span className="tabular">
+            {formatTime(appointment.starts_at, tz)}–
+            {formatTime(appointment.ends_at, tz)}
+          </span>
+        </p>
 
         <ul className="divide-y divide-[var(--line-soft)] border-y border-[var(--line-soft)]">
           {appointment.items.map((item) => (
@@ -123,7 +144,12 @@ export async function AppointmentPanel({
         <div className="space-y-1">
           {appointment.discount_cents > 0 ? (
             <div className="flex items-baseline justify-between text-[0.8125rem] text-[var(--ink-muted)]">
-              <span>Desconto{appointment.discount_reason ? ` · ${appointment.discount_reason}` : ''}</span>
+              <span>
+                Desconto
+                {appointment.discount_reason
+                  ? ` · ${appointment.discount_reason}`
+                  : ''}
+              </span>
               <span className="tabular">
                 −{formatCents(appointment.discount_cents)}
               </span>
@@ -156,14 +182,24 @@ export async function AppointmentPanel({
         ) : null}
       </div>
 
-      <footer className="space-y-4 border-t border-[var(--line-soft)] px-4 py-4">
+      <footer className="space-y-3 border-t border-[var(--line-soft)] px-5 py-4">
+        {/* o passo seguinte do dia, com o resto atrás dele */}
+        {closeTab ? (
+          <ButtonLink
+            href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
+            className="w-full"
+          >
+            Fechar comanda
+          </ButtonLink>
+        ) : null}
+
         {options.length > 0 ? (
           <StatusButtons appointmentId={appointment.id} options={options} />
-        ) : (
+        ) : !closeTab ? (
           <p className="text-[0.75rem] text-[var(--ink-faint)]">
             Esta marcação já não muda de estado.
           </p>
-        )}
+        ) : null}
 
         <SendWhatsApp
           appointmentId={appointment.id}
@@ -172,17 +208,20 @@ export async function AppointmentPanel({
           message={message.text}
           label="Enviar confirmação"
           done={confirmSent}
+          className="w-full"
         />
 
         {can.seeCash(actor) ? (
-          <div className="flex flex-wrap gap-2">
-            <ButtonLink
-              href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
-              variant="outline"
-              size="sm"
-            >
-              Comanda
-            </ButtonLink>
+          <div className="flex flex-wrap gap-2 border-t border-[var(--line-soft)] pt-3">
+            {!closeTab ? (
+              <ButtonLink
+                href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
+                variant="outline"
+                size="sm"
+              >
+                Comanda
+              </ButtonLink>
+            ) : null}
             <ButtonLink
               href={`/agenda/${appointment.unit_slug}/remarcar/${appointment.id}`}
               variant="quiet"
@@ -193,6 +232,10 @@ export async function AppointmentPanel({
           </div>
         ) : null}
       </footer>
-    </aside>
+    </div>
   )
+}
+
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
