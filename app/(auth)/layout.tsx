@@ -1,9 +1,15 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getOrg, listUnits } from '@/lib/org'
 import { BRAND } from '@/lib/branding'
 import { LogoMark, LogoSeal, Monogram, Ornament } from '@/components/brand'
 
 export const dynamic = 'force-dynamic'
+
+// A porta da equipa não se anuncia. Desce a tudo o que está por baixo.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 /**
  * A porta da equipa. Metade esquerda: a casa — carvão quente, o

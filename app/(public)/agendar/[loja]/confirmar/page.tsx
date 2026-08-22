@@ -27,7 +27,11 @@ type Params = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-export const metadata = { title: 'Confirmar' }
+export const metadata = {
+  title: 'Confirmar',
+  // Passo a meio de um funil: nada disto tem que estar num motor de busca.
+  robots: { index: false, follow: false },
+}
 
 /**
  * Passo 4 — o nome e o telefone, e gravar.

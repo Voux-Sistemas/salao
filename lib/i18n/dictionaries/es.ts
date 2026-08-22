@@ -148,6 +148,7 @@ export const es: Dictionary = {
     unitClosed: 'El centro está cerrado a esa hora.',
     nameRequired: 'Dinos tu nombre.',
     phoneInvalid: 'Ese número no parece válido.',
+    tooMany: 'Demasiadas peticiones seguidas. Espera un momento, por favor.',
     generic: 'Algo ha salido mal. Inténtalo otra vez.',
   },
   account: {

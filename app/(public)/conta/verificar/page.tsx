@@ -10,7 +10,10 @@ import { CodeForm } from '@/components/account-forms'
 import { Gate } from '@/components/account-gate'
 import { Notice } from '@/components/ui'
 
-export const metadata: Metadata = { title: 'Código' }
+export const metadata: Metadata = {
+  title: 'Código',
+  robots: { index: false, follow: false },
+}
 
 /**
  * O segundo tempo. O número vem do cookie do passo anterior — não da

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { sql } from '@/lib/db'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
@@ -33,10 +34,37 @@ type TeamRow = {
   avatar_url: string | null
 }
 
-export async function generateMetadata({ params }: Params) {
+/*
+ * O CARTÃO DESTA CASA
+ *
+ * Este é um dos dois endereços que a dona cola numa conversa. Quando o
+ * WhatsApp o abre para desenhar a pré-visualização, quem lê é um robô sem
+ * cookie — por isso o texto fica em português, como o do layout.
+ *
+ * A imagem não vem aqui: sobe do `opengraph-image.png` da raiz.
+ */
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { loja } = await params
   const unit = await getUnitBySlug(loja)
-  return { title: unit?.name ?? 'Loja' }
+  if (!unit) return { title: 'Loja' }
+
+  const place = unit.city ? `${unit.name} · ${unit.city}` : unit.name
+  const description = unit.address_line
+    ? `${unit.address_line}${unit.city ? `, ${unit.city}` : ''}. Marcação online, sem telefonemas.`
+    : 'Marcação online, sem telefonemas.'
+
+  return {
+    title: unit.name,
+    description,
+    alternates: { canonical: `/loja/${unit.slug}` },
+    openGraph: {
+      type: 'website',
+      title: place,
+      description,
+      url: `/loja/${unit.slug}`,
+    },
+    twitter: { card: 'summary_large_image', title: place, description },
+  }
 }
 
 /** Um endereço que se possa abrir no telemóvel e seguir a pé. */

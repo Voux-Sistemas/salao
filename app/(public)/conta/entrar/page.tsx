@@ -7,7 +7,10 @@ import { getDictionary } from '@/lib/i18n'
 import { PhoneForm } from '@/components/account-forms'
 import { Gate } from '@/components/account-gate'
 
-export const metadata: Metadata = { title: 'Entrar' }
+export const metadata: Metadata = {
+  title: 'Entrar',
+  robots: { index: false, follow: false },
+}
 
 /**
  * A porta da cliente: só o telefone. O telefone é a identidade, e a

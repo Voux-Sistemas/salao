@@ -150,6 +150,7 @@ export const pt = {
     unitClosed: 'A loja está fechada nesse horário.',
     nameRequired: 'Diga-nos o seu nome.',
     phoneInvalid: 'Esse número não parece válido.',
+    tooMany: 'Demasiados pedidos seguidos. Espere um pouco, por favor.',
     generic: 'Alguma coisa correu mal. Tente outra vez.',
   },
   account: {

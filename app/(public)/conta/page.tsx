@@ -21,7 +21,10 @@ import { Badge, ButtonLink, Eyebrow } from '@/components/ui'
 import { Monogram, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
 
-export const metadata: Metadata = { title: 'A minha conta' }
+export const metadata: Metadata = {
+  title: 'A minha conta',
+  robots: { index: false, follow: false },
+}
 
 /**
  * O QUE É DELA.

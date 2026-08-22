@@ -27,7 +27,12 @@ type Params = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-export const metadata = { title: 'Horários' }
+export const metadata = {
+  title: 'Horários',
+  // O dia escolhido está no endereço: cada visita tem o seu, e nenhum
+  // deles é uma página que valha a pena guardar num índice.
+  robots: { index: false, follow: false },
+}
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 

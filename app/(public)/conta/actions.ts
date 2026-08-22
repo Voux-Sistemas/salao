@@ -19,6 +19,7 @@ import { env, normalisePhone } from '@/lib/env'
 import { dictionaryFor, getDictionary } from '@/lib/i18n'
 import { isLanguage, LANGUAGE_COOKIE } from '@/lib/i18n/config'
 import { getOrg } from '@/lib/org'
+import { LIMITS, allowed, callerIp } from '@/lib/auth/throttle'
 
 /**
  * A PORTA DA CLIENTE.
@@ -41,6 +42,22 @@ export type AccountState = { error: string | null; done: string | null }
 async function generate(phone: string): Promise<void> {
   const org = await getOrg()
   if (!org) return
+
+  /*
+   * Travão. Sai por aqui em silêncio, sem dizer nada a quem pediu — a
+   * regra desta porta é responder sempre o mesmo, e um "excedeu o
+   * limite" seria a primeira resposta diferente das outras.
+   *
+   * Sair antes do `issueCode` tem uma vantagem que não é acaso: o
+   * código anterior continua válido. Quem carregou duas vezes sem
+   * querer não fica sem nada na mão.
+   */
+  const ip = await callerIp()
+  const [phoneOk, ipOk] = await Promise.all([
+    allowed('codigo', phone, LIMITS.issueCode),
+    allowed('codigo-ip', ip, LIMITS.issueCodeByIp),
+  ])
+  if (!phoneOk || !ipOk) return
 
   const client = await findByPhone(org.id, phone)
   if (!client) {
@@ -92,6 +109,12 @@ export async function verifyCodeAction(
 
   const org = await getOrg()
   if (!org) redirect('/')
+
+  // Cinco tentativas por código, mas um código novo renova as cinco.
+  // Este balde conta-as todas, venham do código que vierem.
+  if (!(await allowed('codigo-conf', phone, LIMITS.verifyCode))) {
+    return { error: dict.account.codeInvalid, done: null }
+  }
 
   const valid = await consumeCode('client_login', phone, code)
   if (!valid) return { error: dict.account.codeInvalid, done: null }

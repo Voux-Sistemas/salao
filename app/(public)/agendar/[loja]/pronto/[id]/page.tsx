@@ -11,7 +11,12 @@ import { formatPhone } from '@/lib/text'
 
 type Params = { params: Promise<{ loja: string; id: string }> }
 
-export const metadata = { title: 'Marcação feita' }
+export const metadata = {
+  // Este endereço tem o número de uma marcação de uma pessoa. É o único
+  // do sítio público que aponta para alguém em concreto — fora do índice.
+  title: 'Marcação feita',
+  robots: { index: false, follow: false },
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

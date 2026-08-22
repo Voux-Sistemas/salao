@@ -7,6 +7,10 @@ import { getOrg } from '@/lib/org'
 import { burnTime, hashPassword, passwordProblem, verifyPassword } from '@/lib/auth/password'
 import { createSession, destroyAllSessions, destroySession } from '@/lib/auth/session'
 import { consumeCode, issueCode } from '@/lib/auth/otp'
+import { LIMITS, allowed, callerIp } from '@/lib/auth/throttle'
+
+/** A mesma resposta para as três portas, para não dizer qual estourou. */
+const TOO_MANY = 'Demasiadas tentativas. Espere uns minutos e tente outra vez.'
 
 export type FormState = { error: string | null; done?: string | null }
 
@@ -24,6 +28,19 @@ export async function signInAction(
   if (!phone || !password) {
     return { error: 'Escreva o telemóvel e a palavra-passe.' }
   }
+
+  /*
+   * O `burnTime` abaixo faz com que errar demore o mesmo que acertar —
+   * mas demorar igual não impede ninguém de tentar outra vez. Dois
+   * baldes: um pelo telefone, que apanha quem martela uma conta; outro
+   * pelo endereço, que apanha quem varre a lista de telefones toda.
+   */
+  const ip = await callerIp()
+  const [phoneOk, ipOk] = await Promise.all([
+    allowed('entrar', phone, LIMITS.signIn),
+    allowed('entrar-ip', ip, LIMITS.signInByIp),
+  ])
+  if (!phoneOk || !ipOk) return { error: TOO_MANY }
 
   const org = await getOrg()
   if (!org) redirect('/comecar')
@@ -65,6 +82,15 @@ export async function requestResetAction(
   const email = String(form.get('email') ?? '').trim().toLowerCase()
   if (!email) return { error: 'Escreva o e-mail.' }
 
+  // Sem travão, este formulário era uma máquina de encher a caixa de
+  // correio de outra pessoa — e de gastar códigos até um acertar.
+  const ip = await callerIp()
+  const [emailOk, ipOk] = await Promise.all([
+    allowed('recuperar', email, LIMITS.issueCode),
+    allowed('recuperar-ip', ip, LIMITS.issueCodeByIp),
+  ])
+  if (!emailOk || !ipOk) return { error: TOO_MANY }
+
   const org = await getOrg()
   if (!org) redirect('/comecar')
 
@@ -104,6 +130,12 @@ export async function resetPasswordAction(
   if (password !== repeat) return { error: 'As palavras-passe não coincidem.' }
   const problem = passwordProblem(password)
   if (problem) return { error: problem }
+
+  // O código já só aceita cinco tentativas, mas pedir códigos novos
+  // renova essas cinco. Este balde conta as tentativas todas.
+  if (!(await allowed('recuperar-conf', email, LIMITS.verifyCode))) {
+    return { error: TOO_MANY }
+  }
 
   const org = await getOrg()
   if (!org) redirect('/comecar')

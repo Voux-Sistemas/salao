@@ -6,6 +6,7 @@ import { getDictionary, getLanguage } from '@/lib/i18n'
 import { normalisePhone } from '@/lib/env'
 import { parseCart } from '@/lib/cart'
 import { createAppointment, findOrCreateClient } from '@/lib/booking'
+import { LIMITS, allowed, callerIp } from '@/lib/auth/throttle'
 import { isoDay } from '@/lib/time'
 
 export type BookState = { error: string | null }
@@ -39,6 +40,20 @@ export async function bookAction(
   const startsAt = new Date(time)
   if (Number.isNaN(startsAt.getTime()) || cart.length === 0) {
     return { error: dict.errors.slotInvalid }
+  }
+
+  /*
+   * Travão. Marcar não pede senha nem código — basta um nome e um
+   * telefone escritos à mão. Sem limite, um guião enchia a agenda de
+   * amanhã inteira em segundos e a loja abria a portas fechadas.
+   *
+   * O balde é o do endereço porque o telefone aqui não prova nada:
+   * quem faz isto de propósito escreve um número diferente de cada vez.
+   * Doze marcações por hora do mesmo sítio chegam bem para uma família.
+   */
+  const ip = await callerIp()
+  if (!(await allowed('marcar-ip', ip, LIMITS.book))) {
+    return { error: dict.errors.tooMany }
   }
 
   const org = await requireOrg()

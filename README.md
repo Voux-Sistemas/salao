@@ -33,8 +33,8 @@ porta própria, com código, e vê só o que é dela.
 2. **Project Settings › Database › Connection string › URI** e copia a
    ligação do *pooler* em modo transacção (porta `6543`).
 3. Põe essa ligação no `.env` como `DATABASE_URL` e corre as migrações.
-   São sete ficheiros numerados em `supabase/migrations/`, do
-   `…120000_core.sql` ao `…120600_functions_and_rls.sql`:
+   São oito ficheiros numerados em `supabase/migrations/`, do
+   `…20260820120000_core.sql` ao `…20260822120000_rate_limit.sql`:
 
    ```bash
    npm run db:status    # o que falta aplicar
@@ -67,7 +67,7 @@ Git** — está no `.gitignore`, e o `.env.example` só tem marcadores.
 | `SESSION_SECRET` | Assina os cookies de sessão e os códigos. `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
 | `SETUP_CODE` | Protege o `/comecar`. Depois de existir dona, deixa de servir. |
 | `SUPPORT_PHONES` | Lista separada por vírgulas. Quem entrar com um destes números vê tudo. |
-| `NEXT_PUBLIC_SITE_URL` | Endereço público, usado nos links. |
+| `NEXT_PUBLIC_SITE_URL` | Endereço público. É a raiz dos links do WhatsApp, do `robots.txt`, do `sitemap.xml` e da imagem de partilha. |
 
 As mesmas cinco variáveis vão para o Netlify em **Site settings ›
 Environment variables**.
@@ -145,6 +145,33 @@ Mandar a confirmação **não é** a cliente confirmar.
 A superfície da cliente — montra, funil, área de conta — fala português,
 inglês e espanhol, escolhidos num selector que grava um cookie. **A área
 da equipa não se traduz.**
+
+### Quando algo corre mal
+
+Cada lado tem o seu ecrã: o público na língua da cliente e com a montra
+à volta, o do balcão em português e dentro do painel. Se nem o layout
+sobreviver, entra o `app/global-error.tsx` — esse desenha-se a si
+próprio, com as cores escritas à mão, porque a essa altura já não há
+folha de estilos.
+
+Uma página que não existe responde **404**, nunca «não tem
+permissão» — dizer isso confirmaria que a coisa existe, e a barra de
+endereço passaria a servir de mapa da rede.
+
+### O travão das portas públicas
+
+Entrar, pedir código, confirmar código e marcar têm limite de
+repetição. A contagem vive na base de dados (`rate_limit`), não na
+memória do servidor: em produção o servidor não é um só, e um contador
+em memória guardaria um processo e deixaria os outros de porta aberta.
+
+### O cartão do link
+
+`/loja/[loja]` e `/agendar/[loja]` — os dois endereços que se colam numa
+conversa — levam título, descrição e a imagem da casa. A imagem é
+`app/opengraph-image.png`, gerada por `npm run og:image` a partir do
+logotipo; está no repositório, não se constrói no Netlify. A área da
+equipa e os passos pessoais do funil ficam fora do índice.
 
 ---
 

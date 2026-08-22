@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import clsx from 'clsx'
@@ -43,10 +44,36 @@ type SkillRow = {
 
 type PriceRow = { ord: number; price_cents: number; duration_minutes: number }
 
-export async function generateMetadata({ params }: Params) {
+/*
+ * O outro endereço que se cola numa conversa — e o mais usado dos dois,
+ * porque é o que responde a «quero marcar». Mesma regra: quem lê a
+ * pré-visualização é um robô sem cookie, logo português.
+ *
+ * O passo seguinte (escolher hora) e o de confirmar já são pessoais e
+ * ficam fora do índice — ver o `robots` de cada um.
+ */
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { loja } = await params
   const unit = await getUnitBySlug(loja)
-  return { title: unit ? `Marcar · ${unit.name}` : 'Marcar' }
+  if (!unit) return { title: 'Marcar' }
+
+  const title = `Marcar · ${unit.name}`
+  const description = unit.city
+    ? `Escolha o serviço, a profissional e a hora em ${unit.city}. Confirmação imediata.`
+    : 'Escolha o serviço, a profissional e a hora. Confirmação imediata.'
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/agendar/${unit.slug}` },
+    openGraph: {
+      type: 'website',
+      title,
+      description,
+      url: `/agendar/${unit.slug}`,
+    },
+    twitter: { card: 'summary_large_image', title, description },
+  }
 }
 
 /**
