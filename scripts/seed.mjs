@@ -39,6 +39,16 @@ if (!url) {
   process.exit(1)
 }
 
+// Isto apaga tudo e põe um salão de mentira no lugar. Contra uma base
+// local é o que se quer; contra a Supabase seria trocar o salão a sério
+// por dois salões inventados em Lisboa. Fora de casa, nem por engano.
+const host = /@([^/:]+)/.exec(url)?.[1] ?? '?'
+if (!['localhost', '127.0.0.1', '::1'].includes(host)) {
+  console.error(`Este é o seed de DEMONSTRAÇÃO e ${host} não é a sua máquina.`)
+  console.error('Para semear o salão a sério use scripts/seed-real.mjs.')
+  process.exit(1)
+}
+
 const sql = postgres(url, { max: 1, prepare: false, connect_timeout: 20 })
 
 /** scrypt$N$r$p$salt$chave — mesmo formato de lib/auth/password.ts. */

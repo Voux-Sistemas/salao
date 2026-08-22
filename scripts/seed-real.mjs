@@ -48,6 +48,18 @@ if (!url) {
   process.exit(1)
 }
 
+// Este guião começa por um `truncate cascade`. Contra uma base local
+// isso é o que se quer; contra a Supabase é apagar o salão. Fora de
+// casa exige-se a intenção escrita, para não se perder um dia de
+// trabalho por causa de um .env trocado.
+const host = /@([^/:]+)/.exec(url)?.[1] ?? '?'
+const emCasa = ['localhost', '127.0.0.1', '::1'].includes(host)
+if (!emCasa && !process.argv.includes('--apagar-tudo')) {
+  console.error(`Isto APAGA tudo o que está em ${host} e semeia de novo.`)
+  console.error('Se é mesmo o que quer, repita com --apagar-tudo.')
+  process.exit(1)
+}
+
 const sql = postgres(url, { max: 1, prepare: false, connect_timeout: 20 })
 
 /** scrypt$N$r$p$salt$chave — mesmo formato de lib/auth/password.ts. */

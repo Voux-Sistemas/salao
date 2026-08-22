@@ -7,6 +7,10 @@ cliente marca sozinha.
 
 Next.js (App Router) · Postgres no Supabase, por SQL directo · Netlify.
 
+> **Chegou agora ao projecto?** [CONTINUAR.md](CONTINUAR.md) põe-no a
+> correr em vinte minutos, com o preçário verdadeiro e a agenda cheia,
+> e diz o que fazer a seguir.
+
 ---
 
 ## Quem usa, e o que vê
