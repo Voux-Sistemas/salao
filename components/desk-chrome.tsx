@@ -107,13 +107,17 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
 }
 
 /**
- * Hoje · Agenda · Avisos · Caixa · Clientes · Gestão. A profissional vê
- * só «A minha agenda»: sem caixa, sem clientes, sem gestão.
+ * Hoje · Agenda · Avisos · Caixa · Clientes · Gestão.
+ *
+ * A profissional vê duas portas: a agenda dela e os avisos das clientes
+ * que marcaram com ela. Sem caixa, sem clientes, sem gestão — e é este
+ * par que a barra do telemóvel mostra inteiro.
  */
 export function navFor(actor: Actor): NavItem[] {
   if (actor.role === 'professional') {
     return [
       { href: '/agenda', label: 'A minha agenda', short: 'Agenda', icon: 'agenda' },
+      { href: '/avisos', label: 'Os meus avisos', short: 'Avisos', icon: 'avisos' },
     ]
   }
 
@@ -134,11 +138,18 @@ export function navFor(actor: Actor): NavItem[] {
   return items
 }
 
-/** No fundo do telemóvel cabem cinco portas; os Avisos ficam para o ecrã largo. */
+/**
+ * No fundo do telemóvel cabem cinco portas. Quando são mais, os Avisos
+ * são os primeiros a sair — quem gere está ao balcão, num ecrã largo.
+ *
+ * Quando são menos, ficam todas: a profissional trabalha do telemóvel e
+ * é lá que ela avisa as clientes. Cortar-lhe os avisos era tirar-lhe
+ * metade do trabalho.
+ */
 function mobileNavFor(actor: Actor): NavItem[] {
-  return navFor(actor)
-    .filter((item) => item.href !== '/avisos')
-    .slice(0, 5)
+  const items = navFor(actor)
+  if (items.length <= 5) return items
+  return items.filter((item) => item.href !== '/avisos').slice(0, 5)
 }
 
 const ROLE_LABEL = {

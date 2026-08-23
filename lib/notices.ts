@@ -14,6 +14,9 @@ import { ROUTINES, type Routine } from '@/lib/whatsapp'
  * sair da fila — e é o registo, e só ele, que impede o aviso repetido.
  */
 
+/** Quem atende nesta marcação. É por aqui que a fila se reparte. */
+export type StaffRef = { id: string; name: string }
+
 export type NoticeRow = {
   appointment_id: string
   client_id: string
@@ -23,7 +26,7 @@ export type NoticeRow = {
   starts_at: Date
   status: Status
   services: string | null
-  staff_names: string | null
+  staff: StaffRef[]
 }
 
 /** Uma fila é para despachar à mão. Se passar disto, há outro problema. */
@@ -34,9 +37,25 @@ const WINBACK_DAYS = 30
 
 export type Queues = Record<Routine, NoticeRow[]>
 
-export async function loadQueues(unit: Unit, now = new Date()): Promise<Queues> {
+/**
+ * DE QUEM É A FILA.
+ *
+ * Quem avisa a cliente é quem lhe pega no cabelo. A profissional trata
+ * dos avisos de quem marcou com ela — conhece a conversa, sabe o que
+ * ficou combinado — e não vê os avisos das colegas. Com `staffId`, a
+ * fila só traz as marcações onde ela é quem atende.
+ *
+ * Sem `staffId` vem a casa toda: é o que a dona e a gerente veem, e é
+ * também a rede de segurança de quem faltou ao aviso.
+ */
+export type Scope = {
+  staffId?: string | null
+  now?: Date
+}
+
+export async function loadQueues(unit: Unit, scope: Scope = {}): Promise<Queues> {
   const lists = await Promise.all(
-    ROUTINES.map((routine) => loadQueue(unit, routine, now)),
+    ROUTINES.map((routine) => loadQueue(unit, routine, scope)),
   )
   const queues = {} as Queues
   ROUTINES.forEach((routine, index) => {
@@ -48,7 +67,7 @@ export async function loadQueues(unit: Unit, now = new Date()): Promise<Queues> 
 export async function loadQueue(
   unit: Unit,
   routine: Routine,
-  now = new Date(),
+  { staffId = null, now = new Date() }: Scope = {},
 ): Promise<NoticeRow[]> {
   const tz = unit.timezone
   const day = today(tz, now)
@@ -60,7 +79,7 @@ export async function loadQueue(
   switch (routine) {
     case 'confirm':
       return sql<NoticeRow[]>`
-        ${base(unit, routine)}
+        ${base(unit, routine, staffId)}
           and a.status in ('booked', 'confirmed')
           and a.starts_at >= ${now}
         order by a.starts_at
@@ -69,7 +88,7 @@ export async function loadQueue(
 
     case 'reminder_eve':
       return sql<NoticeRow[]>`
-        ${base(unit, routine)}
+        ${base(unit, routine, staffId)}
           and a.status in ('booked', 'confirmed')
           and (a.starts_at at time zone ${tz})::date = ${tomorrow}::date
         order by a.starts_at
@@ -78,7 +97,7 @@ export async function loadQueue(
 
     case 'reminder_today':
       return sql<NoticeRow[]>`
-        ${base(unit, routine)}
+        ${base(unit, routine, staffId)}
           and a.status in ('booked', 'confirmed')
           and (a.starts_at at time zone ${tz})::date = ${day}::date
           and a.starts_at >= ${now}
@@ -88,7 +107,7 @@ export async function loadQueue(
 
     case 'review':
       return sql<NoticeRow[]>`
-        ${base(unit, routine)}
+        ${base(unit, routine, staffId)}
           and a.status = 'completed'
           and (a.starts_at at time zone ${tz})::date = ${yesterday}::date
         order by a.starts_at
@@ -98,7 +117,7 @@ export async function loadQueue(
     case 'winback':
       // Quem faltou ou cancelou e ainda não voltou a marcar nada.
       return sql<NoticeRow[]>`
-        ${base(unit, routine)}
+        ${base(unit, routine, staffId)}
           and a.status in ('no_show', 'cancelled_by_client')
           and a.starts_at < ${now}
           and (a.starts_at at time zone ${tz})::date >= ${addDays(day, -WINBACK_DAYS)}::date
@@ -124,7 +143,7 @@ export async function loadQueue(
  * na altura — e nas outras sai a tradução da ficha, com o congelado
  * como rede quando ainda ninguém a escreveu.
  */
-function base(unit: Unit, routine: Routine) {
+function base(unit: Unit, routine: Routine, staffId: string | null) {
   return sql`
     select a.id as appointment_id, a.client_id,
            c.name as client_name, c.phone as client_phone,
@@ -137,16 +156,25 @@ function base(unit: Unit, routine: Routine) {
               from appointment_item i
               join service sv on sv.id = i.service_id
              where i.appointment_id = a.id) as services,
-           (select string_agg(distinct s.name, ', ' order by s.name)
+           (select coalesce(
+                     jsonb_agg(distinct jsonb_build_object('id', s.id, 'name', s.name)),
+                     '[]'::jsonb)
               from appointment_item i
               join staff s on s.id = i.staff_id
-             where i.appointment_id = a.id) as staff_names
+             where i.appointment_id = a.id) as staff
       from appointment a
       join client c on c.id = a.client_id
      where a.unit_id = ${unit.id}
        and not exists (
          select 1 from notification_log n
           where n.appointment_id = a.id and n.routine = ${routine}
+       )
+       and (
+         ${staffId}::uuid is null
+         or exists (
+           select 1 from appointment_item i
+            where i.appointment_id = a.id and i.staff_id = ${staffId}
+         )
        )
   `
 }

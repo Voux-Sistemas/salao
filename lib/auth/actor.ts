@@ -130,7 +130,7 @@ export function homeFor(actor: Actor): string {
   return actor.role === 'professional' ? '/agenda' : '/'
 }
 
-/** Painel, avisos, caixa, clientes, gestão: tudo acima de profissional. */
+/** Painel, caixa, clientes, gestão: tudo acima de profissional. */
 export async function requireManagement(): Promise<Actor> {
   const actor = await requireActor()
   if (actor.role === 'professional') redirect('/agenda')
@@ -150,6 +150,20 @@ export async function requireOrgScope(): Promise<Actor> {
 
 export function canSeeUnit(actor: Actor, unitId: string): boolean {
   return actor.orgScope || actor.unitIds.includes(unitId)
+}
+
+/**
+ * OS AVISOS DE QUEM.
+ *
+ * Avisar a cliente é trabalho de quem a vai atender: é ela que conhece
+ * a conversa e é a ela que a cliente responde. A profissional vê a fila
+ * das marcações onde é ela quem atende, e mais nenhuma.
+ *
+ * Acima dela a fila é da casa toda — a dona e a gerente veem tudo, e
+ * também podem enviar. `null` quer dizer "sem filtro".
+ */
+export function noticesStaffId(actor: Actor): string | null {
+  return actor.role === 'professional' ? actor.id : null
 }
 
 /**
@@ -191,7 +205,9 @@ export const can = {
   seeDashboard: (a: Actor) => a.role !== 'professional',
   seeCash: (a: Actor) => a.role !== 'professional',
   seeClients: (a: Actor) => a.role !== 'professional',
-  seeNotices: (a: Actor) => a.role !== 'professional',
+  /* Toda a gente avisa — mas a profissional só vê as clientes dela.
+     Quem corta a fila é o `noticesStaffId`, não este portão. */
+  seeNotices: (_a: Actor) => true,
   manageTeam: (a: Actor) => a.role !== 'professional',
   manageCatalog: (a: Actor) => a.orgScope && a.role !== 'manager',
   manageUnits: (a: Actor) => a.orgScope && a.role !== 'manager',

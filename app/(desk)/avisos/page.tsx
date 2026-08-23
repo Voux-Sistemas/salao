@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import { requireManagement, unitsFor } from '@/lib/auth/actor'
+import { noticesStaffId, requireActor, unitsFor } from '@/lib/auth/actor'
 import { loadQueue } from '@/lib/notices'
 import { Empty } from '@/components/ui'
 import { StoreChooser } from '@/components/store-chooser'
@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: 'Avisos' }
 
 /** O ecrã sem loja é um seletor, não um ecrã vazio. */
 export default async function AvisosChooser() {
-  const actor = await requireManagement()
+  const actor = await requireActor()
+  const staffId = noticesStaffId(actor)
   const units = await unitsFor(actor)
 
   const only = units[0]
@@ -28,14 +29,18 @@ export default async function AvisosChooser() {
 
   /* A fila de amanhã, por casa — é o aviso que mais evita faltas. */
   const reminders = await Promise.all(
-    units.map((unit) => loadQueue(unit, 'reminder_eve')),
+    units.map((unit) => loadQueue(unit, 'reminder_eve', { staffId })),
   )
 
   return (
     <StoreChooser
       eyebrow="Avisos"
       title="Que loja?"
-      hint="O sistema nunca envia nada sozinho — prepara a mensagem e uma pessoa carrega no botão. Cada loja tem a sua fila."
+      hint={
+        staffId
+          ? 'As suas clientes, casa a casa. O sistema nunca envia nada sozinho — prepara a mensagem e é você que carrega no botão.'
+          : 'O sistema nunca envia nada sozinho — prepara a mensagem e uma pessoa carrega no botão. Cada loja tem a sua fila.'
+      }
       cta="Ver a fila"
       stores={units.map((unit, index) => {
         const pending = reminders[index]?.length ?? 0
