@@ -92,6 +92,73 @@ export async function revenueByDay(
 }
 
 // ---------------------------------------------------------------------
+// A forma das seis semanas — uma linha por indicador
+// ---------------------------------------------------------------------
+
+export type KpiTrends = {
+  /** Os mesmos 42 dias de `revenueByDay`, do mais antigo até hoje. */
+  days: IsoDay[]
+  revenue: Cents[]
+  completed: number[]
+  no_shows: number[]
+}
+
+/**
+ * O mesmo período do gráfico grande, mas somado à rede inteira e sem
+ * separar por casa: é isto que dá a linha fininha por baixo de cada
+ * indicador do mês. Um número sozinho não diz se está a subir ou a
+ * cair — a seta diz para onde, a linha diz por que caminho lá chegou.
+ */
+export async function kpiTrends(
+  orgId: string,
+  timezone: string,
+): Promise<KpiTrends> {
+  const last = today(timezone)
+  const days = isoRange(addDays(last, -41), 42)
+  const from = dayStart(days[0]!, timezone)
+  const to = dayEnd(last, timezone)
+
+  const [payRows, apptRows] = await Promise.all([
+    sql<{ day: string; total_cents: number }[]>`
+      select to_char(p.received_at at time zone ${timezone}, 'YYYY-MM-DD') as day,
+             sum(p.amount_cents)::int as total_cents
+        from payment p
+        join unit u on u.id = p.unit_id
+       where u.org_id = ${orgId}
+         and p.received_at >= ${from} and p.received_at < ${to}
+       group by day
+    `,
+    sql<{ day: string; completed: number; no_shows: number }[]>`
+      select to_char(a.starts_at at time zone ${timezone}, 'YYYY-MM-DD') as day,
+             count(*) filter (where a.status = 'completed')::int as completed,
+             count(*) filter (where a.status = 'no_show')::int as no_shows
+        from appointment a
+       where a.org_id = ${orgId}
+         and a.starts_at >= ${from} and a.starts_at < ${to}
+       group by day
+    `,
+  ])
+
+  const index = new Map(days.map((day, i) => [day, i]))
+  const revenue: Cents[] = days.map(() => 0)
+  const completed: number[] = days.map(() => 0)
+  const noShows: number[] = days.map(() => 0)
+
+  for (const row of payRows) {
+    const i = index.get(row.day)
+    if (i !== undefined) revenue[i] = row.total_cents
+  }
+  for (const row of apptRows) {
+    const i = index.get(row.day)
+    if (i === undefined) continue
+    completed[i] = row.completed
+    noShows[i] = row.no_shows
+  }
+
+  return { days, revenue, completed, no_shows: noShows }
+}
+
+// ---------------------------------------------------------------------
 // KPIs do mês — corrente contra anterior
 // ---------------------------------------------------------------------
 
@@ -240,6 +307,52 @@ export async function topServices(
        and a.starts_at >= ${from} and a.starts_at < ${to}
      group by i.service_name
      order by revenue_cents desc, times desc
+     limit ${limit}
+  `
+}
+
+// ---------------------------------------------------------------------
+// Produção da equipa — quem fez quanto, nas mesmas seis semanas
+// ---------------------------------------------------------------------
+
+export type StaffProduction = {
+  staff_id: string
+  name: string
+  revenue_cents: Cents
+  /** Serviços feitos — linhas de comanda, não marcações. */
+  times: number
+  clients: number
+}
+
+/**
+ * A outra cara das comissões: ali vê-se o que se deve a cada uma, aqui
+ * o que cada uma trouxe. Conta-se pelo preço congelado de cada serviço,
+ * atribuído a quem o fez — uma marcação com duas profissionais conta
+ * para as duas, cada uma pela sua parte, que é como a comissão também
+ * se calcula.
+ */
+export async function staffProduction(
+  orgId: string,
+  timezone: string,
+  limit = 8,
+): Promise<StaffProduction[]> {
+  const last = today(timezone)
+  const from = dayStart(addDays(last, -41), timezone)
+  const to = dayEnd(last, timezone)
+
+  return sql<StaffProduction[]>`
+    select i.staff_id, s.name,
+           sum(i.price_cents)::int as revenue_cents,
+           count(*)::int as times,
+           count(distinct a.client_id)::int as clients
+      from appointment_item i
+      join appointment a on a.id = i.appointment_id
+      join staff s on s.id = i.staff_id
+     where a.org_id = ${orgId}
+       and a.status = 'completed'
+       and a.starts_at >= ${from} and a.starts_at < ${to}
+     group by i.staff_id, s.name
+     order by revenue_cents desc, s.name
      limit ${limit}
   `
 }

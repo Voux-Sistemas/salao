@@ -4,20 +4,32 @@ import { can, requireManagement, type Actor } from '@/lib/auth/actor'
 import { sql } from '@/lib/db'
 import {
   commissionStandings,
+  kpiTrends,
   monthKpis,
   revenueByDay,
+  staffProduction,
   todayByUnit,
   topServices,
 } from '@/lib/dashboard'
 import { formatCents } from '@/lib/money'
 import { requireOrg } from '@/lib/org'
-import { dayStart, formatDayLong, formatTime, today } from '@/lib/time'
+import {
+  dayStart,
+  formatDayLong,
+  formatDayShort,
+  formatTime,
+  today,
+} from '@/lib/time'
 import {
   ChartLegend,
   Delta,
   RevenueChart,
   ServiceBars,
+  Sparkline,
+  WeekBars,
   type SeriesTone,
+  type SparkTone,
+  type Week,
 } from '@/components/charts'
 import { Card, Empty } from '@/components/ui'
 
@@ -62,11 +74,13 @@ export default async function AdminPage() {
   const org = await requireOrg()
   const tz = org.timezone
 
-  const [history, kpis, services, standings, unitsToday, total] =
+  const [history, trends, kpis, services, team, standings, unitsToday, total] =
     await Promise.all([
       revenueByDay(actor.orgId, tz),
+      kpiTrends(actor.orgId, tz),
       monthKpis(actor.orgId, tz),
-      topServices(actor.orgId, tz),
+      topServices(actor.orgId, tz, 8),
+      staffProduction(actor.orgId, tz),
       commissionStandings(actor.orgId),
       todayByUnit(actor.orgId, tz),
       counts(actor),
@@ -83,6 +97,39 @@ export default async function AdminPage() {
     values: unit.values,
     tone: TONES[i % TONES.length]!,
   }))
+
+  // A base da taxa de faltas: quem apareceu mais quem faltou. É a mesma
+  // conta que o número grande faz, mas dia a dia.
+  const attempts = trends.completed.map(
+    (done, i) => done + (trends.no_shows[i] ?? 0),
+  )
+
+  // As seis semanas partidas em seis barras — o gráfico do telemóvel.
+  const weeks: Week[] = Array.from(
+    { length: Math.floor(history.days.length / 7) },
+    (_, w) => {
+      const from = w * 7
+      const first = history.days[from]
+      const last = history.days[from + 6]
+      return {
+        label:
+          first && last
+            ? `${formatDayShort(first, tz)} – ${formatDayShort(last, tz)}`
+            : `Semana ${w + 1}`,
+        parts: history.units.map((unit, i) => ({
+          name: unit.name,
+          tone: TONES[i % TONES.length]!,
+          value_cents: unit.values
+            .slice(from, from + 7)
+            .reduce((sum, v) => sum + v, 0),
+        })),
+      }
+    },
+  )
+
+  // Oito serviços em duas colunas: a lista fica com quatro linhas de
+  // altura em vez de oito, e vê-se toda de uma vez.
+  const half = Math.ceil(services.length / 2)
 
   const pendingStaff = standings.filter((s) => s.pending_cents > 0)
   const pendingTotal = pendingStaff.reduce((sum, s) => sum + s.pending_cents, 0)
@@ -114,6 +161,8 @@ export default async function AdminPage() {
               />
             }
             versus={prevName}
+            spark={rolling(trends.revenue)}
+            sparkLabel="Faturação nas últimas seis semanas"
           />
           <Kpi
             label="Marcações concluídas"
@@ -125,6 +174,8 @@ export default async function AdminPage() {
               />
             }
             versus={prevName}
+            spark={rolling(trends.completed)}
+            sparkLabel="Marcações concluídas nas últimas seis semanas"
           />
           <Kpi
             label="Ticket médio"
@@ -140,6 +191,8 @@ export default async function AdminPage() {
               />
             }
             versus={prevName}
+            spark={rollingRatio(trends.revenue, trends.completed)}
+            sparkLabel="Ticket médio nas últimas seis semanas"
           />
           <Kpi
             label="Taxa de no-show"
@@ -153,8 +206,14 @@ export default async function AdminPage() {
               />
             }
             versus={prevName}
+            spark={rollingRatio(trends.no_shows, attempts)}
+            sparkTone="quiet"
+            sparkLabel="Taxa de faltas nas últimas seis semanas"
           />
         </div>
+        <p className="mt-2 text-[0.75rem] text-[var(--ink-faint)]">
+          Cada linha é a média de sete dias, ao longo de seis semanas.
+        </p>
       </section>
 
       {/* --- a faturação, dia a dia --------------------------------- */}
@@ -175,46 +234,49 @@ export default async function AdminPage() {
               }))}
             />
           </div>
-          <RevenueChart
-            days={history.days}
-            series={chartSeries}
-            timezone={tz}
-          />
+          {/* O mesmo período, dois desenhos: a linha diária a partir do
+              tablet, as seis semanas em barras no telemóvel. Trocar por
+              CSS e não por JavaScript deixa os dois desenhados no
+              servidor — a página não pisca ao abrir. */}
+          <div className="hidden sm:block">
+            <RevenueChart
+              days={history.days}
+              series={chartSeries}
+              timezone={tz}
+            />
+          </div>
+          <div className="sm:hidden">
+            <WeekBars weeks={weeks} />
+          </div>
         </Card>
       </section>
 
-      {/* --- serviços que rendem · comissões que esperam ------------ */}
-      <section
-        aria-label="Serviços e comissões"
-        className="grid gap-3 lg:grid-cols-2"
-      >
-        <Card className="px-5 py-5 sm:px-6">
-          {/* `flex-wrap`: no telemóvel o título em versaletes e o período
-              não cabem lado a lado — partiam-se os dois ao meio e ficavam
-              quatro tiras entrelaçadas. Assim o período desce inteiro. */}
+      {/* --- a equipa: o que trouxe · o que se lhe deve ------------- */}
+      <section aria-label="Equipa" className="grid gap-3 lg:grid-cols-2">
+        <Card className="min-w-0 px-5 py-5 sm:px-6">
           <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 className="eyebrow">Top serviços por receita</h2>
+            <h2 className="eyebrow">Produção por profissional</h2>
             <p className="text-[0.75rem] text-[var(--ink-faint)]">
               seis semanas · concluídas
             </p>
           </div>
-          {services.length === 0 ? (
+          {team.length === 0 ? (
             <Empty
               title="Ainda sem histórico"
-              hint="Assim que houver comandas fechadas, os serviços que mais rendem aparecem aqui."
+              hint="Assim que houver comandas fechadas, vê-se aqui quanto cada uma trouxe."
             />
           ) : (
             <ServiceBars
-              items={services.map((s) => ({
-                name: s.service_name,
-                value_cents: s.revenue_cents,
-                detail: `× ${s.times}`,
+              items={team.map((person) => ({
+                name: person.name,
+                value_cents: person.revenue_cents,
+                detail: `${person.clients} client${person.clients === 1 ? 'e' : 'es'} · ${person.times} serviço${person.times === 1 ? '' : 's'}`,
               }))}
             />
           )}
         </Card>
 
-        <Card className="flex flex-col px-5 py-5 sm:px-6">
+        <Card className="flex min-w-0 flex-col px-5 py-5 sm:px-6">
           <div className="mb-4 flex items-baseline justify-between gap-4">
             <h2 className="eyebrow">Comissões por pagar</h2>
             <Link
@@ -268,6 +330,54 @@ export default async function AdminPage() {
         </Card>
       </section>
 
+      {/* --- os serviços que rendem --------------------------------- */}
+      <section aria-label="Serviços que mais rendem">
+        <Card className="px-5 py-5 sm:px-6">
+          {/* `flex-wrap`: no telemóvel o título em versaletes e o período
+              não cabem lado a lado — partiam-se os dois ao meio e ficavam
+              quatro tiras entrelaçadas. Assim o período desce inteiro. */}
+          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 className="eyebrow">Top serviços por receita</h2>
+            <p className="text-[0.75rem] text-[var(--ink-faint)]">
+              seis semanas · concluídas
+            </p>
+          </div>
+          {services.length === 0 ? (
+            <Empty
+              title="Ainda sem histórico"
+              hint="Assim que houver comandas fechadas, os serviços que mais rendem aparecem aqui."
+            />
+          ) : (
+            <div className="grid gap-x-10 gap-y-4 sm:grid-cols-2">
+              {/* `min-w-0`: por omissão uma célula de grelha não encolhe
+                  abaixo do conteúdo, e «Balayage / Babylights / Ombré ·
+                  cabelo comprido» empurrava a lista para fora do cartão —
+                  com a página inteira a ganhar rolagem lateral. */}
+              <div className="min-w-0">
+                <ServiceBars
+                  items={services.slice(0, half).map((s) => ({
+                    name: s.service_name,
+                    value_cents: s.revenue_cents,
+                    detail: `× ${s.times}`,
+                  }))}
+                />
+              </div>
+              {services.length > half ? (
+                <div className="min-w-0">
+                  <ServiceBars
+                    items={services.slice(half).map((s) => ({
+                      name: s.service_name,
+                      value_cents: s.revenue_cents,
+                      detail: `× ${s.times}`,
+                    }))}
+                  />
+                </div>
+              ) : null}
+            </div>
+          )}
+        </Card>
+      </section>
+
       {/* --- o dia, casa a casa ------------------------------------- */}
       <section aria-label="Resumo de hoje">
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
@@ -297,7 +407,7 @@ export default async function AdminPage() {
                 </p>
               ) : (
                 <>
-                  <div className="mb-4 flex items-baseline justify-between gap-4">
+                  <div className="mb-2.5 flex items-baseline justify-between gap-4">
                     <p className="text-[0.8125rem] text-[var(--ink-muted)]">
                       {unit.total} marcaç{unit.total === 1 ? 'ão' : 'ões'}
                       {unit.next_at
@@ -309,6 +419,23 @@ export default async function AdminPage() {
                     <p className="tabular shrink-0 text-sm text-[var(--ink)]">
                       {formatCents(unit.revenue_cents)}
                     </p>
+                  </div>
+                  {/* Quanto do dia já passou, sem ser pelas horas: o que
+                      está feito, o que está a acontecer, e o resto. */}
+                  <div
+                    aria-hidden
+                    className="mb-4 flex h-[5px] w-full gap-px rounded-full bg-[var(--surface-sunken)]"
+                  >
+                    <span
+                      className="h-full rounded-full bg-[var(--accent)]"
+                      style={{
+                        width: `${(unit.completed / unit.total) * 100}%`,
+                      }}
+                    />
+                    <span
+                      className="h-full rounded-full bg-[var(--gold)]"
+                      style={{ width: `${(unit.active / unit.total) * 100}%` }}
+                    />
                   </div>
                   {/* Quatro numa linha só a partir do tablet: a 390 as
                       etiquetas ("CONCLUÍDAS") encostam-se umas às outras. */}
@@ -330,26 +457,39 @@ export default async function AdminPage() {
       </section>
 
       {/* --- as portas da gestão ------------------------------------ */}
-      <nav
-        aria-label="Atalhos de gestão"
-        className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-t border-[var(--line-soft)] pt-4 text-[0.8125rem]"
-      >
-        <Shortcut
-          href="/admin/unidades"
-          label="Unidades"
-          value={`${total.units} loja${total.units === 1 ? '' : 's'}`}
-        />
-        <Shortcut
-          href="/admin/servicos"
-          label="Serviços"
-          value={`${total.services} no catálogo`}
-        />
-        <Shortcut
-          href="/admin/equipe"
-          label="Equipa"
-          value={`${total.staff} pessoa${total.staff === 1 ? '' : 's'}`}
-        />
-      </nav>
+      <section aria-label="Gerir">
+        <h2 className="eyebrow mb-2">Gerir</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Tile
+            href="/admin/unidades"
+            title="Unidades"
+            value={`${total.units} loja${total.units === 1 ? '' : 's'}`}
+            hint="Horário, feriados e regras de marcação."
+          />
+          <Tile
+            href="/admin/servicos"
+            title="Serviços"
+            value={`${total.services} no catálogo`}
+            hint="Preço, duração e nomes nas outras línguas."
+          />
+          <Tile
+            href="/admin/equipe"
+            title="Equipa"
+            value={`${total.staff} pessoa${total.staff === 1 ? '' : 's'}`}
+            hint="Papéis, lojas, habilidades e ausências."
+          />
+          <Tile
+            href="/admin/comissoes"
+            title="Comissões"
+            value={
+              total.pending_cents > 0
+                ? formatCents(total.pending_cents)
+                : 'Tudo em dia'
+            }
+            hint="Fechar o que está à espera de pagamento."
+          />
+        </div>
+      </section>
     </div>
   )
 }
@@ -366,23 +506,68 @@ function formatRate(rate: number | null): string {
   }).format(rate)
 }
 
+/**
+ * Média móvel de sete dias. A linha crua de um salão é um serrote —
+ * segunda fechada, sábado a abarrotar — e nesse desenho não se vê
+ * tendência nenhuma, vê-se o calendário. A janela de uma semana tira o
+ * dia-da-semana da conta e deixa ficar o que interessa.
+ */
+function rolling(values: number[], window = 7): number[] {
+  const out: number[] = []
+  let sum = 0
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i] ?? 0
+    if (i >= window) sum -= values[i - window] ?? 0
+    out.push(sum / Math.min(i + 1, window))
+  }
+  return out
+}
+
+/**
+ * O mesmo, para os indicadores que são uma divisão — ticket médio, taxa
+ * de faltas. Somam-se os dois lados dentro da janela e divide-se no
+ * fim: fazer a média das razões diárias dava o mesmo peso a um dia de
+ * duas marcações e a um sábado de trinta.
+ */
+function rollingRatio(top: number[], bottom: number[], window = 7): number[] {
+  const out: number[] = []
+  let a = 0
+  let b = 0
+  for (let i = 0; i < top.length; i++) {
+    a += top[i] ?? 0
+    b += bottom[i] ?? 0
+    if (i >= window) {
+      a -= top[i - window] ?? 0
+      b -= bottom[i - window] ?? 0
+    }
+    out.push(b > 0 ? a / b : 0)
+  }
+  return out
+}
+
 function Kpi({
   label,
   value,
   delta,
   versus,
+  spark,
+  sparkTone = 'accent',
+  sparkLabel,
 }: {
   label: string
   value: string
   delta: React.ReactNode
   versus: string
+  spark: number[]
+  sparkTone?: SparkTone
+  sparkLabel: string
 }) {
   return (
     // O número encosta ao fundo do cartão em vez de seguir o rótulo. Lado
     // a lado, «Marcações concluídas» ocupa duas linhas e «Faturação» uma —
     // e os dois números apareciam a alturas diferentes, como se um deles
     // tivesse escorregado. Encostados em baixo, ficam na mesma linha.
-    <Card className="flex h-full flex-col px-4 py-4">
+    <Card className="flex h-full flex-col px-4 pt-4">
       <p className="eyebrow mb-2.5">{label}</p>
       <div className="mt-auto">
         <p className="display tabular text-[1.6875rem] leading-none text-[var(--ink)]">
@@ -392,6 +577,11 @@ function Kpi({
           {delta}
           <span>vs {versus}</span>
         </p>
+      </div>
+      {/* A linha sangra até aos bordos e assenta no fio de baixo: é o
+          chão do número, não mais uma coisa a competir com ele. */}
+      <div className="-mx-4 mt-3.5">
+        <Sparkline values={spark} tone={sparkTone} label={sparkLabel} />
       </div>
     </Card>
   )
@@ -421,28 +611,6 @@ function MiniStat({
         {label}
       </dt>
     </div>
-  )
-}
-
-function Shortcut({
-  href,
-  label,
-  value,
-}: {
-  href: string
-  label: string
-  value: string
-}) {
-  return (
-    <Link
-      href={href}
-      className="group text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
-    >
-      <span className="transition-colors group-hover:text-[var(--accent)]">
-        {label}
-      </span>
-      <span className="ml-1.5 text-[var(--ink-faint)]">{value}</span>
-    </Link>
   )
 }
 

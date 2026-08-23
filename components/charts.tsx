@@ -330,6 +330,61 @@ export function ChartLegend({
 }
 
 // ---------------------------------------------------------------------
+// Semanas empilhadas — a mesma faturação, do tamanho de um telemóvel
+// ---------------------------------------------------------------------
+
+export type Week = {
+  label: string
+  parts: { name: string; tone: SeriesTone; value_cents: Cents }[]
+}
+
+/**
+ * A 390 pixéis, a linha diária são 42 pontos espremidos e as datas do
+ * eixo ficam do tamanho de um alfinete — o desenho continua lá, a
+ * leitura é que desaparece. Seis semanas em seis barras dizem a mesma
+ * coisa e lêem-se de relance; cada barra reparte-se pelas casas, com
+ * as mesmas cores da legenda que está por cima.
+ *
+ * As barras comparam-se entre si (a maior semana enche a linha), não
+ * com uma escala em euros: o número exacto está escrito ao lado.
+ */
+export function WeekBars({ weeks }: { weeks: Week[] }) {
+  const totals = weeks.map((w) =>
+    w.parts.reduce((sum, p) => sum + p.value_cents, 0),
+  )
+  const max = Math.max(1, ...totals)
+
+  return (
+    <ol className="space-y-3.5">
+      {weeks.map((week, i) => (
+        <li key={week.label}>
+          <div className="mb-1.5 flex items-baseline justify-between gap-3">
+            <span className="tabular text-[0.75rem] text-[var(--ink-muted)]">
+              {week.label}
+            </span>
+            <span className="tabular text-[0.8125rem] text-[var(--ink)]">
+              {formatCents(totals[i] ?? 0)}
+            </span>
+          </div>
+          <div className="flex h-[6px] w-full gap-px rounded-full bg-[var(--surface-sunken)]">
+            {week.parts.map((part) => (
+              <span
+                key={part.name}
+                className="h-full rounded-full"
+                style={{
+                  width: `${(part.value_cents / max) * 100}%`,
+                  background: STROKE[part.tone],
+                }}
+              />
+            ))}
+          </div>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+// ---------------------------------------------------------------------
 // Barras horizontais finas — top serviços por receita
 // ---------------------------------------------------------------------
 
@@ -367,6 +422,86 @@ export function ServiceBars({
         </li>
       ))}
     </ol>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Linha fininha — a forma de um indicador, sem eixos nem números
+// ---------------------------------------------------------------------
+
+export type SparkTone = 'accent' | 'gold' | 'quiet'
+
+const SPARK: Record<SparkTone, string> = {
+  accent: 'var(--accent)',
+  gold: 'color-mix(in srgb, var(--gold) 88%, var(--ink))',
+  quiet: 'var(--ink-faint)',
+}
+
+/**
+ * Uma linha do tamanho de uma palavra, encostada ao fundo do cartão,
+ * por baixo do número grande. Não tem escala nem legenda de propósito:
+ * nela não se lê um valor, lê-se o caminho — subiu, caiu, ou andou
+ * sempre à mesma altura.
+ *
+ * O desenho estica-se à largura do cartão (`preserveAspectRatio="none"`)
+ * e o traço não engorda com ele — é o que faz `vector-effect`.
+ */
+export function Sparkline({
+  values,
+  tone = 'accent',
+  label,
+}: {
+  values: number[]
+  tone?: SparkTone
+  /** Para quem ouve a página: o que é esta linha. */
+  label: string
+}) {
+  const n = values.length
+  if (n < 2) return null
+
+  const w = 240
+  const h = 40
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  // Tudo igual (ou tudo a zero) desenha-se direitinho em baixo: uma
+  // linha reta é a leitura certa de «não se mexeu».
+  const span = max - min || 1
+  const x = (i: number) => (i * w) / (n - 1)
+  const y = (v: number) => h - 2 - ((v - min) / span) * (h - 8)
+
+  const line = values
+    .map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+    .join(' ')
+  const area = `${line} L${w},${h} L0,${h} Z`
+
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={label}
+      className="block h-9 w-full"
+    >
+      <defs>
+        <linearGradient id={`dv-spark-${tone}`} x1="0" y1="0" x2="0" y2="1">
+          <stop
+            offset="0"
+            style={{ stopColor: SPARK[tone], stopOpacity: 0.22 }}
+          />
+          <stop offset="1" style={{ stopColor: SPARK[tone], stopOpacity: 0 }} />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#dv-spark-${tone})`} />
+      <path
+        d={line}
+        fill="none"
+        stroke={SPARK[tone]}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   )
 }
 
