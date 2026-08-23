@@ -452,7 +452,7 @@ export function AgendaList({
               <span className="block truncate text-[0.9375rem] font-medium text-[var(--ink)]">
                 {card.clientName}
               </span>
-              <span className="mt-0.5 block truncate text-[0.8125rem] text-[var(--ink-muted)]">
+              <span className="mt-0.5 line-clamp-2 text-[0.8125rem] text-[var(--ink-muted)]">
                 {card.services}
               </span>
               <span className="mt-2 flex flex-wrap items-center gap-1.5">

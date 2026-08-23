@@ -352,7 +352,7 @@ function NoticeLine({
             </Badge>
           ) : null}
         </div>
-        <p className="truncate text-[0.75rem] text-[var(--ink-muted)]">
+        <p className="line-clamp-2 text-[0.75rem] text-[var(--ink-muted)]">
           {services || 'Sem serviços'}
           {staff ? ` · ${staff}` : ''}
         </p>
