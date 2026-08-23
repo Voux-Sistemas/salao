@@ -19,7 +19,7 @@ import {
 } from '@/lib/cart'
 import { ButtonLink, Eyebrow, Notice } from '@/components/ui'
 import { FunnelShell, MobileVisitBar } from '@/components/funnel-shell'
-import { Reveal } from '@/components/reveal'
+import { CollapseGroup } from '@/components/collapse-group'
 
 type Params = {
   params: Promise<{ loja: string }>
@@ -206,107 +206,119 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
 
       <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_19rem]">
         {/* ------------------------------------------------ catálogo --- */}
-        <div className="space-y-14">
-          {[...categories.values()].map((category, groupIndex) => (
-            <Reveal key={category.name} delay={groupIndex * 60}>
-              <section>
-                <div className="flex items-baseline gap-4">
-                  <h2 className="display text-xl text-[var(--accent)]">
-                    {category.name}
-                  </h2>
-                  <span className="h-px flex-1 bg-[var(--line-soft)]" />
-                  <span className="tabular text-[0.6875rem] text-[var(--ink-faint)]">
-                    {String(groupIndex + 1).padStart(2, '0')}
-                  </span>
-                </div>
+        <div className="space-y-10 sm:space-y-14">
+          {[...categories.values()].map((category, groupIndex) => {
+            // Categoria onde já se escolheu alguma coisa chega aberta:
+            // fechá-la era esconder da cliente a escolha que ela fez.
+            const anyChosen = category.services.some((service) =>
+              clean.some((line) => line.serviceId === service.id),
+            )
+            return (
+              <CollapseGroup
+                key={category.name}
+                title={category.name}
+                count={category.services.length}
+                ordinal={String(groupIndex + 1).padStart(2, '0')}
+                defaultOpen={anyChosen}
+                delay={groupIndex * 60}
+              >
+                {category.services.map((service) => {
+                  const chosenAt = clean.findIndex(
+                    (line) => line.serviceId === service.id,
+                  )
+                  const chosen = chosenAt >= 0
+                  const full = clean.length >= MAX_CART_LINES
 
-                <ul className="mt-6 space-y-6">
-                  {category.services.map((service) => {
-                    const chosenAt = clean.findIndex(
-                      (l) => l.serviceId === service.id,
-                    )
-                    const chosen = chosenAt >= 0
-                    const full = clean.length >= MAX_CART_LINES
-                    return (
-                      <li key={service.id}>
-                        {/* nome — pontilhado — preço: a leitura de uma ementa */}
-                        <div className="flex items-baseline gap-3">
-                          <p
+                  const price = formatCents(
+                    service.price_cents,
+                    org.currency,
+                    language,
+                  )
+                  const detail =
+                    formatDuration(service.duration_minutes, language) +
+                    (service.description ? ` · ${service.description}` : '')
+
+                  /* A linha inteira é o alvo. Antes o que se tocava era um
+                     botão de 95 por 32 debaixo do nome: no polegar isso é
+                     uma mira, e cada serviço ocupava três linhas de altura
+                     por causa dele. Agora toca-se no serviço — que é o que
+                     qualquer pessoa tenta fazer primeiro — e a linha cabe
+                     em duas. Tocar outra vez tira; é o que se espera de
+                     uma ementa. */
+                  const inside = (
+                    <>
+                      <span
+                        aria-hidden
+                        className={clsx(
+                          'mt-[0.2rem] flex size-[1.125rem] shrink-0 items-center justify-center border transition-colors',
+                          chosen
+                            ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
+                            : 'border-[var(--line)] text-[var(--ink-faint)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]',
+                        )}
+                      >
+                        {chosen ? <Check size={12} /> : <Plus size={12} />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline gap-3">
+                          <span
                             className={clsx(
-                              'text-[0.9375rem] transition-colors',
-                              chosen ? 'text-[var(--accent)]' : 'text-[var(--ink)]',
+                              'min-w-0 text-[0.9375rem] transition-colors',
+                              chosen
+                                ? 'text-[var(--accent)]'
+                                : 'text-[var(--ink)] group-hover:text-[var(--accent)]',
                             )}
                           >
                             {service.name}
-                          </p>
-                          <span className="flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)]" />
-                          <span className="tabular shrink-0 text-[0.875rem] text-[var(--ink)]">
-                            {formatCents(service.price_cents, org.currency, language)}
                           </span>
-                        </div>
+                          {/* O pontilhado só existe onde há branco para
+                              ele: ao telemóvel o nome já leva a linha. */}
+                          <span className="hidden flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)] sm:block" />
+                          <span className="tabular ml-auto shrink-0 text-[0.875rem] text-[var(--ink)] sm:ml-0">
+                            {price}
+                          </span>
+                        </span>
+                        <span className="mt-1 block max-w-md text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
+                          {detail}
+                        </span>
+                      </span>
+                    </>
+                  )
 
-                        {/* Duração e descrição na mesma linha. Em linhas
-                            separadas, a duração ficava sozinha a meio do
-                            branco e o botão flutuava algures ao lado das
-                            duas — nada se alinhava com nada.
+                  const rowClass =
+                    'flex min-h-[3.25rem] w-full items-start gap-3 py-3 text-left'
 
-                            No telemóvel o botão desce: ao lado, sobrava-lhe
-                            um terço da largura e a descrição escrevia-se em
-                            tiras de três palavras. */}
-                        <div className="mt-1.5 flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:gap-4">
-                          <p className="min-w-0 max-w-md flex-1 text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-                            <span className="tabular">
-                              {formatDuration(service.duration_minutes, language)}
-                            </span>
-                            {service.description ? ` · ${service.description}` : null}
-                          </p>
-
-                          {chosen ? (
-                            /* Segunda vez no mesmo serviço tira-o: é o que
-                               qualquer pessoa espera de uma ementa. */
-                            <Link
-                              href={funnelHref(here, {
-                                cart: removeAt(clean, chosenAt),
-                              })}
-                              aria-label={`${dict.common.remove} · ${service.name}`}
-                              // `sm:pl-3`: em linha, o avanço iguala o `px-3`
-                              // do botão com moldura e os ícones das várias
-                              // linhas ficam na mesma vertical. Empilhado no
-                              // telemóvel, esse avanço era só uma indentação
-                              // sem razão.
-                              className="group inline-flex h-8 shrink-0 items-center gap-1.5 text-[0.75rem] text-[var(--accent)] transition-colors hover:text-[var(--bad)] sm:pl-3"
-                            >
-                              <Check size={14} className="group-hover:hidden" />
-                              <X size={14} className="hidden group-hover:block" />
-                              <span className="group-hover:hidden">
-                                {dict.funnel.selected}
-                              </span>
-                              <span className="hidden group-hover:inline">
-                                {dict.common.remove}
-                              </span>
-                            </Link>
-                          ) : full ? null : (
-                            <Link
-                              href={funnelHref(here, {
-                                cart: addLine(clean, service.id),
-                              })}
-                              // O nome do serviço só existe para quem lê o
-                              // ecrã; para quem o ouve, vai no rótulo.
-                              aria-label={`${addLabel} · ${service.name}`}
-                              className="inline-flex h-8 shrink-0 items-center gap-1.5 border border-[var(--line)] px-3 text-[0.75rem] text-[var(--ink-muted)] transition-all hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
-                            >
-                              <Plus size={14} />
-                              {addLabel}
-                            </Link>
-                          )}
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            </Reveal>
-          ))}
+                  return (
+                    <li
+                      key={service.id}
+                      className="border-b border-[var(--line-soft)] last:border-0"
+                    >
+                      {full && !chosen ? (
+                        // Visita cheia: a linha fica lá para se ler, mas
+                        // deixa de prometer um toque que não faz nada.
+                        <div className={clsx(rowClass, 'opacity-40')}>{inside}</div>
+                      ) : (
+                        <Link
+                          href={funnelHref(here, {
+                            cart: chosen
+                              ? removeAt(clean, chosenAt)
+                              : addLine(clean, service.id),
+                          })}
+                          // O nome do serviço só existe para quem lê o
+                          // ecrã; para quem o ouve, vai no rótulo.
+                          aria-label={`${
+                            chosen ? dict.common.remove : addLabel
+                          } · ${service.name}`}
+                          className={clsx('group', rowClass)}
+                        >
+                          {inside}
+                        </Link>
+                      )}
+                    </li>
+                  )
+                })}
+              </CollapseGroup>
+            )
+          })}
         </div>
 
         {/* -------------------------------------------------- visita --- */}
@@ -353,8 +365,13 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                             href={funnelHref(here, {
                               cart: removeAt(clean, index),
                             })}
-                            aria-label={dict.common.remove}
-                            className="mt-0.5 text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
+                            aria-label={`${dict.common.remove} · ${service.name}`}
+                            // Tirar um serviço da visita é a única coisa
+                            // que se desfaz aqui, e era uma cruz de quinze
+                            // pixéis. A cruz fica igual; o que cresce é a
+                            // caixa à volta dela, puxada de volta com
+                            // margens negativas para a linha não mexer.
+                            className="-mr-3.5 -mt-3 flex size-11 shrink-0 items-center justify-center text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
                           >
                             <X size={15} />
                           </Link>
@@ -458,7 +475,9 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
 
 function chipClass(active: boolean): string {
   return clsx(
-    'inline-flex h-7 items-center px-2.5 text-[0.6875rem] transition-colors',
+    // 28px de altura é uma etiqueta bonita e um alvo mau. Ao telemóvel
+    // sobe aos 36 e ganha folga aos lados; no monitor volta ao pequeno.
+    'inline-flex h-9 items-center px-3 text-[0.6875rem] transition-colors sm:h-7 sm:px-2.5',
     active
       ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
       : 'border border-[var(--line)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',

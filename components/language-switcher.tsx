@@ -33,7 +33,11 @@ export function LanguageSwitcher({ current }: { current: Language }) {
             aria-current={language === current ? 'true' : undefined}
             title={LANGUAGE_LABEL[language]}
             className={clsx(
-              'px-1.5 py-1 text-[0.6875rem] uppercase tracking-[0.16em] transition-colors',
+              // Três letras minúsculas dão um alvo de 30x25 — mais pequeno
+              // que a ponta de um polegar. A caixa de toque cresce para os
+              // 44px de altura ao telemóvel sem a letra crescer com ela; no
+              // monitor, onde há rato, volta ao aperto de sempre.
+              'inline-flex min-h-11 items-center px-2 text-[0.6875rem] uppercase tracking-[0.16em] transition-colors sm:min-h-0 sm:px-1.5 sm:py-1',
               language === current
                 ? 'text-[var(--accent)]'
                 : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',

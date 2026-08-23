@@ -9,6 +9,8 @@ import { formatPhone } from '@/lib/text'
 import { ButtonLink } from '@/components/ui'
 import { LogoMark, Monogram, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
+import { PriceLine } from '@/components/price-list'
+import { CollapseGroup } from '@/components/collapse-group'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 
 /**
@@ -265,32 +267,23 @@ export async function Showcase({ org }: { org: Org }) {
               <Ornament className="mt-8" />
             </Reveal>
 
-            <div className="mt-16 grid gap-x-20 gap-y-16 sm:grid-cols-2">
+            <div className="mt-12 grid gap-x-20 gap-y-10 sm:mt-16 sm:grid-cols-2 sm:gap-y-16">
               {[...categories.values()].map((category) => (
-                <Reveal key={category.name}>
-                  <h3 className="display text-[1.375rem] text-[var(--accent)]">
-                    {category.name}
-                  </h3>
-                  <ul className="mt-6 space-y-5">
-                    {category.services.map((service) => (
-                      <li key={service.service_id} className="flex items-baseline gap-3">
-                        <span className="text-[0.9375rem] text-[var(--ink)]">
-                          {service.name}
-                        </span>
-                        <span className="flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)]" />
-                        <span className="tabular text-[0.75rem] text-[var(--ink-faint)]">
-                          {formatDuration(service.duration_minutes, language)}
-                        </span>
-                        <span className="tabular whitespace-nowrap text-[0.9375rem] text-[var(--ink-muted)]">
-                          <span className="text-[0.75rem] text-[var(--ink-faint)]">
-                            {dict.common.from}
-                          </span>{' '}
-                          {formatCents(service.base_price_cents, org.currency, language)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </Reveal>
+                <CollapseGroup
+                  key={category.name}
+                  title={category.name}
+                  count={category.services.length}
+                >
+                  {category.services.map((service) => (
+                    <PriceLine
+                      key={service.service_id}
+                      name={service.name}
+                      duration={formatDuration(service.duration_minutes, language)}
+                      price={formatCents(service.base_price_cents, org.currency, language)}
+                      from={dict.common.from}
+                    />
+                  ))}
+                </CollapseGroup>
               ))}
             </div>
           </div>

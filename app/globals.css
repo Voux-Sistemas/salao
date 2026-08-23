@@ -436,6 +436,48 @@ html:not(.js) .grow-rule {
   animation: drawline 1.1s cubic-bezier(0.22, 0.61, 0.21, 1) 0.25s both;
 }
 
+/* ---------------------------------------------------------------------
+   Preçário: categorias fechadas ao telemóvel (components/price-list.tsx).
+   Sessenta e sete serviços de enfiada não se lêem num ecrã de bolso.
+   Acima dos 640px cabem duas colunas e não há nada a esconder — e sem
+   JavaScript nada se esconde de todo, que a lista tem de estar legível.
+   --------------------------------------------------------------------- */
+html.js [data-menu-fechado] {
+  display: none;
+}
+@media (min-width: 640px) {
+  html.js [data-menu-fechado] {
+    display: block;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   ALVO DE TOQUE.
+
+   Uma ligação de texto solta no meio de um parágrafo — o telefone do
+   rodapé, o "Como chegar" — tem dezasseis pixéis de altura. Um dedo tem
+   quarenta e tal. Onde não se pode pôr padding sem desalinhar o desenho
+   (a .link-slide risca-se por baixo do padding, ficava o traço a boiar),
+   estica-se a área sensível com uma caixa invisível centrada na ligação.
+   Nada muda no que se vê; muda só o que o dedo acerta. Do tablet para
+   cima, onde há rato, a caixa desaparece para não roubar cliques a
+   quem está por baixo.
+   --------------------------------------------------------------------- */
+@media (max-width: 639px) {
+  .toque {
+    position: relative;
+  }
+  .toque::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -0.5rem;
+    right: -0.5rem;
+    height: 44px;
+    margin-top: -22px;
+  }
+}
+
 /* Moldura fina com canto duplo — a moldura "convite de casamento". */
 .frame-double {
   border: 1px solid var(--line);

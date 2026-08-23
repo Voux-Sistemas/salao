@@ -39,12 +39,16 @@ O sistema está **completo e no ar** em <https://salaonr.netlify.app>.
 Agenda, comanda, caixa, clientes, comissões, montra pública e funil de
 marcação — tudo feito e a funcionar.
 
-Acabou de entrar o **conteúdo verdadeiro do salão**: 67 serviços com
-preço, as duas lojas (Valongo e Maia), as cinco profissionais com
-escalas, e as nove fotografias.
+Entrou o **conteúdo verdadeiro do salão**: 67 serviços com preço, as
+duas lojas (Valongo e Maia), as cinco profissionais com escalas, e as
+nove fotografias.
 
-**Falta afinar os ecrãs para o aparelho em que vão ser usados.** É o
-próximo trabalho, e é o único.
+E acabou de fechar a **passagem do telemóvel**: o preçário já se lê num
+ecrã de bolso, as categorias abrem ao toque, o funil encolheu de 9863
+para 2249 px, os campos deixaram de dar zoom no iPhone e os alvos de
+toque estão todos nos 44 px. Ao computador nada mudou.
+
+**Falta a mesma coisa do outro lado: a gestão ao computador.**
 
 ---
 
@@ -53,21 +57,23 @@ próximo trabalho, e é o único.
 Por esta ordem. Está tudo detalhado em
 [PENDENCIAS.md](PENDENCIAS.md) secção B e em [ROADMAP.md](ROADMAP.md).
 
-1. **Preçário no telemóvel** — a coluna da duração é estreita de mais:
-   "1 h 30" parte em duas linhas e o pontilhado desaparece quando o
-   nome do serviço encavalita. Acontece em `/` e em `/loja/[loja]`.
-2. **A montra ficou comprida** — 67 serviços de enfiada dão quase
-   10 000 px de scroll no telemóvel. Provavelmente quer categorias
-   fechadas, a abrir ao toque.
-3. **O funil todo a 390 px** — auditar passo a passo com o polegar:
-   alvos de toque grandes, sem zoom acidental, sem teclado a tapar o
-   botão.
-4. **Nomes compridos nos cartões da agenda** — "Balayage / Babylights /
+1. **A gestão ao computador** — é aqui que está o trabalho todo. Os
+   ecrãs de `app/(desk)/` foram desenhados a pensar no telemóvel e ao
+   computador desperdiçam a largura. Agenda, caixa, clientes,
+   comissões: aproveitar o ecrã grande em vez de esticar o pequeno.
+2. **Nomes compridos nos cartões da agenda** — "Balayage / Babylights /
    Ombré · cabelo comprido" corta a meio.
+3. **O funil ao computador** — corre numa coluna só e dá 6500 px de
+   scroll, quando a montra e a loja já usam duas.
 
 A ênfase vem do cliente: **a cliente vê tudo no telemóvel** (montra,
 funil, loja — e o ecrã da profissional também). **A gestão vê-se ao
 computador**, e aí é aproveitar a largura em vez de a desperdiçar.
+
+Se mexer no telemóvel, o que já lá está: `components/price-list.tsx`
+(a linha do preçário), `components/collapse-group.tsx` (a categoria que
+fecha) e a classe `.toque` em `app/globals.css` (estica a área do dedo
+sem mexer no desenho).
 
 ---
 

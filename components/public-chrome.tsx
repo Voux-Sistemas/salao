@@ -88,7 +88,7 @@ async function FooterHouse({
           <p>
             <a
               href={`tel:${unit.phone.replace(/\s/g, '')}`}
-              className="tabular transition-colors hover:text-[var(--ink)]"
+              className="toque tabular transition-colors hover:text-[var(--ink)]"
             >
               {formatPhone(unit.phone)}
             </a>
@@ -99,7 +99,7 @@ async function FooterHouse({
             href={mapsUrl(unit)}
             target="_blank"
             rel="noreferrer"
-            className="link-slide text-[var(--accent)]"
+            className="link-slide toque text-[var(--accent)]"
           >
             {dict.unit.directions}
           </a>
@@ -186,7 +186,14 @@ export async function PublicChrome({
               <LanguageSwitcher current={language} />
             </Suspense>
 
-            <ButtonLink href="/agendar" size="sm" variant="outline" className="ml-1">
+            {/* O botão continua com o mesmo ar; só o dedo é que ganha
+                mais oito pixéis de altura onde não há rato. */}
+            <ButtonLink
+              href="/agendar"
+              size="sm"
+              variant="outline"
+              className="ml-1 min-h-11 sm:min-h-0"
+            >
               {dict.nav.book}
             </ButtonLink>
           </nav>
@@ -212,7 +219,7 @@ export async function PublicChrome({
                   href={whatsappHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="link-slide mt-6 inline-block text-[0.8125rem] text-[var(--accent)]"
+                  className="link-slide toque mt-6 inline-block text-[0.8125rem] text-[var(--accent)]"
                 >
                   {dict.footer.whatsapp}
                 </a>
@@ -235,7 +242,7 @@ export async function PublicChrome({
             <div className="flex items-center gap-5">
               <Link
                 href="/entrar"
-                className="text-[0.75rem] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink-muted)]"
+                className="toque text-[0.75rem] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink-muted)]"
               >
                 {dict.footer.staffAccess}
               </Link>

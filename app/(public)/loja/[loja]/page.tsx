@@ -10,6 +10,8 @@ import { formatDuration } from '@/lib/time'
 import { ButtonLink } from '@/components/ui'
 import { Monogram, Ornament, Sprig } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
+import { PriceLine } from '@/components/price-list'
+import { CollapseGroup } from '@/components/collapse-group'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 import { formatPhone, sameWord } from '@/lib/text'
 
@@ -365,36 +367,23 @@ export default async function StorePage({ params }: Params) {
               <h2 className="display mt-4 text-3xl sm:text-4xl">{dict.unit.priceList}</h2>
               <Ornament className="mt-7" />
             </Reveal>
-            <div className="mt-14 grid gap-x-20 gap-y-14 sm:grid-cols-2">
+            <div className="mt-10 grid gap-x-20 gap-y-10 sm:mt-14 sm:grid-cols-2 sm:gap-y-14">
               {[...categories.values()].map((category) => (
-                <Reveal key={category.name}>
-                  <h3 className="display text-[1.375rem] text-[var(--accent)]">
-                    {category.name}
-                  </h3>
-                  <ul className="mt-6 space-y-5">
-                    {category.services.map((service) => (
-                      <li key={service.service_id}>
-                        <div className="flex items-baseline gap-3">
-                          <span className="text-[0.9375rem] text-[var(--ink)]">
-                            {service.name}
-                          </span>
-                          <span className="flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)]" />
-                          <span className="tabular text-[0.75rem] text-[var(--ink-faint)]">
-                            {formatDuration(service.duration_minutes, language)}
-                          </span>
-                          <span className="tabular whitespace-nowrap text-[0.9375rem] text-[var(--ink-muted)]">
-                            {formatCents(service.price_cents, org.currency, language)}
-                          </span>
-                        </div>
-                        {service.description ? (
-                          <p className="mt-1.5 max-w-md text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-                            {service.description}
-                          </p>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </Reveal>
+                <CollapseGroup
+                  key={category.name}
+                  title={category.name}
+                  count={category.services.length}
+                >
+                  {category.services.map((service) => (
+                    <PriceLine
+                      key={service.service_id}
+                      name={service.name}
+                      duration={formatDuration(service.duration_minutes, language)}
+                      price={formatCents(service.price_cents, org.currency, language)}
+                      description={service.description}
+                    />
+                  ))}
+                </CollapseGroup>
               ))}
             </div>
           </div>

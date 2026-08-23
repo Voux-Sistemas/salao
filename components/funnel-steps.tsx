@@ -47,7 +47,19 @@ export function FunnelSteps({
 
         return (
           <li key={label} className="flex items-center gap-2">
-            {href ? <Link href={href}>{content}</Link> : content}
+            {href ? (
+              // Ao telemóvel o rótulo esconde-se e sobra o algarismo: nove
+              // pixéis de largura para voltar atrás. A caixa de toque
+              // cresce à volta dele sem o número mudar de tamanho.
+              <Link
+                href={href}
+                className="inline-flex min-h-11 min-w-8 items-center justify-center sm:min-h-0 sm:min-w-0"
+              >
+                {content}
+              </Link>
+            ) : (
+              content
+            )}
             {step < labels.length ? (
               <span aria-hidden className="text-[var(--line)]">
                 —

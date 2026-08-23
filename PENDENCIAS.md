@@ -96,18 +96,19 @@ número. Duas saídas:
 
 Apanhados a testar. Nenhum parte nada.
 
-- **B1 · Preçário no telemóvel.** Na montra (`/`) e na página da loja,
-  a coluna da duração é estreita de mais: "1 h 30" parte em duas linhas
-  e o pontilhado desaparece quando o nome do serviço encavalita. Com 67
-  serviços, isto aparece muitas vezes. → Fase 1.
-
-- **B2 · A montra ficou comprida.** 67 serviços de enfiada dão quase
-  10 000 px de scroll no telemóvel. Provavelmente quer categorias
-  fechadas, a abrir ao toque. → Fase 1.
-
 - **B3 · Nomes compridos nos cartões da agenda.** "Balayage /
   Babylights / Ombré · cabelo comprido" é o nome mais longo do
   catálogo e corta a meio no cartão. → Fase 3.
+
+- **B4 · Chips de profissional a 36 px.** No resumo da visita, os
+  botões "Sem preferência / Profissional 1…" têm 36 px de altura — são
+  largos (90–110 px) e acertam-se bem, mas ficam abaixo dos 44
+  recomendados. Deliberado: a 44 pareciam botões a sério e roubavam a
+  atenção ao preçário. A rever se alguém falhar o toque.
+
+- **B5 · Funil ao computador é uma coluna só.** A 1440 px o catálogo
+  do funil corre numa coluna e dá 6500 px de scroll, quando a montra e
+  a página da loja já usam duas. → Fase 3, com o resto do desktop.
 
 ---
 
@@ -127,3 +128,29 @@ Apanhados a testar. Nenhum parte nada.
   a meio, três semanas de marcações futuras, caixa aberto nas duas
   lojas. **É fictício** — corre-se `seed-real.mjs` com
   `MOVIMENTO = false` e desaparece.
+
+### A passagem do telemóvel (Fase 1)
+
+- **B1 fechado.** O preçário deixou de ter quatro colunas apertadas no
+  telemóvel: o nome fica com a linha toda, a duração e o preço descem
+  para a linha de baixo, uma em cada ponta. O "1 h 30" já não parte e
+  os preços caem todos alinhados. Acima dos 640 px é a linha de ementa
+  de sempre, pontilhado incluído. Vive em `components/price-list.tsx`,
+  partilhado pela montra e pela loja.
+- **B2 fechado.** As categorias chegam fechadas ao telemóvel e abrem ao
+  toque (`components/collapse-group.tsx`); no monitor o CSS abre-as
+  todas e o cabeçalho volta a ser cabeçalho. A lista inteira está
+  sempre no HTML — o Google lê-a e o Ctrl+F encontra-a — e sem
+  JavaScript nada se esconde.
+- **O funil encolheu de 9863 px para 2249 px** a 390 px de largura. Cada
+  serviço passou a ser uma linha inteira a que se toca, com `[+]`/`[✓]`
+  à esquerda em vez do botão "Escolher" de 95×32. Uma categoria que já
+  tenha alguma coisa escolhida chega aberta.
+- **Sem zoom acidental no iPhone.** Os campos passaram a 16 px ao
+  telemóvel (`components/ui.tsx`); abaixo disso o Safari dá zoom sozinho
+  mal se toca no campo e deixa a página encavalitada.
+- **Alvos de toque.** Idiomas, "Marcar", os passos do funil, a cruz de
+  tirar um serviço e as ligações do rodapé estavam entre os 15 e os 32
+  px. Estão todos nos 44. Onde o padding desalinhava o desenho, a área
+  cresce por baixo com a classe `.toque` (`app/globals.css`) e não se
+  vê nada mudar.

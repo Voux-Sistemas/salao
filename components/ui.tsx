@@ -164,14 +164,21 @@ export function Field({
   )
 }
 
+// `text-base sm:text-sm`: abaixo dos 16px, o Safari do iPhone dá zoom
+// sozinho mal se toca no campo — e depois deixa a página encavalitada,
+// meia fora do ecrã, com a cliente a arrastar para trás. Ao telemóvel os
+// campos são de 16px; no monitor voltam aos 14 de sempre.
 const CONTROL =
   'w-full bg-[var(--surface-raised)] border border-[var(--line)] rounded-[2px] px-3 ' +
-  'text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] ' +
+  'text-base sm:text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] ' +
   'transition-[border-color,box-shadow] duration-300 focus:outline-none focus:border-[var(--accent)] ' +
   'focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]'
 
+/** 44px no telemóvel — a medida de um polegar; 40 no monitor. */
+const CONTROL_HEIGHT = 'h-11 sm:h-10'
+
 export function Input({ className, ...props }: ComponentProps<'input'>) {
-  return <input className={clsx(CONTROL, 'h-10', className)} {...props} />
+  return <input className={clsx(CONTROL, CONTROL_HEIGHT, className)} {...props} />
 }
 
 export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
@@ -183,7 +190,8 @@ export function Select({ className, children, ...props }: ComponentProps<'select
     <select
       className={clsx(
         CONTROL,
-        'select-chevron h-10 appearance-none pr-8',
+        CONTROL_HEIGHT,
+        'select-chevron appearance-none pr-8',
         className,
       )}
       {...props}
