@@ -113,14 +113,24 @@ export function CategoryForm() {
   )
 }
 
-/** Mudar o nome no sítio; apagar só quando já não tem nada dentro. */
+/**
+ * Mudar o nome no sítio; apagar só quando já não tem nada dentro.
+ *
+ * Os dois campos pequenos ao lado são o nome para fora — o que a cliente
+ * lê quando o sítio está em inglês ou em espanhol. Vazios é o normal:
+ * sem tradução, sai o português.
+ */
 export function CategoryLine({
   id,
   name,
+  nameEn,
+  nameEs,
   services,
 }: {
   id: string
   name: string
+  nameEn: string | null
+  nameEs: string | null
   services: number
 }) {
   const [rename, renameAction] = useActionState<CatalogState, FormData>(
@@ -136,7 +146,10 @@ export function CategoryLine({
   return (
     <div className="px-5 py-3 sm:px-6">
       <div className="flex flex-wrap items-center gap-3">
-        <form action={renameAction} className="flex flex-1 items-center gap-2">
+        <form
+          action={renameAction}
+          className="flex flex-1 flex-wrap items-center gap-2"
+        >
           <input type="hidden" name="id" value={id} />
           <Input
             name="name"
@@ -145,6 +158,24 @@ export function CategoryLine({
             autoComplete="off"
             aria-label={`Nome de ${name}`}
             className="max-w-xs"
+          />
+          <Input
+            name="name_en"
+            defaultValue={nameEn ?? ''}
+            maxLength={60}
+            autoComplete="off"
+            placeholder="English"
+            aria-label={`${name} em inglês`}
+            className="max-w-[9.5rem]"
+          />
+          <Input
+            name="name_es"
+            defaultValue={nameEs ?? ''}
+            maxLength={60}
+            autoComplete="off"
+            placeholder="Español"
+            aria-label={`${name} em espanhol`}
+            className="max-w-[9.5rem]"
           />
           <Submit label="Guardar" variant="quiet" size="sm" />
         </form>
@@ -196,8 +227,12 @@ export type ServiceFields = {
   id: string
   slug: string
   name: string
+  name_en: string | null
+  name_es: string | null
   category_id: string
   description: string | null
+  description_en: string | null
+  description_es: string | null
   base_price_cents: number
   duration_minutes: number
   buffer_before_minutes: number
@@ -296,6 +331,54 @@ export function ServiceForm({
               autoComplete="off"
             />
           </Field>
+        </div>
+      </Panel>
+
+      <Panel
+        title="Nas outras línguas"
+        hint="Só para a cliente que lê o sítio em inglês ou espanhol. Em branco, sai o português — e o balcão vê sempre o nome de cima."
+      >
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Nome em inglês" htmlFor="service-name-en">
+              <Input
+                id="service-name-en"
+                name="nameEn"
+                defaultValue={service?.name_en ?? ''}
+                maxLength={80}
+                autoComplete="off"
+                placeholder={service?.name ?? ''}
+              />
+            </Field>
+            <Field label="Nome em espanhol" htmlFor="service-name-es">
+              <Input
+                id="service-name-es"
+                name="nameEs"
+                defaultValue={service?.name_es ?? ''}
+                maxLength={80}
+                autoComplete="off"
+                placeholder={service?.name ?? ''}
+              />
+            </Field>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Descrição em inglês" htmlFor="service-description-en">
+              <Textarea
+                id="service-description-en"
+                name="descriptionEn"
+                defaultValue={service?.description_en ?? ''}
+                maxLength={400}
+              />
+            </Field>
+            <Field label="Descrição em espanhol" htmlFor="service-description-es">
+              <Textarea
+                id="service-description-es"
+                name="descriptionEs"
+                defaultValue={service?.description_es ?? ''}
+                maxLength={400}
+              />
+            </Field>
+          </div>
         </div>
       </Panel>
 

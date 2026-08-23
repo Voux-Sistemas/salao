@@ -35,6 +35,9 @@ function refresh(serviceId?: string) {
   revalidatePath('/admin/servicos')
   if (serviceId) revalidatePath(`/admin/servicos/${serviceId}`)
   revalidatePath('/agendar')
+  // O preçário da loja mostra o nome na língua da cliente — se ela
+  // acabou de traduzir um serviço, é ali que se vê.
+  revalidatePath('/loja', 'layout')
 }
 
 // ---------------------------------------------------------------------
@@ -73,7 +76,7 @@ export async function renameCategoryAction(
   if (!id) return { error: 'Categoria desconhecida.' }
   if (!name) return { error: 'Dê um nome à categoria.' }
 
-  await renameCategory(actor.orgId, id, name)
+  await renameCategory(actor.orgId, id, name, texto(form, 'name_en'), texto(form, 'name_es'))
   refresh()
   return { error: null, done: 'Categoria guardada.' }
 }
@@ -104,6 +107,11 @@ export async function removeCategoryAction(
 // Serviços
 // ---------------------------------------------------------------------
 
+/** Campo vazio é campo que não existe: guarda-se nulo, não "". */
+function texto(form: FormData, campo: string): string | null {
+  return String(form.get(campo) ?? '').trim() || null
+}
+
 function serviceFrom(form: FormData): ServiceInput | null {
   const name = String(form.get('name') ?? '').trim()
   const typed = String(form.get('slug') ?? '').trim()
@@ -119,7 +127,11 @@ function serviceFrom(form: FormData): ServiceInput | null {
     categoryId: String(form.get('category') ?? ''),
     slug: slugify(typed || name),
     name,
-    description: String(form.get('description') ?? '').trim() || null,
+    nameEn: texto(form, 'nameEn'),
+    nameEs: texto(form, 'nameEs'),
+    description: texto(form, 'description'),
+    descriptionEn: texto(form, 'descriptionEn'),
+    descriptionEs: texto(form, 'descriptionEs'),
     basePriceCents: price,
     durationMinutes: duration,
     bufferBeforeMinutes: before,

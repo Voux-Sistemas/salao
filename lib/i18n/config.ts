@@ -3,9 +3,23 @@
  * português, inglês e espanhol, escolhidos num seletor que grava um
  * cookie. A ÁREA DA EQUIPA NÃO SE TRADUZ.
  *
- * O conteúdo da base de dados (nomes de serviços, notas) fica na língua
- * da casa. A língua em que a cliente marcou fica guardada na ficha dela,
- * e é a língua em que as mensagens lhe saem depois.
+ * O CATÁLOGO TEM DOIS NOMES PARA A MESMA COISA, e é de propósito.
+ *
+ * O nome da casa — `service.name`, sempre português — é o que manda: vai
+ * para a agenda, para a comanda, para a caixa e para os relatórios, e é
+ * ele que fica congelado em `appointment_item.service_name` no momento
+ * da marcação. Não se traduz nunca; traduzir a comanda de uma cliente
+ * espanhola era pôr o balcão a ler uma língua que não fala.
+ *
+ * O nome para fora vive em `name_en` / `name_es` (e as descrições ao
+ * lado), resolve-se ao desenhar o ecrã pela função `name_in()` do lado
+ * da base, e não se guarda em lado nenhum. Sem tradução escrita, sai o
+ * português — nunca fica um espaço em branco. As traduções de origem
+ * estão em `scripts/catalogo-linguas.mjs`.
+ *
+ * A língua em que a cliente marcou fica guardada na ficha dela, e é a
+ * língua em que as mensagens de WhatsApp lhe saem depois — texto e nomes
+ * de serviço incluídos.
  */
 
 export const LANGUAGES = ['pt', 'en', 'es'] as const

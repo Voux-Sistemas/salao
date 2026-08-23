@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 import { sql } from '@/lib/db'
 import { getOrg, listUnits, type Unit } from '@/lib/org'
 import { openingWindows, type Window } from '@/lib/hours'
@@ -11,7 +12,10 @@ import { Reveal } from '@/components/reveal'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 import { formatPhone, sameWord } from '@/lib/text'
 
-export const metadata = { title: 'Lojas' }
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getDictionary()
+  return { title: dict.tabs.stores }
+}
 
 type Photo = { unit_id: string; url: string; alt: string | null }
 

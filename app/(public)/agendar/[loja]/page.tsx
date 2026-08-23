@@ -49,18 +49,23 @@ type PriceRow = { ord: number; price_cents: number; duration_minutes: number }
 
 /*
  * O outro endereço que se cola numa conversa — e o mais usado dos dois,
- * porque é o que responde a «quero marcar». Mesma regra: quem lê a
- * pré-visualização é um robô sem cookie, logo português.
+ * porque é o que responde a «quero marcar».
+ *
+ * Aqui há duas audiências no mesmo sítio, e não levam o mesmo texto. O
+ * separador do browser é dela e segue o cookie da língua. A
+ * pré-visualização que o WhatsApp desenha é lida por um robô sem cookie
+ * nenhum, e essa fica em português — como a do layout.
  *
  * O passo seguinte (escolher hora) e o de confirmar já são pessoais e
  * ficam fora do índice — ver o `robots` de cada um.
  */
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { loja } = await params
-  const unit = await getUnitBySlug(loja)
-  if (!unit) return { title: 'Marcar' }
+  const [unit, dict] = await Promise.all([getUnitBySlug(loja), getDictionary()])
+  if (!unit) return { title: dict.tabs.book }
 
-  const title = `Marcar · ${unit.name}`
+  const title = `${dict.tabs.book} · ${unit.name}`
+  const shared = `Marcar · ${unit.name}`
   const description = unit.city
     ? `Escolha o serviço, a profissional e a hora em ${unit.city}. Confirmação imediata.`
     : 'Escolha o serviço, a profissional e a hora. Confirmação imediata.'
@@ -71,11 +76,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     alternates: { canonical: `/agendar/${unit.slug}` },
     openGraph: {
       type: 'website',
-      title,
+      title: shared,
       description,
       url: `/agendar/${unit.slug}`,
     },
-    twitter: { card: 'summary_large_image', title, description },
+    twitter: { card: 'summary_large_image', title: shared, description },
   }
 }
 
@@ -95,18 +100,26 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
   const [org, unit] = await Promise.all([requireOrg(), getUnitBySlug(loja)])
   if (!unit) notFound()
 
-  const [dict, language, services, skills] = await Promise.all([
+  // A língua antes da consulta: quem escolhe o serviço lê o nome
+  // dele na sua língua, não só a moldura à volta.
+  const language = await getLanguage()
+
+  const [dict, services, skills] = await Promise.all([
     getDictionary(),
-    getLanguage(),
     sql<ServiceRow[]>`
-      select c.id as category_id, c.name as category_name,
-             s.id, s.name, s.description,
+      select c.id as category_id,
+             name_in(${language}, c.name, c.name_en, c.name_es) as category_name,
+             s.id,
+             name_in(${language}, s.name, s.name_en, s.name_es) as name,
+             name_in(${language}, s.description,
+                     s.description_en, s.description_es) as description,
              e.duration_minutes, e.price_cents,
              s.image_url, s.image_alt
         from service s
         join service_category c on c.id = s.category_id and c.is_active
         cross join lateral effective_service_pricing(s.id, ${unit.id}::uuid, null::uuid) e
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
+       -- Pelo nome português, para a ordem ser a mesma nas três línguas.
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
     sql<SkillRow[]>`

@@ -114,13 +114,28 @@ export async function loadQueue(
   }
 }
 
+/**
+ * A mensagem sai na língua em que ela marcou — é o que `a.language`
+ * guarda, e é por isso que os modelos de `whatsapp.ts` existem em três.
+ *
+ * O nome do serviço tem de seguir a mesma língua: não vale a pena
+ * escrever «Your appointment is booked» e a seguir «Coloração raiz».
+ * Em português sai o nome congelado na marcação — o que a casa disse
+ * na altura — e nas outras sai a tradução da ficha, com o congelado
+ * como rede quando ainda ninguém a escreveu.
+ */
 function base(unit: Unit, routine: Routine) {
   return sql`
     select a.id as appointment_id, a.client_id,
            c.name as client_name, c.phone as client_phone,
            a.language, a.starts_at, a.status,
-           (select string_agg(i.service_name, ' + ' order by i.sort_order)
+           (select string_agg(
+                     case when a.language = 'pt' then i.service_name
+                          else name_in(a.language, i.service_name,
+                                       sv.name_en, sv.name_es) end,
+                     ' + ' order by i.sort_order)
               from appointment_item i
+              join service sv on sv.id = i.service_id
              where i.appointment_id = a.id) as services,
            (select string_agg(distinct s.name, ', ' order by s.name)
               from appointment_item i

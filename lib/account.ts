@@ -70,13 +70,24 @@ export type AccountBooking = {
 /**
  * Fragmento novo a cada uso — o mesmo pedaço não se serve a duas
  * consultas.
+ *
+ * Os nomes dos serviços: em português sai o que ficou congelado na
+ * marcação, que é o histórico dela tal como aconteceu. Nas outras
+ * línguas sai a tradução da ficha do serviço, e o congelado fica como
+ * rede quando não há tradução nenhuma.
  */
-function columns() {
+function columns(language: Language) {
   return sql`
     a.id, u.name as unit_name, u.slug as unit_slug, u.timezone,
     u.cancel_window_hours, a.status, a.starts_at, a.ends_at,
-    (select string_agg(i.service_name, ' + ' order by i.sort_order)
-       from appointment_item i where i.appointment_id = a.id) as services,
+    (select string_agg(
+              case when ${language} = 'pt' then i.service_name
+                   else name_in(${language}, i.service_name,
+                                sv.name_en, sv.name_es) end,
+              ' + ' order by i.sort_order)
+       from appointment_item i
+       join service sv on sv.id = i.service_id
+      where i.appointment_id = a.id) as services,
     -- Alcunha, nunca o nome verdadeiro: isto é a área da cliente.
     (select string_agg(distinct coalesce(s.public_alias, s.name), ', '
                        order by coalesce(s.public_alias, s.name))
@@ -90,9 +101,10 @@ function columns() {
 /** O que está pela frente: viva e ainda por acontecer. */
 export async function upcomingBookings(
   clientId: string,
+  language: Language = 'pt',
 ): Promise<AccountBooking[]> {
   return sql<AccountBooking[]>`
-    select ${columns()}
+    select ${columns(language)}
       from appointment a
       join unit u on u.id = a.unit_id
      where a.client_id = ${clientId}
@@ -108,10 +120,11 @@ export async function upcomingBookings(
  */
 export async function pastBookings(
   clientId: string,
+  language: Language = 'pt',
   limit = 20,
 ): Promise<AccountBooking[]> {
   return sql<AccountBooking[]>`
-    select ${columns()}
+    select ${columns(language)}
       from appointment a
       join unit u on u.id = a.unit_id
      where a.client_id = ${clientId}

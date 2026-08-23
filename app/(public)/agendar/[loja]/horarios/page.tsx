@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 import clsx from 'clsx'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
@@ -18,6 +19,7 @@ import {
   type IsoDay,
 } from '@/lib/time'
 import { CART_PARAM, DAY_PARAM, first, funnelHref, parseCart } from '@/lib/cart'
+import { serviceNamesFor } from '@/lib/catalog-names'
 import { Empty, Notice } from '@/components/ui'
 import { FunnelShell, VisitSummary } from '@/components/funnel-shell'
 import { Reveal } from '@/components/reveal'
@@ -27,11 +29,14 @@ type Params = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-export const metadata = {
-  title: 'Horários',
-  // O dia escolhido está no endereço: cada visita tem o seu, e nenhum
-  // deles é uma página que valha a pena guardar num índice.
-  robots: { index: false, follow: false },
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getDictionary()
+  return {
+    title: dict.tabs.times,
+    // O dia escolhido está no endereço: cada visita tem o seu, e nenhum
+    // deles é uma página que valha a pena guardar num índice.
+    robots: { index: false, follow: false },
+  }
 }
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -92,6 +97,14 @@ export default async function TimesPage({ params, searchParams }: Params) {
 
   const sample = slots[0]?.plan
 
+  // O resumo da visita é o único sítio desta página onde aparece o
+  // nome de um serviço — e é o nome dele que a cliente está a
+  // confirmar. Vai na língua dela.
+  const names = await serviceNamesFor(
+    cart.map((line) => line.serviceId),
+    language,
+  )
+
   return (
     <FunnelShell
       step={3}
@@ -105,7 +118,7 @@ export default async function TimesPage({ params, searchParams }: Params) {
           <VisitSummary
             title={dict.funnel.yourVisit}
             lines={sample.items.map((item) => ({
-              label: item.serviceName,
+              label: names.get(item.serviceId) ?? item.serviceName,
               meta: `${item.staffPublicName} · ${formatDuration(item.durationMinutes, language)}`,
               value: formatCents(item.priceCents, org.currency, language),
             }))}

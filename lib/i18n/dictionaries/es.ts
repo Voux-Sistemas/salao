@@ -30,6 +30,16 @@ export const es: Dictionary = {
     signOut: 'Salir',
     language: 'Idioma',
   },
+  tabs: {
+    stores: 'Centros',
+    book: 'Reservar',
+    times: 'Horarios',
+    confirm: 'Confirmar',
+    done: 'Reserva confirmada',
+    account: 'Mi cuenta',
+    signIn: 'Entrar',
+    code: 'Código',
+  },
   home: {
     eyebrow: 'Salón de belleza',
     title: 'Tu cita,\nen segundos.',

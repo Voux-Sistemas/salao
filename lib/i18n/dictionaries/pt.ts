@@ -29,6 +29,24 @@ export const pt = {
     signOut: 'Sair',
     language: 'Língua',
   },
+  /**
+   * O nome que fica no separador do browser — e no histórico, e no
+   * atalho que ela guarda no ecrã inicial do telemóvel.
+   *
+   * Não são os títulos dos ecrãs, que são frases inteiras («Quando lhe
+   * dá jeito?»). Aqui é curto de propósito: o separador corta, e o que
+   * sobra tem de chegar para ela saber onde está.
+   */
+  tabs: {
+    stores: 'Lojas',
+    book: 'Marcar',
+    times: 'Horários',
+    confirm: 'Confirmar',
+    done: 'Marcação feita',
+    account: 'A minha conta',
+    signIn: 'Entrar',
+    code: 'Código',
+  },
   home: {
     eyebrow: 'Salão de beleza',
     title: 'A sua marcação,\nem segundos.',

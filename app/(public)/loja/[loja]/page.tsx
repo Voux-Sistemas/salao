@@ -85,9 +85,12 @@ export default async function StorePage({ params }: Params) {
   // Loja que não existe e loja a que não se chega dão a mesma resposta.
   if (!unit) notFound()
 
-  const [dict, language, photos, prices, week] = await Promise.all([
+  // A língua antes da consulta: o preçário sai da base já na língua
+  // da cliente, e não traduzido depois à mão.
+  const language = await getLanguage()
+
+  const [dict, photos, prices, week] = await Promise.all([
     getDictionary(),
-    getLanguage(),
     sql<Photo[]>`
       select id, url, alt
         from unit_photo
@@ -95,14 +98,20 @@ export default async function StorePage({ params }: Params) {
        order by sort_order, created_at
     `,
     sql<PriceRow[]>`
-      select c.id as category_id, c.name as category_name,
-             s.id as service_id, s.name, s.description,
+      select c.id as category_id,
+             name_in(${language}, c.name, c.name_en, c.name_es) as category_name,
+             s.id as service_id,
+             name_in(${language}, s.name, s.name_en, s.name_es) as name,
+             name_in(${language}, s.description,
+                     s.description_en, s.description_es) as description,
              p.duration_minutes, p.price_cents,
              s.image_url, s.image_alt
         from service s
         join service_category c on c.id = s.category_id and c.is_active
         cross join lateral effective_service_pricing(s.id, ${unit.id}::uuid, null::uuid) p
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
+       -- Pelo nome português: a ordem do preçário é a mesma nas três
+       -- línguas, que é a ordem que a casa conhece de cor.
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
     weeklyHours(unit.id),

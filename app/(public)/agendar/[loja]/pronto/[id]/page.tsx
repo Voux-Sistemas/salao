@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { MapPin, Phone } from 'lucide-react'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
@@ -8,14 +9,18 @@ import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
 import { ButtonLink, Eyebrow } from '@/components/ui'
 import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
 import { formatPhone } from '@/lib/text'
+import { serviceNamesFor } from '@/lib/catalog-names'
 
 type Params = { params: Promise<{ loja: string; id: string }> }
 
-export const metadata = {
-  // Este endereço tem o número de uma marcação de uma pessoa. É o único
-  // do sítio público que aponta para alguém em concreto — fora do índice.
-  title: 'Marcação feita',
-  robots: { index: false, follow: false },
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getDictionary()
+  return {
+    // Este endereço tem o número de uma marcação de uma pessoa. É o único
+    // do sítio público que aponta para alguém em concreto — fora do índice.
+    title: dict.tabs.done,
+    robots: { index: false, follow: false },
+  }
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -40,6 +45,14 @@ export default async function DonePage({ params }: Params) {
   if (!appointment || appointment.unit_slug !== loja) notFound()
 
   const [dict, language] = await Promise.all([getDictionary(), getLanguage()])
+
+  // O nome do serviço ficou congelado em português quando ela marcou —
+  // é o que o balcão vai ler. Aqui manda-se vir o de fora: este bilhete
+  // é dela.
+  const names = await serviceNamesFor(
+    appointment.items.map((item) => item.service_id),
+    language,
+  )
 
   const timezone = appointment.unit_timezone
   const day = isoDay(appointment.starts_at, timezone)
@@ -139,7 +152,7 @@ export default async function DonePage({ params }: Params) {
                   <li key={item.id}>
                     <div className="flex items-baseline gap-3">
                       <span className="text-[0.9375rem] text-[var(--ink)]">
-                        {item.service_name}
+                        {names.get(item.service_id) ?? item.service_name}
                       </span>
                       <span className="flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)]" />
                       <span className="tabular shrink-0 text-[0.875rem] text-[var(--ink)]">

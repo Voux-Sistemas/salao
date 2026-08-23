@@ -173,6 +173,8 @@ export default async function ServicosPage() {
                   key={category.id}
                   id={category.id}
                   name={category.name}
+                  nameEn={category.name_en}
+                  nameEs={category.name_es}
                   services={category.services}
                 />
               ))}

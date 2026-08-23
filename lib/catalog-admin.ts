@@ -31,13 +31,19 @@ export type Category = {
   id: string
   slug: string
   name: string
+  /**
+   * O nome para fora, quando a cliente lê o sítio noutra língua. Vazio é
+   * o estado normal: sem tradução, sai o português.
+   */
+  name_en: string | null
+  name_es: string | null
   sort_order: number
   services: number
 }
 
 export async function listCategories(orgId: string): Promise<Category[]> {
   return sql<Category[]>`
-    select c.id, c.slug, c.name, c.sort_order,
+    select c.id, c.slug, c.name, c.name_en, c.name_es, c.sort_order,
            (select count(*)::int from service s
              where s.category_id = c.id and s.is_active) as services
       from service_category c
@@ -79,10 +85,15 @@ export async function renameCategory(
   orgId: string,
   id: string,
   name: string,
+  nameEn: string | null = null,
+  nameEs: string | null = null,
 ): Promise<CategoryResult> {
   if (!name.trim()) return { ok: false, reason: 'invalid' }
   await sql`
-    update service_category set name = ${name.trim()}
+    update service_category set
+      name = ${name.trim()},
+      name_en = ${nameEn},
+      name_es = ${nameEs}
      where id = ${id} and org_id = ${orgId}
   `
   return { ok: true, id }
@@ -114,6 +125,10 @@ export type ServiceRow = {
   id: string
   slug: string
   name: string
+  name_en: string | null
+  name_es: string | null
+  description_en: string | null
+  description_es: string | null
   category_id: string
   category_name: string
   base_price_cents: number
@@ -130,7 +145,9 @@ export type ServiceRow = {
 
 export async function listServices(orgId: string): Promise<ServiceRow[]> {
   return sql<ServiceRow[]>`
-    select s.id, s.slug, s.name, s.category_id, c.name as category_name,
+    select s.id, s.slug, s.name, s.name_en, s.name_es,
+           s.description_en, s.description_es,
+           s.category_id, c.name as category_name,
            s.base_price_cents, s.duration_minutes,
            s.buffer_before_minutes, s.buffer_after_minutes,
            s.bookable_online, s.description, s.image_url, s.image_alt,
@@ -151,7 +168,9 @@ export async function getService(
   id: string,
 ): Promise<ServiceRow | null> {
   const rows = await sql<ServiceRow[]>`
-    select s.id, s.slug, s.name, s.category_id, c.name as category_name,
+    select s.id, s.slug, s.name, s.name_en, s.name_es,
+           s.description_en, s.description_es,
+           s.category_id, c.name as category_name,
            s.base_price_cents, s.duration_minutes,
            s.buffer_before_minutes, s.buffer_after_minutes,
            s.bookable_online, s.description, s.image_url, s.image_alt,
@@ -188,7 +207,20 @@ export type ServiceInput = {
   categoryId: string
   slug: string
   name: string
+  /**
+   * O NOME DA CASA E O NOME PARA FORA.
+   *
+   * `name` é português e é o que manda: vai para a agenda, para a
+   * comanda, para a caixa, e fica congelado na marcação. Estes quatro
+   * campos só existem para a cliente que lê o sítio noutra língua — e
+   * ficam quase sempre vazios, que é o mesmo que dizer «sai o
+   * português».
+   */
+  nameEn: string | null
+  nameEs: string | null
   description: string | null
+  descriptionEn: string | null
+  descriptionEs: string | null
   basePriceCents: Cents
   durationMinutes: number
   bufferBeforeMinutes: number
@@ -223,13 +255,15 @@ export async function createService(
   try {
     const rows = await sql<{ id: string }[]>`
       insert into service (
-        org_id, category_id, slug, name, description,
+        org_id, category_id, slug, name, name_en, name_es,
+        description, description_en, description_es,
         base_price_cents, duration_minutes,
         buffer_before_minutes, buffer_after_minutes,
         bookable_online, image_url, image_alt, sort_order
       ) values (
         ${orgId}, ${input.categoryId}, ${input.slug}, ${input.name.trim()},
-        ${input.description},
+        ${input.nameEn}, ${input.nameEs},
+        ${input.description}, ${input.descriptionEn}, ${input.descriptionEs},
         ${input.basePriceCents}, ${input.durationMinutes},
         ${input.bufferBeforeMinutes}, ${input.bufferAfterMinutes},
         ${input.bookableOnline}, ${input.imageUrl}, ${input.imageAlt},
@@ -260,7 +294,11 @@ export async function updateService(
         category_id = ${input.categoryId},
         slug = ${input.slug},
         name = ${input.name.trim()},
+        name_en = ${input.nameEn},
+        name_es = ${input.nameEs},
         description = ${input.description},
+        description_en = ${input.descriptionEn},
+        description_es = ${input.descriptionEs},
         base_price_cents = ${input.basePriceCents},
         duration_minutes = ${input.durationMinutes},
         buffer_before_minutes = ${input.bufferBeforeMinutes},

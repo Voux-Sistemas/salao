@@ -21,9 +21,12 @@ import { Badge, ButtonLink, Eyebrow } from '@/components/ui'
 import { Monogram, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
 
-export const metadata: Metadata = {
-  title: 'A minha conta',
-  robots: { index: false, follow: false },
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getDictionary()
+  return {
+    title: dict.tabs.account,
+    robots: { index: false, follow: false },
+  }
 }
 
 /**
@@ -45,8 +48,8 @@ export default async function ContaPage() {
   ])
 
   const [upcoming, past] = await Promise.all([
-    upcomingBookings(client.id),
-    pastBookings(client.id),
+    upcomingBookings(client.id, language),
+    pastBookings(client.id, language),
   ])
 
   const now = new Date()

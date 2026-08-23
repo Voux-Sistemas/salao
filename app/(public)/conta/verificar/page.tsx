@@ -10,9 +10,12 @@ import { CodeForm } from '@/components/account-forms'
 import { Gate } from '@/components/account-gate'
 import { Notice } from '@/components/ui'
 
-export const metadata: Metadata = {
-  title: 'Código',
-  robots: { index: false, follow: false },
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getDictionary()
+  return {
+    title: dict.tabs.code,
+    robots: { index: false, follow: false },
+  }
 }
 
 /**

@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 import { getClientActor } from '@/lib/auth/client-actor'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
@@ -18,6 +19,7 @@ import {
   funnelHref,
   parseCart,
 } from '@/lib/cart'
+import { serviceNamesFor } from '@/lib/catalog-names'
 import { MapPin } from 'lucide-react'
 import { FunnelShell, VisitSummary } from '@/components/funnel-shell'
 import { ConfirmForm } from '@/components/confirm-form'
@@ -27,10 +29,13 @@ type Params = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-export const metadata = {
-  title: 'Confirmar',
-  // Passo a meio de um funil: nada disto tem que estar num motor de busca.
-  robots: { index: false, follow: false },
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getDictionary()
+  return {
+    title: dict.tabs.confirm,
+    // Passo a meio de um funil: nada disto tem que estar num motor de busca.
+    robots: { index: false, follow: false },
+  }
 }
 
 /**
@@ -73,6 +78,13 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
     (plan.endsAt.getTime() - plan.startsAt.getTime()) / 60_000,
   )
 
+  // O ecrã onde ela escreve o nome e carrega em marcar: o resumo ao
+  // lado tem de estar na língua em que ela leu o preçário.
+  const names = await serviceNamesFor(
+    plan.items.map((item) => item.serviceId),
+    language,
+  )
+
   return (
     <FunnelShell
       step={4}
@@ -102,7 +114,7 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
             </>
           }
           lines={plan.items.map((item) => ({
-            label: item.serviceName,
+            label: names.get(item.serviceId) ?? item.serviceName,
             meta: `${formatTime(item.startsAt, unit.timezone, language)} · ${dict.common.with} ${item.staffPublicName}`,
             value: formatCents(item.priceCents, org.currency, language),
           }))}

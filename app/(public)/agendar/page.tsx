@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 import { ChevronRight, MapPin } from 'lucide-react'
 import { getOrg, listUnitCovers, listUnits } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
@@ -8,7 +9,19 @@ import { FunnelShell } from '@/components/funnel-shell'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 import { Photo, PhotoFallback } from '@/components/photo'
 
-export const metadata = { title: 'Marcar' }
+/*
+ * O separador do browser é o único pedaço de ecrã que sobra quando ela
+ * tem sete abas abertas. Segue o cookie da língua, como tudo o resto
+ * daqui para dentro.
+ *
+ * As duas páginas que se colam numa conversa — a da loja e a de marcar
+ * numa loja — não seguem: quem lê a pré-visualização é um robô sem
+ * cookie, e essas ficam em português de propósito.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getDictionary()
+  return { title: dict.tabs.book }
+}
 
 /**
  * Passo 1 — escolher a loja.

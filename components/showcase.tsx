@@ -163,18 +163,27 @@ function HouseCard({
 }
 
 export async function Showcase({ org }: { org: Org }) {
-  const [dict, language, units, catalog, team, photos] = await Promise.all([
+  // A língua vem antes de tudo o resto: o preçário sai da base já
+  // traduzido, e a consulta precisa de saber para quem escreve.
+  const language = await getLanguage()
+
+  const [dict, units, catalog, team, photos] = await Promise.all([
     getDictionary(),
-    getLanguage(),
     listUnits(),
     sql<CatalogRow[]>`
-      select c.id as category_id, c.name as category_name,
-             s.id as service_id, s.name, s.description,
+      select c.id as category_id,
+             name_in(${language}, c.name, c.name_en, c.name_es) as category_name,
+             s.id as service_id,
+             name_in(${language}, s.name, s.name_en, s.name_es) as name,
+             name_in(${language}, s.description,
+                     s.description_en, s.description_es) as description,
              s.duration_minutes, s.base_price_cents,
              s.image_url, s.image_alt
         from service s
         join service_category c on c.id = s.category_id and c.is_active
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
+       -- Ordenar pelo nome português mantém a mesma ordem nas três
+       -- línguas, que é o que a casa reconhece ao telefone.
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
     // Alcunha, nunca o nome verdadeiro: a montra é a primeira coisa que

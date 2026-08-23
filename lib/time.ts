@@ -125,12 +125,22 @@ export function parseMinutes(value: string): Minutes | null {
   return h * 60 + m
 }
 
-/** 95 -> "1 h 35" · 60 -> "1 h" · 45 -> "45 min" */
+/**
+ * 95 -> "1 h 35" · 60 -> "1 h" · 45 -> "45 min"
+ *
+ * Em inglês a hora cola-se ao número e os minutos levam a letra:
+ * "1h 35m". É a forma que se lê em qualquer sítio de marcações inglês,
+ * e "1 h 35" ali lia-se como um erro de espaçamento.
+ */
 export function formatDuration(minutes: number, language = 'pt'): string {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
-  const unit = language === 'pt' ? 'min' : 'min'
-  if (h === 0) return `${m} ${unit}`
+  if (language === 'en') {
+    if (h === 0) return `${m} min`
+    if (m === 0) return `${h}h`
+    return `${h}h ${m}m`
+  }
+  if (h === 0) return `${m} min`
   if (m === 0) return `${h} h`
   return `${h} h ${pad(m)}`
 }
