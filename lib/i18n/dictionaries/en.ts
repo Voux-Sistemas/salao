@@ -37,7 +37,7 @@ export const en: Dictionary = {
       'Pick the service, the professional and the time. No phone calls, no waiting.',
     cta: 'Book now',
     ctaSecondary: 'Our houses',
-    heroEyebrow: 'Chiado · Cascais',
+    heroEyebrow: 'Welcome',
     heroTitle1: 'Beauty has an',
     heroTitleItalic: 'address',
     heroTitle2: '.',
@@ -60,6 +60,9 @@ export const en: Dictionary = {
     servicesSubtitle: 'Starting prices. The final amount depends on location and professional.',
     teamTitle: 'Who will look after you',
     hoursTitle: 'Opening hours',
+    galleryEyebrow: 'Inside the house',
+    galleryTitle: 'A closer look',
+    servicePhotoAlt: 'Photograph of {service}',
   },
   unit: {
     openNow: 'Open now',
@@ -83,7 +86,7 @@ export const en: Dictionary = {
     noStoresHint: 'Please check back in a moment.',
   },
   footer: {
-    tagline: 'Hair, nails and aesthetics by appointment, in Chiado and Cascais.',
+    tagline: 'Hair, nails and aesthetics by appointment.',
     whatsapp: 'Message us on WhatsApp',
     whatsappMessage: 'Hello! I would like to book an appointment.',
     staffAccess: 'Staff access',

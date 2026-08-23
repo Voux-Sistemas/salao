@@ -65,6 +65,33 @@ export const listUnits = cache(async (): Promise<Unit[]> => {
   `
 })
 
+export type UnitPhoto = {
+  id: string
+  unit_id: string
+  url: string
+  alt: string | null
+}
+
+/**
+ * A capa de cada loja: a primeira fotografia pela ordem em que a dona as
+ * arrumou. `distinct on` traz uma linha por loja sem trazer as outras
+ * oito para o servidor e deitá-las fora aqui.
+ *
+ * Devolve um mapa porque quem chama já tem a lista de lojas em mão e só
+ * quer perguntar "e desta, há foto?" — uma pergunta por loja, sem varrer
+ * a lista toda de cada vez.
+ */
+export const listUnitCovers = cache(
+  async (): Promise<Map<string, UnitPhoto>> => {
+    const rows = await sql<UnitPhoto[]>`
+      select distinct on (p.unit_id) p.id, p.unit_id, p.url, p.alt
+        from unit_photo p
+       order by p.unit_id, p.sort_order, p.created_at
+    `
+    return new Map(rows.map((row) => [row.unit_id, row]))
+  },
+)
+
 export const getUnitBySlug = cache(
   async (slug: string): Promise<Unit | null> => {
     const rows = await sql<Unit[]>`

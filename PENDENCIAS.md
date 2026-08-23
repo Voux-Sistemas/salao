@@ -89,6 +89,12 @@ número. Duas saídas:
 
 - Código postal e email de cada loja
 - A Maia tem só 3 fotos; Valongo tem 6. A página dela fica mais pobre.
+- Fotografias da equipa — hoje cada profissional é uma inicial num
+  círculo.
+- Fotografias dos serviços, se ela quiser. Não é preciso nenhuma: sem
+  fotografia a linha mostra as iniciais do serviço sobre papel, que é
+  desenho e não buraco. Põem-se em Gestão › Serviços, escolhendo uma
+  das nove fotografias da casa numa fila de miniaturas.
 
 ---
 
@@ -112,6 +118,40 @@ Apanhados a testar. Nenhum parte nada.
 
 ---
 
+## D · A passagem de abrir a casa
+
+O que se fechou para isto poder ser usado a sério, e não só visto.
+
+- **A ligação à base passou a ser cifrada.** O `postgres.js` liga em
+  texto simples por omissão e o Supabase aceita: nomes, telefones e a
+  própria senha da ligação iam pela internet em claro. `lib/db.ts`
+  exige `ssl: 'require'` fora de `localhost`, e os guiões passaram
+  todos por `scripts/_ligar.mjs`, que é agora o único sítio onde isso
+  se decide — cada um montava o seu cliente e nenhum pedia TLS.
+- **A palavra-passe partilhada foi apagada de produção.** O
+  `seed-real.mjs` dava `nohora2026` às cinco pessoas e o repositório é
+  público: quem lesse o código entrava como dona, na rede toda.
+  `scripts/arrancar.mjs` apagou-a e fechou as sessões abertas com ela.
+  **Ninguém entra em produção até a dona ter senha própria.**
+- **`?sslmode=` no endereço voltou a valer.** No `postgres.js` a opção
+  passada à mão ganha sempre à do endereço, por isso o `ssl: false` que
+  lá estava desligava a cifra a quem tinha escrito `?sslmode=require`
+  de propósito.
+- **Fechar comanda pede confirmação.** Congela comissões e mexe na
+  caixa; era um toque só, ao lado do botão de receber.
+- **As fotografias saíram da galeria.** Abrem a página inicial e cada
+  ficha de loja, e ilustram cada casa na escolha de loja — quem marca
+  vê onde vai ser atendida antes de escolher.
+- **Cada serviço tem lugar para fotografia** (`service.image_url`), com
+  as nove fotografias da casa oferecidas em miniatura na gestão. Sem
+  fotografia saem as iniciais do serviço sobre papel, com o tom a
+  variar com o nome.
+- **`scripts/estado.mjs`** — diz numa página o que está na base e o que
+  falta antes de abrir: quem não tem senha, quem não tem horário, lojas
+  sem fotografia, movimento de teste por limpar.
+
+---
+
 ## C · Feito nesta passagem
 
 - Catálogo real: **67 serviços em 7 categorias**, preçário igual nas
@@ -120,10 +160,13 @@ Apanhados a testar. Nenhum parte nada.
 - Lojas reais: Valongo e Maia, com morada, telefone e WhatsApp.
 - Fotos ligadas: 6 em Valongo, 3 na Maia, servidas de `public/fotos/`.
 - Equipa real com escalas e habilidades.
-- **O nome verdadeiro de cada profissional deixou de sair para fora.**
-  Sete sítios fechados: montra, página da loja, funil, horários,
-  confirmação, `/pronto` e a área da cliente. Para fora é
-  `Profissional 1..5`; dentro da gestão continuam os nomes.
+- **O nome que sai para fora passa por um sítio só.** Sete páginas
+  fechadas — montra, página da loja, funil, horários, confirmação,
+  `/pronto` e a área da cliente — todas por
+  `coalesce(public_alias, name)`. O `public_alias` começou por ser
+  `Profissional 1..5` e isso foi apagado: uma cliente que marca quer
+  ler *Ariadna*, não um número. Quem quiser um nome de montra
+  diferente do nome interno escreve-o na ficha, em Gestão › Equipa.
 - Movimento de teste: seis semanas de histórico fechado, o dia de hoje
   a meio, três semanas de marcações futuras, caixa aberto nas duas
   lojas. **É fictício** — corre-se `seed-real.mjs` com

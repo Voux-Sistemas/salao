@@ -6,11 +6,11 @@
  * `EQUIPA.md`. Onde ela ainda não disse nada há um palpite, e cada
  * palpite está marcado aqui em cima do sítio onde vive.
  *
- * As CLIENTES e as MARCAÇÕES são inventadas. Existem só para as telas
- * da gestão terem carne enquanto se testa — agenda cheia, comandas por
- * fechar, relatórios com números, caixa aberto. Antes de abrir isto ao
- * público corre-se o seed outra vez com MOVIMENTO = false, e o salão
- * fica com o catálogo e a equipa mas sem histórico falso.
+ * As CLIENTES e as MARCAÇÕES são inventadas, e só nascem contra a base
+ * local: existem para as telas da gestão terem carne enquanto se testa
+ * — agenda cheia, comandas por fechar, relatórios com números, caixa
+ * aberto. Contra a Supabase o salão fica com o catálogo, a equipa e as
+ * escalas, e mais nada.
  *
  * Volta a correr as vezes que quiseres: apaga a rede pelo slug antes de
  * semear. Determinístico — o mesmo resultado sempre, salvo o dia.
@@ -18,28 +18,9 @@
  *   node scripts/_prod.mjs seed-real     (Supabase)
  *   node scripts/seed-real.mjs           (base local, lê o .env)
  */
-import { readFileSync, existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { randomBytes, scrypt } from 'node:crypto'
-import postgres from 'postgres'
+import { ligar, loadEnv, hostOf, isLocal } from './_ligar.mjs'
 
-/** Põe a false para semear só o salão, sem clientes nem histórico. */
-const MOVIMENTO = true
-
-const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-
-function loadEnv() {
-  const file = join(root, '.env')
-  if (!existsSync(file)) return
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line)
-    if (!match) continue
-    const [, key, raw] = match
-    if (process.env[key]) continue
-    process.env[key] = raw.trim().replace(/^["']|["']$/g, '')
-  }
-}
 loadEnv()
 
 const url = process.env.DATABASE_URL
@@ -52,15 +33,38 @@ if (!url) {
 // isso é o que se quer; contra a Supabase é apagar o salão. Fora de
 // casa exige-se a intenção escrita, para não se perder um dia de
 // trabalho por causa de um .env trocado.
-const host = /@([^/:]+)/.exec(url)?.[1] ?? '?'
-const emCasa = ['localhost', '127.0.0.1', '::1'].includes(host)
+const host = hostOf(url)
+const emCasa = isLocal(url)
 if (!emCasa && !process.argv.includes('--apagar-tudo')) {
   console.error(`Isto APAGA tudo o que está em ${host} e semeia de novo.`)
   console.error('Se é mesmo o que quer, repita com --apagar-tudo.')
   process.exit(1)
 }
 
-const sql = postgres(url, { max: 1, prepare: false, connect_timeout: 20 })
+/*
+ * CLIENTES E MARCAÇÕES INVENTADAS: em casa sim, na Supabase não.
+ *
+ * Em casa é o que se quer — as telas da gestão só se testam com carne:
+ * agenda cheia, comandas por fechar, relatórios com números. Na base a
+ * sério é o contrário: a dona abre a agenda no primeiro dia e vê meio
+ * milhar de marcações que nunca aconteceram, com nomes de gente que não
+ * existe. Quem quiser mesmo encher a produção pede-o por escrito.
+ */
+const MOVIMENTO = emCasa || process.argv.includes('--com-movimento')
+
+/*
+ * A PALAVRA-PASSE DA EQUIPA.
+ *
+ * Em casa é sempre a mesma, para entrar sem cerimónia. Fora de casa
+ * não: uma palavra-passe escrita num ficheiro que está no git, igual
+ * para as cinco pessoas, não é uma palavra-passe — é um convite. Na
+ * Supabase a equipa nasce SEM senha (a gestão mostra-lhes "Sem senha"),
+ * e dá-se uma a cada pessoa na ficha dela. Para a primeira, a da dona,
+ * há o `scripts/senha.mjs`, que nunca escreve nada no disco.
+ */
+const SENHA = emCasa ? 'nohora2026' : process.env.SEED_PASSWORD || null
+
+const sql = ligar()
 
 /** scrypt$N$r$p$salt$chave — mesmo formato de lib/auth/password.ts. */
 function hashPassword(password) {
@@ -119,7 +123,6 @@ const weekdayOf = (offsetDays) => {
 }
 
 const ORG_SLUG = 'nohora-ramirez'
-const SENHA = 'nohora2026'
 const min = (h, m = 0) => h * 60 + m
 
 // ---------------------------------------------------------------------
@@ -294,11 +297,15 @@ const LOJAS = [
 //
 // Os telemóveis são inventados (menos o da dona): ela ainda não os deu.
 // Servem para entrar no sistema e trocam-se na ficha de cada uma.
+//
+// Sem `alias`: quem aparece no site é o nome próprio. O nome público só
+// se escreve quando alguém não quer o seu no sítio — e escreve-se na
+// gestão, não aqui. Chegou a estar «Profissional 1» a fazer de reserva e
+// era isso que as clientes liam.
 
 const EQUIPA = [
   {
     nome: 'Ariadna',
-    alias: 'Profissional 1',
     telefone: '+351930000001',
     cor: '#B08968',
     loja: 'valongo',
@@ -308,7 +315,6 @@ const EQUIPA = [
   },
   {
     nome: 'Adyr',
-    alias: 'Profissional 2',
     telefone: '+351930000002',
     cor: '#8C7A6B',
     loja: 'valongo',
@@ -320,7 +326,6 @@ const EQUIPA = [
   },
   {
     nome: 'Nana',
-    alias: 'Profissional 3',
     telefone: '+351930000003',
     cor: '#C6A96B',
     loja: 'valongo',
@@ -330,7 +335,6 @@ const EQUIPA = [
   },
   {
     nome: 'Filipa',
-    alias: 'Profissional 4',
     telefone: '+351930000004',
     cor: '#A47C6F',
     loja: 'valongo',
@@ -343,7 +347,6 @@ const EQUIPA = [
   },
   {
     nome: 'Nohora Ramirez',
-    alias: 'Profissional 5',
     telefone: '+351934730344',
     cor: '#9C8F7A',
     loja: 'maia',
@@ -391,15 +394,21 @@ function resumo(marcacoes, faturado) {
     console.log(
       `  Movimento ... ${marcacoes} marcações de teste, ${(faturado / 100).toFixed(2)} € faturados`,
     )
-    console.log('                (fictício; corre com MOVIMENTO = false para limpar)')
+    console.log('                (fictício; sem `--com-movimento` não é semeado)')
   } else {
     console.log('  Movimento ... nenhum — só o salão')
   }
   console.log('')
-  console.log(`  Entrar em /entrar com a palavra-passe "${SENHA}":`)
+  if (SENHA) {
+    console.log('  Entrar em /entrar com a palavra-passe do seed:')
+  } else {
+    console.log('  A equipa ficou SEM palavra-passe. Dê uma à dona com')
+    console.log(`    node scripts/_prod.mjs senha ${EQUIPA.find((p) => p.papel === 'owner')?.telefone ?? ''}`)
+    console.log('  e as outras definem-se na gestão, em Equipa.')
+  }
   for (const p of EQUIPA) {
     const papel = p.papel === 'owner' ? 'dona, rede toda' : `profissional, ${p.loja}`
-    console.log(`    ${p.telefone}  ${p.alias} (${p.nome})`.padEnd(52) + papel)
+    console.log(`    ${p.telefone}  ${p.nome}`.padEnd(52) + papel)
   }
   console.log('')
 }
@@ -476,7 +485,7 @@ try {
   }
 
   // --- equipa --------------------------------------------------------
-  const passwordHash = await hashPassword(SENHA)
+  const passwordHash = SENHA ? await hashPassword(SENHA) : null
   const equipa = []
 
   for (const [i, p] of EQUIPA.entries()) {
@@ -484,7 +493,7 @@ try {
     const [s] = await sql`
       insert into staff (org_id, name, public_alias, phone, password_hash,
                          display_color, sort_order)
-      values (${orgId}, ${p.nome}, ${p.alias}, ${p.telefone},
+      values (${orgId}, ${p.nome}, ${p.alias ?? null}, ${p.telefone},
               ${passwordHash}, ${p.cor}, ${i})
       returning id
     `

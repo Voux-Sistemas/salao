@@ -142,7 +142,6 @@ function mobileNavFor(actor: Actor): NavItem[] {
 }
 
 const ROLE_LABEL = {
-  support: 'Suporte',
   owner: 'Dona',
   manager: 'Gerente',
   professional: 'Profissional',

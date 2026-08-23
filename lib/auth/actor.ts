@@ -2,15 +2,12 @@ import 'server-only'
 import { cache } from 'react'
 import { notFound, redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
-import { env, normalisePhone } from '@/lib/env'
 import { readSession } from '@/lib/auth/session'
 import { getUnitBySlug, type Unit } from '@/lib/org'
 
 /**
- * Quatro degraus, do mais alto ao mais baixo.
+ * Três degraus, do mais alto ao mais baixo.
  *
- *   support       quem construiu o sistema. Não vive na base de dados:
- *                 é uma lista de telefones numa variável de ambiente.
  *   owner         escopo rede. Vê e mexe em tudo.
  *   manager       o mesmo, limitado às lojas onde tem o papel. Não vê o
  *                 catálogo da rede nem as regras de comissão.
@@ -20,10 +17,9 @@ import { getUnitBySlug, type Unit } from '@/lib/org'
  * Um papel guarda-se com uma loja associada; SEM LOJA ASSOCIADA
  * SIGNIFICA "A REDE TODA".
  */
-export type Role = 'support' | 'owner' | 'manager' | 'professional'
+export type Role = 'owner' | 'manager' | 'professional'
 
 const RANK: Record<Role, number> = {
-  support: 4,
   owner: 3,
   manager: 2,
   professional: 1,
@@ -37,7 +33,6 @@ export type Actor = {
   email: string | null
   avatarUrl: string | null
   role: Role
-  isSupport: boolean
   /** Vê a rede toda (suporte, dona, ou gerente com papel sem loja). */
   orgScope: boolean
   /** Lojas a que tem acesso quando não é escopo rede. */
@@ -92,8 +87,7 @@ export const getActor = cache(async (): Promise<Actor | null> => {
   const row = rows[0]
   if (!row) return null
 
-  const isSupport = env.supportPhones.includes(normalisePhone(row.phone))
-  const candidates: Role[] = isSupport ? ['support'] : []
+  const candidates: Role[] = []
   for (const r of row.roles) {
     if (r === 'owner' || r === 'manager' || r === 'professional') {
       candidates.push(r)
@@ -113,8 +107,7 @@ export const getActor = cache(async (): Promise<Actor | null> => {
     email: row.email,
     avatarUrl: row.avatar_url,
     role,
-    isSupport,
-    orgScope: isSupport || role === 'owner' || row.has_org_scope,
+    orgScope: role === 'owner' || row.has_org_scope,
     unitIds: row.unit_ids ?? [],
   }
 })

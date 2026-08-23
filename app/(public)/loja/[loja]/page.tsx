@@ -4,7 +4,7 @@ import { sql } from '@/lib/db'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { weeklyHours } from '@/lib/hours'
 import { formatMinutes, today, weekdayOf } from '@/lib/time'
-import { getDictionary, getLanguage } from '@/lib/i18n'
+import { fill, getDictionary, getLanguage } from '@/lib/i18n'
 import { formatCents } from '@/lib/money'
 import { formatDuration } from '@/lib/time'
 import { ButtonLink } from '@/components/ui'
@@ -27,6 +27,8 @@ type PriceRow = {
   description: string | null
   duration_minutes: number
   price_cents: number
+  image_url: string | null
+  image_alt: string | null
 }
 
 type TeamRow = {
@@ -109,7 +111,8 @@ export default async function StorePage({ params }: Params) {
     sql<PriceRow[]>`
       select c.id as category_id, c.name as category_name,
              s.id as service_id, s.name, s.description,
-             p.duration_minutes, p.price_cents
+             p.duration_minutes, p.price_cents,
+             s.image_url, s.image_alt
         from service s
         join service_category c on c.id = s.category_id and c.is_active
         cross join lateral effective_service_pricing(s.id, ${unit.id}::uuid, null::uuid) p
@@ -381,6 +384,14 @@ export default async function StorePage({ params }: Params) {
                       duration={formatDuration(service.duration_minutes, language)}
                       price={formatCents(service.price_cents, org.currency, language)}
                       description={service.description}
+                      thumb={{
+                        url: service.image_url,
+                        alt:
+                          service.image_alt ??
+                          fill(dict.home.servicePhotoAlt, {
+                            service: service.name,
+                          }),
+                      }}
                     />
                   ))}
                 </CollapseGroup>

@@ -17,7 +17,6 @@ Next.js (App Router) · Postgres no Supabase, por SQL directo · Netlify.
 
 | Nível | Onde manda |
 |---|---|
-| **Suporte** | Não vive na base de dados: é a lista `SUPPORT_PHONES`. Vê tudo. |
 | **Dona** | A rede toda. |
 | **Gerente** | Só as lojas dela. **Não vê** o catálogo da rede nem as regras de comissão. |
 | **Profissional** | Só a agenda dela. |
@@ -70,10 +69,9 @@ Git** — está no `.gitignore`, e o `.env.example` só tem marcadores.
 | `DATABASE_URL` | A ligação do pooler (porta 6543). |
 | `SESSION_SECRET` | Assina os cookies de sessão e os códigos. `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
 | `SETUP_CODE` | Protege o `/comecar`. Depois de existir dona, deixa de servir. |
-| `SUPPORT_PHONES` | Lista separada por vírgulas. Quem entrar com um destes números vê tudo. |
 | `NEXT_PUBLIC_SITE_URL` | Endereço público. É a raiz dos links do WhatsApp, do `robots.txt`, do `sitemap.xml` e da imagem de partilha. |
 
-As mesmas cinco variáveis vão para o Netlify em **Site settings ›
+As mesmas quatro variáveis vão para o Netlify em **Site settings ›
 Environment variables**.
 
 ### 3. Netlify
@@ -105,6 +103,35 @@ npm install
 npm run dev        # http://localhost:3000
 npm run typecheck  # tsc --noEmit
 npm run build
+```
+
+---
+
+## Os guiões
+
+Correm fora do Next. Todos vão à base pela mesma porta — o
+`scripts/_ligar.mjs`, que é quem decide o TLS: nada de cifra em
+`localhost`, cifra obrigatória em tudo o resto.
+
+| Guião | O que faz |
+|---|---|
+| `npm run estado` | Diz o que está na base e o que falta antes de abrir: quem não tem senha, quem não tem horário, lojas sem fotografia, movimento de teste por limpar. **Só lê.** |
+| `npm run db:status` | Que migrações faltam aplicar. |
+| `npm run db:migrate` | Aplica-as, pela ordem do nome. |
+| `npm run senha -- +351…` | Define a palavra-passe de uma pessoa. A senha é pedida no terminal e não fica no histórico. |
+| `npm run arrancar` | Tira a palavra-passe partilhada do arranque a quem ainda a tenha e fecha as sessões abertas com ela. |
+| `node scripts/limpar.mjs --a-serio` | Apaga clientes, marcações, pagamentos, caixa e comissões. Guarda lojas, preçário, equipa, escalas, fotografias e senhas. |
+| `node scripts/seed-real.mjs` | Enche uma base **vazia** com a casa real e movimento de ensaio. Nunca em produção depois de a casa abrir. |
+
+Por omissão vão à `DATABASE_URL` do `.env` — a base local. Para os
+mandar à Supabase há o `scripts/_prod.mjs`, que lê o
+`.env.production.local` (fora do git) e passa a `DATABASE_URL` dele ao
+guião:
+
+```bash
+node scripts/_prod.mjs estado
+node scripts/_prod.mjs migrate
+node scripts/_prod.mjs senha +351…
 ```
 
 ---
@@ -201,7 +228,8 @@ app/
 lib/            regras — availability, booking, comanda, cash, commissions…
 components/     as peças de que os ecrãs são feitos
 supabase/       migrações
-scripts/        o que corre as migrações
+scripts/        migrações, sementes, manutenção — ver «Os guiões»
+public/fotos/   as nove fotografias da casa
 ```
 
 O nome da casa vive na base de dados (`org.name`, `unit.name`). O

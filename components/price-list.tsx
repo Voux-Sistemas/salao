@@ -1,3 +1,5 @@
+import { Photo, PhotoFallback } from '@/components/photo'
+
 /**
  * O PREÇÁRIO.
  *
@@ -5,6 +7,9 @@
  * vive aqui para não haver duas versões a divergir. Quem fecha as
  * categorias ao telemóvel é o `CollapseGroup`, partilhado com o funil.
  */
+
+/** O quadradinho à esquerda do nome. Ver a nota do `thumb` em baixo. */
+export type Thumb = { url: string | null; alt: string }
 
 /**
  * UMA LINHA DO PREÇÁRIO.
@@ -22,6 +27,7 @@ export function PriceLine({
   price,
   from,
   description,
+  thumb,
 }: {
   name: string
   duration: string
@@ -29,9 +35,19 @@ export function PriceLine({
   /** O "desde" que antecede o preço na montra. Na loja não existe. */
   from?: string
   description?: string | null
+  /**
+   * A miniatura. Vem em todas as linhas ou em nenhuma — nunca em
+   * algumas: meia dúzia de fotografias no meio de sessenta serviços
+   * deixava o preçário aos degraus. `url: null` não é ausência, é o
+   * monograma da casa, que é um desenho e não um buraco à espera de
+   * imagem; é assim que a lista se mantém aprumada enquanto a gestão
+   * vai pondo as fotografias. Passar `null` no `thumb` inteiro tira a
+   * coluna e devolve a linha de ementa em texto puro.
+   */
+  thumb?: Thumb | null
 }) {
-  return (
-    <li className="mt-5 first:mt-0">
+  const line = (
+    <>
       <div className="sm:flex sm:items-baseline sm:gap-3">
         <span className="text-[0.9375rem] text-[var(--ink)]">{name}</span>
         <span className="hidden flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)] sm:block" />
@@ -52,6 +68,23 @@ export function PriceLine({
           {description}
         </p>
       ) : null}
+    </>
+  )
+
+  if (!thumb) return <li className="mt-5 first:mt-0">{line}</li>
+
+  return (
+    <li className="mt-5 flex items-start gap-3.5 first:mt-0 sm:gap-4">
+      {/* `mt-[0.1rem]` alinha o topo do quadrado com o topo da letra, não
+          com o topo da caixa de texto — que tem entrelinha por cima. */}
+      <span className="mt-[0.1rem] size-12 shrink-0 overflow-hidden bg-[var(--surface-raised)] sm:size-14">
+        {thumb.url ? (
+          <Photo src={thumb.url} alt={thumb.alt} />
+        ) : (
+          <PhotoFallback seed={name} label={name} compact />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">{line}</div>
     </li>
   )
 }

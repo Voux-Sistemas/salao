@@ -37,16 +37,6 @@ export const env = {
   get sessionSecret(): string {
     return required('SESSION_SECRET')
   },
-  /**
-   * O suporte não vive na base de dados: é esta lista.
-   * Quem entrar com um destes telefones vê tudo, em todas as lojas.
-   */
-  get supportPhones(): string[] {
-    return optional('SUPPORT_PHONES')
-      .split(',')
-      .map((p) => normalisePhone(p))
-      .filter(Boolean)
-  },
   /** Código de instalação que protege o /comecar. */
   get setupCode(): string {
     return required('SETUP_CODE')

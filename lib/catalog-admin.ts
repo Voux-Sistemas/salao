@@ -122,6 +122,8 @@ export type ServiceRow = {
   buffer_after_minutes: number
   bookable_online: boolean
   description: string | null
+  image_url: string | null
+  image_alt: string | null
   skilled: number
   overrides: number
 }
@@ -131,7 +133,7 @@ export async function listServices(orgId: string): Promise<ServiceRow[]> {
     select s.id, s.slug, s.name, s.category_id, c.name as category_name,
            s.base_price_cents, s.duration_minutes,
            s.buffer_before_minutes, s.buffer_after_minutes,
-           s.bookable_online, s.description,
+           s.bookable_online, s.description, s.image_url, s.image_alt,
            (select count(*)::int from staff_skill k
              join staff st on st.id = k.staff_id
             where k.service_id = s.id and st.is_active) as skilled,
@@ -152,7 +154,7 @@ export async function getService(
     select s.id, s.slug, s.name, s.category_id, c.name as category_name,
            s.base_price_cents, s.duration_minutes,
            s.buffer_before_minutes, s.buffer_after_minutes,
-           s.bookable_online, s.description,
+           s.bookable_online, s.description, s.image_url, s.image_alt,
            0 as skilled, 0 as overrides
       from service s
       join service_category c on c.id = s.category_id
@@ -160,6 +162,26 @@ export async function getService(
      limit 1
   `
   return rows[0] ?? null
+}
+
+export type PhotoChoice = { url: string; label: string }
+
+/**
+ * AS FOTOGRAFIAS QUE JÁ ESTÃO NA CASA.
+ *
+ * Pedir à dona que cole um endereço de imagem é pedir-lhe uma coisa de
+ * informático. Como as fotografias das lojas já estão cá dentro, mostram-se
+ * em baixo do campo para escolher com um toque; o campo continua lá para
+ * quem tenha um endereço de fora.
+ */
+export async function listPhotoLibrary(orgId: string): Promise<PhotoChoice[]> {
+  return sql<PhotoChoice[]>`
+    select p.url, coalesce(nullif(p.alt, ''), u.name) as label
+      from unit_photo p
+      join unit u on u.id = p.unit_id
+     where u.org_id = ${orgId} and u.is_active
+     order by u.sort_order, u.name, p.sort_order
+  `
 }
 
 export type ServiceInput = {
@@ -172,6 +194,8 @@ export type ServiceInput = {
   bufferBeforeMinutes: number
   bufferAfterMinutes: number
   bookableOnline: boolean
+  imageUrl: string | null
+  imageAlt: string | null
 }
 
 export type ServiceResult =
@@ -202,13 +226,13 @@ export async function createService(
         org_id, category_id, slug, name, description,
         base_price_cents, duration_minutes,
         buffer_before_minutes, buffer_after_minutes,
-        bookable_online, sort_order
+        bookable_online, image_url, image_alt, sort_order
       ) values (
         ${orgId}, ${input.categoryId}, ${input.slug}, ${input.name.trim()},
         ${input.description},
         ${input.basePriceCents}, ${input.durationMinutes},
         ${input.bufferBeforeMinutes}, ${input.bufferAfterMinutes},
-        ${input.bookableOnline},
+        ${input.bookableOnline}, ${input.imageUrl}, ${input.imageAlt},
         (select coalesce(max(sort_order), 0) + 1 from service
           where category_id = ${input.categoryId})
       )
@@ -241,7 +265,9 @@ export async function updateService(
         duration_minutes = ${input.durationMinutes},
         buffer_before_minutes = ${input.bufferBeforeMinutes},
         buffer_after_minutes = ${input.bufferAfterMinutes},
-        bookable_online = ${input.bookableOnline}
+        bookable_online = ${input.bookableOnline},
+        image_url = ${input.imageUrl},
+        image_alt = ${input.imageAlt}
        where id = ${id} and org_id = ${orgId}
        returning id
     `

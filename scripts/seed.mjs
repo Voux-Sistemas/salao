@@ -12,25 +12,9 @@
  *
  *   node scripts/seed.mjs
  */
-import { readFileSync, existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { randomBytes, scrypt } from 'node:crypto'
-import postgres from 'postgres'
+import { ligar, loadEnv, hostOf } from './_ligar.mjs'
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-
-function loadEnv() {
-  const file = join(root, '.env')
-  if (!existsSync(file)) return
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line)
-    if (!match) continue
-    const [, key, raw] = match
-    if (process.env[key]) continue
-    process.env[key] = raw.trim().replace(/^["']|["']$/g, '')
-  }
-}
 loadEnv()
 
 const url = process.env.DATABASE_URL
@@ -42,14 +26,14 @@ if (!url) {
 // Isto apaga tudo e põe um salão de mentira no lugar. Contra uma base
 // local é o que se quer; contra a Supabase seria trocar o salão a sério
 // por dois salões inventados em Lisboa. Fora de casa, nem por engano.
-const host = /@([^/:]+)/.exec(url)?.[1] ?? '?'
+const host = hostOf(url)
 if (!['localhost', '127.0.0.1', '::1'].includes(host)) {
   console.error(`Este é o seed de DEMONSTRAÇÃO e ${host} não é a sua máquina.`)
   console.error('Para semear o salão a sério use scripts/seed-real.mjs.')
   process.exit(1)
 }
 
-const sql = postgres(url, { max: 1, prepare: false, connect_timeout: 20 })
+const sql = ligar()
 
 /** scrypt$N$r$p$salt$chave — mesmo formato de lib/auth/password.ts. */
 function hashPassword(password) {

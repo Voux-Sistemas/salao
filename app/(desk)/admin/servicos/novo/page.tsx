@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { requireOrgScope } from '@/lib/auth/actor'
-import { listCategories } from '@/lib/catalog-admin'
+import { listCategories, listPhotoLibrary } from '@/lib/catalog-admin'
 import { ServiceForm } from '@/components/service-forms'
 import { BackLink } from '@/components/gestao-panel'
 
@@ -10,7 +10,10 @@ export const metadata: Metadata = { title: 'Novo serviço' }
 /** Sem categoria não há onde o pôr — volta-se atrás e cria-se uma. */
 export default async function NovoServicoPage() {
   const actor = await requireOrgScope()
-  const categories = await listCategories(actor.orgId)
+  const [categories, photos] = await Promise.all([
+    listCategories(actor.orgId),
+    listPhotoLibrary(actor.orgId),
+  ])
   if (categories.length === 0) redirect('/admin/servicos')
 
   return (
@@ -27,7 +30,7 @@ export default async function NovoServicoPage() {
         quem o executa.
       </p>
 
-      <ServiceForm categories={categories} />
+      <ServiceForm categories={categories} photos={photos} />
     </div>
   )
 }

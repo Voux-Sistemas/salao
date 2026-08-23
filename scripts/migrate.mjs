@@ -8,26 +8,13 @@
  *   node scripts/migrate.mjs            aplica o que falta
  *   node scripts/migrate.mjs --status   só diz o que falta, não toca
  */
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import postgres from 'postgres'
+import { ligar, loadEnv, hostOf } from './_ligar.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const folder = join(root, 'supabase', 'migrations')
-
-/** Lê o .env à mão — este script corre fora do Next. */
-function loadEnv() {
-  const file = join(root, '.env')
-  if (!existsSync(file)) return
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line)
-    if (!match) continue
-    const [, key, raw] = match
-    if (process.env[key]) continue
-    process.env[key] = raw.trim().replace(/^["']|["']$/g, '')
-  }
-}
 
 loadEnv()
 
@@ -39,13 +26,7 @@ if (!url) {
 
 const statusOnly = process.argv.includes('--status')
 
-const sql = postgres(url, {
-  max: 1,
-  prepare: false,
-  connect_timeout: 20,
-  idle_timeout: 5,
-  onnotice: () => {},
-})
+const sql = ligar({ idle_timeout: 5 })
 
 try {
   await sql.unsafe(`

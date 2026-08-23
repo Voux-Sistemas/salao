@@ -17,9 +17,12 @@ import {
   saveServiceAction,
   type CatalogState,
 } from '@/app/(desk)/admin/servicos/actions'
+import type { PhotoChoice } from '@/lib/catalog-admin'
 import { Panel } from '@/components/gestao-panel'
+import { Photo, PhotoFallback } from '@/components/photo'
 import { Button, Field, Input, Notice, Select, Textarea } from '@/components/ui'
 import { centsToInput, formatCents, inputToCents } from '@/lib/money'
+import { safePhotoUrl } from '@/lib/text'
 
 const EMPTY: CatalogState = { error: null, done: null }
 
@@ -200,6 +203,8 @@ export type ServiceFields = {
   buffer_before_minutes: number
   buffer_after_minutes: number
   bookable_online: boolean
+  image_url: string | null
+  image_alt: string | null
 }
 
 /**
@@ -209,9 +214,11 @@ export type ServiceFields = {
 export function ServiceForm({
   service,
   categories,
+  photos = [],
 }: {
   service?: ServiceFields
   categories: Option[]
+  photos?: PhotoChoice[]
 }) {
   const [state, action] = useActionState<CatalogState, FormData>(
     service ? saveServiceAction : createServiceAction,
@@ -221,6 +228,8 @@ export function ServiceForm({
     service ? centsToInput(service.base_price_cents) : '0,00',
   )
   const preview = inputToCents(price)
+  const [image, setImage] = useState(service?.image_url ?? '')
+  const imageSrc = safePhotoUrl(image)
 
   return (
     <form action={action} className="space-y-5">
@@ -358,6 +367,100 @@ export function ServiceForm({
             As folgas ocupam a agenda da profissional — para preparar e
             arrumar — mas a cliente nunca as vê.
           </p>
+        </div>
+      </Panel>
+
+      <Panel
+        title="Fotografia"
+        hint="Opcional. Sem fotografia o serviço mostra o monograma da casa — que é o desenho normal, não uma falha."
+      >
+        <div className="flex flex-col gap-5 sm:flex-row">
+          <div className="w-40 shrink-0 overflow-hidden border border-[var(--line-soft)]">
+            <div className="aspect-[4/3] w-full">
+              {imageSrc ? (
+                <Photo src={imageSrc} alt="" />
+              ) : (
+                <PhotoFallback seed={service?.name ?? ''} label={service?.name} />
+              )}
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-4">
+            <Field
+              label="Endereço da imagem"
+              htmlFor="service-image"
+              hint="Um caminho do site (/fotos/…) ou um endereço https://."
+            >
+              <Input
+                id="service-image"
+                name="image"
+                value={image}
+                onChange={(event) => setImage(event.target.value)}
+                placeholder="/fotos/valongo/1.jpg"
+                maxLength={500}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </Field>
+
+            {image.trim() && !imageSrc ? (
+              <Notice tone="warn">
+                Esse endereço não serve. Guardar assim deixa o serviço sem
+                fotografia.
+              </Notice>
+            ) : null}
+
+            {photos.length > 0 ? (
+              <div>
+                <p className="eyebrow">Fotografias da casa</p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {photos.map((choice) => (
+                    // `type="button"`: dentro de um formulário, um botão sem
+                    // tipo submete-o — escolher a foto gravava o serviço.
+                    <button
+                      key={choice.url}
+                      type="button"
+                      onClick={() => setImage(choice.url)}
+                      title={choice.label}
+                      aria-label={choice.label}
+                      aria-pressed={image === choice.url}
+                      className={clsx(
+                        'size-14 overflow-hidden border transition-colors',
+                        image === choice.url
+                          ? 'border-[var(--accent)]'
+                          : 'border-[var(--line)] hover:border-[var(--ink-faint)]',
+                      )}
+                    >
+                      <Photo src={choice.url} alt="" />
+                    </button>
+                  ))}
+                  {image ? (
+                    <button
+                      type="button"
+                      onClick={() => setImage('')}
+                      className="h-14 px-3 text-[0.75rem] text-[var(--ink-muted)] underline underline-offset-4 transition-colors hover:text-[var(--bad)]"
+                    >
+                      Sem fotografia
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            <Field
+              label="Descrição da imagem"
+              htmlFor="service-image-alt"
+              hint="O que uma leitora de ecrã lê em voz alta. Em branco, lê o nome do serviço."
+            >
+              <Input
+                id="service-image-alt"
+                name="imageAlt"
+                defaultValue={service?.image_alt ?? ''}
+                maxLength={120}
+                autoComplete="off"
+              />
+            </Field>
+          </div>
         </div>
       </Panel>
 

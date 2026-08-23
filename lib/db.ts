@@ -21,12 +21,42 @@ declare global {
   var __salaoSql: Client | undefined
 }
 
+/**
+ * O Postgres local não fala TLS; o Supabase fala e devia ser obrigado a
+ * falar — entre a Netlify e a base vão nomes, telefones e a própria
+ * palavra-passe da ligação, pela internet fora. Sem isto o condutor liga
+ * em texto simples quando o servidor deixa, e o Supabase deixa.
+ *
+ * `require` e não `verify-full` porque o certificado do pooler é
+ * assinado pela autoridade da própria Supabase: verificar a cadeia
+ * obrigaria a trazer o certificado deles connosco, e a alternativa
+ * seria ficar sem cifra nenhuma. Quem quiser mandar nisto escreve
+ * `?sslmode=...` na própria DATABASE_URL e essa decisão ganha.
+ *
+ * Daí o `undefined`, e não `false`: no `postgres.js` a opção passada à
+ * mão ganha SEMPRE ao `sslmode` do endereço (`k in o ? o[k] : query[k]`),
+ * por isso devolver `false` aqui desligava a cifra a quem tinha escrito
+ * `?sslmode=require` de propósito. Não passar a chave é o que deixa o
+ * endereço decidir.
+ */
+function sslFor(url: string): 'require' | false | undefined {
+  if (/[?&]sslmode=/.test(url)) return undefined
+  return /@(localhost|127\.0\.0\.1|\[::1\])/.test(url) ? false : 'require'
+}
+
 function createClient() {
-  return postgres(env.databaseUrl, {
+  const url = env.databaseUrl
+  const ssl = sslFor(url)
+  return postgres(url, {
+    // O pooler da Supabase é partilhado e a Netlify arranca uma função
+    // por pedido: cada instância que abrisse dez ligações esgotava o
+    // pooler numa manhã de sábado. Quatro chegam — as consultas são
+    // curtas — e o `idle_timeout` devolve-as depressa.
     max: env.isProduction ? 4 : 8,
     idle_timeout: 20,
     connect_timeout: 15,
     prepare: false,
+    ...(ssl === undefined ? {} : { ssl }),
     transform: { undefined: null },
   })
 }

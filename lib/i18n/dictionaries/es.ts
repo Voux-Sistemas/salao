@@ -37,7 +37,7 @@ export const es: Dictionary = {
       'Elige el servicio, la profesional y la hora. Sin llamadas, sin esperas.',
     cta: 'Reservar ahora',
     ctaSecondary: 'Nuestras casas',
-    heroEyebrow: 'Chiado · Cascais',
+    heroEyebrow: 'Bienvenida',
     heroTitle1: 'La belleza tiene',
     heroTitleItalic: 'dirección',
     heroTitle2: '.',
@@ -60,6 +60,9 @@ export const es: Dictionary = {
     servicesSubtitle: 'Precios desde. El importe final depende del centro y de la profesional.',
     teamTitle: 'Quién te atiende',
     hoursTitle: 'Horario',
+    galleryEyebrow: 'La casa por dentro',
+    galleryTitle: 'Una mirada',
+    servicePhotoAlt: 'Fotografía de {service}',
   },
   unit: {
     openNow: 'Abierto ahora',
@@ -83,7 +86,7 @@ export const es: Dictionary = {
     noStoresHint: 'Vuelva dentro de un momento.',
   },
   footer: {
-    tagline: 'Cabello, uñas y estética con cita previa, en Chiado y Cascais.',
+    tagline: 'Cabello, uñas y estética con cita previa.',
     whatsapp: 'Escríbenos por WhatsApp',
     whatsappMessage: '¡Hola! Me gustaría reservar una cita.',
     staffAccess: 'Acceso del equipo',

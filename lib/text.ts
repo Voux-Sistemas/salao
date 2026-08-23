@@ -80,3 +80,30 @@ export function shortName(name: string): string {
   const last = parts[parts.length - 1] ?? ''
   return `${firstPart} ${last.charAt(0)}.`
 }
+
+/**
+ * O ENDEREÇO DE UMA FOTOGRAFIA, VINDO DE UM CAMPO DE TEXTO.
+ *
+ * Quem escreve isto é a dona, na área de gestão, e o que escrever vai
+ * parar a um `src=` na montra pública. Um `javascript:` colado ali
+ * corria no navegador de todas as clientes — por isso só passam duas
+ * formas: um caminho do próprio site (`/fotos/...`) ou um `https://`.
+ *
+ * Não valida se a imagem existe: isso vê-se na pré-visualização, e uma
+ * foto que não carrega cai no monograma da casa, que é o desenho normal
+ * de "este serviço não tem fotografia".
+ */
+export function safePhotoUrl(input: string | null | undefined): string | null {
+  const value = (input ?? '').trim()
+  if (!value) return null
+
+  // `//exemplo.com` herda o protocolo da página e é um endereço de fora
+  // disfarçado de caminho local. Fica de fora com o resto.
+  if (value.startsWith('/') && !value.startsWith('//')) {
+    return value.length <= 500 ? value : null
+  }
+  if (/^https:\/\/[^\s]+$/i.test(value)) {
+    return value.length <= 500 ? value : null
+  }
+  return null
+}

@@ -1,18 +1,25 @@
-# Entrega
+# Abrir a casa
 
-O que falta para o sistema estar de pé. Duas listas: a minha, que vou
-riscando, e a sua, no fim — o que não pode ser feito por mais ninguém.
+O que já está feito e o que falta para a equipa do salão começar a usar
+isto a sério. A última lista é a que interessa: são as coisas que só
+uma pessoa com as chaves pode fazer.
 
 Estado: `[ ]` por fazer · `[~]` a meio · `[x]` feito
+
+Para ver como está a base neste momento, sem mexer em nada:
+
+```bash
+node scripts/_prod.mjs estado
+```
 
 ---
 
 ## 1. Quem vê o quê
 
-A parte que magoa depois de estar no ar. O sistema vai guardar telefones,
+A parte que magoa depois de estar no ar. O sistema guarda telefones,
 moradas, alergias e notas de clientes reais.
 
-- [x] Auditar a fronteira dos quatro níveis — Suporte, Dona, Gerente,
+- [x] Auditar a fronteira dos três níveis — Dona, Gerente,
       Profissional — em todas as páginas e em todas as server actions.
 - [x] Confirmar que uma Gerente não chega às lojas que não são dela, nem
       pela página nem por um id escrito à mão na barra de endereço.
@@ -24,11 +31,20 @@ moradas, alergias e notas de clientes reais.
 - [x] Travão de repetição nas portas públicas — entrar, pedir código,
       confirmar código e marcar. Contagem na base de dados, porque em
       produção o servidor não é um só.
+- [x] **A ligação à base é cifrada.** O condutor não pedia TLS e o
+      Supabase aceita texto simples: nomes, telefones e a própria senha
+      da ligação iam pela internet em claro. `lib/db.ts` obriga agora a
+      `ssl: 'require'` em tudo o que não seja `localhost`.
+- [x] **A palavra-passe partilhada foi apagada.** O `seed-real.mjs`
+      dava a mesma senha às cinco pessoas e essa senha está escrita no
+      repositório, que é público — quem lesse o código entrava como
+      dona, na rede toda. `scripts/arrancar.mjs` apagou-a em produção e
+      fechou as sessões que tinham sido abertas com ela.
 
 ## 2. Quando algo corre mal
 
-Hoje um erro mostra o ecrã cinzento do Next, em inglês. Uma cliente que
-veja isso fecha o site.
+Um erro em inglês, no ecrã cinzento do Next, faz uma cliente fechar o
+site.
 
 - [x] `error.tsx` e `not-found.tsx` no lado público, na língua e no
       visual do sítio.
@@ -40,8 +56,7 @@ veja isso fecha o site.
 
 ## 3. O link que se manda por WhatsApp
 
-É assim que as clientes vão receber a marcação. Hoje o link abre sem
-imagem e sem descrição — chega lá como um endereço em cru.
+É assim que as clientes recebem a marcação.
 
 - [x] Metadados OpenGraph na raiz e, com o nome e a cidade de cada casa,
       nos dois endereços que se colam numa conversa — `/loja/[loja]` e
@@ -49,61 +64,85 @@ imagem e sem descrição — chega lá como um endereço em cru.
 - [x] Imagem de partilha com o logótipo, 1200×630, gerada por
       `npm run og:image`, com o texto alternativo ao lado.
 - [x] `robots.txt` e `sitemap.xml`. O mapa lê as lojas da base de dados
-      e, se ela não responder, sai só com as páginas fixas em vez de dar
-      erro.
+      e, se ela não responder, sai só com as páginas fixas.
 - [x] A área da equipa e os passos pessoais do funil marcados como
       «fora do índice».
-- [x] Confirmar que os ícones em `public/` estão mesmo a ser usados —
-      `icon.png` e `apple-icon.png` saem no `<head>` de todas as páginas.
 
-## 4. Provar que funciona
+## 4. As fotografias
 
-Testado a sério contra a base de dados, não só visto ao espelho.
+Nove fotografias verdadeiras — seis de Valongo, três da Maia — que
+estavam quase todas escondidas na galeria do fim da montra.
+
+- [x] Abrem a página inicial e cada ficha de loja.
+- [x] Ilustram cada casa na escolha de loja, que é o primeiro passo do
+      funil: quem marca vê onde vai ser atendida antes de escolher.
+- [x] Podem ilustrar cada serviço (`service.image_url`). Na gestão o
+      campo oferece as nove fotografias da casa numa fila de miniaturas
+      — não é preciso saber o que é um endereço de imagem.
+- [x] Sem fotografia sai o monograma da casa sobre papel, com o tom a
+      variar com o nome do serviço. É o desenho normal, não uma falha.
+- [x] Ou há miniaturas em toda a lista ou não há nenhuma: meia dúzia de
+      fotografias entre sessenta e sete serviços deixava a lista aos
+      degraus.
+
+## 5. Provar que funciona
+
+Testado contra a base de dados, não só visto ao espelho.
 
 - [x] A tranca do overbooking recusa marcações sobrepostas, incluindo
       duas ligações a pedir a mesma mão ao mesmo segundo.
-- [x] As migrações não têm nada que o Supabase recuse.
-- [x] Funil público ponta a ponta, num navegador a sério contra a
-      compilação de produção: loja → serviço → hora → nome e telefone →
-      «Está reservado». Ficou na base uma marcação com origem `site`, a
-      ficha da cliente criada pelo telefone, a língua do navegador
-      guardada, o preço e o nome do serviço congelados na linha, e a
-      profissional escolhida pelo servidor — nunca pelo navegador.
-- [x] Comanda: receber em dinheiro → fechar → comissão de 30% sobre
-      35,00 € = 10,50 €. Mexeu-se depois na regra para 50% e a entrada
-      já gerada ficou nos 30% — a percentagem congela no fecho.
-- [x] Caixa: fundo de 50,00 € → venda 35,00 €, reforço 20,00 €,
-      sangria 15,00 € → esperado 125,00 €, contado 123,50 €,
-      diferença −1,50 €. E o dia seguinte aberto de novo pelo ecrã.
-      O fecho da comanda só passa com a caixa aberta — dinheiro vivo
-      não entra numa gaveta fechada.
-
-## 5. Fechar
-
-- [x] `npx tsc --noEmit` e `npm run build` limpos — 44 rotas, incluindo
-      `/robots.txt`, `/sitemap.xml` e `/opengraph-image.png`.
-- [x] README posto a par: as oito migrações, o travão das portas, os
-      ecrãs de erro e o cartão do link.
-- [x] Commit.
+- [x] Funil público ponta a ponta, num navegador a sério: loja →
+      serviço → hora → nome e telefone → «Está reservado». Ficou na base
+      uma marcação com origem `site`, a ficha da cliente criada pelo
+      telefone, a língua guardada, o preço e o nome do serviço
+      congelados na linha, e a profissional escolhida pelo servidor.
+- [x] Comanda ponta a ponta: receber 15,00 € em dinheiro → fechar →
+      entrou um movimento de caixa de 15,00 € e uma comissão de 30%
+      = 4,50 €, congelada no fecho.
+- [x] Caixa: fundo, venda, reforço, sangria, contagem e diferença. O
+      fecho da comanda só passa com a caixa aberta — dinheiro vivo não
+      entra numa gaveta fechada.
+- [x] As 31 páginas da equipa abertas uma a uma com a conta da dona:
+      todas a 200, sem um erro de consola.
+- [x] `npx tsc --noEmit` e `npm run build` limpos.
 
 ---
 
 ## O que só você pode fazer
 
-1. **O seu número em `SUPPORT_PHONES`**, no `.env`, em formato
-   internacional (`+3519xxxxxxxx`). Hoje está lá o exemplo
-   `+351900000000`. Quem entra com esse número vê tudo, em todas as
-   lojas — é a sua chave-mestra.
+Por esta ordem.
 
-2. **Criar o projecto no Supabase**, quando as facturas da Webmóveis
-   estiverem regularizadas. Região *West EU (Paris)*, Data API
-   desligada. Depois é só trocar a `DATABASE_URL` no `.env` e correr
-   `npm run db:migrate`.
+1. **Dar a palavra-passe à dona.** Neste momento *ninguém* entra: a
+   senha partilhada foi apagada e ainda não há outra. Corra e escreva a
+   senha quando ele pedir — não aparece no ecrã nem fica no histórico
+   do terminal:
 
-3. **Ligar o Netlify ao repositório** e repetir lá as variáveis do
-   `.env` — o ficheiro nunca sai da sua máquina.
+   ```bash
+   node scripts/_prod.mjs senha +351934730344
+   ```
 
-4. **O domínio**, se quiser um.
+   As outras quatro definem-se depois, por ela, em **Gestão › Equipa**.
 
-5. **O conteúdo verdadeiro**: fotografias das duas casas, os serviços e
-   preços reais, a equipa, e a lista de clientes a importar.
+2. **Os telefones verdadeiros da equipa.** Quatro dos cinco são
+   inventados (`+35193000000…`). O telefone é a identidade de quem
+   entra: enquanto for inventado, aquela pessoa não consegue entrar.
+   Trocam-se na ficha de cada uma, em Gestão › Equipa.
+
+3. **Limpar o movimento inventado**, no dia em que a casa começar a
+   usar isto. São 14 clientes e 1114 marcações que existem só para os
+   relatórios não estarem vazios. Apaga o movimento e guarda lojas,
+   preçário, equipa, escalas, fotografias e palavras-passe:
+
+   ```bash
+   node scripts/_prod.mjs limpar --a-serio
+   ```
+
+4. **Um `SETUP_CODE` novo** no Netlify, se o antigo alguma vez foi
+   partilhado. É o código que abre a instalação de raiz.
+
+5. **O domínio**, se quiser um. Depois é pôr o endereço final em
+   `NEXT_PUBLIC_SITE_URL`, no Netlify — é dele que saem os links de
+   partilha e o `sitemap.xml`.
+
+6. **As fotografias da equipa**, se as houver. Hoje cada profissional
+   aparece com a inicial num círculo.

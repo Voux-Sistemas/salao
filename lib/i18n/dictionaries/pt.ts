@@ -36,7 +36,7 @@ export const pt = {
       'Escolha o serviço, a profissional e a hora. Sem telefonemas, sem esperas.',
     cta: 'Marcar agora',
     ctaSecondary: 'As nossas casas',
-    heroEyebrow: 'Chiado · Cascais',
+    heroEyebrow: 'Bem-vinda',
     heroTitle1: 'A beleza tem',
     heroTitleItalic: 'morada',
     heroTitle2: '.',
@@ -59,6 +59,9 @@ export const pt = {
     servicesSubtitle: 'Preços a partir de. O valor final depende da loja e da profissional.',
     teamTitle: 'Quem a recebe',
     hoursTitle: 'Horário',
+    galleryEyebrow: 'A casa por dentro',
+    galleryTitle: 'Um olhar',
+    servicePhotoAlt: 'Fotografia de {service}',
   },
   unit: {
     openNow: 'Aberto agora',
@@ -82,7 +85,10 @@ export const pt = {
     noStoresHint: 'Volte dentro de momentos.',
   },
   footer: {
-    tagline: 'Cabelo, unhas e estética com hora marcada, no Chiado e em Cascais.',
+    // Sem nomes de cidades: as moradas de cada loja vêm logo por baixo e
+    // uma casa nova obrigaria a mexer nos três dicionários — foi assim que
+    // «Chiado e Cascais» ficou aqui a falar de um salão que não é este.
+    tagline: 'Cabelo, unhas e estética com hora marcada.',
     whatsapp: 'Fale connosco no WhatsApp',
     whatsappMessage: 'Olá! Gostava de fazer uma marcação.',
     staffAccess: 'Acesso da equipa',

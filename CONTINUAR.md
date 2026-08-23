@@ -23,7 +23,11 @@ npm run dev                   # http://localhost:3000
 `SESSION_SECRET` gera-se com:
 `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
 
-**Entrar** em `/entrar`, palavra-passe `nohora2026`:
+**Entrar** em `/entrar`. O `seed-real.mjs` dá a toda a gente a mesma
+palavra-passe de arranque, `nohora2026` — **serve só para a base que
+está na sua máquina**. Em produção essa senha já não abre nada: foi
+apagada pelo `scripts/arrancar.mjs`, e cada pessoa tem a sua.
+
 
 | Telefone | Quem | Vê |
 |---|---|---|
@@ -43,12 +47,35 @@ Entrou o **conteúdo verdadeiro do salão**: 67 serviços com preço, as
 duas lojas (Valongo e Maia), as cinco profissionais com escalas, e as
 nove fotografias.
 
-E acabou de fechar a **passagem do telemóvel**: o preçário já se lê num
-ecrã de bolso, as categorias abrem ao toque, o funil encolheu de 9863
-para 2249 px, os campos deixaram de dar zoom no iPhone e os alvos de
-toque estão todos nos 44 px. Ao computador nada mudou.
+Fechou a **passagem do telemóvel**: o preçário já se lê num ecrã de
+bolso, as categorias abrem ao toque, o funil encolheu de 9863 para
+2249 px, os campos deixaram de dar zoom no iPhone e os alvos de toque
+estão todos nos 44 px.
 
-**Falta a mesma coisa do outro lado: a gestão ao computador.**
+E fechou a **preparação para abrir a casa**:
+
+- **As fotografias passaram a trabalhar.** Estavam quase todas na
+  galeria do fim da montra. Agora abrem a página, ilustram cada casa
+  na escolha de loja e podem ilustrar cada serviço — a coluna
+  `service.image_url` e um selector, na gestão, que oferece as nove
+  fotografias da casa em vez de pedir um endereço. Sem fotografia sai
+  o monograma sobre papel (`components/photo.tsx`), que é o desenho
+  normal e não uma falha.
+- **A ligação à base passou a ser cifrada.** O condutor não pedia TLS
+  e o Supabase aceita texto simples: nomes, telefones e a própria
+  senha da ligação iam pela internet em claro. `lib/db.ts` agora
+  obriga a `ssl: 'require'` fora de casa.
+- **Morreu a palavra-passe partilhada.** O seed dava a mesma senha às
+  cinco pessoas e essa senha está escrita num repositório público —
+  quem lesse o código entrava como dona, na rede toda. O
+  `scripts/arrancar.mjs` apagou-a em produção e fechou as sessões
+  abertas com ela.
+- **Saiu o nível «Suporte»**, que era uma porta a mais para uma casa
+  com três degraus.
+- **`scripts/estado.mjs`** diz, numa página, o que está na base e o
+  que falta antes de alguém usar isto a sério.
+
+**Falta o mesmo do outro lado: a gestão ao computador.**
 
 ---
 
@@ -79,14 +106,15 @@ sem mexer no desenho).
 
 ## 4 · Três coisas que o vão morder
 
-**1. O nome verdadeiro de uma profissional nunca sai para fora.**
-Publicá-lo ao lado das horas livres publica a escala dela — a que horas
-trabalha, quando falta, quando vai de férias. E elas são independentes.
-Por isso existe `staff.public_alias`: para fora é `Profissional 1..5`,
-na gestão continuam os nomes. **Se escrever uma consulta a `staff`
-numa página pública, é `coalesce(s.public_alias, s.name)` — no `select`
-e no `order by`.** A ordenação alfabética entrega os nomes sem mostrar
-nenhum.
+**1. O que sai para fora passa sempre por `public_alias`.**
+Publicar o nome de uma profissional ao lado das horas livres publica a
+escala dela — a que horas trabalha, quando falta, quando vai de férias.
+Hoje as cinco mostram o nome próprio, porque foi isso que a casa quis;
+quem não quiser o seu na montra escreve outro em `staff.public_alias`,
+na gestão, e passa a ser esse que aparece. **Se escrever uma consulta a
+`staff` numa página pública, é `coalesce(s.public_alias, s.name)` — no
+`select` e no `order by`.** Chegou a estar «Profissional 1..5» como
+reserva e era isso que as clientes liam na montra.
 
 **2. As clientes e as marcações são inventadas.** O salão é verdadeiro;
 o movimento não. Existe para os relatórios não estarem vazios. Apaga-se
@@ -103,9 +131,18 @@ uma com a pergunta que a fecha. Não as trate como verdade.
 
 - **Segredos nunca vão para o Git.** O `.env` está ignorado. As chaves
   de produção vivem no Netlify. Peça-as por canal privado.
-- **Contra produção, só de propósito:** `node scripts/_prod.mjs migrate`
-  e `node scripts/_prod.mjs seed-real --apagar-tudo`. O `--apagar-tudo`
-  é literal — o seed começa por um `truncate cascade`.
+- **Contra produção, só de propósito.** Tudo passa pelo mesmo
+  invólucro, que lê o `.env.production.local` e nunca põe a senha na
+  linha de comandos:
+
+  | | |
+  |---|---|
+  | `node scripts/_prod.mjs estado` | o que lá está e o que falta (só lê) |
+  | `node scripts/_prod.mjs migrate` | aplica as migrações que faltam |
+  | `node scripts/_prod.mjs senha +351…` | dá palavra-passe a uma pessoa; escreve-se à mão, não aparece no ecrã |
+  | `node scripts/_prod.mjs arrancar` | apaga senhas partilhadas e nomes públicos de reserva |
+  | `node scripts/_prod.mjs limpar --a-serio` | apaga o movimento inventado, guarda lojas, preçário e equipa |
+  | `node scripts/_prod.mjs seed-real --apagar-tudo` | **`truncate cascade`.** Só numa base vazia. |
 - **Migrações só para a frente.** Nunca edite uma que já correu; crie
   outra com data mais alta.
 - **Antes do commit:** `npm run typecheck` e `npm run build`.

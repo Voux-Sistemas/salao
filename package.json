@@ -16,6 +16,9 @@
     "db:push": "supabase db push",
     "db:migrate": "node scripts/migrate.mjs",
     "db:status": "node scripts/migrate.mjs --status",
+    "estado": "node scripts/estado.mjs",
+    "senha": "node scripts/senha.mjs",
+    "arrancar": "node scripts/arrancar.mjs",
     "db:diff": "supabase db diff"
   },
   "dependencies": {

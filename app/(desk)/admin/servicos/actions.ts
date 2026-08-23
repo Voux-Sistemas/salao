@@ -18,7 +18,7 @@ import {
   type ServiceInput,
 } from '@/lib/catalog-admin'
 import { inputToCents } from '@/lib/money'
-import { slugify } from '@/lib/text'
+import { safePhotoUrl, slugify } from '@/lib/text'
 
 export type CatalogState = { error: string | null; done?: string | null }
 
@@ -125,6 +125,11 @@ function serviceFrom(form: FormData): ServiceInput | null {
     bufferBeforeMinutes: before,
     bufferAfterMinutes: after,
     bookableOnline: form.get('online') === 'on',
+    // Um endereço que não passa o crivo entra como "sem fotografia" em
+    // vez de rebentar a gravação: quem se enganou no link não perde o
+    // preço e a duração que acabou de escrever.
+    imageUrl: safePhotoUrl(String(form.get('image') ?? '')),
+    imageAlt: String(form.get('imageAlt') ?? '').trim() || null,
   }
 }
 

@@ -5,7 +5,7 @@ import clsx from 'clsx'
 import { Check, Plus, X } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
-import { getDictionary, getLanguage } from '@/lib/i18n'
+import { fill, getDictionary, getLanguage } from '@/lib/i18n'
 import { formatCents } from '@/lib/money'
 import { formatDuration } from '@/lib/time'
 import {
@@ -20,6 +20,7 @@ import {
 import { ButtonLink, Eyebrow, Notice } from '@/components/ui'
 import { FunnelShell, MobileVisitBar } from '@/components/funnel-shell'
 import { CollapseGroup } from '@/components/collapse-group'
+import { Photo, PhotoFallback } from '@/components/photo'
 
 type Params = {
   params: Promise<{ loja: string }>
@@ -34,6 +35,8 @@ type ServiceRow = {
   description: string | null
   duration_minutes: number
   price_cents: number
+  image_url: string | null
+  image_alt: string | null
 }
 
 type SkillRow = {
@@ -98,7 +101,8 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
     sql<ServiceRow[]>`
       select c.id as category_id, c.name as category_name,
              s.id, s.name, s.description,
-             e.duration_minutes, e.price_cents
+             e.duration_minutes, e.price_cents,
+             s.image_url, s.image_alt
         from service s
         join service_category c on c.id = s.category_id and c.is_active
         cross join lateral effective_service_pricing(s.id, ${unit.id}::uuid, null::uuid) e
@@ -257,6 +261,26 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                         )}
                       >
                         {chosen ? <Check size={12} /> : <Plus size={12} />}
+                      </span>
+                      {/* A miniatura está sempre cá. Sem fotografia sai o
+                          monograma da casa, com o tom a variar com o nome:
+                          é um desenho, não um buraco à espera de imagem, e
+                          é o que mantém a lista aprumada enquanto a gestão
+                          vai pondo as fotografias dos serviços. */}
+                      <span className="size-11 shrink-0 overflow-hidden bg-[var(--surface-raised)]">
+                        {service.image_url ? (
+                          <Photo
+                            src={service.image_url}
+                            alt={
+                              service.image_alt ??
+                              fill(dict.home.servicePhotoAlt, {
+                                service: service.name,
+                              })
+                            }
+                          />
+                        ) : (
+                          <PhotoFallback seed={service.name} label={service.name} compact />
+                        )}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline gap-3">

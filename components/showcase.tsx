@@ -2,7 +2,7 @@ import { sql } from '@/lib/db'
 import { listUnits, type Org, type Unit } from '@/lib/org'
 import { openingWindows, type Window } from '@/lib/hours'
 import { formatDuration, formatMinutes, today } from '@/lib/time'
-import { getDictionary, getLanguage, type Dictionary } from '@/lib/i18n'
+import { fill, getDictionary, getLanguage, type Dictionary } from '@/lib/i18n'
 import type { Language } from '@/lib/i18n/config'
 import { formatCents } from '@/lib/money'
 import { formatPhone } from '@/lib/text'
@@ -12,6 +12,7 @@ import { Reveal } from '@/components/reveal'
 import { PriceLine } from '@/components/price-list'
 import { CollapseGroup } from '@/components/collapse-group'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
+import { Photo, PhotoFallback } from '@/components/photo'
 
 /**
  * A montra: o primeiro (e às vezes único) contacto de uma cliente com a
@@ -27,6 +28,8 @@ type CatalogRow = {
   description: string | null
   duration_minutes: number
   base_price_cents: number
+  image_url: string | null
+  image_alt: string | null
 }
 
 type TeamRow = {
@@ -34,6 +37,14 @@ type TeamRow = {
   name: string
   bio: string | null
   avatar_url: string | null
+}
+
+type PhotoRow = {
+  id: string
+  unit_id: string
+  unit_name: string
+  url: string
+  alt: string | null
 }
 
 function initialsOf(name: string) {
@@ -65,83 +76,102 @@ function HouseRow({ label, children }: { label: string; children: React.ReactNod
 
 function HouseCard({
   unit,
+  cover,
   todayWindows,
   dict,
   language,
 }: {
   unit: Unit
+  cover: PhotoRow | null
   todayWindows: Window[]
   dict: Dictionary
   language: Language
 }) {
   return (
-    <article className="lift flex h-full flex-col border border-[var(--line-soft)] bg-[var(--surface-raised)] p-8 shadow-[var(--shadow-soft)] sm:p-10">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="eyebrow eyebrow-gold">{unit.city ?? ''}</p>
-          <h3 className="display mt-2 text-[1.75rem] leading-tight">{unit.name}</h3>
-        </div>
-        <UnitStatusBadge unit={unit} dict={dict} language={language} />
+    <article className="lift group flex h-full flex-col overflow-hidden border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-soft)]">
+      {/* A cara da casa antes da morada dela. Quem escolhe entre duas
+          lojas escolhe pelo sítio, não pelo código postal. */}
+      <div className="aspect-[16/9] w-full overflow-hidden bg-[var(--surface)]">
+        {cover ? (
+          <Photo
+            src={cover.url}
+            alt={cover.alt ?? unit.name}
+            className="transition-transform duration-700 group-hover:scale-105"
+          />
+        ) : (
+          <PhotoFallback seed={unit.name} />
+        )}
       </div>
 
-      <dl className="mt-7 flex-1 divide-y divide-[var(--line-soft)] border-y border-[var(--line-soft)]">
-        {unit.address_line ? (
-          <HouseRow label={dict.unit.address}>
-            {unit.address_line}
-            {unit.city ? `, ${unit.city}` : ''}
-            <br />
-            <a
-              href={mapsUrl(unit)}
-              target="_blank"
-              rel="noreferrer"
-              className="link-slide text-[0.8125rem] text-[var(--accent)]"
-            >
-              {dict.unit.directions}
-            </a>
-          </HouseRow>
-        ) : null}
-        {unit.phone ? (
-          <HouseRow label={dict.unit.phoneLabel}>
-            <a
-              href={`tel:${unit.phone.replace(/\s/g, '')}`}
-              className="tabular transition-colors hover:text-[var(--ink)]"
-            >
-              {formatPhone(unit.phone)}
-            </a>
-          </HouseRow>
-        ) : null}
-        <HouseRow label={dict.funnel.today}>
-          {todayWindows.length === 0 ? (
-            <span className="text-[var(--ink-faint)]">{dict.unit.closedToday}</span>
-          ) : (
-            <span className="tabular">
-              {todayWindows
-                .map((w) => `${formatMinutes(w.openMin)}–${formatMinutes(w.closeMin)}`)
-                .join(' · ')}
-            </span>
-          )}
-        </HouseRow>
-      </dl>
+      <div className="flex flex-1 flex-col p-8 sm:p-10">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="eyebrow eyebrow-gold">{unit.city ?? ''}</p>
+            <h3 className="display mt-2 text-[1.75rem] leading-tight">{unit.name}</h3>
+          </div>
+          <UnitStatusBadge unit={unit} dict={dict} language={language} />
+        </div>
 
-      <div className="mt-8 flex flex-wrap gap-3">
-        <ButtonLink href={`/agendar/${unit.slug}`}>{dict.home.houseBook}</ButtonLink>
-        <ButtonLink href={`/loja/${unit.slug}`} variant="outline">
-          {dict.home.houseVisit}
-        </ButtonLink>
+        <dl className="mt-7 flex-1 divide-y divide-[var(--line-soft)] border-y border-[var(--line-soft)]">
+          {unit.address_line ? (
+            <HouseRow label={dict.unit.address}>
+              {unit.address_line}
+              {unit.city ? `, ${unit.city}` : ''}
+              <br />
+              <a
+                href={mapsUrl(unit)}
+                target="_blank"
+                rel="noreferrer"
+                className="link-slide toque text-[0.8125rem] text-[var(--accent)]"
+              >
+                {dict.unit.directions}
+              </a>
+            </HouseRow>
+          ) : null}
+          {unit.phone ? (
+            <HouseRow label={dict.unit.phoneLabel}>
+              <a
+                href={`tel:${unit.phone.replace(/\s/g, '')}`}
+                className="tabular toque transition-colors hover:text-[var(--ink)]"
+              >
+                {formatPhone(unit.phone)}
+              </a>
+            </HouseRow>
+          ) : null}
+          <HouseRow label={dict.funnel.today}>
+            {todayWindows.length === 0 ? (
+              <span className="text-[var(--ink-faint)]">{dict.unit.closedToday}</span>
+            ) : (
+              <span className="tabular">
+                {todayWindows
+                  .map((w) => `${formatMinutes(w.openMin)}–${formatMinutes(w.closeMin)}`)
+                  .join(' · ')}
+              </span>
+            )}
+          </HouseRow>
+        </dl>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <ButtonLink href={`/agendar/${unit.slug}`}>{dict.home.houseBook}</ButtonLink>
+          <ButtonLink href={`/loja/${unit.slug}`} variant="outline">
+            {dict.home.houseVisit}
+          </ButtonLink>
+        </div>
       </div>
     </article>
   )
 }
 
 export async function Showcase({ org }: { org: Org }) {
-  const [dict, language, units, catalog, team] = await Promise.all([
+  const [dict, language, units, catalog, team, photos] = await Promise.all([
     getDictionary(),
     getLanguage(),
     listUnits(),
     sql<CatalogRow[]>`
       select c.id as category_id, c.name as category_name,
              s.id as service_id, s.name, s.description,
-             s.duration_minutes, s.base_price_cents
+             s.duration_minutes, s.base_price_cents,
+             s.image_url, s.image_alt
         from service s
         join service_category c on c.id = s.category_id and c.is_active
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
@@ -159,11 +189,35 @@ export async function Showcase({ org }: { org: Org }) {
                           where r.staff_id = s.id and r.role = 'professional'))
        order by s.sort_order, coalesce(s.public_alias, s.name)
     `,
+    // As fotografias das duas casas, pela ordem em que a dona as pôs.
+    // Servem três sítios desta página: o fundo do herói, a ficha de
+    // cada casa e a galeria — por isso vêm todas numa consulta só.
+    sql<PhotoRow[]>`
+      select p.id, p.unit_id, u.name as unit_name, p.url, p.alt
+        from unit_photo p
+        join unit u on u.id = p.unit_id and u.is_active
+       order by u.sort_order, u.name, p.sort_order
+    `,
   ])
+
+  // A primeira fotografia de cada casa é a capa dela; a primeira de
+  // todas abre a página. Se um dia não houver nenhuma, o herói volta ao
+  // que era — tipografia sobre a banda escura — e nada parte.
+  const coverOf = new Map<string, PhotoRow>()
+  for (const photo of photos) {
+    if (!coverOf.has(photo.unit_id)) coverOf.set(photo.unit_id, photo)
+  }
+  const heroPhoto = photos[0]
+
+  // As cidades por cima do título saem das lojas que existem. Estavam
+  // escritas à mão no dicionário e diziam "Chiado · Cascais", que é de
+  // outro salão: um sítio onde a morada nunca pode estar errada.
+  const cities = [...new Set(units.map((u) => u.city).filter(Boolean))].join(' · ')
 
   const houses = await Promise.all(
     units.map(async (unit) => ({
       unit,
+      cover: coverOf.get(unit.id) ?? null,
       todayWindows: await openingWindows(unit.id, today(unit.timezone)),
     })),
   )
@@ -182,6 +236,31 @@ export async function Showcase({ org }: { org: Org }) {
     <>
       {/* ---------------------------------------------------- herói --- */}
       <section className="band-dark relative overflow-hidden">
+        {/* A casa a sério por trás do nome dela. A fotografia entra em
+            surdina — escurecida e sem contraste a mais — porque o que
+            tem de se ler aqui é o título; ela está lá para dizer que
+            isto é um sítio verdadeiro, não um modelo de página. */}
+        {heroPhoto ? (
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <Photo
+              src={heroPhoto.url}
+              alt=""
+              eager
+              className="scale-105 opacity-40 [filter:saturate(0.8)]"
+            />
+            {/* Duas camadas: uma escurece tudo por igual, a outra puxa o
+                fundo ao centro para as letras assentarem em preto. */}
+            <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--surface)_58%,transparent)]" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(ellipse 70% 55% at 50% 45%, color-mix(in srgb, var(--surface) 72%, transparent), transparent 75%)',
+              }}
+            />
+          </div>
+        ) : null}
+
         {/* respiração dourada atrás do logótipo */}
         <div
           aria-hidden
@@ -194,7 +273,7 @@ export async function Showcase({ org }: { org: Org }) {
         <div className="relative mx-auto flex min-h-[92svh] max-w-5xl flex-col items-center justify-center px-5 pb-24 pt-28 text-center sm:px-8">
           <LogoMark size="xl" className="animate-bloom" />
           <p className="eyebrow eyebrow-gold animate-rise delay-2 mt-10">
-            {dict.home.heroEyebrow}
+            {cities || dict.home.heroEyebrow}
           </p>
           <h1 className="display-hero animate-rise delay-3 mt-6 max-w-4xl text-balance">
             {dict.home.heroTitle1}{' '}
@@ -239,10 +318,11 @@ export async function Showcase({ org }: { org: Org }) {
             <span className="grow-rule mt-6" />
           </Reveal>
           <Reveal group className="mt-12 grid gap-6 lg:grid-cols-2">
-            {houses.map(({ unit, todayWindows }) => (
+            {houses.map(({ unit, cover, todayWindows }) => (
               <HouseCard
                 key={unit.id}
                 unit={unit}
+                cover={cover}
                 todayWindows={todayWindows}
                 dict={dict}
                 language={language}
@@ -281,6 +361,14 @@ export async function Showcase({ org }: { org: Org }) {
                       duration={formatDuration(service.duration_minutes, language)}
                       price={formatCents(service.base_price_cents, org.currency, language)}
                       from={dict.common.from}
+                      thumb={{
+                        url: service.image_url,
+                        alt:
+                          service.image_alt ??
+                          fill(dict.home.servicePhotoAlt, {
+                            service: service.name,
+                          }),
+                      }}
                     />
                   ))}
                 </CollapseGroup>
@@ -330,6 +418,56 @@ export async function Showcase({ org }: { org: Org }) {
                     </p>
                   ) : null}
                 </div>
+              ))}
+            </Reveal>
+          </div>
+        </section>
+      ) : null}
+
+      {/* ------------------------------------------- a galeria -------- */}
+      {photos.length > 0 ? (
+        <section className="border-t border-[var(--line-soft)]">
+          <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
+            <Reveal className="text-center">
+              <p className="eyebrow eyebrow-gold">{dict.home.galleryEyebrow}</p>
+              <h2 className="display mt-4 text-3xl sm:text-4xl">
+                {dict.home.galleryTitle}
+              </h2>
+              <Ornament className="mt-8" />
+            </Reveal>
+
+            {/* A primeira ocupa quatro lugares — é a que se vê de longe.
+                `auto-rows-fr` obriga todas as filas à mesma altura, senão
+                a grande esticava-se e as pequenas encolhiam por baixo.
+                `dense` é seguro de propósito: se um dia a dona apagar
+                metade das fotografias, o mosaico fecha os buracos em vez
+                de deixar um vazio no meio. */}
+            <Reveal
+              group
+              className="mt-12 grid auto-rows-fr grid-flow-row-dense grid-cols-2 gap-2 sm:mt-16 sm:grid-cols-4 sm:gap-3"
+            >
+              {photos.map((photo, index) => (
+                <figure
+                  key={photo.id}
+                  className={
+                    'group relative overflow-hidden bg-[var(--surface-raised)] ' +
+                    (index === 0
+                      ? 'col-span-2 aspect-[4/3] sm:row-span-2 sm:aspect-auto'
+                      : 'aspect-square')
+                  }
+                >
+                  <Photo
+                    src={photo.url}
+                    alt={photo.alt ?? photo.unit_name}
+                    className="transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]"
+                  />
+                  {/* O nome da casa só aparece a pairar, e só no monitor:
+                      ao telemóvel não há rato para o revelar e uma tarja
+                      permanente por cima de nove fotografias é ruído. */}
+                  <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-[color-mix(in_srgb,var(--surface)_88%,transparent)] to-transparent px-4 pb-3 pt-10 text-[0.6875rem] uppercase tracking-[0.16em] text-[var(--ink-muted)] opacity-0 transition-opacity duration-500 group-hover:opacity-100 sm:block">
+                    {photo.unit_name}
+                  </figcaption>
+                </figure>
               ))}
             </Reveal>
           </div>

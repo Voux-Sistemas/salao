@@ -8,6 +8,7 @@ import {
   listOverrides,
   listRequirements,
   listSkilled,
+  listPhotoLibrary,
   overrideOptions,
   type Override,
 } from '@/lib/catalog-admin'
@@ -48,7 +49,7 @@ export default async function ServicoPage({
   const service = await getService(actor.orgId, id)
   if (!service) notFound()
 
-  const [categories, overrides, options, requirements, types, skilled] =
+  const [categories, overrides, options, requirements, types, skilled, photos] =
     await Promise.all([
       listCategories(actor.orgId),
       listOverrides(service.id),
@@ -56,6 +57,7 @@ export default async function ServicoPage({
       listRequirements(service.id, actor.orgId),
       listResourceTypes(actor.orgId),
       listSkilled(service.id),
+      listPhotoLibrary(actor.orgId),
     ])
 
   const online = skilled.filter((person) => person.accepts_online)
@@ -78,7 +80,7 @@ export default async function ServicoPage({
         </div>
       </div>
 
-      <ServiceForm service={service} categories={categories} />
+      <ServiceForm service={service} categories={categories} photos={photos} />
 
       {/* --- excepções ---------------------------------------------- */}
       <Panel
