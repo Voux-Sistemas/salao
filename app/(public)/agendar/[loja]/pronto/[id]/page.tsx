@@ -1,12 +1,12 @@
 import { notFound } from 'next/navigation'
-import { Check, MapPin, Phone } from 'lucide-react'
+import { MapPin, Phone } from 'lucide-react'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { getAppointment } from '@/lib/booking'
 import { formatCents } from '@/lib/money'
 import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
 import { ButtonLink, Eyebrow } from '@/components/ui'
-import { LeafRule, Ornament } from '@/components/brand'
+import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
 import { formatPhone } from '@/lib/text'
 
 type Params = { params: Promise<{ loja: string; id: string }> }
@@ -69,16 +69,14 @@ export default async function DonePage({ params }: Params) {
           }}
         />
         <div className="relative mx-auto max-w-xl px-5 py-16 text-center sm:px-8 sm:py-20">
-          <span className="animate-bloom mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] shadow-[0_0_0_10px_color-mix(in_srgb,var(--gold)_12%,transparent)]">
-            <Check size={26} strokeWidth={1.75} />
-          </span>
-          <h1 className="display display-italic animate-rise delay-1 mt-7 text-[2.1rem] leading-[1.1] sm:text-[2.75rem]">
+          <LogoStamp className="mx-auto h-32 w-32 sm:h-40 sm:w-40" />
+          <h1 className="display display-italic animate-rise delay-3 mt-7 text-[2.1rem] leading-[1.1] sm:text-[2.75rem]">
             {dict.funnel.doneTitle}
           </h1>
-          <p className="animate-fade delay-2 mt-4 text-[0.9375rem] text-[var(--ink-muted)]">
+          <p className="animate-fade delay-4 mt-4 text-[0.9375rem] text-[var(--ink-muted)]">
             {dict.funnel.doneSubtitle}
           </p>
-          <div className="animate-fade delay-3 mt-8 flex justify-center text-[var(--gold)] opacity-60">
+          <div className="animate-fade delay-5 mt-8 flex justify-center text-[var(--gold)] opacity-60">
             <Ornament />
           </div>
         </div>

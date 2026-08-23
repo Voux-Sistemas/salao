@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { Check } from 'lucide-react'
 import { BRAND } from '@/lib/branding'
 
 /**
@@ -73,6 +74,49 @@ export function LogoSeal({
         className,
       )}
     />
+  )
+}
+
+/**
+ * O CARIMBO — o selo da casa a assentar, para o fim do funil.
+ *
+ * A cliente acabou de dar o nome e o telefone a uma casa onde talvez
+ * nunca tenha entrado. O que aparece a seguir é a primeira coisa que a
+ * casa lhe diz de volta, e por isso não é um visto de biblioteca de
+ * ícones: é a grinalda dela a fechar-se, com o visto a assinar no fim.
+ *
+ * Quatro tempos encadeados, escritos em `.stamp*` no globals.css. Aqui
+ * fica só a estrutura — o anel por baixo, o selo ao meio, o brilho e o
+ * visto por cima.
+ */
+export function LogoStamp({ className }: { className?: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={BRAND.legalName}
+      className={clsx('stamp', className)}
+    >
+      <span aria-hidden className="stamp-glow" />
+
+      <svg aria-hidden viewBox="0 0 100 100" className="stamp-ring">
+        <circle cx="50" cy="50" r="48" />
+      </svg>
+
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/logo-seal.png"
+        alt=""
+        aria-hidden
+        draggable={false}
+        className="logo-ink stamp-seal object-contain"
+      />
+
+      <span aria-hidden className="stamp-sheen" />
+
+      <span aria-hidden className="stamp-check">
+        <Check size={17} strokeWidth={2.25} />
+      </span>
+    </span>
   )
 }
 

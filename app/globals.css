@@ -325,6 +325,125 @@ body {
 .delay-5 { animation-delay: 520ms; }
 
 /* ---------------------------------------------------------------------
+   O CARIMBO DA MARCAÇÃO — o momento em que a casa diz «está feito».
+
+   O selo da casa já é uma grinalda fechada. Em vez de lhe pôr um visto
+   genérico ao lado, a animação encena a estampagem: um anel de ouro
+   fecha-se à volta, o selo assenta com um leve contra-giro, um brilho
+   atravessa a tinta como folha de ouro, e só no fim é que o visto
+   aparece na borda. Quatro tempos, um segundo e meio ao todo.
+
+   Tudo em CSS, sobre um PNG: o selo é imagem, não traço, e por isso é o
+   anel de SVG à volta que se desenha. Quem pediu menos movimento
+   recebe as quatro coisas já paradas — a regra global no fim do
+   ficheiro encurta cada animação a 0.01ms.
+   --------------------------------------------------------------------- */
+.stamp {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+/* O halo. Nasce do centro e desvanece — é o «pum» da estampagem. */
+.stamp-glow {
+  position: absolute;
+  inset: -18%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--gold) 42%, transparent),
+    transparent 68%
+  );
+  animation: stamp-glow 1.6s cubic-bezier(0.22, 0.61, 0.21, 1) 240ms both;
+}
+
+/* O anel de ouro. Começa às 12h (o -90deg) e fecha no sentido do
+   relógio. O tracejado é o perímetro exacto de r=48 no viewBox de 100. */
+.stamp-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.stamp-ring circle {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  stroke-dasharray: 301.6;
+  stroke-dashoffset: 301.6;
+  animation: stamp-draw 1.15s cubic-bezier(0.32, 0.72, 0.24, 1) 60ms both;
+}
+
+/* O selo. Cai de cima com um quarto de volta a menos e assenta com um
+   ressalto curto — o gesto de quem carimba, não o de quem desliza. */
+.stamp-seal {
+  position: relative;
+  z-index: 2;
+  width: 70%;
+  animation: stamp-press 0.85s cubic-bezier(0.2, 1.5, 0.4, 1) 300ms both;
+}
+
+/* O brilho. Uma faixa clara que atravessa o selo uma única vez, presa
+   ao círculo por `clip-path` para não escorrer para fora do anel. */
+.stamp-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.stamp-sheen::after {
+  content: "";
+  position: absolute;
+  inset: -30% -60%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--gold) 55%, transparent),
+    transparent
+  );
+  animation: sheen-sweep 1.1s cubic-bezier(0.4, 0, 0.3, 1) 1s both;
+}
+
+/* O visto. Chega por último, pequeno, encostado à borda do anel — a
+   confirmação assina o carimbo, não o substitui. */
+.stamp-check {
+  position: absolute;
+  right: 2%;
+  bottom: 2%;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 3px var(--surface);
+  animation: stamp-press 0.6s cubic-bezier(0.2, 1.6, 0.4, 1) 1.25s both;
+}
+
+@keyframes stamp-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes stamp-press {
+  from { opacity: 0; transform: scale(0.55) rotate(-14deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes stamp-glow {
+  0%   { opacity: 0; transform: scale(0.5); }
+  45%  { opacity: 1; }
+  100% { opacity: 0.35; transform: scale(1); }
+}
+
+/* ---------------------------------------------------------------------
    Revelar ao rolar. O <Reveal> (components/reveal.tsx) põe
    data-reveal="visible" quando o elemento entra no viewport.
    Sem JavaScript nada se esconde: o html só ganha .js quando ele corre.

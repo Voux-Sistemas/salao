@@ -8,9 +8,10 @@ import { fill, getDictionary, getLanguage } from '@/lib/i18n'
 import { formatCents } from '@/lib/money'
 import { formatDuration } from '@/lib/time'
 import { ButtonLink } from '@/components/ui'
-import { Monogram, Ornament, Sprig } from '@/components/brand'
+import { Ornament, Sprig } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
 import { PriceLine } from '@/components/price-list'
+import { Photo } from '@/components/photo'
 import { CollapseGroup } from '@/components/collapse-group'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 import { formatPhone, sameWord } from '@/lib/text'
@@ -29,13 +30,6 @@ type PriceRow = {
   price_cents: number
   image_url: string | null
   image_alt: string | null
-}
-
-type TeamRow = {
-  id: string
-  name: string
-  bio: string | null
-  avatar_url: string | null
 }
 
 /*
@@ -81,14 +75,6 @@ function directionsUrl(
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
 }
 
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/)
-  return parts
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('')
-}
-
 /** A semana começa a segunda; domingo (0) fica para o fim. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
@@ -99,7 +85,7 @@ export default async function StorePage({ params }: Params) {
   // Loja que não existe e loja a que não se chega dão a mesma resposta.
   if (!unit) notFound()
 
-  const [dict, language, photos, prices, team, week] = await Promise.all([
+  const [dict, language, photos, prices, week] = await Promise.all([
     getDictionary(),
     getLanguage(),
     sql<Photo[]>`
@@ -118,18 +104,6 @@ export default async function StorePage({ params }: Params) {
         cross join lateral effective_service_pricing(s.id, ${unit.id}::uuid, null::uuid) p
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
        order by c.sort_order, c.name, s.sort_order, s.name
-    `,
-    // Alcunha, nunca o nome verdadeiro: esta página é pública. Ordenar
-    // pelo nome real também não serve — a ordem alfabética entrega-o.
-    sql<TeamRow[]>`
-      select st.id, coalesce(st.public_alias, st.name) as name,
-             st.bio, st.avatar_url
-        from staff st
-        join staff_unit su on su.staff_id = st.id and su.unit_id = ${unit.id}
-       where st.org_id = ${org.id}
-         and st.is_active
-         and st.accepts_online_booking
-       order by st.sort_order, coalesce(st.public_alias, st.name)
     `,
     weeklyHours(unit.id),
   ])
@@ -209,30 +183,20 @@ export default async function StorePage({ params }: Params) {
         </div>
       </section>
 
-      {/* -------------------------------------------------- fotos --- */}
+      {/* ------------------------------------------------ a abertura ---
+          Uma casa mostra-se de longe. A fotografia que abria esta página
+          era um terço de uma grelha com margens dos dois lados — cabia
+          num cartão de visita. Agora ocupa a largura toda e é a primeira
+          coisa que se vê depois do nome: quem chega percebe onde vai
+          pôr os pés antes de ler uma única palavra.
+
+          Em retrato o corte é 4/3, senão a sala vira uma faixa de dois
+          dedos; no monitor abre para 21/9, que é onde a fotografia
+          respira. */}
       {hero ? (
-        <section className="mx-auto max-w-6xl px-5 sm:px-8">
-          <div className="mt-12 grid gap-px bg-[var(--line-soft)] sm:grid-cols-3">
-            <div className="aspect-[3/2] overflow-hidden bg-[var(--surface-raised)] sm:col-span-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={hero.url}
-                alt={hero.alt ?? unit.name}
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="hidden grid-rows-2 gap-px sm:grid">
-              {rest.slice(0, 2).map((photo) => (
-                <div key={photo.id} className="overflow-hidden bg-[var(--surface-raised)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photo.url}
-                    alt={photo.alt ?? unit.name}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
+        <section className="overflow-hidden bg-[var(--surface-raised)]">
+          <div className="aspect-[4/3] w-full sm:aspect-[21/9]">
+            <Photo src={hero.url} alt={hero.alt ?? unit.name} eager />
           </div>
         </section>
       ) : null}
@@ -401,45 +365,47 @@ export default async function StorePage({ params }: Params) {
         </section>
       ) : null}
 
-      {/* --------------------------------------------------- equipa --- */}
-      {team.length > 0 ? (
-        <section className="mx-auto max-w-5xl px-5 sm:px-8">
-          <div className="mt-20 border-t border-[var(--line-soft)] pt-14 text-center">
-            <Reveal>
-              <p className="eyebrow eyebrow-gold">{dict.home.teamEyebrow}</p>
-              <h2 className="display mt-4 text-3xl sm:text-4xl">{dict.unit.team}</h2>
+      {/* -------------------------------------------------- a galeria ---
+          As restantes fotografias da casa, aos pares e grandes. Um
+          mosaico de miniaturas diz "temos fotografias"; isto diz como é
+          lá dentro, que é a pergunta a que a página responde.
+
+          Quando sobra uma — Valongo tem cinco depois da abertura — ela
+          fecha a secção em faixa larga em vez de ficar órfã ao lado de
+          um buraco. */}
+      {rest.length > 0 ? (
+        <section className="mx-auto max-w-6xl px-5 sm:px-8">
+          <div className="mt-20 border-t border-[var(--line-soft)] pt-14">
+            <Reveal className="text-center">
+              <p className="eyebrow eyebrow-gold">{dict.home.galleryEyebrow}</p>
+              <h2 className="display mt-4 text-3xl sm:text-4xl">
+                {dict.home.galleryTitle}
+              </h2>
+              <Ornament className="mt-7" />
             </Reveal>
-            <Reveal
-              group
-              className="mt-12 flex flex-wrap justify-center gap-x-8 gap-y-12"
-            >
-              {team.map((person) => (
-                // A mesma medida da montra: larga o suficiente para a
-                // apresentação caber em duas linhas. Ver showcase.tsx.
-                <div key={person.id} className="w-40 sm:w-52">
-                  <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-[var(--line)] bg-[var(--surface-raised)]">
-                    {person.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={person.avatar_url}
-                        alt={person.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Monogram
-                        initials={initialsOf(person.name)}
-                        className="text-[1.75rem] text-[var(--accent)]"
-                      />
-                    )}
-                  </div>
-                  <p className="display mt-5 text-lg">{person.name}</p>
-                  {person.bio ? (
-                    <p className="mt-2 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-                      {person.bio}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
+
+            <Reveal group className="mt-12 grid gap-3 sm:mt-16 sm:grid-cols-2">
+              {rest.map((photo, index) => {
+                const sozinha =
+                  rest.length % 2 === 1 && index === rest.length - 1
+                return (
+                  <figure
+                    key={photo.id}
+                    className={
+                      'group overflow-hidden bg-[var(--surface-raised)] ' +
+                      (sozinha
+                        ? 'aspect-[3/2] sm:col-span-2 sm:aspect-[21/9]'
+                        : 'aspect-[4/3]')
+                    }
+                  >
+                    <Photo
+                      src={photo.url}
+                      alt={photo.alt ?? unit.name}
+                      className="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.05]"
+                    />
+                  </figure>
+                )
+              })}
             </Reveal>
           </div>
         </section>
