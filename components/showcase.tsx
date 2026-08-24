@@ -1,16 +1,17 @@
+import Link from 'next/link'
 import { sql } from '@/lib/db'
 import { listUnits, type Org, type Unit } from '@/lib/org'
 import { openingWindows, type Window } from '@/lib/hours'
-import { formatDuration, formatMinutes, today } from '@/lib/time'
-import { fill, getDictionary, getLanguage, type Dictionary } from '@/lib/i18n'
+import { formatMinutes, today } from '@/lib/time'
+import { getDictionary, getLanguage, type Dictionary } from '@/lib/i18n'
 import type { Language } from '@/lib/i18n/config'
-import { formatCents } from '@/lib/money'
+import { getClientActor } from '@/lib/auth/client-actor'
 import { formatPhone } from '@/lib/text'
-import { ButtonLink } from '@/components/ui'
+import { ButtonLink, buttonClass } from '@/components/ui'
 import { LogoMark, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
-import { PriceLine } from '@/components/price-list'
 import { CollapseGroup } from '@/components/collapse-group'
+import { ShowcaseTabs } from '@/components/showcase-tabs'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 import { Photo, PhotoFallback } from '@/components/photo'
 
@@ -18,6 +19,13 @@ import { Photo, PhotoFallback } from '@/components/photo'
  * A montra: o primeiro (e às vezes único) contacto de uma cliente com a
  * casa. Tom de hotel boutique — muito ar, serifas grandes, ouro em fio.
  * O botão principal em qualquer destas telas é MARCAR.
+ *
+ * AQUI NÃO SE FALA DE DINHEIRO. O preçário saiu: uma montra que abre
+ * com uma tabela de preços vende-se pelo preço, e esta casa vende-se
+ * pelas mãos e pelo sítio. Os serviços continuam todos à vista — só o
+ * nome, como uma ementa de casa boa — e o valor aparece onde tem de
+ * aparecer, na marcação, já com a loja e a profissional escolhidas, que
+ * é quando ele é um número verdadeiro e não um «a partir de».
  */
 
 type CatalogRow = {
@@ -26,10 +34,6 @@ type CatalogRow = {
   service_id: string
   name: string
   description: string | null
-  duration_minutes: number
-  base_price_cents: number
-  image_url: string | null
-  image_alt: string | null
 }
 
 type PhotoRow = {
@@ -148,22 +152,23 @@ function HouseCard({
 }
 
 export async function Showcase({ org }: { org: Org }) {
-  // A língua vem antes de tudo o resto: o preçário sai da base já
+  // A língua vem antes de tudo o resto: o catálogo sai da base já
   // traduzido, e a consulta precisa de saber para quem escreve.
   const language = await getLanguage()
 
-  const [dict, units, catalog, photos] = await Promise.all([
+  const [dict, units, catalog, photos, client] = await Promise.all([
     getDictionary(),
     listUnits(),
+    // Só o que se mostra: nome, categoria e a linha de descrição. O
+    // preço e a duração ficaram para o funil de marcação — pedi-los aqui
+    // era pagar a travessia para os deitar fora deste lado.
     sql<CatalogRow[]>`
       select c.id as category_id,
              name_in(${language}, c.name, c.name_en, c.name_es) as category_name,
              s.id as service_id,
              name_in(${language}, s.name, s.name_en, s.name_es) as name,
              name_in(${language}, s.description,
-                     s.description_en, s.description_es) as description,
-             s.duration_minutes, s.base_price_cents,
-             s.image_url, s.image_alt
+                     s.description_en, s.description_es) as description
         from service s
         join service_category c on c.id = s.category_id and c.is_active
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
@@ -180,6 +185,9 @@ export async function Showcase({ org }: { org: Org }) {
         join unit u on u.id = p.unit_id and u.is_active
        order by u.sort_order, u.name, p.sort_order
     `,
+    // Quem já tem sessão de cliente não deve ser mandado para o «entrar»:
+    // a moldura já fez esta pergunta, e a resposta está em memória.
+    getClientActor(),
   ])
 
   // A primeira fotografia de cada casa é a capa dela; a primeira de
@@ -213,6 +221,20 @@ export async function Showcase({ org }: { org: Org }) {
     entry.services.push(row)
     categories.set(row.category_id, entry)
   }
+
+  // «Fale connosco» é o WhatsApp da casa, e é uma conversa que ela
+  // começa — não há automatismo nenhum do outro lado, só a mensagem já
+  // escrita à espera do «enviar». Sem WhatsApp configurado, é o telefone
+  // da primeira loja que o tem; sem isso, o botão não aparece de todo,
+  // que é melhor do que um convite que não leva a lado nenhum.
+  const whatsapp =
+    org.whatsapp_phone ?? units.find((u) => u.whatsapp_phone)?.whatsapp_phone ?? null
+  const phone = units.find((u) => u.phone)?.phone ?? null
+  const contactHref = whatsapp
+    ? `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(dict.footer.whatsappMessage)}`
+    : phone
+      ? `tel:${phone.replace(/\s/g, '')}`
+      : null
 
   return (
     <>
@@ -291,74 +313,115 @@ export async function Showcase({ org }: { org: Org }) {
         </Reveal>
       </section>
 
-      {/* ----------------------------------------------- as casas ----- */}
-      <section id="casas" className="scroll-mt-20 border-t border-[var(--line-soft)]">
+      {/* ------------------------------ as casas e o que lá se faz ---- */}
+      {/*
+        O `id` é o da PRIMEIRA aba de propósito: é o alvo do botão do
+        herói, e é ele que diz ao componente das abas que o navegador já
+        rolou sozinho. A segunda aba (#servicos) não tem dono no HTML —
+        quem lá salta é o JavaScript.
+      */}
+      <section id="casas" className="scroll-mt-16 border-t border-[var(--line-soft)]">
         <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-          <Reveal>
-            <p className="eyebrow eyebrow-gold">{dict.home.housesEyebrow}</p>
-            <h2 className="display mt-4 text-3xl sm:text-4xl">{dict.home.housesTitle}</h2>
-            <span className="grow-rule mt-6" />
+          <Reveal className="mb-10 text-center sm:mb-12">
+            <Ornament />
           </Reveal>
-          <Reveal group className="mt-12 grid gap-6 lg:grid-cols-2">
-            {houses.map(({ unit, cover, todayWindows }) => (
-              <HouseCard
-                key={unit.id}
-                unit={unit}
-                cover={cover}
-                todayWindows={todayWindows}
-                dict={dict}
-                language={language}
-              />
-            ))}
-          </Reveal>
+          <ShowcaseTabs
+            tabs={[
+              {
+                id: 'casas',
+                label: dict.home.tabHouses,
+                headingSemJs: dict.home.housesTitle,
+                panel: (
+                  <>
+                    <p className="mx-auto mb-10 max-w-md text-center text-[0.875rem] leading-relaxed text-[var(--ink-muted)] sm:mb-12">
+                      {dict.unit.listLead}
+                    </p>
+                    <Reveal group className="grid gap-6 lg:grid-cols-2">
+                      {houses.map(({ unit, cover, todayWindows }) => (
+                        <HouseCard
+                          key={unit.id}
+                          unit={unit}
+                          cover={cover}
+                          todayWindows={todayWindows}
+                          dict={dict}
+                          language={language}
+                        />
+                      ))}
+                    </Reveal>
+                  </>
+                ),
+              },
+              {
+                id: 'servicos',
+                label: dict.home.tabServices,
+                headingSemJs: dict.home.servicesTitle,
+                panel: (
+                  <>
+                    <p className="mx-auto mb-10 max-w-md text-center text-[0.875rem] leading-relaxed text-[var(--ink-muted)] sm:mb-14">
+                      {dict.home.servicesSubtitle}
+                    </p>
+                    {categories.size === 0 ? (
+                      <p className="text-center text-[0.875rem] text-[var(--ink-faint)]">
+                        {dict.unit.noStoresHint}
+                      </p>
+                    ) : (
+                      <>
+                        {/*
+                          UMA EMENTA, NÃO UMA TABELA.
+
+                          Sem preço e sem duração, cada linha é só o nome
+                          do serviço — e é isso que a faz respirar. Duas
+                          colunas no monitor, categorias que fecham ao
+                          telemóvel (o `CollapseGroup` é o mesmo do funil,
+                          e a lista inteira continua no HTML para o
+                          Ctrl+F e para os motores de busca).
+                        */}
+                        <div className="mx-auto grid max-w-5xl gap-x-16 gap-y-10 sm:grid-cols-2 sm:gap-y-14">
+                          {[...categories.values()].map((category) => (
+                            <CollapseGroup
+                              key={category.name}
+                              title={category.name}
+                              count={category.services.length}
+                            >
+                              {category.services.map((service) => (
+                                <li
+                                  key={service.service_id}
+                                  className="mt-3.5 first:mt-0"
+                                >
+                                  <p className="text-[0.9375rem] leading-snug text-[var(--ink)]">
+                                    {service.name}
+                                  </p>
+                                  {service.description ? (
+                                    <p className="mt-1 max-w-sm text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
+                                      {service.description}
+                                    </p>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </CollapseGroup>
+                          ))}
+                        </div>
+
+                        {/* Uma ementa sem preços deixa uma pergunta no
+                            ar. A resposta é a marcação, onde o valor
+                            aparece já com a loja e a profissional
+                            escolhidas — por isso o caminho fica aqui,
+                            no fim da lista. */}
+                        <div className="mt-16 text-center">
+                          <Ornament className="mb-8" />
+                          <ButtonLink href="/agendar" size="lg">
+                            {dict.home.cta}
+                          </ButtonLink>
+                        </div>
+                      </>
+                    )}
+                  </>
+                ),
+              },
+            ]}
+          />
         </div>
       </section>
-
-      {/* ------------------------------------------------- o menu ----- */}
-      {categories.size > 0 ? (
-        <section className="border-t border-[var(--line-soft)]">
-          <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-            <Reveal className="text-center">
-              <p className="eyebrow eyebrow-gold">{dict.home.servicesEyebrow}</p>
-              <h2 className="display mt-4 text-3xl sm:text-4xl">
-                {dict.home.servicesTitle}
-              </h2>
-              <p className="mx-auto mt-4 max-w-md text-[0.8125rem] text-[var(--ink-faint)]">
-                {dict.home.servicesSubtitle}
-              </p>
-              <Ornament className="mt-8" />
-            </Reveal>
-
-            <div className="mt-12 grid gap-x-20 gap-y-10 sm:mt-16 sm:grid-cols-2 sm:gap-y-16">
-              {[...categories.values()].map((category) => (
-                <CollapseGroup
-                  key={category.name}
-                  title={category.name}
-                  count={category.services.length}
-                >
-                  {category.services.map((service) => (
-                    <PriceLine
-                      key={service.service_id}
-                      name={service.name}
-                      duration={formatDuration(service.duration_minutes, language)}
-                      price={formatCents(service.base_price_cents, org.currency, language)}
-                      from={dict.common.from}
-                      thumb={{
-                        url: service.image_url,
-                        alt:
-                          service.image_alt ??
-                          fill(dict.home.servicePhotoAlt, {
-                            service: service.name,
-                          }),
-                      }}
-                    />
-                  ))}
-                </CollapseGroup>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
 
       {/* ------------------------------------------- a galeria -------- */}
       {photos.length > 0 ? (
@@ -425,11 +488,46 @@ export async function Showcase({ org }: { org: Org }) {
             <p className="mt-6 text-[0.9375rem] text-[var(--ink-muted)]">
               {dict.home.finalSubtitle}
             </p>
-            <div className="mt-10">
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
               <ButtonLink href="/agendar" size="lg">
                 {dict.home.cta}
               </ButtonLink>
+              {/* Âncora crua e não `ButtonLink`: isto sai da casa — vai
+                  para o WhatsApp ou para a aplicação de telefone — e o
+                  `Link` do Next existe para navegar cá dentro. */}
+              {contactHref ? (
+                <a
+                  href={contactHref}
+                  className={buttonClass('outline', 'lg')}
+                  {...(whatsapp ? { target: '_blank', rel: 'noreferrer' } : {})}
+                >
+                  {dict.home.contactCta}
+                </a>
+              ) : null}
             </div>
+
+            {/*
+              A PORTA DE QUEM JÁ CÁ ANDA.
+
+              Estava só no cabeçalho, num «Entrar» de treze pixéis que
+              desaparecia por completo abaixo dos 640 — ou seja, no
+              telemóvel, que é onde ela está. Quem já é cliente não vem
+              cá marcar às cegas: vem ver o que tem marcado, e essa porta
+              tem de estar à vista. Fica aqui em baixo, depois do convite
+              principal, porque é para quem já cá esteve — não é o que se
+              oferece a quem chega.
+            */}
+            <p className="mx-auto mt-14 flex max-w-sm flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-[var(--line-soft)] pt-8 text-[0.8125rem]">
+              <span className="text-[var(--ink-faint)]">
+                {dict.home.clientPrompt}
+              </span>
+              <Link
+                href={client ? '/conta' : '/conta/entrar'}
+                className="link-slide toque text-[var(--accent)]"
+              >
+                {client ? dict.nav.account : dict.home.clientCta}
+              </Link>
+            </p>
           </Reveal>
         </div>
       </section>

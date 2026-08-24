@@ -956,6 +956,25 @@ html.js [data-menu-fechado] {
 }
 
 /* ---------------------------------------------------------------------
+   Abas da montra (components/showcase-tabs.tsx).
+
+   As lojas e os serviços são duas perguntas diferentes e cada uma quer
+   a página toda. Com JavaScript há abas e vê-se uma de cada vez; sem
+   ele não há abas nenhumas — a barra desaparece, os dois painéis ficam
+   de enfiada, e cada um recupera o título que as abas lhe tinham
+   tirado. É essa a versão que os motores de busca lêem.
+   --------------------------------------------------------------------- */
+html:not(.js) [data-abas] {
+  display: none;
+}
+html.js [data-painel-fechado] {
+  display: none;
+}
+html.js .so-sem-js {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------
    ALVO DE TOQUE.
 
    Uma ligação de texto solta no meio de um parágrafo — o telefone do
