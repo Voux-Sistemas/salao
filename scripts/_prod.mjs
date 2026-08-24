@@ -7,6 +7,7 @@
  *
  *   node scripts/_prod.mjs seed
  *   node scripts/_prod.mjs migrate
+ *   node scripts/_prod.mjs apagar-cliente +351900000000 --a-serio
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -36,5 +37,10 @@ if (!target) {
 // Marca visível, para nunca haver dúvida sobre onde é que isto escreveu.
 const host = /@([^/:]+)/.exec(process.env.DATABASE_URL ?? '')?.[1] ?? '?'
 console.log(`> ${target} contra ${host}\n`)
+
+// O guião importado herda este `process.argv`. Tirar-lhe o nome do
+// guião faz com que ele veja os argumentos como se tivesse sido
+// chamado à mão — `apagar-cliente.mjs +351900000000 --a-serio`.
+process.argv.splice(2, 1)
 
 await import(`./${target}.mjs`)
