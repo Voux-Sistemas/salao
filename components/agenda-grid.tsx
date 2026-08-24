@@ -92,7 +92,7 @@ const TONE_STYLE: Record<Tone, string> = {
 }
 
 /** A cor de fio que cada tom usa: o fio do bloco, a barra da lista. */
-const TONE_BAR: Record<Tone, string> = {
+export const TONE_BAR: Record<Tone, string> = {
   neutral: 'var(--ink-faint)',
   accent: 'var(--accent)',
   ok: 'var(--ok)',

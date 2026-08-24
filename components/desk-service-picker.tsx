@@ -101,7 +101,7 @@ export function DeskServicePicker({
               if (event.key === 'Enter' && only?.href) {
                 event.preventDefault()
                 setTerm('')
-                router.push(only.href)
+                router.push(only.href, { scroll: false })
               }
             }}
             placeholder="Procurar serviço"
@@ -265,6 +265,7 @@ function ServiceRow({ service }: { service: PickerService }) {
   return (
     <Link
       href={service.href}
+      scroll={false}
       aria-label={`Juntar ${service.name} à visita`}
       className={clsx(
         moldura,

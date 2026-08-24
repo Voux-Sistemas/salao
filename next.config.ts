@@ -55,6 +55,17 @@ const config: NextConfig = {
   images: {
     remotePatterns: [{ protocol: 'https', hostname: '**.supabase.co' }],
   },
+  experimental: {
+    serverActions: {
+      /*
+       * A fotografia de um serviço vem no próprio formulário. O
+       * formulário encolhe-a no telemóvel antes de enviar (~200 KB); os
+       * 4 MB são folga para a foto que o navegador não soube encolher,
+       * mais o resto dos campos.
+       */
+      bodySizeLimit: '4mb',
+    },
+  },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]
   },

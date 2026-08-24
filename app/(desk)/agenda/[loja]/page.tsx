@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Form from 'next/form'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
@@ -16,6 +17,7 @@ import {
 } from '@/lib/time'
 import { AgendaGrid, AgendaList } from '@/components/agenda-grid'
 import { AgendaFocus } from '@/components/agenda-focus'
+import { AgendaPanorama } from '@/components/agenda-panorama'
 import { AppointmentPanel } from '@/components/appointment-panel'
 import { DeskDayStrip } from '@/components/desk-day-strip'
 import { UnitSwitcher } from '@/components/unit-switcher'
@@ -230,7 +232,7 @@ export default async function AgendaDayPage({
               de semana em semana são doze toques. Aqui é um: no
               telemóvel abre o calendário do sistema.
             */}
-            <form action={here} className="flex items-center gap-1.5">
+            <Form action={here} scroll={false} className="flex items-center gap-1.5">
               <label htmlFor="agenda-dia" className="sr-only">
                 Saltar para um dia
               </label>
@@ -239,16 +241,20 @@ export default async function AgendaDayPage({
                 type="date"
                 name="d"
                 defaultValue={day}
-                className="tabular h-8 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface)] px-2 text-[0.75rem] text-[var(--ink)]"
+                className="tabular h-8 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface)] px-2 text-base text-[var(--ink)] sm:text-[0.75rem]"
               />
               {picked ? <input type="hidden" name="p" value={picked} /> : null}
               <button type="submit" className={buttonClass('outline', 'sm')}>
                 Ir
               </button>
-            </form>
+            </Form>
 
             {!isToday ? (
-              <Link href={withDay(todayDay)} className={buttonClass('quiet', 'sm')}>
+              <Link
+                href={withDay(todayDay)}
+                scroll={false}
+                className={buttonClass('quiet', 'sm')}
+              >
                 Hoje
               </Link>
             ) : null}
@@ -328,6 +334,12 @@ export default async function AgendaDayPage({
             partir do tablet, que é onde ela cabe.
           */}
           <div className="md:hidden">
+            <AgendaPanorama
+              agenda={agenda}
+              colors={colors}
+              hrefFor={hrefFor}
+              nowMin={nowMin}
+            />
             <AgendaList
               agenda={agenda}
               colors={colors}
@@ -399,6 +411,7 @@ function StaffChip({
   return (
     <Link
       href={href}
+      scroll={false}
       aria-current={active ? 'true' : undefined}
       className={clsx(
         'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.75rem] transition-colors',

@@ -17,6 +17,7 @@ import {
   updateService,
   type ServiceInput,
 } from '@/lib/catalog-admin'
+import { dropUploadedImageIfOrphan, saveUploadedImage } from '@/lib/imagens'
 import { inputToCents } from '@/lib/money'
 import { safePhotoUrl, slugify } from '@/lib/text'
 
@@ -76,7 +77,7 @@ export async function renameCategoryAction(
   if (!id) return { error: 'Categoria desconhecida.' }
   if (!name) return { error: 'Dê um nome à categoria.' }
 
-  await renameCategory(actor.orgId, id, name, texto(form, 'name_en'), texto(form, 'name_es'))
+  await renameCategory(actor.orgId, id, name)
   refresh()
   return { error: null, done: 'Categoria guardada.' }
 }
@@ -117,32 +118,48 @@ function serviceFrom(form: FormData): ServiceInput | null {
   const typed = String(form.get('slug') ?? '').trim()
   const price = inputToCents(String(form.get('price') ?? ''))
   const duration = Number(String(form.get('duration') ?? '').trim())
-  const before = Number(String(form.get('before') ?? '0').trim())
-  const after = Number(String(form.get('after') ?? '0').trim())
 
   if (price === null) return null
-  if (![duration, before, after].every(Number.isInteger)) return null
+  if (!Number.isInteger(duration)) return null
 
   return {
     categoryId: String(form.get('category') ?? ''),
     slug: slugify(typed || name),
     name,
-    nameEn: texto(form, 'nameEn'),
-    nameEs: texto(form, 'nameEs'),
     description: texto(form, 'description'),
-    descriptionEn: texto(form, 'descriptionEn'),
-    descriptionEs: texto(form, 'descriptionEs'),
     basePriceCents: price,
     durationMinutes: duration,
-    bufferBeforeMinutes: before,
-    bufferAfterMinutes: after,
     bookableOnline: form.get('online') === 'on',
     // Um endereço que não passa o crivo entra como "sem fotografia" em
-    // vez de rebentar a gravação: quem se enganou no link não perde o
-    // preço e a duração que acabou de escrever.
+    // vez de rebentar a gravação: quem se enganou não perde o preço e a
+    // duração que acabou de escrever.
     imageUrl: safePhotoUrl(String(form.get('image') ?? '')),
     imageAlt: String(form.get('imageAlt') ?? '').trim() || null,
   }
+}
+
+/**
+ * A fotografia escolhida no telemóvel. O formulário já a encolheu; se
+ * vier um ficheiro, ele ganha ao endereço que estivesse no campo.
+ * Devolve o erro escrito para a dona, ou o endereço novo, ou nada.
+ */
+async function photoFrom(
+  orgId: string,
+  form: FormData,
+): Promise<{ url: string | null } | { error: string }> {
+  const file = form.get('photo')
+  if (!(file instanceof File) || file.size === 0) return { url: null }
+
+  const saved = await saveUploadedImage(orgId, file)
+  if ('error' in saved) {
+    return {
+      error:
+        saved.error === 'size'
+          ? 'Essa fotografia é demasiado pesada. Escolha outra.'
+          : 'Esse ficheiro não é uma fotografia que o site saiba mostrar.',
+    }
+  }
+  return { url: saved.url }
 }
 
 export async function createServiceAction(
@@ -155,6 +172,10 @@ export async function createServiceAction(
   if (!input) return { error: 'Preço e minutos escrevem-se em números.' }
   if (!input.name) return { error: 'O serviço precisa de um nome.' }
   if (!input.categoryId) return { error: 'Escolha a categoria.' }
+
+  const photo = await photoFrom(actor.orgId, form)
+  if ('error' in photo) return { error: photo.error }
+  if (photo.url) input.imageUrl = photo.url
 
   const result = await createService(actor.orgId, input)
   if (!result.ok) {
@@ -182,6 +203,10 @@ export async function saveServiceAction(
   if (!input.name) return { error: 'O serviço precisa de um nome.' }
   if (!input.categoryId) return { error: 'Escolha a categoria.' }
 
+  const photo = await photoFrom(found.actor.orgId, form)
+  if ('error' in photo) return { error: photo.error }
+  if (photo.url) input.imageUrl = photo.url
+
   const result = await updateService(
     found.actor.orgId,
     found.service.id,
@@ -196,6 +221,11 @@ export async function saveServiceAction(
             ? 'Esse serviço não existe.'
             : 'A duração tem de ser maior que zero.',
     }
+  }
+
+  // A fotografia antiga carregada do telemóvel, se ficou órfã, sai.
+  if (found.service.image_url !== input.imageUrl) {
+    await dropUploadedImageIfOrphan(found.service.image_url)
   }
 
   refresh(found.service.id)

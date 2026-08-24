@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Form from 'next/form'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
 import { ArrowLeft, X } from 'lucide-react'
@@ -47,6 +48,7 @@ import {
   type PickerCategory,
 } from '@/components/desk-service-picker'
 import { EncaixeForm } from '@/components/encaixe-form'
+import { ScrollHere } from '@/components/scroll-here'
 import { formatPhone } from '@/lib/text'
 
 export const metadata: Metadata = { title: 'Encaixe' }
@@ -330,6 +332,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                 </div>
                 <Link
                   href={link({ client: null, search: null })}
+                  scroll={false}
                   className="shrink-0 text-[0.75rem] text-[var(--ink-muted)] underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
                 >
                   trocar
@@ -337,7 +340,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
               </Card>
             ) : (
               <div className="space-y-3">
-                <form method="get" action={here} className="flex gap-2">
+                <Form action={here} scroll={false} className="flex gap-2">
                   <input type="hidden" name={DAY_PARAM} value={day} />
                   {cart.length > 0 ? (
                     <input
@@ -362,7 +365,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                   >
                     Procurar
                   </button>
-                </form>
+                </Form>
 
                 {search.length >= 2 ? (
                   matches.length === 0 ? (
@@ -376,6 +379,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                         <Link
                           key={row.id}
                           href={link({ client: row.id, search: null })}
+                          scroll={false}
                           className="flex items-baseline justify-between gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--surface-sunken)]"
                         >
                           <span className="min-w-0">
@@ -460,6 +464,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                         </span>
                         <Link
                           href={withCart(removeAt(cart, index))}
+                          scroll={false}
                           aria-label={`Tirar ${service.name}`}
                           className="shrink-0 text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
                         >
@@ -537,9 +542,9 @@ export default async function EncaixePage({ params, searchParams }: Params) {
             {/* A fita anda de semana em semana: uma marcação de daqui a
                 mês e meio são seis setas. Este campo salta lá directo. A
                 hora não vai atrás — pertencia ao dia que se deixou. */}
-            <form
-              method="get"
+            <Form
               action={here}
+              scroll={false}
               className="mt-2.5 flex items-center gap-2"
             >
               {cart.length > 0 ? (
@@ -565,7 +570,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
               >
                 Ir
               </button>
-            </form>
+            </Form>
 
             <p className="mb-3 mt-3 text-[0.8125rem] text-[var(--ink-muted)]">
               {capitalise(formatDayLong(day, tz))}
@@ -595,6 +600,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                         <li key={iso}>
                           <Link
                             href={link({ time: iso, hand: null })}
+                            scroll={false}
                             className={clsx(
                               'tabular flex h-9 items-center justify-center rounded-[var(--radius-sm)] border text-[0.8125rem] font-medium transition-colors',
                               active
@@ -617,9 +623,9 @@ export default async function EncaixePage({ params, searchParams }: Params) {
 
                 {/* A hora à mão: fora da grelha, que é o que faz um
                     encaixe ser um encaixe. */}
-                <form
-                  method="get"
+                <Form
                   action={here}
+                  scroll={false}
                   className="mt-4 border-t border-[var(--line-soft)] pt-3"
                 >
                   <p className="titulo-seccao mb-2">Ou uma hora à mão</p>
@@ -652,7 +658,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                       Usar
                     </button>
                   </div>
-                </form>
+                </Form>
                 <p className="mt-2 text-[0.6875rem] text-[var(--ink-faint)]">
                   A hora à mão pode cair fora da grelha — é isso que faz um
                   encaixe.
@@ -664,6 +670,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
           {/* --- fechar ------------------------------------------- */}
           {cart.length > 0 && chosenAt ? (
             <Card className="px-4 py-4">
+              <ScrollHere chave={chosenAt.toISOString()} />
               <StepTitle step="4">Confirmar</StepTitle>
               {plan ? (
                 <>
@@ -763,6 +770,7 @@ function StaffChip({
   return (
     <Link
       href={href}
+      scroll={false}
       className={clsx(
         'inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6875rem] transition-colors',
         active

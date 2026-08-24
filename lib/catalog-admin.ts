@@ -81,19 +81,18 @@ export async function createCategory(
   }
 }
 
+/**
+ * Só o nome português: as traduções escrevem-se sozinhas (o script
+ * `traduzir`), e mudar o nome aqui não as pode apagar.
+ */
 export async function renameCategory(
   orgId: string,
   id: string,
   name: string,
-  nameEn: string | null = null,
-  nameEs: string | null = null,
 ): Promise<CategoryResult> {
   if (!name.trim()) return { ok: false, reason: 'invalid' }
   await sql`
-    update service_category set
-      name = ${name.trim()},
-      name_en = ${nameEn},
-      name_es = ${nameEs}
+    update service_category set name = ${name.trim()}
      where id = ${id} and org_id = ${orgId}
   `
   return { ok: true, id }
@@ -203,28 +202,18 @@ export async function listPhotoLibrary(orgId: string): Promise<PhotoChoice[]> {
   `
 }
 
+/**
+ * O que a ficha gere. As traduções (name_en, description_es…) e as
+ * folgas não entram aqui de propósito: as línguas escrevem-se sozinhas
+ * com o script `traduzir`, e gravar a ficha não as pode apagar.
+ */
 export type ServiceInput = {
   categoryId: string
   slug: string
   name: string
-  /**
-   * O NOME DA CASA E O NOME PARA FORA.
-   *
-   * `name` é português e é o que manda: vai para a agenda, para a
-   * comanda, para a caixa, e fica congelado na marcação. Estes quatro
-   * campos só existem para a cliente que lê o sítio noutra língua — e
-   * ficam quase sempre vazios, que é o mesmo que dizer «sai o
-   * português».
-   */
-  nameEn: string | null
-  nameEs: string | null
   description: string | null
-  descriptionEn: string | null
-  descriptionEs: string | null
   basePriceCents: Cents
   durationMinutes: number
-  bufferBeforeMinutes: number
-  bufferAfterMinutes: number
   bookableOnline: boolean
   imageUrl: string | null
   imageAlt: string | null
@@ -240,9 +229,7 @@ function invalid(input: ServiceInput): boolean {
     !input.slug ||
     !input.categoryId ||
     input.basePriceCents < 0 ||
-    input.durationMinutes <= 0 ||
-    input.bufferBeforeMinutes < 0 ||
-    input.bufferAfterMinutes < 0
+    input.durationMinutes <= 0
   )
 }
 
@@ -255,17 +242,13 @@ export async function createService(
   try {
     const rows = await sql<{ id: string }[]>`
       insert into service (
-        org_id, category_id, slug, name, name_en, name_es,
-        description, description_en, description_es,
+        org_id, category_id, slug, name, description,
         base_price_cents, duration_minutes,
-        buffer_before_minutes, buffer_after_minutes,
         bookable_online, image_url, image_alt, sort_order
       ) values (
         ${orgId}, ${input.categoryId}, ${input.slug}, ${input.name.trim()},
-        ${input.nameEn}, ${input.nameEs},
-        ${input.description}, ${input.descriptionEn}, ${input.descriptionEs},
+        ${input.description},
         ${input.basePriceCents}, ${input.durationMinutes},
-        ${input.bufferBeforeMinutes}, ${input.bufferAfterMinutes},
         ${input.bookableOnline}, ${input.imageUrl}, ${input.imageAlt},
         (select coalesce(max(sort_order), 0) + 1 from service
           where category_id = ${input.categoryId})
@@ -294,15 +277,9 @@ export async function updateService(
         category_id = ${input.categoryId},
         slug = ${input.slug},
         name = ${input.name.trim()},
-        name_en = ${input.nameEn},
-        name_es = ${input.nameEs},
         description = ${input.description},
-        description_en = ${input.descriptionEn},
-        description_es = ${input.descriptionEs},
         base_price_cents = ${input.basePriceCents},
         duration_minutes = ${input.durationMinutes},
-        buffer_before_minutes = ${input.bufferBeforeMinutes},
-        buffer_after_minutes = ${input.bufferAfterMinutes},
         bookable_online = ${input.bookableOnline},
         image_url = ${input.imageUrl},
         image_alt = ${input.imageAlt}

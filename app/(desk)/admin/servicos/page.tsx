@@ -95,10 +95,8 @@ export default async function ServicosPage() {
                         {service.name}
                       </p>
                       {/* No telemóvel as três colunas da direita desaparecem
-                          e o que sobrava debaixo do nome eram as folgas — o
-                          detalhe menos útil de todos. A duração e quem o faz
-                          passam a ocupar essa linha; as folgas ficam para o
-                          ecrã largo, onde cabem as duas coisas. */}
+                          — a duração e quem o faz passam para debaixo do
+                          nome. */}
                       <p className="text-[0.75rem] text-[var(--ink-muted)] sm:hidden">
                         <span className="tabular">
                           {formatDuration(service.duration_minutes)}
@@ -114,15 +112,12 @@ export default async function ServicosPage() {
                         )}
                         {service.bookable_online ? '' : ' · oculto'}
                       </p>
-                      <p className="hidden text-[0.75rem] text-[var(--ink-muted)] sm:block">
-                        {service.buffer_before_minutes ||
-                        service.buffer_after_minutes
-                          ? `folgas ${service.buffer_before_minutes}/${service.buffer_after_minutes} min`
-                          : 'sem folgas'}
-                        {service.overrides > 0
-                          ? ` · ${service.overrides} excepç${service.overrides === 1 ? 'ão' : 'ões'}`
-                          : ''}
-                      </p>
+                      {service.overrides > 0 ? (
+                        <p className="hidden text-[0.75rem] text-[var(--ink-muted)] sm:block">
+                          {service.overrides} excepç
+                          {service.overrides === 1 ? 'ão' : 'ões'}
+                        </p>
+                      ) : null}
                     </div>
 
                     <span className="tabular hidden text-right text-sm text-[var(--ink-muted)] sm:block">
@@ -173,8 +168,6 @@ export default async function ServicosPage() {
                   key={category.id}
                   id={category.id}
                   name={category.name}
-                  nameEn={category.name_en}
-                  nameEs={category.name_es}
                   services={category.services}
                 />
               ))}

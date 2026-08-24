@@ -47,6 +47,7 @@ export function DeskDayStrip({
             <li key={value}>
               <Link
                 href={hrefFor(value)}
+                scroll={false}
                 aria-current={current ? 'date' : undefined}
                 className={clsx(
                   'flex flex-col items-center justify-center gap-0.5 border transition-colors',
@@ -121,6 +122,7 @@ function StripArrow({
   return (
     <Link
       href={href}
+      scroll={false}
       aria-label={label}
       className={clsx(
         shape,

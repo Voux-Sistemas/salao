@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState, type ComponentProps } from 'react'
+import { useActionState, useRef, useState, type ComponentProps } from 'react'
 import { useFormStatus } from 'react-dom'
 import clsx from 'clsx'
 import { Trash2 } from 'lucide-react'
@@ -116,21 +116,16 @@ export function CategoryForm() {
 /**
  * Mudar o nome no sítio; apagar só quando já não tem nada dentro.
  *
- * Os dois campos pequenos ao lado são o nome para fora — o que a cliente
- * lê quando o sítio está em inglês ou em espanhol. Vazios é o normal:
- * sem tradução, sai o português.
+ * Só o nome português: as línguas de fora escrevem-se sozinhas, e não
+ * há nada que a dona tenha de fazer por elas.
  */
 export function CategoryLine({
   id,
   name,
-  nameEn,
-  nameEs,
   services,
 }: {
   id: string
   name: string
-  nameEn: string | null
-  nameEs: string | null
   services: number
 }) {
   const [rename, renameAction] = useActionState<CatalogState, FormData>(
@@ -158,24 +153,6 @@ export function CategoryLine({
             autoComplete="off"
             aria-label={`Nome de ${name}`}
             className="max-w-xs"
-          />
-          <Input
-            name="name_en"
-            defaultValue={nameEn ?? ''}
-            maxLength={60}
-            autoComplete="off"
-            placeholder="English"
-            aria-label={`${name} em inglês`}
-            className="max-w-[9.5rem]"
-          />
-          <Input
-            name="name_es"
-            defaultValue={nameEs ?? ''}
-            maxLength={60}
-            autoComplete="off"
-            placeholder="Español"
-            aria-label={`${name} em espanhol`}
-            className="max-w-[9.5rem]"
           />
           <Submit label="Guardar" variant="quiet" size="sm" />
         </form>
@@ -227,25 +204,51 @@ export type ServiceFields = {
   id: string
   slug: string
   name: string
-  name_en: string | null
-  name_es: string | null
   category_id: string
   description: string | null
-  description_en: string | null
-  description_es: string | null
   base_price_cents: number
   duration_minutes: number
-  buffer_before_minutes: number
-  buffer_after_minutes: number
   bookable_online: boolean
   image_url: string | null
   image_alt: string | null
 }
 
 /**
- * O preço-base e a duração são o ponto de partida. As folgas antes e
- * depois não aparecem à cliente, mas ocupam a agenda da profissional.
+ * ENCOLHER A FOTOGRAFIA ANTES DE ELA SAIR DO TELEMÓVEL.
+ *
+ * Uma foto da câmara pesa 3 a 8 MB; para um quadrado de preçário chegam
+ * ~200 KB. Encolhe-se aqui, no navegador, para o envio ser instantâneo
+ * mesmo em 4G fraco. Se alguma coisa falhar, segue o ficheiro original
+ * — o servidor ainda tem o seu próprio tecto e diz que não com jeito.
  */
+async function encolherFotografia(file: File): Promise<File> {
+  if (!file.type.startsWith('image/')) return file
+  try {
+    const bitmap = await createImageBitmap(file, {
+      // A orientação vem do EXIF; sem isto, a foto tirada ao alto
+      // deitava-se sozinha.
+      imageOrientation: 'from-image',
+    })
+    const MAX = 1600
+    const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    const context = canvas.getContext('2d')
+    if (!context) return file
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close()
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.82),
+    )
+    if (!blob || blob.size >= file.size) return file
+    return new File([blob], 'fotografia.jpg', { type: 'image/jpeg' })
+  } catch {
+    return file
+  }
+}
+
+/** O preço-base e a duração são o ponto de partida de toda a rede. */
 export function ServiceForm({
   service,
   categories,
@@ -263,8 +266,45 @@ export function ServiceForm({
     service ? centsToInput(service.base_price_cents) : '0,00',
   )
   const preview = inputToCents(price)
+
+  // `image` é o endereço (a foto da casa ou a já guardada); `fotoNova`
+  // é a pré-visualização do ficheiro escolhido agora, que ganha sempre.
   const [image, setImage] = useState(service?.image_url ?? '')
-  const imageSrc = safePhotoUrl(image)
+  const [fotoNova, setFotoNova] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const imageSrc = fotoNova ?? safePhotoUrl(image)
+
+  function largarFotoNova() {
+    if (fileRef.current) fileRef.current.value = ''
+    setFotoNova((old) => {
+      if (old) URL.revokeObjectURL(old)
+      return null
+    })
+  }
+
+  async function aoEscolherFicheiro(list: FileList | null) {
+    const original = list?.[0]
+    if (!original) {
+      largarFotoNova()
+      return
+    }
+    const file = await encolherFotografia(original)
+    // O ficheiro encolhido volta para dentro do próprio campo — é ele
+    // que segue no formulário, não o pesado.
+    try {
+      if (file !== original && fileRef.current) {
+        const basket = new DataTransfer()
+        basket.items.add(file)
+        fileRef.current.files = basket.files
+      }
+    } catch {
+      // Navegador antigo: segue o original, o servidor decide.
+    }
+    setFotoNova((old) => {
+      if (old) URL.revokeObjectURL(old)
+      return URL.createObjectURL(file)
+    })
+  }
 
   return (
     <form action={action} className="space-y-5">
@@ -335,54 +375,6 @@ export function ServiceForm({
       </Panel>
 
       <Panel
-        title="Nas outras línguas"
-        hint="Só para a cliente que lê o sítio em inglês ou espanhol. Em branco, sai o português — e o balcão vê sempre o nome de cima."
-      >
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nome em inglês" htmlFor="service-name-en">
-              <Input
-                id="service-name-en"
-                name="nameEn"
-                defaultValue={service?.name_en ?? ''}
-                maxLength={80}
-                autoComplete="off"
-                placeholder={service?.name ?? ''}
-              />
-            </Field>
-            <Field label="Nome em espanhol" htmlFor="service-name-es">
-              <Input
-                id="service-name-es"
-                name="nameEs"
-                defaultValue={service?.name_es ?? ''}
-                maxLength={80}
-                autoComplete="off"
-                placeholder={service?.name ?? ''}
-              />
-            </Field>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Descrição em inglês" htmlFor="service-description-en">
-              <Textarea
-                id="service-description-en"
-                name="descriptionEn"
-                defaultValue={service?.description_en ?? ''}
-                maxLength={400}
-              />
-            </Field>
-            <Field label="Descrição em espanhol" htmlFor="service-description-es">
-              <Textarea
-                id="service-description-es"
-                name="descriptionEs"
-                defaultValue={service?.description_es ?? ''}
-                maxLength={400}
-              />
-            </Field>
-          </div>
-        </div>
-      </Panel>
-
-      <Panel
         title="Preço e duração"
         hint="O ponto de partida de toda a rede. O que muda numa loja ou numa mão diz-se depois, como excepção."
       >
@@ -411,45 +403,17 @@ export function ServiceForm({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-            <Field label="Duração" htmlFor="service-duration" className="w-32">
-              <SuffixInput
-                id="service-duration"
-                name="duration"
-                type="number"
-                min={5}
-                step={5}
-                defaultValue={service?.duration_minutes ?? 60}
-                suffix="min"
-              />
-            </Field>
-            <Field label="Folga antes" htmlFor="service-before" className="w-32">
-              <SuffixInput
-                id="service-before"
-                name="before"
-                type="number"
-                min={0}
-                step={5}
-                defaultValue={service?.buffer_before_minutes ?? 0}
-                suffix="min"
-              />
-            </Field>
-            <Field label="Folga depois" htmlFor="service-after" className="w-32">
-              <SuffixInput
-                id="service-after"
-                name="after"
-                type="number"
-                min={0}
-                step={5}
-                defaultValue={service?.buffer_after_minutes ?? 0}
-                suffix="min"
-              />
-            </Field>
-          </div>
-          <p className="text-[0.75rem] text-[var(--ink-faint)]">
-            As folgas ocupam a agenda da profissional — para preparar e
-            arrumar — mas a cliente nunca as vê.
-          </p>
+          <Field label="Duração" htmlFor="service-duration" className="w-32">
+            <SuffixInput
+              id="service-duration"
+              name="duration"
+              type="number"
+              min={5}
+              step={5}
+              defaultValue={service?.duration_minutes ?? 60}
+              suffix="min"
+            />
+          </Field>
         </div>
       </Panel>
 
@@ -469,33 +433,40 @@ export function ServiceForm({
           </div>
 
           <div className="min-w-0 flex-1 space-y-4">
+            {/* O endereço segue escondido: é a foto da casa escolhida em
+                baixo, ou a que o serviço já tinha. O ficheiro do
+                telemóvel, quando vem, ganha-lhe no servidor. */}
+            <input type="hidden" name="image" value={image} />
+
             <Field
-              label="Endereço da imagem"
-              htmlFor="service-image"
-              hint="Um caminho do site (/fotos/…) ou um endereço https://."
+              label="Fotografia do dispositivo"
+              htmlFor="service-photo"
+              hint="Escolha do rolo ou tire uma na hora — ela é encolhida sozinha antes de subir."
             >
-              <Input
-                id="service-image"
-                name="image"
-                value={image}
-                onChange={(event) => setImage(event.target.value)}
-                placeholder="/fotos/valongo/1.jpg"
-                maxLength={500}
-                autoComplete="off"
-                spellCheck={false}
+              <input
+                ref={fileRef}
+                id="service-photo"
+                name="photo"
+                type="file"
+                accept="image/*"
+                onChange={(event) => aoEscolherFicheiro(event.target.files)}
+                className="block w-full text-base text-[var(--ink-muted)] file:mr-3 file:cursor-pointer file:border file:border-[var(--line)] file:bg-[var(--surface-2)] file:px-3 file:py-2 file:text-[0.8125rem] file:text-[var(--ink)] sm:text-sm"
               />
             </Field>
 
-            {image.trim() && !imageSrc ? (
-              <Notice tone="warn">
-                Esse endereço não serve. Guardar assim deixa o serviço sem
-                fotografia.
-              </Notice>
+            {fotoNova ? (
+              <button
+                type="button"
+                onClick={largarFotoNova}
+                className="text-[0.75rem] text-[var(--ink-muted)] underline underline-offset-4 transition-colors hover:text-[var(--bad)]"
+              >
+                Afinal não — tirar esta fotografia
+              </button>
             ) : null}
 
             {photos.length > 0 ? (
               <div>
-                <p className="eyebrow">Fotografias da casa</p>
+                <p className="eyebrow">Ou uma fotografia da casa</p>
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   {photos.map((choice) => (
                     // `type="button"`: dentro de um formulário, um botão sem
@@ -503,13 +474,16 @@ export function ServiceForm({
                     <button
                       key={choice.url}
                       type="button"
-                      onClick={() => setImage(choice.url)}
+                      onClick={() => {
+                        largarFotoNova()
+                        setImage(choice.url)
+                      }}
                       title={choice.label}
                       aria-label={choice.label}
-                      aria-pressed={image === choice.url}
+                      aria-pressed={!fotoNova && image === choice.url}
                       className={clsx(
                         'size-14 overflow-hidden border transition-colors',
-                        image === choice.url
+                        !fotoNova && image === choice.url
                           ? 'border-[var(--accent)]'
                           : 'border-[var(--line)] hover:border-[var(--ink-faint)]',
                       )}
@@ -517,10 +491,13 @@ export function ServiceForm({
                       <Photo src={choice.url} alt="" />
                     </button>
                   ))}
-                  {image ? (
+                  {image || fotoNova ? (
                     <button
                       type="button"
-                      onClick={() => setImage('')}
+                      onClick={() => {
+                        largarFotoNova()
+                        setImage('')
+                      }}
                       className="h-14 px-3 text-[0.75rem] text-[var(--ink-muted)] underline underline-offset-4 transition-colors hover:text-[var(--bad)]"
                     >
                       Sem fotografia
@@ -528,6 +505,17 @@ export function ServiceForm({
                   ) : null}
                 </div>
               </div>
+            ) : image || fotoNova ? (
+              <button
+                type="button"
+                onClick={() => {
+                  largarFotoNova()
+                  setImage('')
+                }}
+                className="text-[0.75rem] text-[var(--ink-muted)] underline underline-offset-4 transition-colors hover:text-[var(--bad)]"
+              >
+                Sem fotografia
+              </button>
             ) : null}
 
             <Field

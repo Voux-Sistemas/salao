@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Form from 'next/form'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
@@ -43,6 +44,7 @@ import {
 import { Badge, Card, Input, Notice, buttonClass } from '@/components/ui'
 import { DeskDayStrip } from '@/components/desk-day-strip'
 import { RemarcarForm } from '@/components/remarcar-form'
+import { ScrollHere } from '@/components/scroll-here'
 
 export const metadata: Metadata = { title: 'Remarcar' }
 
@@ -334,6 +336,7 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
                           <li key={iso}>
                             <Link
                               href={link({ time: iso, hand: null })}
+                              scroll={false}
                               className={clsx(
                                 'tabular flex h-9 items-center justify-center border text-[0.8125rem] transition-colors',
                                 active
@@ -360,9 +363,9 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
             {/* A hora à mão: fora da grelha, à moda do balcão. Sem a
                 legenda ficava uma caixa "--:--" sem explicação nenhuma
                 por baixo da grelha das horas. */}
-            <form
-              method="get"
+            <Form
               action={here}
+              scroll={false}
               className="mt-5 border-t border-[var(--line-soft)] pt-4"
             >
               <p className="eyebrow mb-2 text-[var(--ink-faint)]">
@@ -392,7 +395,7 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
                   Usar
                 </button>
               </div>
-            </form>
+            </Form>
           </section>
 
           {/* --- confirmar ----------------------------------------- */}
@@ -401,6 +404,7 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
               <SectionTitle>Confirmar</SectionTitle>
               {plan ? (
                 <Card className="px-4 py-4">
+                  <ScrollHere chave={chosenAt.toISOString()} />
                   <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-dashed border-[var(--line)] pb-3.5 text-[0.8125rem]">
                     <span className="tabular text-[var(--ink-muted)] line-through decoration-[var(--ink-faint)]">
                       {stamp(originalDay, appointment.starts_at, tz)}
@@ -473,6 +477,7 @@ function StaffChip({
   return (
     <Link
       href={href}
+      scroll={false}
       className={clsx(
         'border px-2 py-0.5 text-[0.6875rem] transition-colors',
         active
