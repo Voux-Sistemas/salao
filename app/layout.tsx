@@ -100,7 +100,9 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="pt"
+      // A língua da casa. A montra volta a declarar a sua — a que a
+      // visita escolheu — na moldura pública; ver `PublicChrome`.
+      lang="pt-PT"
       className={`${playfair.variable} ${inter.variable} ${manrope.variable}`}
       // o script abaixo acrescenta .js antes da hidratação — mismatch esperado
       suppressHydrationWarning

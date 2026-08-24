@@ -1,7 +1,6 @@
 'use client'
 
 import { Fragment } from 'react'
-import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import clsx from 'clsx'
 import { LANGUAGES, LANGUAGE_LABEL, LANGUAGE_SHORT, type Language } from '@/lib/i18n/config'
@@ -10,6 +9,20 @@ import { LANGUAGES, LANGUAGE_LABEL, LANGUAGE_SHORT, type Language } from '@/lib/
  * Três links, um cookie. Guarda o caminho actual — INCLUINDO a barra de
  * endereço — para que trocar de língua a meio do funil não perca o que
  * já foi escolhido.
+ *
+ * ÂNCORAS SIMPLES, NÃO <Link>. E é aqui que isto se decide.
+ *
+ * O `/idioma` não é uma página: é um atendedor que grava o cookie e
+ * devolve a visita para onde estava. Com um <Link>, quem seguia o
+ * desvio era o encaminhador do lado do navegador — e esse já tinha a
+ * página de destino guardada em memória, desenhada ANTES de o cookie
+ * existir. O cookie ficava gravado, o servidor passava a responder na
+ * língua nova, e o ecrã continuava em português até a visita mudar de
+ * página outra vez. Ou seja: o selector parecia partido, e a segunda
+ * vez é que funcionava.
+ *
+ * Uma âncora normal faz o navegador ir buscar o documento inteiro. Não
+ * há memória velha para servir, e a língua muda ao primeiro toque.
  */
 export function LanguageSwitcher({ current }: { current: Language }) {
   const pathname = usePathname()
@@ -27,7 +40,7 @@ export function LanguageSwitcher({ current }: { current: Language }) {
               ·
             </span>
           ) : null}
-          <Link
+          <a
             href={`/idioma?lang=${language}&next=${encodeURIComponent(next)}`}
             hrefLang={language}
             aria-current={language === current ? 'true' : undefined}
@@ -44,7 +57,7 @@ export function LanguageSwitcher({ current }: { current: Language }) {
             )}
           >
             {LANGUAGE_SHORT[language]}
-          </Link>
+          </a>
         </Fragment>
       ))}
     </div>

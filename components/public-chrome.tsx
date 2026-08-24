@@ -4,7 +4,12 @@ import clsx from 'clsx'
 import { getOrg, listUnits, type Unit } from '@/lib/org'
 import { allWeeklyHours, weeklyHours, type Window } from '@/lib/hours'
 import { formatMinutes } from '@/lib/time'
-import { getDictionary, getLanguage, type Dictionary } from '@/lib/i18n'
+import {
+  getDictionary,
+  getLanguage,
+  LANGUAGE_TAG,
+  type Dictionary,
+} from '@/lib/i18n'
 import { getClientActor } from '@/lib/auth/client-actor'
 import { BRAND } from '@/lib/branding'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -154,7 +159,21 @@ export async function PublicChrome({
   const year = new Date().getFullYear()
 
   return (
-    <div className="skin-salon flex min-h-screen flex-col bg-[var(--surface)]">
+    /*
+      O `lang` VIVE AQUI, E NÃO NO <html>.
+
+      O <html> da raiz diz `pt-PT` e fica quieto: é a língua da área da
+      equipa, que não se traduz, e mudá-lo obrigava a raiz inteira a ler
+      o cookie. A montra, essa, muda de língua — e um leitor de ecrã que
+      apanhe texto inglês declarado como português pronuncia-o com
+      fonemas portugueses, que é o mesmo que não o ler. O atributo vale
+      para a sub-árvore onde é posto; posto aqui, cobre a superfície
+      pública inteira e não toca no balcão.
+    */
+    <div
+      lang={LANGUAGE_TAG[language]}
+      className="skin-salon flex min-h-screen flex-col bg-[var(--surface)]"
+    >
       {/* ------------------------------------------------ cabeçalho --- */}
       <header
         className={clsx(

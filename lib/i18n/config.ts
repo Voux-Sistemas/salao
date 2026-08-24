@@ -44,13 +44,16 @@ export function isLanguage(value: unknown): value is Language {
   return typeof value === 'string' && (LANGUAGES as readonly string[]).includes(value)
 }
 
-/** Melhor palpite a partir do cabeçalho Accept-Language. */
-export function languageFromHeader(header: string | null): Language | null {
-  if (!header) return null
-  for (const part of header.split(',')) {
-    const tag = part.split(';')[0]?.trim().toLowerCase() ?? ''
-    const base = tag.split('-')[0]
-    if (isLanguage(base)) return base
-  }
-  return null
+/**
+ * A etiqueta que se escreve no `lang` do HTML.
+ *
+ * `pt` sozinho não chega: é o `pt-PT` que diz ao leitor de ecrã que
+ * pronuncie «marcação» com o ó fechado de cá, e não com o de São Paulo.
+ * O mesmo para as outras duas — é o inglês e o espanhol da Europa que
+ * esta casa fala.
+ */
+export const LANGUAGE_TAG: Record<Language, string> = {
+  pt: 'pt-PT',
+  en: 'en-GB',
+  es: 'es-ES',
 }
