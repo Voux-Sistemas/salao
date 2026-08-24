@@ -137,7 +137,11 @@ export default async function AdminPage() {
   const paidTotal = standings.reduce((sum, s) => sum + s.paid_cents, 0)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-7">
+      <p className="max-w-2xl text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+        A rede em números — e as portas por onde se muda o que eles dizem.
+      </p>
+
       {/* --- o mês, em quatro números ------------------------------- */}
       <section aria-label="Indicadores do mês">
         <PanelHead
@@ -147,7 +151,7 @@ export default async function AdminPage() {
         {/* Dois a dois já no telemóvel: em coluna única, os quatro números
             do mês ocupavam um ecrã e meio e nunca se viam ao mesmo tempo —
             que é a única coisa que se quer fazer com eles. */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi
             label="Faturação"
             value={formatCents(kpis.current.revenue_cents)}
@@ -223,10 +227,9 @@ export default async function AdminPage() {
         terços — precisa de largura para os 42 dias — e o dia fica na
         coluna estreita, que é onde uma lista curta se lê melhor.
       */}
-      <section
-        aria-label="Faturação e dia"
-        className="grid gap-3 xl:grid-cols-3"
-      >
+      <section aria-label="Faturação e dia">
+        <PanelHead title="O mês e o dia" />
+        <div className="grid gap-4 xl:grid-cols-3">
         <Card className="min-w-0 px-5 py-5 sm:px-6 xl:col-span-2">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
             <div>
@@ -344,10 +347,13 @@ export default async function AdminPage() {
             ))}
           </ul>
         </Card>
+        </div>
       </section>
 
-      {/* --- a equipa: o que trouxe · o que se lhe deve ------------- */}
-      <section aria-label="Equipa" className="grid gap-3 lg:grid-cols-2">
+      {/* --- de onde vem o dinheiro: quem o traz e o que se vende ---- */}
+      <section aria-label="De onde vem o dinheiro">
+        <PanelHead title="De onde vem o dinheiro" />
+        <div className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0 px-5 py-5 sm:px-6">
           <PanelHead
             title="Produção por profissional"
@@ -422,11 +428,13 @@ export default async function AdminPage() {
             </>
           )}
         </Card>
-      </section>
+        </div>
 
-      {/* --- os serviços que rendem --------------------------------- */}
-      <section aria-label="Serviços que mais rendem">
-        <Card className="px-5 py-5 sm:px-6">
+        {/* Fica DENTRO desta secção de propósito: sozinho lá em baixo,
+            aparecia debaixo do título de cima e lia-se como se os
+            serviços fossem gente. É a mesma pergunta — de onde vem o
+            dinheiro — respondida pelo outro lado. */}
+        <Card className="mt-4 px-5 py-5 sm:px-6">
           {/* `flex-wrap`: no telemóvel o título e o período não cabem lado
               a lado — partiam-se os dois ao meio e ficavam quatro tiras
               entrelaçadas. Assim o período desce inteiro. */}
@@ -472,9 +480,9 @@ export default async function AdminPage() {
       </section>
 
       {/* --- as portas da gestão ------------------------------------ */}
-      <section aria-label="Gerir" className="pt-2">
+      <section aria-label="Gerir">
         <PanelHead title="Gerir" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Tile
             href="/admin/unidades"
             icon={Store}
@@ -586,9 +594,27 @@ function PanelHead({
 }) {
   return (
     <div
-      className={`flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 ${inCard ? 'mb-4' : 'mb-2.5'}`}
+      className={`flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 ${inCard ? 'mb-4' : 'mb-3'}`}
     >
-      <h2 className="panel-title">{title}</h2>
+      {/*
+        DOIS ANDARES DE TÍTULO, E NÃO UM.
+
+        Dentro de um cartão, o título é o nome do conteúdo e escreve-se
+        como se fala. Fora dele é outra coisa: é o nome de uma SECÇÃO,
+        que agrupa cartões que já têm títulos próprios. Escritos os dois
+        do mesmo tamanho e da mesma cor, a página ficava com onze
+        títulos iguais e nenhuma ordem entre eles.
+
+        O de fora passa a versalete espaçado, pequeno, no castanho da
+        casa. É o único sítio da gestão onde a tinta do logótipo toca
+        em texto corrido — e é de propósito: separa a arrumação da
+        página (dela) dos dados (dos números, que continuam a azul).
+      */}
+      {inCard ? (
+        <h2 className="panel-title">{title}</h2>
+      ) : (
+        <h2 className="titulo-seccao">{title}</h2>
+      )}
       {aside ? (
         <p className="text-[0.75rem] text-[var(--ink-faint)]">{aside}</p>
       ) : null}
@@ -621,12 +647,15 @@ function Kpi({
     //
     // `overflow-hidden`: a linha sangra até aos bordos, e com o canto
     // aberto do balcão sairia por fora do cartão nos dois cantos de baixo.
-    <Card className="flex h-full min-w-0 flex-col overflow-hidden px-4 pt-4">
-      <p className="text-[0.8125rem] font-medium text-[var(--ink-muted)]">
+    <Card className="flex h-full min-w-0 flex-col overflow-hidden px-5 pt-5">
+      {/* O rótulo em versalete pequeno, o número grande: assim o cartão
+          tem dois pesos, e não três textos do mesmo tamanho a disputar
+          o olho. */}
+      <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.11em] text-[var(--ink-faint)]">
         {label}
       </p>
-      <div className="mt-auto pt-4">
-        <p className="metric text-[1.75rem] text-[var(--ink)]">{value}</p>
+      <div className="mt-auto pt-5">
+        <p className="metric text-[2rem] text-[var(--ink)]">{value}</p>
         <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.75rem] text-[var(--ink-faint)]">
           {delta}
           <span>vs {versus}</span>
@@ -634,7 +663,13 @@ function Kpi({
       </div>
       {/* A linha assenta no fio de baixo: é o chão do número, não mais
           uma coisa a competir com ele. */}
-      <div className="-mx-4 mt-3.5">
+      {/* A LINHA NÃO ENCOSTA AO CANTO.
+          Correndo de bordo a bordo e a acabar na aresta de baixo, o
+          último troço era cortado pelo arredondamento do cartão e lia-se
+          como uma ponta dobrada — parecia defeito de desenho, e num dia
+          em que só o último ponto tem valor era o que mais saltava à
+          vista. Continua de bordo a bordo, mas com chão por baixo. */}
+      <div className="-mx-5 mt-5 border-t border-[var(--line-soft)] pb-4 pt-3">
         <Sparkline values={spark} tone={sparkTone} label={sparkLabel} />
       </div>
     </Card>
@@ -685,7 +720,7 @@ async function ManagerTiles({ actor }: { actor: Actor }) {
   const total = await counts(actor)
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {can.manageUnits(actor) ? (
         <Tile
           href="/admin/unidades"

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import {
   IconAgenda,
@@ -58,11 +59,48 @@ export function DeskNav({
 }) {
   const pathname = usePathname()
 
+  /*
+    O SEPARADOR ABERTO TEM DE ESTAR À VISTA.
+
+    No telemóvel os cinco separadores não cabem nos 390 píxeis e a caixa
+    rola de lado. Entrando pela Equipa, o separador aceso ficava cortado
+    na margem direita: a página dizia «Gestão» e o controlo mostrava
+    quatro portas fechadas, nenhuma aberta. Ao chegar, empurra-se a
+    caixa até ele caber. `nearest` para não mexer quando já se vê, e
+    `block: 'nearest'` para não arrastar a página inteira junto.
+  */
+  const aceso = useRef<HTMLAnchorElement>(null)
+  useEffect(() => {
+    aceso.current?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [pathname])
+
+  /*
+    O SEPARADOR RAIZ NÃO ACENDE NOS FILHOS DELE.
+
+    A regra normal é por prefixo: `/agenda/valongo/comanda/7` continua a
+    ser a Agenda. Num controlo segmentado isso avaria assim que um dos
+    separadores é a raiz dos outros — em `/admin/equipe` acendiam dois
+    ao mesmo tempo, «Painel» e «Equipa», e um controlo com duas escolhas
+    feitas não diz onde se está: desmente-se a si próprio.
+
+    Quem tem outro separador pendurado por baixo passa a exigir o
+    endereço exacto. Não é uma excepção escrita à mão para o /admin:
+    sai da própria lista, e vale para qualquer conjunto que um dia se
+    arrume da mesma maneira.
+  */
+  const rootHrefs = new Set(
+    items
+      .filter((item) => items.some((other) => other.href.startsWith(`${item.href}/`)))
+      .map((item) => item.href),
+  )
+  const lit = (href: string) =>
+    rootHrefs.has(href) ? pathname === href : isActive(pathname, href)
+
   if (variant === 'rail') {
     return (
       <nav className="flex w-full flex-col gap-0.5 px-2">
         {items.map((item) => {
-          const active = isActive(pathname, item.href)
+          const active = lit(item.href)
           const Icon = item.icon ? ICONS[item.icon] : IconDay
           return (
             <Link
@@ -94,7 +132,7 @@ export function DeskNav({
       <nav style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex min-h-[4.25rem] items-stretch justify-around px-1">
           {items.map((item) => {
-            const active = isActive(pathname, item.href)
+            const active = lit(item.href)
             const Icon = item.icon ? ICONS[item.icon] : IconDay
             return (
               <Link
@@ -147,11 +185,12 @@ export function DeskNav({
     <div className="-mx-1 overflow-x-auto px-1 py-0.5">
       <nav className="flex w-max items-center gap-1 rounded-[var(--radius)] bg-[var(--surface-2)] p-1">
         {items.map((item) => {
-          const active = isActive(pathname, item.href)
+          const active = lit(item.href)
           return (
             <Link
               key={item.href}
               href={item.href}
+              ref={active ? aceso : undefined}
               aria-current={active ? 'page' : undefined}
               className={clsx(
                 'whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-1.5 text-[0.8125rem] font-medium transition-all',

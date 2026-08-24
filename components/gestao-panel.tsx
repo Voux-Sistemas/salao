@@ -48,7 +48,15 @@ export function Panel({
   )
 }
 
-/** Cabeçalho de página: título display, uma linha, e o CTA à direita. */
+/**
+ * Cabeçalho de página: a linha que explica o separador, e o CTA.
+ *
+ * O TÍTULO JÁ ESTÁ ESCRITO DUAS VEZES ACIMA — «Gestão» em serifa e o
+ * separador aceso a dizer «Equipa». Escrevê-lo uma terceira vez em
+ * corpo grande dava três cabeçalhos empilhados antes de se chegar à
+ * tabela, que é o que a página realmente é. Fica só para quem lê por
+ * voz, onde o separador aceso não se ouve.
+ */
 export function PageIntro({
   title,
   lead,
@@ -61,11 +69,9 @@ export function PageIntro({
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
-        <h2 className="display text-[1.75rem] leading-tight text-[var(--ink)]">
-          {title}
-        </h2>
+        <h2 className="sr-only">{title}</h2>
         {lead ? (
-          <p className="mt-1 max-w-2xl text-[0.8125rem] text-[var(--ink-muted)]">
+          <p className="max-w-2xl text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
             {lead}
           </p>
         ) : null}

@@ -188,7 +188,7 @@ function OpenDrawer({
 
       {/* --- o dia por método de pagamento --------------------------- */}
       <section>
-        <h2 className="eyebrow mb-2">Recebido no dia, por método</h2>
+        <h2 className="titulo-seccao mb-2">Recebido no dia, por método</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {METHODS.map((method) => {
             const found = methods.find((m) => m.method === method)
@@ -222,7 +222,7 @@ function OpenDrawer({
       {/* --- o que passou pela gaveta -------------------------------- */}
       <Card>
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-4">
-          <h2 className="eyebrow">Movimentos da gaveta</h2>
+          <h2 className="titulo-seccao">Movimentos da gaveta</h2>
           <span className="tabular text-[0.75rem] text-[var(--ink-faint)]">
             {movements.length === 0
               ? ''
@@ -300,7 +300,7 @@ function OpenDrawer({
 
       {/* --- fechar é contar ----------------------------------------- */}
       <Card className="px-5 py-5">
-        <h2 className="eyebrow mb-1.5">Fecho com contagem</h2>
+        <h2 className="titulo-seccao mb-1.5">Fecho com contagem</h2>
         <p className="mb-4 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
           Conte a gaveta e escreva o que lá está. A diferença fica registada —
           não se corrige nem se esconde.
@@ -349,7 +349,7 @@ function History({
 }) {
   return (
     <section className="mt-10">
-      <h2 className="eyebrow mb-2">Dias fechados</h2>
+      <h2 className="titulo-seccao mb-2">Dias fechados</h2>
       <Card className="overflow-x-auto">
         <table className="tabular w-full min-w-[32rem] text-sm">
           <thead>

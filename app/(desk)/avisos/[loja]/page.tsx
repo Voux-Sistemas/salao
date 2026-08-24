@@ -231,7 +231,7 @@ export default async function AvisosPage({
       ) : null}
 
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="eyebrow">{ROUTINE_LABEL[routine]}</h2>
+        <h2 className="titulo-seccao">{ROUTINE_LABEL[routine]}</h2>
         <p className="text-[0.8125rem] text-[var(--ink-muted)]">
           {ROUTINE_HINT[routine]}
         </p>

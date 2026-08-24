@@ -70,7 +70,7 @@ export default async function ComissoesPage({
       {/* --- o que falta pagar ------------------------------------- */}
       <section>
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="eyebrow">Por pagar</h2>
+          <h2 className="titulo-seccao">Por pagar</h2>
           {pending.length > 0 ? (
             <p className="text-[0.75rem] text-[var(--ink-faint)]">
               A percentagem ficou congelada no fecho de cada comanda.
@@ -216,7 +216,7 @@ export default async function ComissoesPage({
 
       {/* --- as regras --------------------------------------------- */}
       <section>
-        <h2 className="eyebrow mb-2">Regras</h2>
+        <h2 className="titulo-seccao mb-2">Regras</h2>
         <Card className="mb-3 px-4 py-5 sm:px-6">
           <RuleForm staff={options.staff} services={options.services} />
         </Card>
@@ -243,7 +243,7 @@ export default async function ComissoesPage({
       {/* --- o que já se pagou -------------------------------------- */}
       {payouts.length > 0 ? (
         <section>
-          <h2 className="eyebrow mb-2">Pagamentos recentes</h2>
+          <h2 className="titulo-seccao mb-2">Pagamentos recentes</h2>
           <Card className="divide-y divide-[var(--line-soft)]">
             {payouts.map((payout) => (
               <div

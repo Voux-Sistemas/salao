@@ -48,13 +48,30 @@ function euroLabel(cents: Cents): string {
   return `${new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(Math.round(cents / 100))} €`
 }
 
-/** Tecto "bonito" e marcas do eixo: 3–4 divisões em passos redondos. */
+/**
+ * Tecto "bonito" e marcas do eixo: 3–4 divisões em passos redondos.
+ *
+ * O PASSO NUNCA É MENOR QUE UM EURO, NEM UMA FRACÇÃO DE EURO.
+ *
+ * O eixo escreve-se em euros inteiros. Num mês em que o maior dia foi
+ * um euro, o passo dava cinquenta cêntimos e saíam duas marcas com o
+ * mesmo rótulo — «1 €» por cima de «1 €», que é o desenho de um
+ * gráfico avariado. E é justamente nas primeiras semanas de uma casa
+ * nova que isto acontece, que é quando ela está a decidir se confia
+ * no que o painel lhe diz.
+ *
+ * O 2,5 fica, mas só a partir da dezena: aí vale 25, 250, 2500 — todos
+ * inteiros. Abaixo disso daria um passo de dois euros e meio, e as
+ * marcas sairiam 3, 5, 8, 10, com o mesmo espaço entre elas e saltos
+ * diferentes escritos ao lado.
+ */
 function niceScale(maxCents: Cents): { top: Cents; ticks: Cents[] } {
   const maxEuro = Math.max(1, maxCents / 100)
   const rough = maxEuro / 3
-  const power = 10 ** Math.floor(Math.log10(rough))
+  const power = Math.max(1, 10 ** Math.floor(Math.log10(rough)))
+  const steps = power >= 10 ? [1, 2, 2.5, 5, 10] : [1, 2, 5, 10]
   const step =
-    [1, 2, 2.5, 5, 10]
+    steps
       .map((m) => m * power)
       .find((s) => maxEuro / s <= 3.6) ?? 10 * power
   const top = Math.ceil(maxEuro / step) * step

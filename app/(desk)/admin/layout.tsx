@@ -17,7 +17,16 @@ export default async function AdminLayout({
 }) {
   const actor = await requireManagement()
 
-  const tabs: NavItem[] = []
+  /*
+    O PAINEL É UM SEPARADOR COMO OS OUTROS.
+
+    Faltava aqui, e o controlo segmentado abria sem nenhum segmento
+    aceso — que é o desenho de uma coisa avariada. Pior: entrada nos
+    Serviços, não havia porta de volta aos números senão pela coluna
+    da esquerda. Está primeiro porque é a raiz e porque é por onde se
+    entra: vê-se como vai a casa, e só depois se muda alguma coisa.
+  */
+  const tabs: NavItem[] = [{ href: '/admin', label: 'Painel' }]
   if (can.manageUnits(actor)) {
     tabs.push({ href: '/admin/unidades', label: 'Unidades' })
   }
@@ -36,16 +45,18 @@ export default async function AdminLayout({
     // controlo compara colunas, e a 5xl a grelha de quatro indicadores
     // ficava com cartões da largura de um botão.
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      {/*
+        A moldura diz só onde se está — «Gestão» e as portas. A frase
+        que estava aqui («a rede em números») descrevia o painel, e
+        aparecia por cima da Equipa e dos Serviços a falar de outra
+        coisa. Cada página passa a trazer a sua, junto ao título dela.
+      */}
       <header className="surge mb-6">
-        <div className="mb-4">
+        <div className="mb-5">
           <h1 className="display text-[1.75rem] leading-none text-[var(--ink)]">
             Gestão
           </h1>
           <span aria-hidden className="fio-casa mt-3" />
-          <p className="mt-3 text-[0.8125rem] text-[var(--ink-muted)]">
-            A rede em números — e as portas por onde se muda o que eles
-            dizem.
-          </p>
         </div>
         <DeskNav items={tabs} />
       </header>

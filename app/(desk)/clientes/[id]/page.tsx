@@ -220,7 +220,7 @@ export default async function ClientePage({
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem] lg:items-start">
         {/* --- o que já cá fez ------------------------------------- */}
         <section>
-          <h2 className="eyebrow mb-2">Histórico</h2>
+          <h2 className="titulo-seccao mb-2">Histórico</h2>
           {visits.length === 0 ? (
             <Card className="px-4">
               <Empty
@@ -252,7 +252,7 @@ export default async function ClientePage({
 
         {/* --- notas internas -------------------------------------- */}
         <section>
-          <h2 className="eyebrow mb-2">Notas da equipa</h2>
+          <h2 className="titulo-seccao mb-2">Notas da equipa</h2>
           <Card className="px-4 py-4">
             <p className="mb-3 text-[0.75rem] text-[var(--ink-faint)]">
               Só a equipa vê isto. A cliente nunca.
@@ -286,7 +286,7 @@ export default async function ClientePage({
 
       {/* --- editar ------------------------------------------------- */}
       <section className="mt-8">
-        <h2 className="eyebrow mb-2">Editar ficha</h2>
+        <h2 className="titulo-seccao mb-2">Editar ficha</h2>
         <Card className="px-4 py-5 sm:px-6">
           <ClientForm
             client={client}
