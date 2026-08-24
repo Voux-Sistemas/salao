@@ -74,6 +74,7 @@ function Result({ state }: { state: TeamState }) {
 export type MemberFields = {
   id: string
   name: string
+  login: string | null
   phone: string
   email: string | null
   public_alias: string | null
@@ -135,10 +136,30 @@ export function MemberForm({
             />
           </Field>
 
+          {/* A ENTRADA E O TELEFONE SÃO COISAS DIFERENTES.
+              O telefone é para falar com a pessoa — muda de operadora,
+              muda de país. O nome de entrada é dela e não muda. Quem
+              não escolher nenhum continua a entrar pelo telefone. */}
+          <Field
+            label="Nome de entrada"
+            htmlFor="member-login"
+            hint="Como entra no sistema. Deixe vazio para entrar pelo telefone."
+          >
+            <Input
+              id="member-login"
+              name="login"
+              defaultValue={member?.login ?? ''}
+              maxLength={40}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="ariadna"
+            />
+          </Field>
+
           <Field
             label="Telefone"
             htmlFor="member-phone"
-            hint="É por aqui que entra no sistema. Não se repete na rede."
+            hint="Para falar com ela — e serve de entrada enquanto não tiver nome."
           >
             <PhoneInput
               id="member-phone"
@@ -255,7 +276,9 @@ export function MemberForm({
 
 export type RoleFields = {
   id: string
-  role: 'owner' | 'manager' | 'professional'
+  /* O `master` aparece aqui porque a ficha o mostra — mas não desce ao
+     `<select>` lá em baixo, que só oferece os três degraus do salão. */
+  role: 'master' | 'owner' | 'manager' | 'professional'
   unit_id: string | null
   unit_name: string | null
 }
@@ -306,7 +329,11 @@ export function RolesPanel({
               className="flex items-center gap-3 px-5 py-3 sm:px-6"
             >
               <Badge
-                tone={row.role === 'owner' ? 'accent' : 'neutral'}
+                tone={
+                  row.role === 'master' || row.role === 'owner'
+                    ? 'accent'
+                    : 'neutral'
+                }
                 className="w-28 justify-center"
               >
                 {LEVEL_LABEL[row.role]}

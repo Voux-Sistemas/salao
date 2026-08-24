@@ -23,10 +23,16 @@ import type { IsoDay, Minutes } from '@/lib/time'
  *     aqui só se traduz o 23P01 para português.
  */
 
-export type Level = 'owner' | 'manager' | 'professional'
+/*
+ * O `master` está aqui para as fichas o saberem MOSTRAR, não para o
+ * saberem DAR: o formulário não o oferece e a acção não o aceita. Quem
+ * monta o sistema põe-se lá com a mão na base, e não pela aplicação —
+ * é o degrau que decide quem tem degraus.
+ */
+export type Level = 'master' | 'owner' | 'manager' | 'professional'
 export type AbsenceKind = 'day_off' | 'vacation' | 'training' | 'block'
 
-/** Dona (ou suporte). A gerente não passa daqui. */
+/** Dona ou acima. A gerente não passa daqui. */
 function isOwner(actor: Actor): boolean {
   return actor.orgScope && actor.role !== 'manager'
 }
@@ -40,9 +46,32 @@ function isOwner(actor: Actor): boolean {
  * o mesmo pedaço em duas consultas.
  */
 function reach(actor: Actor) {
-  if (actor.orgScope) return sql`s.org_id = ${actor.orgId}`
+  /*
+   * QUEM MONTA O SISTEMA NÃO É DA EQUIPA DA CASA.
+   *
+   * A conta de sistema é uma conta de manutenção, e este `reach` é o
+   * único sítio por onde a equipa se vê, se edita, se desactiva e se
+   * despe de papéis — `getMember` passa por aqui e todas as acções
+   * passam pelo `getMember`. Esconder aqui fecha tudo de uma vez.
+   *
+   * Não é só arrumação: sem isto a dona apanhava a conta de sistema na
+   * lista da equipa e podia desactivá-la sem perceber o que era, e
+   * perdia-se a porta que repõe a casa quando algo corre mal.
+   */
+  const semSistema =
+    actor.role === 'master'
+      ? sql`true`
+      : sql`not exists (
+          select 1 from staff_role r
+           where r.staff_id = s.id and r.role = 'master'
+        )`
+
+  if (actor.orgScope) {
+    return sql`s.org_id = ${actor.orgId} and ${semSistema}`
+  }
   return sql`
     s.org_id = ${actor.orgId}
+    and ${semSistema}
     and (
       s.id = ${actor.id}
       or (
@@ -55,7 +84,7 @@ function reach(actor: Actor) {
           select 1 from staff_role r
            where r.staff_id = s.id
              and r.unit_id is null
-             and r.role in ('owner', 'manager')
+             and r.role in ('master', 'owner', 'manager')
         )
       )
     )
@@ -94,7 +123,7 @@ export async function listTeam(
       exists (
         select 1 from staff_role r
          where r.staff_id = s.id and r.unit_id is null
-           and r.role in ('owner', 'manager')
+           and r.role in ('master', 'owner', 'manager')
       ) as org_scope,
       coalesce(
         (select array_agg(u.name order by u.sort_order, u.name)
@@ -117,6 +146,8 @@ export type Member = {
   org_id: string
   name: string
   public_alias: string | null
+  /** Nome de entrada. Nulo: entra pelo telemóvel, como sempre entrou. */
+  login: string | null
   phone: string
   email: string | null
   bio: string | null
@@ -134,7 +165,7 @@ export async function getMember(
   id: string,
 ): Promise<Member | null> {
   const rows = await sql<Member[]>`
-    select s.id, s.org_id, s.name, s.public_alias, s.phone, s.email,
+    select s.id, s.org_id, s.name, s.public_alias, s.login, s.phone, s.email,
            s.bio, s.avatar_url,
            s.display_color, s.accepts_online_booking, s.is_active,
            s.sort_order,
@@ -153,6 +184,8 @@ export type MemberInput = {
   name: string
   /** Nome mostrado a cliente. Nulo mostra o verdadeiro. */
   publicAlias: string | null
+  /** Nome de entrada. Nulo deixa a porta no telemóvel. */
+  login: string | null
   phone: string
   email: string | null
   bio: string | null
@@ -162,14 +195,21 @@ export type MemberInput = {
 
 export type MemberResult =
   | { ok: true; id: string }
-  | { ok: false; reason: 'taken' | 'email_taken' | 'invalid' | 'not_found' }
+  | {
+      ok: false
+      reason: 'taken' | 'email_taken' | 'login_taken' | 'invalid' | 'not_found'
+    }
 
-function takenReason(error: unknown): 'taken' | 'email_taken' | null {
+function takenReason(
+  error: unknown,
+): 'taken' | 'email_taken' | 'login_taken' | null {
   if (!isUniqueError(error)) return null
   const name = String(
     (error as { constraint_name?: string }).constraint_name ?? '',
   )
-  return name.includes('email') ? 'email_taken' : 'taken'
+  if (name.includes('email')) return 'email_taken'
+  if (name.includes('login')) return 'login_taken'
+  return 'taken'
 }
 
 /**
@@ -192,10 +232,11 @@ export async function createMember(
     return await sql.begin(async (tx) => {
       const rows = await tx<{ id: string }[]>`
         insert into staff
-          (org_id, name, public_alias, phone, email, bio, display_color,
-           accepts_online_booking, sort_order)
+          (org_id, name, public_alias, login, phone, email, bio,
+           display_color, accepts_online_booking, sort_order)
         values
           (${actor.orgId}, ${input.name.trim()}, ${input.publicAlias},
+           ${input.login},
            ${input.phone.trim()},
            ${input.email}, ${input.bio}, ${input.displayColor},
            ${input.acceptsOnline},
@@ -238,6 +279,7 @@ export async function updateMember(
       update staff s
          set name = ${input.name.trim()},
              public_alias = ${input.publicAlias},
+             login = ${input.login},
              phone = ${input.phone.trim()},
              email = ${input.email},
              bio = ${input.bio},
@@ -346,9 +388,10 @@ export async function listRoles(staffId: string): Promise<RoleRow[]> {
       left join unit u on u.id = r.unit_id
      where r.staff_id = ${staffId}
      order by case r.role
-                when 'owner' then 0
-                when 'manager' then 1
-                else 2
+                when 'master' then 0
+                when 'owner' then 1
+                when 'manager' then 2
+                else 3
               end,
               u.sort_order nulls first, u.name
   `
@@ -374,6 +417,10 @@ export async function addRole(
   if (level === 'owner' && unitId !== null) {
     return { ok: false, reason: 'invalid' }
   }
+  // O degrau de sistema não se dá pela aplicação: nem a dona o dá, e
+  // quem já o tem não precisa de o dar por aqui. Cria-se com a mão na
+  // base de dados, que é onde uma decisão destas deve custar alguma coisa.
+  if (level === 'master') return { ok: false, reason: 'forbidden' }
   const networkScope = unitId === null && level !== 'professional'
   if (!isOwner(actor) && (level === 'owner' || networkScope)) {
     return { ok: false, reason: 'forbidden' }
@@ -412,6 +459,8 @@ export async function removeRole(
   `
   const row = rows[0]
   if (!row) return { ok: false, reason: 'not_found' }
+
+  if (row.role === 'master') return { ok: false, reason: 'forbidden' }
 
   const networkScope = row.unit_id === null && row.role !== 'professional'
   if (!isOwner(actor) && (row.role === 'owner' || networkScope)) {

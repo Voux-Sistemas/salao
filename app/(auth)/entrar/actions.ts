@@ -8,8 +8,6 @@ import { burnTime, hashPassword, passwordProblem, verifyPassword } from '@/lib/a
 import { createSession, destroyAllSessions, destroySession } from '@/lib/auth/session'
 import { consumeCode, issueCode } from '@/lib/auth/otp'
 import { LIMITS, allowed, callerIp } from '@/lib/auth/throttle'
-// ATALHOS DE TESTE — apagar este import e as duas linhas marcadas abaixo.
-import { telefoneDeTeste } from '@/lib/auth/teste'
 
 /** A mesma resposta para as três portas, para não dizer qual estourou. */
 const TOO_MANY = 'Demasiadas tentativas. Espere uns minutos e tente outra vez.'
@@ -24,15 +22,29 @@ export async function signInAction(
   _previous: FormState,
   form: FormData,
 ): Promise<FormState> {
-  const escrito = String(form.get('phone') ?? '')
-  // ATALHOS DE TESTE — fora de produção, «admin» vale pelo telemóvel da
-  // dona. Apagar esta linha e a de cima devolve a porta ao normal.
-  const phone = (await telefoneDeTeste(escrito)) ?? normalisePhone(escrito)
+  const escrito = String(form.get('phone') ?? '').trim()
   const password = String(form.get('password') ?? '')
 
-  if (!phone || !password) {
-    return { error: 'Escreva o telemóvel e a palavra-passe.' }
+  if (!escrito || !password) {
+    return { error: 'Escreva a entrada e a palavra-passe.' }
   }
+
+  /*
+   * A ENTRADA É O QUE A PESSOA ESCOLHER.
+   *
+   * O telemóvel era o identificador porque já era o da cliente, e
+   * pareceu natural que servisse para toda a gente. Não serve: muda de
+   * operadora, muda de país, e não é coisa que se escreva vinte vezes
+   * por dia. Cada pessoa passa a poder ter um nome de entrada seu.
+   *
+   * O telemóvel continua a valer — quem nunca escolheu nome nenhum
+   * entra como sempre entrou, e ninguém fica de fora.
+   *
+   * O balde do travão conta pelo que foi escrito, em minúsculas, para
+   * que «Admin» e «admin» partilhem o mesmo balde. Sem isso, mudar a
+   * caixa de uma letra dava dez tentativas novas.
+   */
+  const chave = escrito.toLowerCase()
 
   /*
    * O `burnTime` abaixo faz com que errar demore o mesmo que acertar —
@@ -41,19 +53,32 @@ export async function signInAction(
    * pelo endereço, que apanha quem varre a lista de telefones toda.
    */
   const ip = await callerIp()
-  const [phoneOk, ipOk] = await Promise.all([
-    allowed('entrar', phone, LIMITS.signIn),
+  const [chaveOk, ipOk] = await Promise.all([
+    allowed('entrar', chave, LIMITS.signIn),
     allowed('entrar-ip', ip, LIMITS.signInByIp),
   ])
-  if (!phoneOk || !ipOk) return { error: TOO_MANY }
+  if (!chaveOk || !ipOk) return { error: TOO_MANY }
 
   const org = await getOrg()
   if (!org) redirect('/comecar')
 
+  const phone = normalisePhone(escrito)
+
+  /*
+   * Uma consulta só, pelas duas portas. `lower(login)` porque o índice
+   * é assim e ninguém se lembra de como escreveu o próprio nome; o
+   * telemóvel compara-se já normalizado, para que «+351 912 345 678» e
+   * «912345678» encontrem a mesma pessoa.
+   */
   const rows = await sql<{ id: string; password_hash: string | null }[]>`
     select id, password_hash
       from staff
-     where org_id = ${org.id} and phone = ${phone} and is_active
+     where org_id = ${org.id}
+       and is_active
+       and (
+         lower(login) = ${chave}
+         or (${phone} <> '' and phone = ${phone})
+       )
      limit 1
   `
   const staff = rows[0]
@@ -61,11 +86,11 @@ export async function signInAction(
   // Conta que não existe demora o mesmo que conta com senha errada.
   if (!staff || !staff.password_hash) {
     await burnTime()
-    return { error: 'Telemóvel ou palavra-passe errados.' }
+    return { error: 'Entrada ou palavra-passe erradas.' }
   }
 
   const ok = await verifyPassword(password, staff.password_hash)
-  if (!ok) return { error: 'Telemóvel ou palavra-passe errados.' }
+  if (!ok) return { error: 'Entrada ou palavra-passe erradas.' }
 
   await createSession('staff', staff.id)
   redirect('/')

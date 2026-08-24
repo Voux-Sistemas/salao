@@ -73,16 +73,16 @@ export const STRATEGY_LABEL: Record<
   least_busy_week: 'A menos ocupada da semana',
 }
 
-/**
- * Os três degraus que se guardam na base de dados. O suporte não está
- * aqui: vive numa variável de ambiente e não se atribui a ninguém.
- */
-export const LEVEL_LABEL: Record<'owner' | 'manager' | 'professional', string> =
-  {
-    owner: 'Dona',
-    manager: 'Gerente',
-    professional: 'Profissional',
-  }
+/** Os quatro degraus que se guardam na base de dados. */
+export const LEVEL_LABEL: Record<
+  'master' | 'owner' | 'manager' | 'professional',
+  string
+> = {
+  master: 'Sistema',
+  owner: 'Dona',
+  manager: 'Gerente',
+  professional: 'Profissional',
+}
 
 export const ABSENCE_LABEL: Record<
   'day_off' | 'vacation' | 'training' | 'block',

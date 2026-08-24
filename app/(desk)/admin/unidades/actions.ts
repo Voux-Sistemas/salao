@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { requireOrgScope } from '@/lib/auth/actor'
+import { requireMaster, requireOrgScope } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { slugify } from '@/lib/text'
 import { parseMinutes } from '@/lib/time'
@@ -67,7 +67,10 @@ export async function createUnitAction(
   _previous: UnitState,
   form: FormData,
 ): Promise<UnitState> {
-  const actor = await requireOrgScope()
+  // A folha já está atrás do `requireMaster`, mas a acção é uma porta
+  // por direito próprio: quem souber o nome dela chama-a sem passar pela
+  // folha. O portão repete-se aqui porque é aqui que decide.
+  const actor = await requireMaster()
   const org = await requireOrg()
 
   const details = detailsFrom(form, org.timezone)

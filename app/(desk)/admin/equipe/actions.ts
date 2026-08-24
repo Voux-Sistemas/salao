@@ -74,6 +74,7 @@ function memberFrom(form: FormData): MemberInput {
   return {
     name: String(form.get('name') ?? '').trim(),
     publicAlias: text('alias'),
+    login: text('login'),
     phone: normalisePhone(String(form.get('phone') ?? '')),
     email: text('email'),
     bio: text('bio'),
@@ -87,6 +88,9 @@ function memberError(reason: string): string {
     return 'Já há alguém na equipa com esse telefone. O telefone é a identidade e não se repete.'
   }
   if (reason === 'email_taken') return 'Esse e-mail já está noutra ficha.'
+  if (reason === 'login_taken') {
+    return 'Esse nome de entrada já é de outra pessoa. Escolha outro.'
+  }
   if (reason === 'not_found') return 'Essa pessoa não existe.'
   return 'Falta o nome ou o telefone.'
 }

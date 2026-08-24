@@ -145,6 +145,7 @@ export default async function PessoaPage({
           id: member.id,
           name: member.name,
           public_alias: member.public_alias,
+          login: member.login,
           phone: member.phone,
           email: member.email,
           bio: member.bio,
@@ -278,7 +279,7 @@ export default async function PessoaPage({
       {/* --- entrada e saída ----------------------------------------- */}
       <Panel
         title="Entrada no sistema"
-        hint="Entra com o telefone e a palavra-passe. Repô-la fecha todas as sessões abertas em nome dela."
+        hint="Entra com o nome de entrada — ou o telefone, se não tiver nome — e a palavra-passe. Repô-la fecha todas as sessões abertas em nome dela."
       >
         <PasswordForm staffId={member.id} hasPassword={member.has_password} />
       </Panel>

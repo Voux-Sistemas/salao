@@ -62,7 +62,13 @@ export function SignInForm() {
     <form action={action} className="space-y-5">
       <Result state={state} />
 
-      <Field label="Telemóvel" htmlFor="phone">
+      {/* A entrada é o nome de quem entra, ou o telemóvel para quem
+          nunca escolheu nome nenhum. As duas portas dão ao mesmo sítio. */}
+      <Field
+        label="Entrada"
+        htmlFor="phone"
+        hint="O seu nome de entrada, ou o telemóvel."
+      >
         <PhoneInput
           id="phone"
           name="phone"
@@ -70,6 +76,7 @@ export function SignInForm() {
           autoComplete="username"
           autoFocus
           aceitaTexto
+          placeholder=""
         />
       </Field>
 

@@ -6,24 +6,33 @@ import { readSession } from '@/lib/auth/session'
 import { getUnitBySlug, type Unit } from '@/lib/org'
 
 /**
- * Três degraus, do mais alto ao mais baixo.
+ * Quatro degraus, do mais alto ao mais baixo.
  *
- *   owner         escopo rede. Vê e mexe em tudo.
- *   manager       o mesmo, limitado às lojas onde tem o papel. Não vê o
- *                 catálogo da rede nem as regras de comissão.
+ *   master        quem monta o sistema. Tudo o que a dona faz, mais o
+ *                 que muda a forma do sistema: abrir e fechar unidades.
+ *   owner         a dona. A casa dela toda — equipa, catálogo, preços,
+ *                 comissões, caixa, agenda das duas lojas. Não abre nem
+ *                 fecha unidades, porque isso não é gerir o salão, é
+ *                 mudar o sistema.
+ *   manager       o mesmo que a dona, limitado às lojas onde tem o
+ *                 papel. Não vê o catálogo da rede nem as comissões.
  *   professional  vê só a agenda dela e as marcações onde é ela quem
  *                 atende. Não vê caixa, nem clientes, nem gestão.
  *
  * Um papel guarda-se com uma loja associada; SEM LOJA ASSOCIADA
  * SIGNIFICA "A REDE TODA".
  */
-export type Role = 'owner' | 'manager' | 'professional'
+export type Role = 'master' | 'owner' | 'manager' | 'professional'
 
 const RANK: Record<Role, number> = {
+  master: 4,
   owner: 3,
   manager: 2,
   professional: 1,
 }
+
+/** Quem tem mais do que uma loja debaixo de si. */
+const ACIMA_DA_LOJA: Role[] = ['master', 'owner']
 
 export type Actor = {
   id: string
@@ -63,7 +72,7 @@ export const getActor = cache(async (): Promise<Actor | null> => {
         '{}'
       ) as roles,
       coalesce(
-        bool_or(r.unit_id is null and r.role in ('owner','manager')),
+        bool_or(r.unit_id is null and r.role in ('master','owner','manager')),
         false
       ) as has_org_scope,
       coalesce(
@@ -89,7 +98,7 @@ export const getActor = cache(async (): Promise<Actor | null> => {
 
   const candidates: Role[] = []
   for (const r of row.roles) {
-    if (r === 'owner' || r === 'manager' || r === 'professional') {
+    if (r === 'master' || r === 'owner' || r === 'manager' || r === 'professional') {
       candidates.push(r)
     }
   }
@@ -107,7 +116,7 @@ export const getActor = cache(async (): Promise<Actor | null> => {
     email: row.email,
     avatarUrl: row.avatar_url,
     role,
-    orgScope: role === 'owner' || row.has_org_scope,
+    orgScope: ACIMA_DA_LOJA.includes(role) || row.has_org_scope,
     unitIds: row.unit_ids ?? [],
   }
 })
@@ -141,6 +150,16 @@ export async function requireManagement(): Promise<Actor> {
 export async function requireOrgScope(): Promise<Actor> {
   const actor = await requireManagement()
   if (!actor.orgScope || actor.role === 'manager') notFound()
+  return actor
+}
+
+/**
+ * Abrir e fechar lojas. `notFound` e não «não pode»: a dona não precisa
+ * de saber que existe uma porta que não é dela.
+ */
+export async function requireMaster(): Promise<Actor> {
+  const actor = await requireOrgScope()
+  if (actor.role !== 'master') notFound()
   return actor
 }
 
@@ -210,7 +229,17 @@ export const can = {
   seeNotices: (_a: Actor) => true,
   manageTeam: (a: Actor) => a.role !== 'professional',
   manageCatalog: (a: Actor) => a.orgScope && a.role !== 'manager',
+  /* Mexer numa loja que já existe — nome, morada, horas, WhatsApp — é
+     gerir o salão, e isso é da dona. */
   manageUnits: (a: Actor) => a.orgScope && a.role !== 'manager',
+  /* ABRIR E FECHAR LOJAS NÃO É GERIR O SALÃO, É MUDAR A FORMA DO
+     SISTEMA. Uma loja a mais arrasta catálogo, equipa, horários,
+     comissões e caixa atrás dela; uma loja a menos leva tudo isso com
+     ela. Fica de quem monta o sistema, não de quem o usa. */
+  createUnits: (a: Actor) => a.role === 'master',
   manageCommissions: (a: Actor) => a.orgScope && a.role !== 'manager',
   overrideLeadRules: (a: Actor) => a.role !== 'professional',
+  /* Só o master mexe noutro master — a dona não promove ninguém acima
+     dela própria, nem se despromove por engano. */
+  manageMasters: (a: Actor) => a.role === 'master',
 } as const

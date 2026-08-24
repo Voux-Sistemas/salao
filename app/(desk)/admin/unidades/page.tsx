@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Plus } from 'lucide-react'
-import { requireOrgScope } from '@/lib/auth/actor'
+import { can, requireOrgScope } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { listResourceTypes, listUnitsForAdmin } from '@/lib/units'
 import { sameWord } from '@/lib/text'
@@ -35,10 +35,12 @@ export default async function UnidadesPage() {
           title="Unidades"
           lead="Cada loja declara o horário, as regras e o equipamento — o motor de disponibilidade não conhece outra fonte."
           action={
-            <ButtonLink href="/admin/unidades/nova" size="sm">
-              <Plus size={14} />
-              Nova loja
-            </ButtonLink>
+            can.createUnits(actor) ? (
+              <ButtonLink href="/admin/unidades/nova" size="sm">
+                <Plus size={14} />
+                Nova loja
+              </ButtonLink>
+            ) : null
           }
         />
 
@@ -48,9 +50,11 @@ export default async function UnidadesPage() {
               title="Ainda não há lojas"
               hint="Sem loja não há horário, e sem horário não há nada para marcar."
               action={
-                <ButtonLink href="/admin/unidades/nova">
-                  Criar a primeira
-                </ButtonLink>
+                can.createUnits(actor) ? (
+                  <ButtonLink href="/admin/unidades/nova">
+                    Criar a primeira
+                  </ButtonLink>
+                ) : null
               }
             />
           </Card>

@@ -11,8 +11,12 @@
  * por ficheiro nenhum, não aparece no ecrã enquanto se escreve e o que
  * chega à base de dados é o scrypt, nunca o texto.
  *
+ * Diz-se quem é pelo nome de entrada ou pelo telemóvel — o que a
+ * pessoa usar para entrar serve aqui também.
+ *
+ *   node scripts/senha.mjs admin                  (base local)
  *   node scripts/senha.mjs +351916649600          (base local)
- *   node scripts/_prod.mjs senha +351916649600    (Supabase)
+ *   node scripts/_prod.mjs senha admin            (Supabase)
  */
 import { createInterface } from 'node:readline'
 import { randomBytes, scrypt } from 'node:crypto'
@@ -30,9 +34,9 @@ if (!url) {
 
 // O argumento vem em [2] quando se corre isto directamente e em [3]
 // quando é o _prod.mjs a chamar (que ocupa o [2] com o nome do guião).
-const telefone = (process.argv[3] ?? process.argv[2] ?? '').trim()
-if (!telefone.startsWith('+')) {
-  console.error('Diga o telemóvel com indicativo: node scripts/senha.mjs +351...')
+const escrito = (process.argv[3] ?? process.argv[2] ?? '').trim()
+if (!escrito) {
+  console.error('Diga quem é: node scripts/senha.mjs admin (ou +351...)')
   process.exit(1)
 }
 
@@ -97,17 +101,20 @@ const sql = ligar()
 const host = hostOf(url)
 
 try {
-  const phone = normalisePhone(telefone)
+  // As duas portas, como no /entrar: nome de entrada ou telemóvel.
+  const phone = normalisePhone(escrito)
+  const chave = escrito.toLowerCase()
   const rows = await sql`
     select s.id, s.name, o.name as org
       from staff s
       join org o on o.id = s.org_id
-     where s.phone = ${phone} and s.is_active
+     where s.is_active
+       and (lower(s.login) = ${chave} or (${phone} <> '' and s.phone = ${phone}))
      limit 1
   `
   const staff = rows[0]
   if (!staff) {
-    console.error(`Não há ninguém activo com o telemóvel ${phone} em ${host}.`)
+    console.error(`Não há ninguém activo com «${escrito}» em ${host}.`)
     process.exit(1)
   }
 
