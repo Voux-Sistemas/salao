@@ -14,11 +14,13 @@ export const dynamic = 'force-dynamic'
  * dela, que é a casa dela.
  */
 export default async function Home() {
-  const org = await getOrg()
+  // As duas perguntas não dependem uma da outra — quem é a casa e quem
+  // está à porta — por isso partem juntas. Em série custavam duas
+  // esperas de oceano para não decidir nada entre elas.
+  const [org, actor] = await Promise.all([getOrg(), getActor()])
+
   // Sem rede criada, o sistema está por instalar.
   if (!org) redirect('/comecar')
-
-  const actor = await getActor()
 
   if (!actor) {
     return (

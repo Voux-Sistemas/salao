@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { sql } from '@/lib/db'
 import type { Unit } from '@/lib/org'
 import { addDays, minutesOfDay, today, weekdayOf, type IsoDay } from '@/lib/time'
@@ -61,23 +62,106 @@ export async function openingWindows(
     .map((r) => ({ openMin: r.opens_min!, closeMin: r.closes_min! }))
 }
 
+/*
+ * O HORÁRIO DA SEMANA VEM TODO DE UMA VEZ, PARA A REDE INTEIRA.
+ *
+ * Uma página pública pede isto várias vezes: o rodapé mostra as duas
+ * casas, e a ficha da loja mostra ainda a tabela do horário. Eram três
+ * consultas a fazer a mesma pergunta com um `unit_id` diferente.
+ *
+ * A tabela toda são sete linhas por loja — cabe num bolso. Traz-se
+ * inteira e guarda-se com o `cache` do React, que dura o que dura o
+ * pedido: a primeira chamada paga a viagem, as outras leem da memória.
+ */
+export const allWeeklyHours = cache(async (): Promise<Map<string, Map<number, Window[]>>> => {
+  const rows = await sql<
+    { unit_id: string; weekday: number; opens_min: number; closes_min: number }[]
+  >`
+    select unit_id, weekday, opens_min, closes_min
+      from business_hours
+     order by unit_id, weekday, opens_min
+  `
+  const byUnit = new Map<string, Map<number, Window[]>>()
+  for (const row of rows) {
+    const days = byUnit.get(row.unit_id) ?? new Map<number, Window[]>()
+    const list = days.get(row.weekday) ?? []
+    list.push({ openMin: row.opens_min, closeMin: row.closes_min })
+    days.set(row.weekday, list)
+    byUnit.set(row.unit_id, days)
+  }
+  return byUnit
+})
+
 /** O horário normal da semana, para o mostrar na página da loja. */
 export async function weeklyHours(
   unitId: string,
 ): Promise<Map<number, Window[]>> {
+  return (await allWeeklyHours()).get(unitId) ?? new Map()
+}
+
+/*
+ * VÁRIOS DIAS SEGUIDOS, NUMA VIAGEM SÓ.
+ *
+ * A mesma regra do dia único — o especial substitui o normal — mas
+ * aplicada a uma faixa de datas de uma vez. Serve o `unitStatus`, que
+ * às vezes tem de olhar uma semana à frente para saber quando é que a
+ * casa volta a abrir; perguntar dia a dia eram oito viagens de oceano
+ * para responder "abre segunda às nove".
+ *
+ * O `generate_series` desenha os dias do lado de lá e o `dow` do
+ * Postgres conta o domingo como zero, tal como o `weekdayOf` daqui.
+ */
+export async function openingWindowsRange(
+  unitId: string,
+  from: IsoDay,
+  days: number,
+): Promise<Map<IsoDay, Window[]>> {
+  const to = addDays(from, days - 1)
+
   const rows = await sql<
-    { weekday: number; opens_min: number; closes_min: number }[]
+    {
+      day: IsoDay
+      is_closed: boolean
+      opens_min: number | null
+      closes_min: number | null
+    }[]
   >`
-    select weekday, opens_min, closes_min
-      from business_hours
-     where unit_id = ${unitId}
-     order by weekday, opens_min
+    with dias as (
+      select d::date as on_date, extract(dow from d)::int as weekday
+        from generate_series(${from}::date, ${to}::date, interval '1 day') d
+    ),
+    especial as (
+      select on_date, is_closed, opens_min, closes_min
+        from special_hours
+       where unit_id = ${unitId}
+         and on_date between ${from}::date and ${to}::date
+    )
+    select to_char(dias.on_date, 'YYYY-MM-DD') as day,
+           e.is_closed, e.opens_min, e.closes_min
+      from dias
+      join especial e on e.on_date = dias.on_date
+    union all
+    select to_char(dias.on_date, 'YYYY-MM-DD') as day,
+           false, b.opens_min, b.closes_min
+      from dias
+      join business_hours b
+        on b.unit_id = ${unitId} and b.weekday = dias.weekday
+     where not exists (
+       select 1 from especial e where e.on_date = dias.on_date
+     )
+     order by day, opens_min nulls first
   `
-  const map = new Map<number, Window[]>()
+
+  // Fechado por inteiro tranca o dia: uma linha basta, mesmo que
+  // venham outras atrás dela.
+  const fechados = new Set(rows.filter((r) => r.is_closed).map((r) => r.day))
+
+  const map = new Map<IsoDay, Window[]>()
+  for (let i = 0; i < days; i++) map.set(addDays(from, i), [])
   for (const row of rows) {
-    const list = map.get(row.weekday) ?? []
-    list.push({ openMin: row.opens_min, closeMin: row.closes_min })
-    map.set(row.weekday, list)
+    if (fechados.has(row.day)) continue
+    if (row.opens_min === null || row.closes_min === null) continue
+    map.get(row.day)?.push({ openMin: row.opens_min, closeMin: row.closes_min })
   }
   return map
 }
@@ -98,7 +182,12 @@ export async function unitStatus(
   const day = today(unit.timezone, now)
   const nowMin = minutesOfDay(now, unit.timezone)
 
-  const todayWindows = await openingWindows(unit.id, day)
+  // Hoje e os sete dias seguintes de uma vez. Antes vinha um por um, e
+  // ao domingo à noite — quando a casa está fechada e a montra tem
+  // mesmo de olhar longe — isso eram oito esperas em fila.
+  const semana = await openingWindowsRange(unit.id, day, 8)
+
+  const todayWindows = semana.get(day) ?? []
   for (const w of todayWindows) {
     if (nowMin >= w.openMin && nowMin < w.closeMin) {
       return { open: true, closesAtMin: w.closeMin }
@@ -120,7 +209,7 @@ export async function unitStatus(
 
   for (let i = 1; i <= 7; i++) {
     const next = addDays(day, i)
-    const windows = await openingWindows(unit.id, next)
+    const windows = [...(semana.get(next) ?? [])]
     const first = windows.sort((a, b) => a.openMin - b.openMin)[0]
     if (first) {
       return {

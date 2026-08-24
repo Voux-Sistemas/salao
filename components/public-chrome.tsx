@@ -2,7 +2,7 @@ import { Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
 import clsx from 'clsx'
 import { getOrg, listUnits, type Unit } from '@/lib/org'
-import { weeklyHours, type Window } from '@/lib/hours'
+import { allWeeklyHours, weeklyHours, type Window } from '@/lib/hours'
 import { formatMinutes } from '@/lib/time'
 import { getDictionary, getLanguage, type Dictionary } from '@/lib/i18n'
 import { getClientActor } from '@/lib/auth/client-actor'
@@ -127,12 +127,22 @@ export async function PublicChrome({
   /** Página com herói escuro no topo: o cabeçalho vira vidro fumado. */
   hero?: boolean
 }) {
+  /*
+    * O horário vai junto de propósito, mesmo que a moldura não o use.
+    *
+    * Quem o usa é o rodapé, que só é desenhado depois desta função
+    * responder — e então pediria à base numa altura em que já ninguém
+    * mais está a pedir nada, sozinho, a pagar a travessia inteira só
+    * para ele. Pedido aqui, viaja no mesmo comboio que o resto e chega
+    * ao rodapé já em memória.
+    */
   const [org, dict, language, client, units] = await Promise.all([
     getOrg(),
     getDictionary(),
     getLanguage(),
     getClientActor(),
     listUnits(),
+    allWeeklyHours(),
   ])
 
   const name = org?.name ?? BRAND.fallbackName
