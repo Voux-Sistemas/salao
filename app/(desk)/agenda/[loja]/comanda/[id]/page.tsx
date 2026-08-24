@@ -20,7 +20,6 @@ import {
   PaymentForm,
   RemovePayment,
 } from '@/components/comanda-forms'
-import { Ornament } from '@/components/brand'
 import { Badge, Card, Empty } from '@/components/ui'
 import { formatPhone } from '@/lib/text'
 
@@ -127,7 +126,7 @@ export default async function ComandaPage({
       </header>
 
       {closed && appointment.closed_at ? (
-        <div className="mb-8 rounded-[2px] border border-[color-mix(in_srgb,var(--ok)_35%,transparent)] bg-[color-mix(in_srgb,var(--ok)_7%,transparent)] px-4 py-3">
+        <div className="mb-8 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--ok)_35%,transparent)] bg-[color-mix(in_srgb,var(--ok)_7%,transparent)] px-4 py-3">
           <p className="text-sm font-medium text-[var(--ok)]">
             Fechada às {formatTime(appointment.closed_at, tz)}
           </p>
@@ -163,7 +162,7 @@ export default async function ComandaPage({
                 </div>
               ))}
               <div className="flex items-baseline justify-between bg-[var(--surface-2)] px-4 py-2.5">
-                <span className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-muted)]">
+                <span className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-muted)]">
                   {appointment.items.length}{' '}
                   {appointment.items.length === 1 ? 'serviço' : 'serviços'}
                 </span>
@@ -285,7 +284,7 @@ export default async function ComandaPage({
                     </div>
                   ))}
                   <div className="flex items-baseline justify-between bg-[var(--surface-2)] px-4 py-2.5">
-                    <span className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-muted)]">
+                    <span className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-muted)]">
                       Total
                     </span>
                     <span className="tabular text-sm text-[var(--ink)]">
@@ -302,8 +301,7 @@ export default async function ComandaPage({
         <aside className="lg:sticky lg:top-20">
           <Card className="overflow-hidden shadow-[var(--shadow-soft)]">
             <div className="border-b border-dashed border-[var(--line)] px-5 pb-4 pt-5 text-center">
-              <Ornament className="scale-90" />
-              <p className="display mt-2.5 text-lg leading-tight text-[var(--ink)]">
+              <p className="display text-lg leading-tight text-[var(--ink)]">
                 {appointment.client_name}
               </p>
               <p className="tabular mt-1 text-[0.75rem] text-[var(--ink-muted)]">

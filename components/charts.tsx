@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import clsx from 'clsx'
 import type { Cents } from '@/lib/money'
 import { formatCents } from '@/lib/money'
 import {
@@ -14,9 +16,11 @@ import {
  * a sua régua e os seus valores. Sem rato, o gráfico é simplesmente um
  * desenho completo e legível, como uma página de relatório impressa.
  *
- * Cores: só fichas (--accent para o Chiado, --gold para Cascais). O
- * traço do ouro leva um dedo de tinta por cima — o tom mantém-se, a
- * linha ganha peso suficiente sobre o papel.
+ * Cores: só fichas. Cada pele decide quais são — no balcão a primeira
+ * série é o azul de trabalho e a segunda um violeta, escolhidos para se
+ * distinguirem um do outro e de verde/âmbar/vermelho, que ali querem
+ * dizer bom, atenção e mau. A segunda leva um dedo de tinta por cima:
+ * o tom mantém-se, a linha ganha peso sobre o papel.
  */
 
 // A identidade de cada série nunca depende só da cor: o nome escrito
@@ -411,7 +415,7 @@ export function ServiceBars({
               {formatCents(item.value_cents)}
             </span>
           </div>
-          <div className="h-[3px] w-full rounded-full bg-[var(--surface-sunken)]">
+          <div className="h-[6px] w-full overflow-hidden rounded-full bg-[var(--surface-sunken)]">
             <div
               className="h-full rounded-full bg-[var(--accent)]"
               style={{
@@ -509,6 +513,47 @@ export function Sparkline({
 // Delta de KPI — seta pequena, cor pelo sentido do negócio
 // ---------------------------------------------------------------------
 
+/**
+ * A VARIAÇÃO COMO PASTILHA, NÃO COMO TEXTO COLORIDO.
+ *
+ * Escrita a seco, ao lado de «vs julho», a subida ficava do tamanho da
+ * legenda e perdia-se. Fechada numa pastilha com a cor lavada por trás,
+ * é a segunda coisa que se lê no cartão — depois do número e antes de
+ * tudo o resto —, que é exactamente a ordem por que se olha para um
+ * indicador: quanto, e está a subir ou a descer.
+ *
+ * A cor vem do sentido do negócio, não da direcção da seta: nos
+ * no-shows, descer é verde.
+ */
+function DeltaChip({
+  tone,
+  children,
+}: {
+  tone: 'ok' | 'bad' | 'flat'
+  children: ReactNode
+}) {
+  const colour =
+    tone === 'flat'
+      ? 'var(--ink-muted)'
+      : tone === 'ok'
+        ? 'var(--ok)'
+        : 'var(--bad)'
+  return (
+    <span
+      className={clsx(
+        'tabular inline-flex items-center gap-0.5 rounded-full px-1.5',
+        'py-[0.1875rem] text-[0.75rem] font-semibold leading-none',
+      )}
+      style={{
+        color: colour,
+        background: `color-mix(in srgb, ${colour} 12%, transparent)`,
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
 export function Delta({
   current,
   previous,
@@ -529,11 +574,7 @@ export function Delta({
     return <span className="text-[0.75rem] text-[var(--ink-faint)]">—</span>
   }
 
-  const flat = (
-    <span className="tabular text-[0.75rem] text-[var(--ink-faint)]">
-      = igual
-    </span>
-  )
+  const flat = <DeltaChip tone="flat">= igual</DeltaChip>
 
   if (points) {
     const diff = (current - previous) * 100
@@ -544,12 +585,9 @@ export function Delta({
       maximumFractionDigits: 1,
     }).format(Math.abs(diff))
     return (
-      <span
-        className="tabular text-[0.75rem]"
-        style={{ color: good ? 'var(--ok)' : 'var(--bad)' }}
-      >
+      <DeltaChip tone={good ? 'ok' : 'bad'}>
         {up ? '↑' : '↓'} {label} p.p.
-      </span>
+      </DeltaChip>
     )
   }
 
@@ -564,11 +602,8 @@ export function Delta({
   const up = ratio > 0
   const good = up === goodWhenUp
   return (
-    <span
-      className="tabular text-[0.75rem]"
-      style={{ color: good ? 'var(--ok)' : 'var(--bad)' }}
-    >
+    <DeltaChip tone={good ? 'ok' : 'bad'}>
       {up ? '↑' : '↓'} {pct}
-    </span>
+    </DeltaChip>
   )
 }

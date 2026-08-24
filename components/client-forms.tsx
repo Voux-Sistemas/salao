@@ -396,10 +396,10 @@ export function ImportForm() {
             {preview.truncated ? ' O ficheiro é grande; lêem-se as primeiras 2000 linhas.' : ''}
           </p>
 
-          <div className="max-h-96 overflow-auto rounded-[2px] border border-[var(--line-soft)]">
+          <div className="max-h-96 overflow-auto rounded-[var(--radius)] border border-[var(--line-soft)]">
             <table className="w-full min-w-[32rem] text-sm">
               <thead className="sticky top-0 bg-[var(--surface)]">
-                <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+                <tr className="text-left text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
                   <th className="px-3 py-2 font-normal">Linha</th>
                   <th className="px-3 py-2 font-normal">Nome</th>
                   <th className="px-3 py-2 font-normal">Telefone</th>

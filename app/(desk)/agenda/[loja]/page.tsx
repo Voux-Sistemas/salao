@@ -126,7 +126,7 @@ export default async function AgendaDayPage({
         {!isToday ? (
           <Link
             href={here}
-            className="rounded-[2px] border border-[var(--accent)] px-2 py-1 text-[0.625rem] font-medium uppercase tracking-[0.1em] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+            className="rounded-[var(--radius)] border border-[var(--accent)] px-2 py-1 text-[0.625rem] font-medium uppercase tracking-[0.05em] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
           >
             Voltar a hoje
           </Link>
@@ -233,7 +233,7 @@ function NavArrow({
     <Link
       href={href}
       aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-[2px] border border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      className="flex h-9 w-9 items-center justify-center rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
     >
       {children}
     </Link>

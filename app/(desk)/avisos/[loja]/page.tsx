@@ -13,7 +13,7 @@ import { composeMessage, loadTemplates } from '@/lib/notify'
 import { STATUS_LABEL, STATUS_TONE } from '@/lib/status'
 import { formatDayShort, formatTime, isoDay } from '@/lib/time'
 import { ROUTINES, ROUTINE_HINT, ROUTINE_LABEL, type Routine } from '@/lib/whatsapp'
-import { Sprig } from '@/components/brand'
+import { Info } from 'lucide-react'
 import { SendWhatsApp } from '@/components/desk-actions'
 import { UnitSwitcher } from '@/components/unit-switcher'
 import { Badge, Card, Empty } from '@/components/ui'
@@ -127,8 +127,13 @@ export default async function AvisosPage({
       </header>
 
       {/* --- a regra sagrada da casa --------------------------------- */}
-      <div className="mb-6 flex items-start gap-3 rounded-[2px] border border-[var(--line-soft)] bg-[var(--surface-raised)] px-4 py-3">
-        <Sprig size={30} className="mt-0.5 shrink-0 text-[var(--accent)]" />
+      <div className="mb-6 flex items-start gap-3 rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] px-4 py-3.5">
+        <span
+          aria-hidden
+          className="mt-px flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[color-mix(in_srgb,var(--accent)_11%,transparent)] text-[var(--accent)]"
+        >
+          <Info size={16} strokeWidth={2} />
+        </span>
         <p className="text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
           <span className="font-medium text-[var(--ink)]">
             O sistema nunca envia nada sozinho.
@@ -153,7 +158,7 @@ export default async function AvisosPage({
               href={linkTo(value, chosen)}
               aria-current={active ? 'page' : undefined}
               className={clsx(
-                'flex items-center gap-2 rounded-[2px] border px-3 py-1.5 text-[0.8125rem] transition-colors',
+                'flex items-center gap-2 rounded-[var(--radius)] border px-3 py-1.5 text-[0.8125rem] transition-colors',
                 active
                   ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
                   : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
@@ -179,7 +184,7 @@ export default async function AvisosPage({
           className="mb-6 flex flex-wrap items-center gap-x-1 gap-y-1.5"
           aria-label="Por profissional"
         >
-          <span className="mr-1.5 text-[0.6875rem] uppercase tracking-[0.12em] text-[var(--ink-faint)]">
+          <span className="mr-1.5 text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
             Quem avisa
           </span>
           <Link
@@ -324,7 +329,7 @@ function NoticeLine({
         <span className="tabular block text-base leading-tight text-[var(--ink)]">
           {formatTime(row.starts_at, timezone)}
         </span>
-        <span className="tabular block text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+        <span className="tabular block text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
           {formatDayShort(day, timezone)}
         </span>
       </Link>

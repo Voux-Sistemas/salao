@@ -32,11 +32,19 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <header className="mb-6 border-b border-[var(--line-soft)] pb-2">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="display text-2xl text-[var(--ink)]">Gestão</h1>
-          <p className="eyebrow-gold hidden sm:block">As duas casas</p>
+    // Mais largo do que o resto do balcão de propósito: um painel de
+    // controlo compara colunas, e a 5xl a grelha de quatro indicadores
+    // ficava com cartões da largura de um botão.
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <header className="mb-6">
+        <div className="mb-4">
+          <h1 className="display text-[1.75rem] leading-none text-[var(--ink)]">
+            Gestão
+          </h1>
+          <p className="mt-2 text-[0.8125rem] text-[var(--ink-muted)]">
+            A rede em números — e as portas por onde se muda o que eles
+            dizem.
+          </p>
         </div>
         <DeskNav items={tabs} />
       </header>

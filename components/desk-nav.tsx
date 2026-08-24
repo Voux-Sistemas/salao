@@ -35,9 +35,16 @@ export type NavItem = {
 /**
  * A navegação da operação, em três encarnações:
  *
- *   bar     fita horizontal de texto (sub-navegação, ex.: Gestão)
+ *   bar     controlo segmentado (sub-navegação, ex.: Gestão)
  *   rail    a coluna estreita do balcão, ícone em cima do rótulo
  *   bottom  a barra fixa do fundo, no telemóvel
+ *
+ * ONDE SE ESTÁ MARCA-SE COM FORMA, NÃO SÓ COM COR. Antes era um fio de
+ * dois píxeis ao lado do ícone e a palavra em versaletes espaçados —
+ * lia-se como um índice de livro, e num ecrã a que se volta cinquenta
+ * vezes por dia o sítio onde se está tem de saltar à vista sem procura.
+ * Agora o item aceso é um bloco com fundo próprio: reconhece-se pela
+ * mancha, antes de se ler seja o que for.
  *
  * A comparação é pelo primeiro segmento: `/agenda/chiado/...` continua
  * a ser Agenda.
@@ -53,7 +60,7 @@ export function DeskNav({
 
   if (variant === 'rail') {
     return (
-      <nav className="flex w-full flex-col">
+      <nav className="flex w-full flex-col gap-0.5 px-2">
         {items.map((item) => {
           const active = isActive(pathname, item.href)
           const Icon = item.icon ? ICONS[item.icon] : IconDay
@@ -63,20 +70,14 @@ export function DeskNav({
               href={item.href}
               aria-current={active ? 'page' : undefined}
               className={clsx(
-                'relative flex w-full flex-col items-center gap-1.5 py-3.5 transition-colors',
+                'flex w-full flex-col items-center gap-1 rounded-[var(--radius-sm)] py-2.5 transition-colors',
                 active
-                  ? 'text-[var(--accent-strong)]'
-                  : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
+                  ? 'bg-[color-mix(in_srgb,var(--accent)_11%,transparent)] text-[var(--accent)]'
+                  : 'text-[var(--ink-faint)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]',
               )}
             >
-              {active ? (
-                <span
-                  aria-hidden
-                  className="absolute left-0 top-1/2 h-9 w-[2px] -translate-y-1/2 bg-[var(--accent)]"
-                />
-              ) : null}
-              <Icon className="h-[1.35rem] w-[1.35rem]" />
-              <span className="text-[0.5625rem] font-medium uppercase tracking-[0.1em]">
+              <Icon className="h-[1.3rem] w-[1.3rem]" />
+              <span className="max-w-full truncate px-0.5 text-[0.625rem] font-semibold">
                 {item.short ?? item.label}
               </span>
             </Link>
@@ -91,7 +92,7 @@ export function DeskNav({
       // A folga do indicador do iPhone vai por fora da fila de ícones: a
       // barra cresce por baixo, em vez de espremer os rótulos.
       <nav style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="flex min-h-[4.5rem] items-stretch justify-around">
+        <div className="flex min-h-[4.25rem] items-stretch justify-around px-1">
           {items.map((item) => {
             const active = isActive(pathname, item.href)
             const Icon = item.icon ? ICONS[item.icon] : IconDay
@@ -101,20 +102,29 @@ export function DeskNav({
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={clsx(
-                  'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pb-2 pt-2.5 transition-colors',
-                  active
-                    ? 'text-[var(--accent-strong)]'
-                    : 'text-[var(--ink-faint)]',
+                  'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pb-2 pt-2.5 transition-colors',
+                  active ? 'text-[var(--accent)]' : 'text-[var(--ink-faint)]',
                 )}
               >
-                {active ? (
-                  <span
-                    aria-hidden
-                    className="absolute top-0 h-[2px] w-9 bg-[var(--accent)]"
-                  />
-                ) : null}
-                <Icon className="h-[1.3rem] w-[1.3rem]" />
-                <span className="max-w-full truncate px-1 text-[0.5625rem] font-medium uppercase tracking-[0.08em]">
+                {/* A pastilha por trás do ícone é o que diz onde se está.
+                    Ocupa altura fixa esteja acesa ou não, para os rótulos
+                    de todas as portas ficarem na mesma linha. */}
+                <span
+                  className={clsx(
+                    'flex h-7 w-14 items-center justify-center rounded-full transition-colors',
+                    active
+                      ? 'bg-[color-mix(in_srgb,var(--accent)_13%,transparent)]'
+                      : 'bg-transparent',
+                  )}
+                >
+                  <Icon className="h-[1.3rem] w-[1.3rem]" />
+                </span>
+                <span
+                  className={clsx(
+                    'max-w-full truncate px-1 text-[0.625rem]',
+                    active ? 'font-semibold' : 'font-medium',
+                  )}
+                >
                   {item.short ?? item.label}
                 </span>
               </Link>
@@ -125,23 +135,37 @@ export function DeskNav({
     )
   }
 
+  /*
+   * O controlo segmentado. Os separadores vivem dentro de uma caixa
+   * afundada e o que está aberto sobe ao branco — é o gesto que toda a
+   * gente já conhece dos telemóveis, e diz «uma destas» sem precisar de
+   * legenda. `w-max` porque a caixa tem de ser do tamanho dos
+   * separadores, não da largura toda: esticada, o fundo afundado
+   * atravessava a página como uma tarja.
+   */
   return (
-    <nav className="flex items-center gap-1 overflow-x-auto">
-      {items.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={clsx(
-            'relative whitespace-nowrap px-3 py-2 text-[0.8125rem] transition-colors',
-            isActive(pathname, item.href)
-              ? 'text-[var(--ink)] after:absolute after:inset-x-3 after:-bottom-px after:h-px after:bg-[var(--accent)]'
-              : 'text-[var(--ink-muted)] hover:text-[var(--ink)]',
-          )}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
+    <div className="-mx-1 overflow-x-auto px-1 py-0.5">
+      <nav className="flex w-max items-center gap-1 rounded-[var(--radius)] bg-[var(--surface-2)] p-1">
+        {items.map((item) => {
+          const active = isActive(pathname, item.href)
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? 'page' : undefined}
+              className={clsx(
+                'whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-1.5 text-[0.8125rem] font-medium transition-all',
+                active
+                  ? 'bg-[var(--surface-raised)] text-[var(--ink)] shadow-[0_1px_2px_rgba(15,21,32,0.10)]'
+                  : 'text-[var(--ink-muted)] hover:text-[var(--ink)]',
+              )}
+            >
+              {item.label}
+            </Link>
+          )
+        })}
+      </nav>
+    </div>
   )
 }
 

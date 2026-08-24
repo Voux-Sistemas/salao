@@ -28,7 +28,7 @@ export function UnitSwitcher({
   if (units.length < 2) return null
 
   return (
-    <div className="inline-flex items-center gap-[3px] rounded-[2px] border border-[var(--line)] bg-[var(--surface-2)] p-[3px]">
+    <div className="inline-flex items-center gap-[3px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] p-[3px]">
       {showAll ? (
         <Tab href={base} active={current === null}>
           {allLabel}

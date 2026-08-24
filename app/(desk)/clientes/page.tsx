@@ -146,7 +146,7 @@ export default async function ClientesPage({
                 key={value}
                 href={href}
                 className={clsx(
-                  'rounded-[2px] border px-2.5 py-1 text-[0.75rem] uppercase tracking-[0.06em] transition-colors',
+                  'rounded-[var(--radius)] border px-2.5 py-1 text-[0.75rem] uppercase tracking-[0.05em] transition-colors',
                   active
                     ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
                     : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
@@ -255,7 +255,7 @@ function ClientLine({
       href={`/clientes/${row.id}`}
       className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--surface-2)]"
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[2px] border border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--accent)]">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--accent)]">
         <Monogram initials={initialsOf(row.name)} className="text-base" />
       </span>
 
@@ -305,7 +305,7 @@ function ClientLine({
           visitas passadas. */}
       {row.next_at ? (
         <span className="shrink-0 text-right leading-snug">
-          <span className="block text-[0.625rem] uppercase tracking-[0.16em] text-[var(--ink-faint)]">
+          <span className="block text-[0.625rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
             Volta
           </span>
           {/* A data por extenso ocupa metade da linha num telemóvel, e o

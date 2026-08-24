@@ -180,7 +180,7 @@ export function CloseCashForm({
       </div>
 
       {difference !== null ? (
-        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 rounded-[2px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[0.8125rem]">
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[0.8125rem]">
           <span className="text-[var(--ink-muted)]">
             Esperado{' '}
             <span className="tabular text-[var(--ink)]">

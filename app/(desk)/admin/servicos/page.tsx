@@ -81,7 +81,7 @@ export default async function ServicosPage() {
 
             {[...grouped.entries()].map(([category, list]) => (
               <Fragment key={category}>
-                <div className="bg-[var(--surface-2)] px-5 py-2 text-[0.6875rem] uppercase tracking-[0.2em] text-[var(--ink-muted)] sm:px-6">
+                <div className="bg-[var(--surface-2)] px-5 py-2 text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-muted)] sm:px-6">
                   {category}
                 </div>
                 {list.map((service) => (

@@ -1,7 +1,6 @@
 import Link from 'next/link'
-import { Ornament } from '@/components/brand'
+import { ChevronRight, Store } from 'lucide-react'
 import { Badge } from '@/components/ui'
-import { IconChevronRight } from '@/components/desk-icons'
 import { sameWord } from '@/lib/text'
 
 /**
@@ -11,11 +10,16 @@ import { sameWord } from '@/lib/text'
  * o ecrã pergunta em que casa se está. Quem só tem uma loja nunca chega
  * a ver isto — as páginas reencaminham antes.
  *
- * Estava escrito três vezes, com três desenhos diferentes, e as duas
- * fichas ficavam encostadas ao canto de cima com o resto do ecrã vazio.
- * Aqui a escolha centra-se no palco e ganha a mesma cara nas três
- * portas. Nada de avatar com a inicial: «Chiado» e «Cascais» dão o
- * mesmo C e o avatar não distinguia nada.
+ * ISTO É UMA PASSAGEM, NÃO UMA CAPA. Estava desenhado como um cartaz:
+ * tudo centrado a meio da altura, o título grande e um ramo desenhado
+ * por baixo — bonito da primeira vez, uma paragem à quinquagésima. Quem
+ * abre o caixa de manhã quer o botão onde ele estava ontem, em cima e à
+ * esquerda, sem esperar por nada. Agora é isso: um cabeçalho curto e
+ * duas fichas com o que interessa saber antes de entrar.
+ *
+ * Nada de avatar com a inicial: «Chiado» e «Cascais» dão o mesmo C e o
+ * avatar não distinguia nada. O quadrado à esquerda é só o glifo de
+ * loja, igual nas duas — serve de âncora para o olho, não de código.
  */
 
 export type ChooserStore = {
@@ -33,48 +37,58 @@ export type ChooserStore = {
 }
 
 export function StoreChooser({
-  eyebrow,
   title,
   hint,
   cta = 'Abrir',
   stores,
 }: {
-  eyebrow: string
   title: string
   hint?: string
   cta?: string
   stores: ChooserStore[]
 }) {
   return (
-    // No ecrã largo centra-se na altura toda; no telemóvel fica em cima,
-    // que é onde o polegar já está.
-    <div className="mx-auto flex w-full max-w-3xl flex-col px-4 py-10 sm:px-6 lg:min-h-[calc(100dvh-3.5rem)] lg:justify-center lg:py-12">
-      <div className="text-center">
-        <p className="eyebrow">{eyebrow}</p>
-        <h1 className="display animate-rise mt-2 text-3xl text-[var(--ink)]">
+    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <header className="mb-5">
+        <h1 className="display text-[1.75rem] leading-none text-[var(--ink)]">
           {title}
         </h1>
         {hint ? (
-          <p className="animate-fade delay-1 mx-auto mt-3 max-w-md text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+          <p className="mt-2 max-w-lg text-[0.875rem] leading-relaxed text-[var(--ink-muted)]">
             {hint}
           </p>
         ) : null}
-        <div className="animate-fade delay-2 mt-7 flex justify-center text-[var(--line)]">
-          <Ornament className="scale-90" />
-        </div>
-      </div>
+      </header>
 
-      <div className="animate-rise delay-2 mt-9 grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         {stores.map((store) => (
           <Link
             key={store.href}
             href={store.href}
-            className="lift group flex flex-col border border-[var(--line)] bg-[var(--surface-raised)] px-6 py-6"
+            className="group flex flex-col rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] px-5 py-5 shadow-[0_1px_2px_rgba(15,21,32,0.04)] transition-colors hover:border-[color-mix(in_srgb,var(--accent)_35%,transparent)]"
           >
             <div className="flex items-start justify-between gap-3">
-              <p className="display text-xl leading-tight text-[var(--ink)] transition-colors group-hover:text-[var(--accent)]">
-                {store.name}
-              </p>
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  aria-hidden
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[color-mix(in_srgb,var(--accent)_11%,transparent)] text-[var(--accent)]"
+                >
+                  <Store size={17} strokeWidth={2} />
+                </span>
+                <div className="min-w-0">
+                  <p className="display truncate text-lg leading-tight text-[var(--ink)]">
+                    {store.name}
+                  </p>
+                  {/* A cidade só entra se disser algo que o nome não diga:
+                      a casa de Cascais chama-se Cascais e ficava a ler-se
+                      «Cascais / Cascais», uma linha a repetir a de cima. */}
+                  {store.meta && !sameWord(store.meta, store.name) ? (
+                    <p className="truncate text-[0.75rem] text-[var(--ink-faint)]">
+                      {store.meta}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
               {store.badge ? (
                 <span className="shrink-0">
                   <Badge tone={store.badge.tone ?? 'neutral'}>
@@ -84,24 +98,21 @@ export function StoreChooser({
               ) : null}
             </div>
 
-            {/* A cidade só entra se disser algo que o nome não diga: a
-                casa de Cascais chama-se Cascais e ficava a ler-se
-                «Cascais / CASCAIS», uma linha a repetir a de cima. */}
-            {store.meta && !sameWord(store.meta, store.name) ? (
-              <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.16em] text-[var(--ink-faint)]">
-                {store.meta}
-              </p>
-            ) : null}
-
             {store.line ? (
-              <p className="mt-4 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+              <p className="mt-3.5 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
                 {store.line}
               </p>
             ) : null}
 
-            <span className="link-slide mt-6 inline-flex items-center gap-1.5 self-start text-[0.6875rem] uppercase tracking-[0.14em] text-[var(--accent)]">
+            {/* `mt-auto` para o rodapé das duas fichas ficar à mesma
+                altura, tenha uma delas uma linha a mais ou a menos. */}
+            <span className="mt-auto inline-flex items-center gap-1 self-start pt-4 text-[0.8125rem] font-semibold text-[var(--accent)]">
               {cta}
-              <IconChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight
+                size={15}
+                strokeWidth={2.25}
+                className="transition-transform group-hover:translate-x-0.5"
+              />
             </span>
           </Link>
         ))}

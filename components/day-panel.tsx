@@ -8,7 +8,6 @@ import {
   addDays,
   dayEnd,
   dayStart,
-  formatDayLong,
   formatTime,
   today,
   type IsoDay,
@@ -227,6 +226,9 @@ export async function DayPanel({
     { appointments: 0, noShows: 0, revenue: 0 },
   )
 
+  // A escala das barras do «Por loja»: a casa mais cheia enche a barra.
+  const maiorDia = Math.max(1, ...todayRows.map((r) => r.appointments))
+
   const month = monthRows[0] ?? { current_cents: 0, previous_cents: 0 }
   const pending = pendingRows[0] ?? { cents: 0, entries: 0 }
   const currency = org.currency
@@ -234,15 +236,21 @@ export async function DayPanel({
   const daily = fillMonth(monthStart, dayOfMonth, dailyRows)
 
   return (
-    <div className="mx-auto max-w-[110rem] space-y-12 px-4 py-8 sm:px-6">
-      {/* ---------------------------------------------------- HOJE --- */}
-      <section>
-        <Header
-          title="Hoje"
-          note={capitalise(formatDayLong(day, tz))}
-        />
+    <div className="mx-auto max-w-[110rem] space-y-4 px-4 py-6 sm:px-6 sm:py-8">
+      <header>
+        <h1 className="display text-[1.75rem] leading-none text-[var(--ink)]">
+          Hoje
+        </h1>
+        {/* A data ja esta na barra de cima; repeti-la aqui era mobilia.
+            A linha diz antes o recorte: de que casas e este dia. */}
+        <p className="mt-2 text-[0.875rem] text-[var(--ink-muted)]">
+          {units.map((u) => u.name).join(' · ')}
+        </p>
+      </header>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+      {/* ---------------------------------------------------- HOJE --- */}
+      <section aria-label="O dia">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat label="Marcações" value={String(totals.appointments)} />
           <Stat label="Faturação" value={formatCents(totals.revenue, currency)} />
           <Stat
@@ -252,7 +260,7 @@ export async function DayPanel({
           />
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <div className="mt-3 grid items-start gap-3 lg:grid-cols-[1.4fr_1fr]">
           <Card className="overflow-hidden">
             <SectionTitle>A acontecer</SectionTitle>
             {nowRows.length === 0 ? (
@@ -290,26 +298,41 @@ export async function DayPanel({
             )}
           </Card>
 
+          {/* AS CASAS LADO A LADO, NÃO SÓ UMA A SEGUIR À OUTRA. Duas
+              linhas de números não se comparam a olho: a barra faz a
+              divisão que o cérebro ia ter de fazer. A escala é a casa
+              com mais marcações — é uma comparação entre elas, não com
+              um objetivo que ninguém definiu. */}
           <Card className="overflow-hidden">
             <SectionTitle>Por loja</SectionTitle>
             <ul className="divide-y divide-[var(--line-soft)]">
               {units.map((unit) => {
                 const row = byUnit.get(unit.id)
+                const marcacoes = row?.appointments ?? 0
                 return (
-                  <li
-                    key={unit.id}
-                    className="flex items-baseline justify-between gap-3 px-4 py-3"
-                  >
-                    <Link
-                      href={`/agenda/${unit.slug}`}
-                      className="truncate text-sm text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
-                    >
-                      {unit.name}
-                    </Link>
-                    <span className="tabular shrink-0 text-[0.8125rem] text-[var(--ink-muted)]">
-                      {row?.appointments ?? 0} marc. ·{' '}
-                      {formatCents(row?.revenue_cents ?? 0, currency)}
-                    </span>
+                  <li key={unit.id} className="px-4 py-3.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <Link
+                        href={`/agenda/${unit.slug}`}
+                        className="truncate text-sm font-medium text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+                      >
+                        {unit.name}
+                      </Link>
+                      <span className="tabular shrink-0 text-[0.8125rem] font-semibold text-[var(--ink)]">
+                        {formatCents(row?.revenue_cents ?? 0, currency)}
+                      </span>
+                    </div>
+                    <div className="mt-2 h-[6px] w-full overflow-hidden rounded-full bg-[var(--surface-sunken)]">
+                      <div
+                        className="h-full rounded-full bg-[var(--accent)]"
+                        style={{
+                          width: `${Math.round((marcacoes / maiorDia) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="tabular mt-1.5 text-[0.75rem] text-[var(--ink-faint)]">
+                      {marcacoes} {marcacoes === 1 ? 'marcação' : 'marcações'}
+                    </p>
                   </li>
                 )
               })}
@@ -319,47 +342,44 @@ export async function DayPanel({
       </section>
 
       {/* ----------------------------------------------------- MÊS --- */}
-      <section>
+      <section aria-label="O mês">
         <Header title="O mês" note={`Do dia 1 a ${dayOfMonth}`} />
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat label="Faturação" value={formatCents(month.current_cents, currency)} />
+          {/* A cor vai na variação, não no valor: pintar de verde o mês
+              passado dizia que o mês passado é que estava bom. */}
           <Stat
             label="Mês anterior, mesmo período"
             value={formatCents(month.previous_cents, currency)}
             note={variation(month.current_cents, month.previous_cents)}
-            tone={
-              month.current_cents >= month.previous_cents ? 'ok' : 'warn'
+            noteTone={
+              month.previous_cents === 0
+                ? undefined
+                : month.current_cents >= month.previous_cents
+                  ? 'ok'
+                  : 'bad'
             }
           />
-          {can.manageCommissions(actor) ? (
-            <Link href="/admin/comissoes" className="block">
-              <Stat
-                label="Comissões por pagar"
-                value={formatCents(pending.cents, currency)}
-                note={`${pending.entries} ${pending.entries === 1 ? 'linha' : 'linhas'}`}
-              />
-            </Link>
-          ) : (
-            <Stat
-              label="Comissões por pagar"
-              value={formatCents(pending.cents, currency)}
-              note={`${pending.entries} ${pending.entries === 1 ? 'linha' : 'linhas'}`}
-            />
-          )}
+          <Stat
+            label="Comissões por pagar"
+            value={formatCents(pending.cents, currency)}
+            note={`${pending.entries} ${pending.entries === 1 ? 'linha' : 'linhas'}`}
+            href={can.manageCommissions(actor) ? '/admin/comissoes' : undefined}
+          />
         </div>
 
-        <Card className="mt-6 p-4">
+        <Card className="mt-3 px-4 py-4 sm:px-5">
           <SectionTitle bare>Dia a dia</SectionTitle>
           <MonthChart daily={daily} currency={currency} timezone={tz} />
         </Card>
       </section>
 
       {/* -------------------------------------------------- EQUIPA --- */}
-      <section>
+      <section aria-label="A equipa">
         <Header title="A equipa" note="Produção do mês, por serviço concluído" />
 
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <div className="grid items-start gap-3 lg:grid-cols-[1.4fr_1fr]">
           <Card className="overflow-hidden">
             <SectionTitle>Por profissional</SectionTitle>
             {team.length === 0 ? (
@@ -427,8 +447,8 @@ export async function DayPanel({
 
 function Header({ title, note }: { title: string; note: string }) {
   return (
-    <div className="mb-4 flex items-baseline justify-between gap-4">
-      <h2 className="display text-xl text-[var(--ink)]">{title}</h2>
+    <div className="mb-2.5 flex items-baseline justify-between gap-4">
+      <h2 className="panel-title">{title}</h2>
       <p className="text-[0.8125rem] text-[var(--ink-muted)]">{note}</p>
     </div>
   )
@@ -445,8 +465,8 @@ function SectionTitle({
     <p
       className={
         bare
-          ? 'eyebrow mb-3'
-          : 'eyebrow border-b border-[var(--line-soft)] px-4 py-3'
+          ? 'panel-title mb-3'
+          : 'panel-title border-b border-[var(--line-soft)] px-4 py-3.5'
       }
     >
       {children}
@@ -454,43 +474,86 @@ function SectionTitle({
   )
 }
 
+/**
+ * O NÚMERO PRIMEIRO, O RÓTULO DEPOIS — mas a ler-se de cima para baixo.
+ * O rótulo era um versalete espaçado que competia com o valor; agora é
+ * uma linha discreta e o número fica com a mancha toda para ele.
+ *
+ * Com `href`, a ficha passa a porta: ganha o realce da borda ao passar
+ * o rato, em vez de ir embrulhada num `<Link>` que não se via ser uma.
+ */
 function Stat({
   label,
   value,
   note,
   tone = 'neutral',
+  noteTone,
+  href,
 }: {
   label: string
   value: string
   note?: string
   tone?: 'neutral' | 'ok' | 'warn' | 'bad'
+  noteTone?: 'ok' | 'warn' | 'bad'
+  href?: string
 }) {
-  const colour = {
+  const TONS = {
     neutral: 'var(--ink)',
     ok: 'var(--ok)',
     warn: 'var(--warn)',
     bad: 'var(--bad)',
-  }[tone]
+  }
+  const colour = TONS[tone]
 
-  return (
-    <Card className="px-4 py-4">
-      <p className="eyebrow">{label}</p>
+  const corpo = (
+    <>
+      <p className="text-[0.8125rem] font-medium text-[var(--ink-muted)]">
+        {label}
+      </p>
       <p
-        className="tabular display mt-1 text-2xl"
+        className="metric mt-2 text-[1.5rem] sm:text-[1.75rem]"
         style={{ color: colour }}
       >
         {value}
       </p>
       {note ? (
-        <p className="mt-0.5 text-[0.75rem] text-[var(--ink-faint)]">{note}</p>
+        noteTone ? (
+          <p
+            className="mt-2 inline-flex rounded-full px-1.5 py-[0.1875rem] text-[0.75rem] font-semibold leading-none"
+            style={{
+              color: TONS[noteTone],
+              background: `color-mix(in srgb, ${TONS[noteTone]} 12%, transparent)`,
+            }}
+          >
+            {note}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[0.75rem] text-[var(--ink-faint)]">{note}</p>
+        )
       ) : null}
-    </Card>
+    </>
   )
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        <Card className="h-full px-4 py-4 transition-colors hover:border-[color-mix(in_srgb,var(--accent)_35%,transparent)]">
+          {corpo}
+        </Card>
+      </Link>
+    )
+  }
+
+  return <Card className="h-full px-4 py-4">{corpo}</Card>
 }
 
 /**
  * Um gráfico de barras sem biblioteca nenhuma: são divs com altura em
  * percentagem. Serve o propósito — ver a forma do mês.
+ *
+ * O dia de hoje vai na segunda cor: é o único que ainda não fechou, e
+ * ficar mais baixo do que os outros não quer dizer mau dia — quer dizer
+ * meio-dia. Sem isso, a última barra mentia todas as manhãs.
  */
 function MonthChart({
   daily,
@@ -502,21 +565,23 @@ function MonthChart({
   timezone: string
 }) {
   const peak = Math.max(1, ...daily.map((d) => d.cents))
+  const ultimo = daily.length - 1
 
   return (
-    <div className="flex h-32 items-end gap-[3px]">
-      {daily.map((d) => (
+    <div className="flex h-32 items-end gap-[3px] border-b border-[var(--line-soft)] pb-px">
+      {daily.map((d, i) => (
         <div
           key={d.day}
           className="group relative flex-1"
           title={`${d.day.slice(8)} · ${formatCents(d.cents, currency)}`}
         >
           <div
-            className="w-full rounded-t-[1px] bg-[var(--accent)] transition-opacity group-hover:opacity-70"
+            className="w-full rounded-t-[3px] transition-opacity group-hover:opacity-70"
             style={{
               height: `${Math.round((d.cents / peak) * 116)}px`,
-              minHeight: d.cents > 0 ? '2px' : '1px',
-              opacity: d.cents > 0 ? 1 : 0.15,
+              minHeight: d.cents > 0 ? '3px' : '2px',
+              background: i === ultimo ? 'var(--gold)' : 'var(--accent)',
+              opacity: d.cents > 0 ? 1 : 0.14,
             }}
           />
         </div>
@@ -553,13 +618,15 @@ function fillMonth(
   })
 }
 
+/**
+ * A variação em três caracteres. A frase inteira («face ao mês
+ * anterior») estava a repetir o rótulo da ficha, que já diz que aquele
+ * número é o do mês passado no mesmo período.
+ */
 function variation(current: number, previous: number): string {
-  if (previous === 0) return current > 0 ? 'sem termo de comparação' : '—'
+  if (previous === 0) return current > 0 ? 'sem comparação' : '—'
   const percent = Math.round(((current - previous) / previous) * 100)
   const sign = percent > 0 ? '+' : ''
-  return `${sign}${percent}% face ao mês anterior`
+  return `${sign}${percent}%`
 }
 
-function capitalise(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
-}

@@ -96,7 +96,7 @@ export default async function ClientePage({
       {/* --- quem é ------------------------------------------------- */}
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-4">
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[2px] border border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--accent)]">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--accent)]">
             <Monogram initials={initialsOf(client.name)} className="text-2xl" />
           </span>
           <div className="min-w-0">
@@ -264,7 +264,7 @@ export default async function ClientePage({
                 {notes.map((note) => (
                   <li
                     key={note.id}
-                    className="rounded-[2px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5"
+                    className="rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5"
                   >
                     <div className="flex items-start gap-2">
                       <p className="min-w-0 flex-1 whitespace-pre-wrap text-[0.8125rem] text-[var(--ink)]">
@@ -272,7 +272,7 @@ export default async function ClientePage({
                       </p>
                       <DeleteNote clientId={client.id} noteId={note.id} />
                     </div>
-                    <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+                    <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
                       {note.author ?? 'Equipa'} ·{' '}
                       {formatDateTime(note.created_at, tz)}
                     </p>
@@ -310,7 +310,7 @@ function Figure({
 }) {
   return (
     <div>
-      <dt className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+      <dt className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
         {label}
       </dt>
       <dd
@@ -337,7 +337,7 @@ function Line({
 }) {
   return (
     <div className="flex gap-3">
-      <dt className="w-20 shrink-0 text-[0.75rem] uppercase tracking-wide text-[var(--ink-faint)]">
+      <dt className="w-20 shrink-0 text-[0.75rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
         {label}
       </dt>
       <dd

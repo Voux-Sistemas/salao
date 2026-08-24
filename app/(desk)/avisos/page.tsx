@@ -34,8 +34,7 @@ export default async function AvisosChooser() {
 
   return (
     <StoreChooser
-      eyebrow="Avisos"
-      title="Que loja?"
+      title="Avisos"
       hint={
         staffId
           ? 'As suas clientes, casa a casa. O sistema nunca envia nada sozinho — prepara a mensagem e é você que carrega no botão.'

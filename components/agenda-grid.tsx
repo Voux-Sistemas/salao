@@ -306,7 +306,7 @@ function Block({
       href={href}
       scroll={false}
       className={clsx(
-        'absolute inset-x-1.5 z-[2] block overflow-hidden rounded-[2px] border py-0.5 pl-2.5 pr-1.5',
+        'absolute inset-x-1.5 z-[2] block overflow-hidden rounded-[var(--radius)] border py-0.5 pl-2.5 pr-1.5',
         'transition-shadow duration-200 hover:z-[5] hover:shadow-[var(--shadow-soft)]',
         TONE_STYLE[AGENDA_TONE[block.status]],
         selected && 'z-[6] shadow-[var(--shadow-soft)] ring-1 ring-[var(--accent)]',
@@ -462,7 +462,7 @@ export function AgendaList({
                 {card.confirmSent ? (
                   <span
                     title="Confirmação enviada"
-                    className="inline-flex items-center gap-1 text-[0.625rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]"
+                    className="inline-flex items-center gap-1 text-[0.625rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]"
                   >
                     <IconCheck className="h-3 w-3" />
                     enviada
@@ -492,7 +492,7 @@ function NowRule({ nowMin }: { nowMin: number }) {
     <div aria-hidden className="flex items-center gap-2 px-4 py-1">
       <span className="block h-1 w-1 rotate-45 bg-[var(--accent)]" />
       <span className="h-px flex-1 bg-[var(--accent)]" />
-      <span className="tabular text-[0.625rem] font-medium uppercase tracking-[0.14em] text-[var(--accent)]">
+      <span className="tabular text-[0.625rem] font-medium uppercase tracking-[0.05em] text-[var(--accent)]">
         agora · {formatMinutes(nowMin)}
       </span>
     </div>

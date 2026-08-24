@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { ArrowUpRight, Scissors, Store, Users, Wallet } from 'lucide-react'
 import { can, requireManagement, type Actor } from '@/lib/auth/actor'
 import { sql } from '@/lib/db'
 import {
@@ -136,17 +137,13 @@ export default async function AdminPage() {
   const paidTotal = standings.reduce((sum, s) => sum + s.paid_cents, 0)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* --- o mês, em quatro números ------------------------------- */}
       <section aria-label="Indicadores do mês">
-        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="eyebrow">
-            {monthName(kpis.current_start)} até hoje
-          </h2>
-          <p className="text-[0.75rem] text-[var(--ink-faint)]">
-            comparado com igual período de {prevName}
-          </p>
-        </div>
+        <PanelHead
+          title={`${capitalise(monthName(kpis.current_start))} até hoje`}
+          aside={`comparado com igual período de ${prevName}`}
+        />
         {/* Dois a dois já no telemóvel: em coluna única, os quatro números
             do mês ocupavam um ecrã e meio e nunca se viam ao mesmo tempo —
             que é a única coisa que se quer fazer com eles. */}
@@ -212,17 +209,31 @@ export default async function AdminPage() {
           />
         </div>
         <p className="mt-2 text-[0.75rem] text-[var(--ink-faint)]">
-          Cada linha é a média de sete dias, ao longo de seis semanas.
+          A linha debaixo de cada número é a média de sete dias, ao longo
+          de seis semanas.
         </p>
       </section>
 
-      {/* --- a faturação, dia a dia --------------------------------- */}
-      <section aria-label="Faturação diária">
-        <Card className="px-5 py-5 sm:px-6">
+      {/*
+        A FATURAÇÃO E O DIA, LADO A LADO.
+
+        São as duas leituras que se fazem ao abrir isto: como vai o mês, e
+        o que está a acontecer agora. Empilhadas, a segunda ficava abaixo
+        da dobra e só se via a rolar. Em ecrã largo o gráfico leva dois
+        terços — precisa de largura para os 42 dias — e o dia fica na
+        coluna estreita, que é onde uma lista curta se lê melhor.
+      */}
+      <section
+        aria-label="Faturação e dia"
+        className="grid gap-3 xl:grid-cols-3"
+      >
+        <Card className="min-w-0 px-5 py-5 sm:px-6 xl:col-span-2">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
             <div>
-              <p className="eyebrow mb-1">Faturação · últimas seis semanas</p>
-              <p className="display tabular text-2xl leading-none text-[var(--ink)]">
+              <p className="text-[0.8125rem] font-medium text-[var(--ink-muted)]">
+                Faturação · últimas seis semanas
+              </p>
+              <p className="metric mt-1.5 text-2xl text-[var(--ink)]">
                 {formatCents(history.total_cents)}
               </p>
             </div>
@@ -249,17 +260,100 @@ export default async function AdminPage() {
             <WeekBars weeks={weeks} />
           </div>
         </Card>
+
+        <Card className="flex min-w-0 flex-col px-5 py-5 sm:px-6">
+          <PanelHead
+            title="Hoje nas casas"
+            aside={formatDayLong(today(tz), tz)}
+            inCard
+          />
+          <ul className="flex-1 divide-y divide-[var(--line-soft)]">
+            {unitsToday.map((unit) => (
+              <li key={unit.unit_id} className="py-4 first:pt-0 last:pb-0">
+                <div className="flex items-baseline justify-between gap-3">
+                  <Link
+                    href={`/agenda/${unit.slug}`}
+                    className="min-w-0 truncate text-sm font-semibold text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+                  >
+                    {unit.name}
+                  </Link>
+                  <span className="tabular shrink-0 text-sm font-medium text-[var(--ink)]">
+                    {formatCents(unit.revenue_cents)}
+                  </span>
+                </div>
+
+                {unit.total === 0 ? (
+                  <p className="mt-1.5 text-[0.8125rem] text-[var(--ink-muted)]">
+                    Dia sem marcações.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-1.5 text-[0.8125rem] text-[var(--ink-muted)]">
+                      {unit.total} marcaç{unit.total === 1 ? 'ão' : 'ões'}
+                      {unit.next_at
+                        ? ` · próxima às ${formatTime(unit.next_at, tz)}`
+                        : unit.upcoming > 0
+                          ? ` · ${unit.upcoming} por chegar`
+                          : ' · sem mais nenhuma por vir'}
+                    </p>
+                    {/* Quanto do dia já passou, sem ser pelas horas: o que
+                        está feito, o que está a acontecer, e o resto. As
+                        pastilhas por baixo levam o mesmo ponto de cor —
+                        é o que faz a barra ter legenda sem ter legenda. */}
+                    <div
+                      aria-hidden
+                      className="mt-2.5 flex h-[6px] w-full gap-px overflow-hidden rounded-full bg-[var(--surface-sunken)]"
+                    >
+                      <span
+                        className="h-full rounded-full bg-[var(--accent)]"
+                        style={{
+                          width: `${(unit.completed / unit.total) * 100}%`,
+                        }}
+                      />
+                      <span
+                        className="h-full rounded-full bg-[var(--gold)]"
+                        style={{
+                          width: `${(unit.active / unit.total) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      <Tally
+                        label="concluídas"
+                        value={unit.completed}
+                        dot="var(--accent)"
+                      />
+                      <Tally
+                        label="em curso"
+                        value={unit.active}
+                        dot="var(--gold)"
+                      />
+                      <Tally label="por vir" value={unit.upcoming} />
+                      {unit.no_shows > 0 ? (
+                        <Tally
+                          label="faltas"
+                          value={unit.no_shows}
+                          dot="var(--bad)"
+                          tone="bad"
+                        />
+                      ) : null}
+                    </div>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
       </section>
 
       {/* --- a equipa: o que trouxe · o que se lhe deve ------------- */}
       <section aria-label="Equipa" className="grid gap-3 lg:grid-cols-2">
         <Card className="min-w-0 px-5 py-5 sm:px-6">
-          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 className="eyebrow">Produção por profissional</h2>
-            <p className="text-[0.75rem] text-[var(--ink-faint)]">
-              seis semanas · concluídas
-            </p>
-          </div>
+          <PanelHead
+            title="Produção por profissional"
+            aside="seis semanas · concluídas"
+            inCard
+          />
           {team.length === 0 ? (
             <Empty
               title="Ainda sem histórico"
@@ -278,12 +372,12 @@ export default async function AdminPage() {
 
         <Card className="flex min-w-0 flex-col px-5 py-5 sm:px-6">
           <div className="mb-4 flex items-baseline justify-between gap-4">
-            <h2 className="eyebrow">Comissões por pagar</h2>
+            <h2 className="panel-title">Comissões por pagar</h2>
             <Link
               href="/admin/comissoes"
-              className="text-[0.8125rem] text-[var(--accent)] underline-offset-4 transition-colors hover:underline"
+              className="shrink-0 text-[0.8125rem] font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-strong)]"
             >
-              Tratar
+              Tratar →
             </Link>
           </div>
           {pendingStaff.length === 0 ? (
@@ -321,7 +415,7 @@ export default async function AdminPage() {
                     </span>
                   ) : null}
                 </span>
-                <span className="tabular text-sm font-medium text-[var(--ink)]">
+                <span className="metric shrink-0 text-base text-[var(--ink)]">
                   {formatCents(pendingTotal)}
                 </span>
               </div>
@@ -333,15 +427,14 @@ export default async function AdminPage() {
       {/* --- os serviços que rendem --------------------------------- */}
       <section aria-label="Serviços que mais rendem">
         <Card className="px-5 py-5 sm:px-6">
-          {/* `flex-wrap`: no telemóvel o título em versaletes e o período
-              não cabem lado a lado — partiam-se os dois ao meio e ficavam
-              quatro tiras entrelaçadas. Assim o período desce inteiro. */}
-          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 className="eyebrow">Top serviços por receita</h2>
-            <p className="text-[0.75rem] text-[var(--ink-faint)]">
-              seis semanas · concluídas
-            </p>
-          </div>
+          {/* `flex-wrap`: no telemóvel o título e o período não cabem lado
+              a lado — partiam-se os dois ao meio e ficavam quatro tiras
+              entrelaçadas. Assim o período desce inteiro. */}
+          <PanelHead
+            title="Top serviços por receita"
+            aside="seis semanas · concluídas"
+            inCard
+          />
           {services.length === 0 ? (
             <Empty
               title="Ainda sem histórico"
@@ -378,108 +471,34 @@ export default async function AdminPage() {
         </Card>
       </section>
 
-      {/* --- o dia, casa a casa ------------------------------------- */}
-      <section aria-label="Resumo de hoje">
-        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="eyebrow">Hoje nas casas</h2>
-          <p className="text-[0.75rem] text-[var(--ink-faint)]">
-            {formatDayLong(today(tz), tz)}
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {unitsToday.map((unit) => (
-            <Card key={unit.unit_id} className="px-5 py-5 sm:px-6">
-              <div className="mb-4 flex items-baseline justify-between gap-4">
-                <h3 className="display text-xl text-[var(--ink)]">
-                  {unit.name}
-                </h3>
-                <Link
-                  href={`/agenda/${unit.slug}`}
-                  className="text-[0.8125rem] text-[var(--accent)] underline-offset-4 transition-colors hover:underline"
-                >
-                  Agenda
-                </Link>
-              </div>
-
-              {unit.total === 0 ? (
-                <p className="py-2 text-sm text-[var(--ink-muted)]">
-                  Dia sem marcações.
-                </p>
-              ) : (
-                <>
-                  <div className="mb-2.5 flex items-baseline justify-between gap-4">
-                    <p className="text-[0.8125rem] text-[var(--ink-muted)]">
-                      {unit.total} marcaç{unit.total === 1 ? 'ão' : 'ões'}
-                      {unit.next_at
-                        ? ` · próxima às ${formatTime(unit.next_at, tz)}`
-                        : unit.upcoming > 0
-                          ? ` · ${unit.upcoming} por chegar`
-                          : ' · sem mais nenhuma por vir'}
-                    </p>
-                    <p className="tabular shrink-0 text-sm text-[var(--ink)]">
-                      {formatCents(unit.revenue_cents)}
-                    </p>
-                  </div>
-                  {/* Quanto do dia já passou, sem ser pelas horas: o que
-                      está feito, o que está a acontecer, e o resto. */}
-                  <div
-                    aria-hidden
-                    className="mb-4 flex h-[5px] w-full gap-px rounded-full bg-[var(--surface-sunken)]"
-                  >
-                    <span
-                      className="h-full rounded-full bg-[var(--accent)]"
-                      style={{
-                        width: `${(unit.completed / unit.total) * 100}%`,
-                      }}
-                    />
-                    <span
-                      className="h-full rounded-full bg-[var(--gold)]"
-                      style={{ width: `${(unit.active / unit.total) * 100}%` }}
-                    />
-                  </div>
-                  {/* Quatro numa linha só a partir do tablet: a 390 as
-                      etiquetas ("CONCLUÍDAS") encostam-se umas às outras. */}
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[var(--line-soft)] pt-3 sm:grid-cols-4 sm:gap-2">
-                    <MiniStat label="Concluídas" value={unit.completed} />
-                    <MiniStat label="Em curso" value={unit.active} />
-                    <MiniStat label="Por vir" value={unit.upcoming} />
-                    <MiniStat
-                      label="Faltas"
-                      value={unit.no_shows}
-                      tone={unit.no_shows > 0 ? 'bad' : undefined}
-                    />
-                  </dl>
-                </>
-              )}
-            </Card>
-          ))}
-        </div>
-      </section>
-
       {/* --- as portas da gestão ------------------------------------ */}
-      <section aria-label="Gerir">
-        <h2 className="eyebrow mb-2">Gerir</h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label="Gerir" className="pt-2">
+        <PanelHead title="Gerir" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Tile
             href="/admin/unidades"
+            icon={Store}
             title="Unidades"
             value={`${total.units} loja${total.units === 1 ? '' : 's'}`}
             hint="Horário, feriados e regras de marcação."
           />
           <Tile
             href="/admin/servicos"
+            icon={Scissors}
             title="Serviços"
             value={`${total.services} no catálogo`}
             hint="Preço, duração e nomes nas outras línguas."
           />
           <Tile
             href="/admin/equipe"
+            icon={Users}
             title="Equipa"
             value={`${total.staff} pessoa${total.staff === 1 ? '' : 's'}`}
             hint="Papéis, lojas, habilidades e ausências."
           />
           <Tile
             href="/admin/comissoes"
+            icon={Wallet}
             title="Comissões"
             value={
               total.pending_cents > 0
@@ -504,6 +523,10 @@ function formatRate(rate: number | null): string {
     style: 'percent',
     maximumFractionDigits: 1,
   }).format(rate)
+}
+
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 /**
@@ -545,6 +568,34 @@ function rollingRatio(top: number[], bottom: number[], window = 7): number[] {
   return out
 }
 
+/**
+ * O cabeçalho de um painel: o nome à esquerda, o período ou a data à
+ * direita. Escrito uma vez para que os seis cartões desta página tenham
+ * todos a mesma altura de título — a diferença de um pixel entre eles
+ * é o que faz uma grelha parecer mal montada sem se perceber porquê.
+ */
+function PanelHead({
+  title,
+  aside,
+  inCard = false,
+}: {
+  title: string
+  aside?: string
+  /** Dentro de um cartão a folga é menor: o fio do cartão já separa. */
+  inCard?: boolean
+}) {
+  return (
+    <div
+      className={`flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 ${inCard ? 'mb-4' : 'mb-2.5'}`}
+    >
+      <h2 className="panel-title">{title}</h2>
+      {aside ? (
+        <p className="text-[0.75rem] text-[var(--ink-faint)]">{aside}</p>
+      ) : null}
+    </div>
+  )
+}
+
 function Kpi({
   label,
   value,
@@ -567,19 +618,22 @@ function Kpi({
     // a lado, «Marcações concluídas» ocupa duas linhas e «Faturação» uma —
     // e os dois números apareciam a alturas diferentes, como se um deles
     // tivesse escorregado. Encostados em baixo, ficam na mesma linha.
-    <Card className="flex h-full flex-col px-4 pt-4">
-      <p className="eyebrow mb-2.5">{label}</p>
-      <div className="mt-auto">
-        <p className="display tabular text-[1.6875rem] leading-none text-[var(--ink)]">
-          {value}
-        </p>
-        <p className="mt-2.5 flex items-baseline gap-1.5 text-[0.75rem] text-[var(--ink-faint)]">
+    //
+    // `overflow-hidden`: a linha sangra até aos bordos, e com o canto
+    // aberto do balcão sairia por fora do cartão nos dois cantos de baixo.
+    <Card className="flex h-full min-w-0 flex-col overflow-hidden px-4 pt-4">
+      <p className="text-[0.8125rem] font-medium text-[var(--ink-muted)]">
+        {label}
+      </p>
+      <div className="mt-auto pt-4">
+        <p className="metric text-[1.75rem] text-[var(--ink)]">{value}</p>
+        <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.75rem] text-[var(--ink-faint)]">
           {delta}
           <span>vs {versus}</span>
         </p>
       </div>
-      {/* A linha sangra até aos bordos e assenta no fio de baixo: é o
-          chão do número, não mais uma coisa a competir com ele. */}
+      {/* A linha assenta no fio de baixo: é o chão do número, não mais
+          uma coisa a competir com ele. */}
       <div className="-mx-4 mt-3.5">
         <Sparkline values={spark} tone={sparkTone} label={sparkLabel} />
       </div>
@@ -587,30 +641,39 @@ function Kpi({
   )
 }
 
-function MiniStat({
+/**
+ * Uma contagem com o seu ponto de cor — o mesmo que a barra por cima
+ * usa no segmento correspondente. É a legenda da barra, sem ser uma
+ * legenda: lê-se «3 concluídas» e vê-se onde estão os 3 na barra.
+ */
+function Tally({
   label,
   value,
+  dot,
   tone,
 }: {
   label: string
   value: number
+  dot?: string
   tone?: 'bad'
 }) {
   return (
-    <div>
-      <dd
-        className="tabular text-base leading-tight"
-        style={{
-          color:
-            tone === 'bad' && value > 0 ? 'var(--bad)' : 'var(--ink)',
-        }}
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface-2)] px-2 py-1 text-[0.75rem] text-[var(--ink-muted)]">
+      {dot ? (
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ background: dot }}
+        />
+      ) : null}
+      <span
+        className="tabular font-semibold"
+        style={{ color: tone === 'bad' ? 'var(--bad)' : 'var(--ink)' }}
       >
         {value}
-      </dd>
-      <dt className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
-        {label}
-      </dt>
-    </div>
+      </span>
+      {label}
+    </span>
   )
 }
 
@@ -622,10 +685,11 @@ async function ManagerTiles({ actor }: { actor: Actor }) {
   const total = await counts(actor)
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {can.manageUnits(actor) ? (
         <Tile
           href="/admin/unidades"
+          icon={Store}
           title="Unidades"
           value={`${total.units} loja${total.units === 1 ? '' : 's'}`}
           hint="Horário, feriados, regras de marcação e recursos físicos."
@@ -635,6 +699,7 @@ async function ManagerTiles({ actor }: { actor: Actor }) {
       {can.manageCatalog(actor) ? (
         <Tile
           href="/admin/servicos"
+          icon={Scissors}
           title="Serviços"
           value={`${total.services} no catálogo`}
           hint="Preço, duração, folgas e exceções por loja ou profissional."
@@ -644,6 +709,7 @@ async function ManagerTiles({ actor }: { actor: Actor }) {
       {can.manageTeam(actor) ? (
         <Tile
           href="/admin/equipe"
+          icon={Users}
           title="Equipa"
           value={`${total.staff} pessoa${total.staff === 1 ? '' : 's'}`}
           hint="Papéis, lojas, habilidades, escala e ausências."
@@ -653,23 +719,53 @@ async function ManagerTiles({ actor }: { actor: Actor }) {
   )
 }
 
+/**
+ * A porta para uma secção da gestão. O glifo é o que a torna encontrável
+ * de relance numa fila de quatro — antes eram quatro rectângulos de
+ * texto iguais, e escolhia-se a ler. A seta acende ao passar por cima:
+ * diz que se vai daqui para outro sítio, e não que se abre aqui mesmo.
+ */
 function Tile({
   href,
+  icon: Icon,
   title,
   value,
   hint,
 }: {
   href: string
+  icon: typeof Store
   title: string
   value: string
   hint: string
 }) {
   return (
-    <Link href={href}>
-      <Card className="h-full px-4 py-5 transition-colors hover:border-[var(--accent)]">
-        <p className="eyebrow mb-1">{title}</p>
-        <p className="display text-lg text-[var(--ink)]">{value}</p>
-        <p className="mt-1 text-[0.8125rem] text-[var(--ink-muted)]">{hint}</p>
+    <Link href={href} className="group block">
+      <Card className="flex h-full gap-3 px-4 py-4 transition-all hover:border-[color-mix(in_srgb,var(--accent)_35%,transparent)] hover:shadow-[var(--shadow-soft)]">
+        <span
+          aria-hidden
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)]"
+        >
+          <Icon size={18} strokeWidth={1.75} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline justify-between gap-2">
+            <span className="text-[0.8125rem] text-[var(--ink-muted)]">
+              {title}
+            </span>
+            <ArrowUpRight
+              aria-hidden
+              size={15}
+              strokeWidth={2}
+              className="shrink-0 text-[var(--ink-faint)] opacity-0 transition-opacity group-hover:opacity-100"
+            />
+          </span>
+          <span className="display mt-0.5 block text-[0.9375rem] text-[var(--ink)]">
+            {value}
+          </span>
+          <span className="mt-1.5 block text-[0.75rem] leading-snug text-[var(--ink-muted)]">
+            {hint}
+          </span>
+        </span>
       </Card>
     </Link>
   )

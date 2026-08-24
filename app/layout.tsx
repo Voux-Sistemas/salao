@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Playfair_Display } from 'next/font/google'
+import { Inter, Manrope, Playfair_Display } from 'next/font/google'
 import { BRAND } from '@/lib/branding'
 import { env } from '@/lib/env'
 import './globals.css'
@@ -16,6 +16,25 @@ const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
+})
+
+/**
+ * A LETRA DA EQUIPA — e só dela.
+ *
+ * A montra é uma didone com serifas: é a letra do logótipo e é o que
+ * faz a casa parecer a casa. A área da equipa não quer nada disso.
+ * Quem lá está passa o dia a comparar números em colunas, e para isso
+ * quer o contrário: uma sem-serifa geométrica, com algarismos de
+ * largura fixa e o espaçamento fechado.
+ *
+ * O ficheiro só se descarrega em quem a usa. Nenhuma página pública
+ * pede `--font-desk`, portanto a cliente nunca paga por esta letra.
+ */
+const manrope = Manrope({
+  subsets: ['latin'],
+  variable: '--font-manrope',
+  display: 'swap',
+  weight: ['500', '600', '700', '800'],
 })
 
 const TITLE = `${BRAND.fallbackName} · ${BRAND.fallbackTagline}`
@@ -82,7 +101,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt"
-      className={`${playfair.variable} ${inter.variable}`}
+      className={`${playfair.variable} ${inter.variable} ${manrope.variable}`}
       // o script abaixo acrescenta .js antes da hidratação — mismatch esperado
       suppressHydrationWarning
     >

@@ -217,7 +217,7 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
       {/* --- a marcação original, num cartão pequeno ----------------- */}
       <Card className="mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-l-2 border-l-[var(--accent)] px-4 py-3.5">
         <div className="min-w-0">
-          <p className="text-[0.625rem] font-medium uppercase tracking-[0.18em] text-[var(--ink-faint)]">
+          <p className="text-[0.625rem] font-medium uppercase tracking-[0.05em] text-[var(--ink-faint)]">
             Está marcada para
           </p>
           <p className="mt-1 text-sm text-[var(--ink)]">
@@ -321,7 +321,7 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
               <div className="mt-4 space-y-4">
                 {periods.map((period) => (
                   <div key={period.label}>
-                    <p className="mb-1.5 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-[var(--ink-faint)]">
+                    <p className="mb-1.5 text-[0.625rem] font-medium uppercase tracking-[0.05em] text-[var(--ink-faint)]">
                       {period.label}
                     </p>
                     <ul className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">

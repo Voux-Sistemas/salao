@@ -38,8 +38,7 @@ export default async function CaixaChooser() {
 
   return (
     <StoreChooser
-      eyebrow="Caixa"
-      title="Que loja?"
+      title="Caixa"
       hint="Cada loja tem a sua gaveta, o seu dia e o seu fecho."
       cta="Abrir a gaveta"
       stores={drawers.map(({ unit, open, cents }) => ({

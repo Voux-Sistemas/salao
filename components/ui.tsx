@@ -22,9 +22,9 @@ const BASE =
   'active:translate-y-px'
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-8 px-3.5 text-[0.8125rem] rounded-[2px]',
-  md: 'h-10 px-5 text-sm rounded-[2px]',
-  lg: 'h-[3.25rem] px-8 text-[0.9375rem] rounded-[2px] tracking-[0.04em]',
+  sm: 'h-8 px-3.5 text-[0.8125rem] rounded-[var(--radius)]',
+  md: 'h-10 px-5 text-sm rounded-[var(--radius)]',
+  lg: 'h-[3.25rem] px-8 text-[0.9375rem] rounded-[var(--radius)] tracking-[0.04em]',
 }
 
 const VARIANTS: Record<Variant, string> = {
@@ -84,7 +84,7 @@ export function Card({
   return (
     <div
       className={clsx(
-        'bg-[var(--surface-raised)] border border-[var(--line-soft)] rounded-[2px]',
+        'card bg-[var(--surface-raised)] border border-[var(--line-soft)] rounded-[var(--radius)]',
         className,
       )}
       {...props}
@@ -114,8 +114,10 @@ export function Empty({
   return (
     <div className="text-center py-16 px-6">
       {/* Um estado vazio em texto solto lê-se como uma falha. O
-          raminho diz que o ecrã está inteiro — só não tem nada dentro. */}
-      <div className="mb-5 flex justify-center text-[var(--line)]">
+          raminho diz que o ecrã está inteiro — só não tem nada dentro.
+          Na montra, entenda-se: no balcão o mesmo desenho passava a
+          enfeite fora de sítio, e a folha de estilo esconde-o lá. */}
+      <div className="enfeite mb-5 flex justify-center text-[var(--line)]">
         <Ornament className="scale-75" />
       </div>
       <p className="display text-xl text-[var(--ink)]">{title}</p>
@@ -169,7 +171,7 @@ export function Field({
 // meia fora do ecrã, com a cliente a arrastar para trás. Ao telemóvel os
 // campos são de 16px; no monitor voltam aos 14 de sempre.
 const CONTROL =
-  'w-full bg-[var(--surface-raised)] border border-[var(--line)] rounded-[2px] px-3 ' +
+  'w-full bg-[var(--surface-raised)] border border-[var(--line)] rounded-[var(--radius)] px-3 ' +
   'text-base sm:text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] ' +
   'transition-[border-color,box-shadow] duration-300 focus:outline-none focus:border-[var(--accent)] ' +
   'focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]'
@@ -227,7 +229,7 @@ export function Badge({
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1 border rounded-[2px] px-1.5 py-0.5',
+        'inline-flex items-center gap-1 border rounded-[var(--radius-sm)] px-1.5 py-0.5',
         'text-[0.6875rem] tracking-[0.08em] uppercase',
         TONES[tone],
         className,
@@ -259,7 +261,7 @@ export function Notice({
 
   return (
     <p
-      className="text-sm px-3 py-2 rounded-[2px] border"
+      className="text-sm px-3 py-2 rounded-[var(--radius)] border"
       style={{
         color: colour,
         borderColor: `color-mix(in srgb, ${colour} 35%, transparent)`,

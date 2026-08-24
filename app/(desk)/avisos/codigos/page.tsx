@@ -72,7 +72,7 @@ export default async function CodigosPage() {
                 key={row.id}
                 className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3.5"
               >
-                <span className="tabular display shrink-0 rounded-[2px] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-1.5 text-xl tracking-[0.3em] text-[var(--accent)]">
+                <span className="tabular display shrink-0 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-1.5 text-xl tracking-[0.3em] text-[var(--accent)]">
                   {row.code}
                 </span>
 

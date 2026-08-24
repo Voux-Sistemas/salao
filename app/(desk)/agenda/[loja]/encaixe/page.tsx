@@ -371,7 +371,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                         className="h-px flex-1 bg-[var(--line-soft)]"
                         aria-hidden
                       />
-                      <span className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+                      <span className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
                         {category.services.length}
                       </span>
                     </div>
@@ -385,7 +385,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                           <li
                             key={service.id}
                             className={clsx(
-                              'flex items-center gap-3 rounded-[2px] border px-3 py-2.5 transition-colors',
+                              'flex items-center gap-3 rounded-[var(--radius)] border px-3 py-2.5 transition-colors',
                               chosen
                                 ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_5%,transparent)]'
                                 : 'border-[var(--line-soft)] bg-[var(--surface-raised)]',
@@ -408,7 +408,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                             {chosen || full ? (
                               <span
                                 className={clsx(
-                                  'shrink-0 text-[0.625rem] uppercase tracking-[0.08em]',
+                                  'shrink-0 text-[0.625rem] uppercase tracking-[0.05em]',
                                   chosen
                                     ? 'text-[var(--accent)]'
                                     : 'text-[var(--ink-faint)]',

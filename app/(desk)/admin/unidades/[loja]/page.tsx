@@ -129,7 +129,7 @@ export default async function UnidadePage({
                   {rows.map((row) => (
                     <span
                       key={row.id}
-                      className="flex items-center gap-1 rounded-[2px] border border-[var(--line)] bg-[var(--surface-2)] py-1 pl-2.5 pr-1"
+                      className="flex items-center gap-1 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] py-1 pl-2.5 pr-1"
                     >
                       <span className="tabular text-[0.8125rem] text-[var(--ink)]">
                         {formatMinutes(row.opens_min)}–

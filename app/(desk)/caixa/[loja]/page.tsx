@@ -196,7 +196,7 @@ function OpenDrawer({
             const count = found?.count ?? 0
             return (
               <Card key={method} className="px-4 py-3">
-                <p className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+                <p className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
                   {PAYMENT_METHOD_LABEL[method]}
                 </p>
                 <p
@@ -238,7 +238,7 @@ function OpenDrawer({
           <div className="mt-2 overflow-x-auto">
             <table className="tabular w-full min-w-[34rem] text-sm">
               <thead>
-                <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+                <tr className="text-left text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
                   <th className="px-5 py-2 font-normal">Hora</th>
                   <th className="px-3 py-2 font-normal">Tipo</th>
                   <th className="px-3 py-2 font-normal">Detalhe</th>
@@ -322,7 +322,7 @@ function Figure({
 }) {
   return (
     <div>
-      <dt className="text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+      <dt className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
         {label}
       </dt>
       <dd
@@ -353,7 +353,7 @@ function History({
       <Card className="overflow-x-auto">
         <table className="tabular w-full min-w-[32rem] text-sm">
           <thead>
-            <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+            <tr className="text-left text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
               <th className="px-5 py-2.5 font-normal">Dia</th>
               <th className="px-3 py-2.5 text-right font-normal">Abertura</th>
               <th className="px-3 py-2.5 text-right font-normal">Esperado</th>

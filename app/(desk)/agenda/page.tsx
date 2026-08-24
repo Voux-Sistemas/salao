@@ -30,9 +30,8 @@ export default async function AgendaChooser() {
 
   return (
     <StoreChooser
-      eyebrow="Agenda"
-      title="Que casa?"
-      hint="O dia de cada casa corre no fuso da casa."
+      title="Agenda"
+      hint="Em que casa quer entrar? O dia de cada uma corre no fuso da casa."
       cta="Ver o dia"
       stores={units.map((unit) => ({
         href: `/agenda/${unit.slug}`,

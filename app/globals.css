@@ -20,6 +20,9 @@
 @theme {
   --font-display: var(--font-playfair), "Playfair Display", Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* A família do balcão. Só se descarrega em quem a usa — e quem a usa
+     é a área da equipa, que não passa pelas serifas da montra. */
+  --font-desk: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
 
   --color-champagne-50: #FBF6EC;
   --color-champagne-100: #F4E9D2;
@@ -67,6 +70,12 @@
   --shadow-warm: 0 24px 48px -24px rgba(59, 47, 35, 0.28);
   --shadow-soft: 0 12px 32px -20px rgba(59, 47, 35, 0.22);
 
+  /* O canto de tudo o que é caixa — cartão, botão, campo. Aqui é o fio
+     quadrado do papel timbrado; no balcão abre. Passa por variável para
+     que um `<Card>` escrito uma vez sirva as duas peles. */
+  --radius: 2px;
+  --radius-sm: 2px;
+
   --ok: #4C7D46;
   --warn: #9A6B14;
   --bad: #A63D2F;
@@ -109,32 +118,99 @@
 }
 
 /* ---------------------------------------------------------------------
-   Pele do balcão: funcional, quente, alta legibilidade.
+   Pele do balcão: o instrumento de trabalho.
+
+   NÃO segue o desenho da cliente, e é de propósito. A porcelana, as
+   serifas e o ouro são a montra: servem quem entra uma vez por mês e
+   quer ver uma casa bonita. Quem passa aqui o dia quer outra coisa —
+   papel frio, uma só família sem serifa, números que se leem de
+   atravessado, e cor que quer dizer alguma coisa em vez de enfeitar.
+
+   O ouro sai. Entra o azul de trabalho para o que se carrega, e o
+   violeta como segunda série dos gráficos. Verde, âmbar e vermelho
+   ficam livres para o que são: bom, atenção, mau. Uma cor por
+   significado — é isto que faz um painel ler-se de relance.
    --------------------------------------------------------------------- */
 .skin-desk {
   color-scheme: light;
 
-  --surface: #F8F6F1;
+  --surface: #F3F5F9;
   --surface-raised: #FFFFFF;
-  --surface-2: #F1EDE4;
-  --surface-sunken: #ECE7DB;
-  --ink: #1C1917;
-  --ink-muted: #6F6862;
-  --ink-faint: #A9A29A;
-  --accent: #8E7340;
-  --accent-strong: #6B5730;
+  --surface-2: #ECEFF5;
+  --surface-sunken: #E2E7F0;
+  --ink: #0F1520;
+  --ink-muted: #55606F;
+  --ink-faint: #8590A1;
+  --accent: #2D5BD7;
+  --accent-strong: #1E3F9E;
   --accent-ink: #FFFFFF;
-  --gold: #C6A96B;
-  --line: rgba(28, 25, 23, 0.13);
-  --line-soft: rgba(28, 25, 23, 0.06);
-  --shadow-warm: 0 16px 40px -24px rgba(40, 33, 24, 0.35);
-  --shadow-soft: 0 8px 24px -16px rgba(40, 33, 24, 0.25);
+  /* Não é ouro nenhum: é a segunda série. O nome do token é estrutural
+     — «a outra cor» — e cada pele decide qual é. */
+  --gold: #6D5AE6;
+  --line: rgba(15, 21, 32, 0.11);
+  --line-soft: rgba(15, 21, 32, 0.055);
+  --shadow-warm: 0 18px 40px -24px rgba(15, 21, 32, 0.35);
+  --shadow-soft:
+    0 1px 2px rgba(15, 21, 32, 0.05),
+    0 10px 28px -20px rgba(15, 21, 32, 0.3);
 
-  --ok: #3F7D3A;
-  --warn: #9A6B14;
-  --bad: #A63D2F;
+  --ok: #157F3C;
+  --warn: #A25C05;
+  --bad: #C0362B;
 
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%23A9A29A' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.25 5 4.75 9 1.25'/%3E%3C/svg%3E");
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%238590A1' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.25 5 4.75 9 1.25'/%3E%3C/svg%3E");
+}
+
+/* ---------------------------------------------------------------------
+   A tipografia do balcão.
+
+   Do lado da cliente a hierarquia faz-se com uma didone grande e muito
+   espaço à volta. Aqui não há espaço para dar: faz-se com peso, dentro
+   de uma família só. É o que distingue um painel de controlo de um
+   programa de sala.
+
+   Estas regras ganham às de baixo por serem duas classes contra uma —
+   não pela ordem. Escritas aqui ficam ao pé da pele a que pertencem.
+   --------------------------------------------------------------------- */
+.skin-desk .display,
+.skin-desk .display-italic {
+  font-family: var(--font-desk);
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: -0.021em;
+}
+
+/* O versalete espaçado é o gesto mais «chique» do sistema, e é o
+   primeiro a sair: no balcão um título de cartão escreve-se como se
+   fala, e lê-se ao dobro da velocidade. */
+.skin-desk .eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-muted);
+}
+
+.skin-desk .eyebrow-gold {
+  color: var(--accent);
+}
+
+/* O cartão do balcão levanta-se um fio do papel. Não é sombra de
+   catálogo: é o mínimo para se perceber que o branco está por cima do
+   cinzento, sem o qual uma grelha de seis cartões lê-se como uma folha
+   só com riscos. */
+.skin-desk .card {
+  box-shadow: 0 1px 2px rgba(15, 21, 32, 0.04);
+}
+
+/* Violeta sobre castanho-escuro não se lia. A marca do texto passa a
+   ser uma lavagem do azul de trabalho. */
+.skin-desk ::selection {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--ink);
 }
 
 /* O fio por omissão, para quem só escreve `border` e não diz a cor.
@@ -260,6 +336,38 @@ body {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--ink-muted);
+}
+
+/* ---------------------------------------------------------------------
+   Duas peças que só existem no painel — declaradas aqui em cima para
+   nunca ficarem sem chão se alguém as usar fora da pele do balcão.
+
+   .panel-title  o nome de um cartão: o que se lê antes do conteúdo
+   .metric       o número grande de um indicador
+   --------------------------------------------------------------------- */
+.panel-title {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.skin-desk .panel-title {
+  font-family: var(--font-desk);
+}
+
+/* O número em tabular e com o espaçamento fechado: é assim que quatro
+   valores lado a lado ficam com a mesma mancha e se comparam à vista. */
+.metric {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.skin-desk .metric {
+  font-family: var(--font-desk);
 }
 
 .eyebrow-gold {
@@ -485,6 +593,12 @@ html.js [data-reveal-group] > *:nth-child(9)  { transition-delay: 600ms; }
 html.js [data-reveal-group] > *:nth-child(10) { transition-delay: 660ms; }
 html.js [data-reveal-group] > *:nth-child(11) { transition-delay: 720ms; }
 html.js [data-reveal-group] > *:nth-child(12) { transition-delay: 780ms; }
+
+/* Os ornamentos são da montra. A área da equipa partilha componentes
+   com o lado da cliente — o estado vazio, por exemplo — e o mesmo
+   raminho, ali, lia-se como enfeite fora de sítio. Marca-se o desenho
+   com `.enfeite` e o balcão dispensa-o. */
+.skin-desk .enfeite { display: none; }
 
 /* ---------------------------------------------------------------------
    Microinterações.

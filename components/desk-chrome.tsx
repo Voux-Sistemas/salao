@@ -51,9 +51,7 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
             className="flex w-full flex-col items-center gap-1.5 border-t border-[var(--line-soft)] py-4 text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
           >
             <IconSignOut className="h-5 w-5" />
-            <span className="text-[0.5625rem] font-medium uppercase tracking-[0.1em]">
-              Sair
-            </span>
+            <span className="text-[0.625rem] font-semibold">Sair</span>
           </button>
         </form>
       </aside>
@@ -74,7 +72,7 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
               <p className="display truncate text-[0.9375rem] text-[var(--ink)]">
                 {dayLabel}
               </p>
-              <p className="hidden truncate text-[0.625rem] uppercase tracking-[0.22em] text-[var(--ink-faint)] sm:block">
+              <p className="hidden truncate text-[0.75rem] text-[var(--ink-faint)] sm:block">
                 {houseName}
               </p>
             </div>
@@ -98,7 +96,7 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
         // Sem altura: quem a define é o DeskNav, que a soma à folga do
         // indicador do iPhone. Com `h-[4.5rem]` aqui, essa folga era
         // descontada aos ícones em vez de acrescentada por baixo.
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-raised)] shadow-[0_-10px_28px_-18px_rgba(40,33,24,0.35)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_-8px_24px_-18px_rgba(15,21,32,0.28)] lg:hidden"
       >
         <DeskNav items={mobileNavFor(actor)} variant="bottom" />
       </nav>
@@ -163,18 +161,18 @@ function AccountMenu({ actor }: { actor: Actor }) {
     <div className="flex shrink-0 items-center gap-3">
       <div className="hidden text-right leading-tight sm:block">
         <p className="text-[0.8125rem] text-[var(--ink)]">{actor.name}</p>
-        <p className="text-[0.625rem] uppercase tracking-[0.18em] text-[var(--ink-faint)]">
+        <p className="text-[0.75rem] text-[var(--ink-faint)]">
           {ROLE_LABEL[actor.role]}
         </p>
       </div>
 
       <span
         aria-hidden
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--surface-sunken)]"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
       >
         <Monogram
           initials={initial(actor.name)}
-          className="text-[0.875rem] text-[var(--ink-muted)]"
+          className="text-[0.875rem] text-[var(--accent)]"
         />
       </span>
 

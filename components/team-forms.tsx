@@ -434,7 +434,7 @@ function Toggle({ on, label }: { on: boolean; label: string }) {
       disabled={pending}
       aria-pressed={on}
       className={[
-        'inline-flex items-center gap-1.5 rounded-[2px] border px-3 py-1.5',
+        'inline-flex items-center gap-1.5 rounded-[var(--radius)] border px-3 py-1.5',
         'text-[0.8125rem] transition-colors disabled:opacity-40',
         on
           ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)] text-[var(--accent-strong)]'
@@ -462,7 +462,7 @@ export function SkillsPanel({
     <div className="space-y-5">
       {groups.map((group) => (
         <div key={group.category}>
-          <p className="mb-2 text-[0.6875rem] uppercase tracking-[0.18em] text-[var(--ink-faint)]">
+          <p className="mb-2 text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
             {group.category}
           </p>
           <div className="flex flex-wrap gap-2">

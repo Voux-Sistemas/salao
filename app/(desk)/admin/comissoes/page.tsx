@@ -63,7 +63,7 @@ export default async function ComissoesPage({
   const totalEntries = pending.reduce((sum, row) => sum + row.entries, 0)
 
   const cellHead =
-    'px-4 py-2.5 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-[var(--ink-faint)]'
+    'px-4 py-2.5 text-[0.6875rem] font-medium uppercase tracking-[0.05em] text-[var(--ink-faint)]'
 
   return (
     <div className="space-y-10">
