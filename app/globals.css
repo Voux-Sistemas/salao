@@ -471,6 +471,27 @@ body {
   color: var(--accent);
 }
 
+/* ---------------------------------------------------------------------
+   A ESCALA DA GRELHA DO DIA — quantos píxeis vale um minuto.
+
+   A agenda desenha-se em minutos e multiplica por esta variável. É o
+   único sítio onde ela se decide, e é aqui e não no componente porque
+   depende do ecrã, e o servidor não sabe a largura do ecrã de ninguém.
+
+   0,82 no telemóvel dá 49px por hora: um dia de doze horas mais a
+   folga cabe inteiro num ecrã de 844px, sem rolar. 1,1 no monitor dá
+   66px — a altura de uma linha de texto confortável, que é o que se
+   quer onde há espaço de sobra.
+   --------------------------------------------------------------------- */
+.grelha-dia {
+  --esc: 0.82;
+}
+@media (min-width: 640px) {
+  .grelha-dia {
+    --esc: 1.1;
+  }
+}
+
 .rule {
   height: 1px;
   background: var(--line);

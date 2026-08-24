@@ -107,8 +107,16 @@ type BlockRow = {
   confirm_sent: boolean
 }
 
-/** Uma hora de folga antes e depois, para a grelha respirar. */
-const PADDING = 60
+/**
+ * Meia hora de folga antes e depois, para a grelha respirar.
+ *
+ * Era uma hora inteira, e o arredondamento à hora certa lá em baixo
+ * transformava-a muitas vezes em duas: uma loja que abre às nove
+ * começava a grelha às oito, e o topo do ecrã do telemóvel ia todo em
+ * banda cinzenta antes de se ver a primeira marcação. Meia hora chega
+ * para caber um encaixe antes da abertura e não come o ecrã.
+ */
+const PADDING = 30
 const DEFAULT_FROM = 9 * 60
 const DEFAULT_TO = 20 * 60
 
@@ -296,7 +304,10 @@ function extent(
 
   if (starts.length === 0) return { fromMin: DEFAULT_FROM, toMin: DEFAULT_TO }
 
-  const from = Math.floor((Math.min(...starts) - PADDING) / 60) * 60
-  const to = Math.ceil((Math.max(...ends) + PADDING) / 60) * 60
+  // Arredonda-se à meia hora, não à hora certa: com o arredondamento à
+  // hora, a meia hora de folga virava sempre uma hora inteira de banda
+  // cinzenta antes de a casa abrir.
+  const from = Math.floor((Math.min(...starts) - PADDING) / 30) * 30
+  const to = Math.ceil((Math.max(...ends) + PADDING) / 30) * 30
   return { fromMin: from, toMin: Math.max(to, from + 120) }
 }

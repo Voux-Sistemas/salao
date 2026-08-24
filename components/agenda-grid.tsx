@@ -19,17 +19,32 @@ import { IconCheck } from '@/components/desk-icons'
  * baixo dos dois.
  */
 
-/** Píxeis por minuto. 1.1 dá 66px por hora — cabe uma linha de texto. */
-const SCALE = 1.1
-/** Largura da régua das horas (w-14). */
-const RAIL = 'w-14'
+/**
+ * PÍXEIS POR MINUTO — E QUEM OS DECIDE É O CSS, NÃO ESTE FICHEIRO.
+ *
+ * A escala vive na variável `--esc`, posta na folha de estilo pela
+ * classe `grelha-dia`: 0,9 no telemóvel e 1,1 daí para cima. É a
+ * diferença entre ver o dia inteiro de uma vez e ter de rolar oito
+ * horas para chegar à tarde — num ecrã de 844px de alto, 1,1 mostra
+ * pouco mais de meia jornada.
+ *
+ * Por isso tudo aqui se escreve em `calc()` a partir de minutos, e não
+ * em píxeis já contados do lado do servidor: o servidor não sabe a
+ * largura do ecrã, e não tem de saber.
+ */
+/** Largura da régua das horas (w-12/w-14). */
+const RAIL = 'w-12 sm:w-14'
 /**
  * Largura de cada coluna. Com poucas profissionais esticam para encher
  * o dia — uma agenda que não chega à margem lê-se como inacabada; com
  * muitas encolhem até ao mínimo e a grelha passa a deslizar na
  * horizontal.
+ *
+ * O mínimo é mais apertado no telemóvel: 13,5rem numa tela de 390px
+ * deixava a segunda coluna quase toda fora do ecrã, e quem olha para a
+ * agenda com o telefone na mão precisa de ver que ela existe.
  */
-const COLUMN = 'min-w-[13.5rem] flex-1 basis-[13.5rem]'
+const COLUMN = 'min-w-[8.75rem] flex-1 basis-[8.75rem] sm:min-w-[13.5rem] sm:basis-[13.5rem]'
 
 /**
  * O tom de cada estado, como a casa o lê na agenda: neutro enquanto só
@@ -92,11 +107,14 @@ export function AgendaGrid({
     )
   }
 
-  const height = (toMin - fromMin) * SCALE
   const hours: number[] = []
   for (let m = Math.ceil(fromMin / 60) * 60; m <= toMin; m += 60) hours.push(m)
 
-  const top = (min: number) => (min - fromMin) * SCALE
+  /** Quantos píxeis vale um punhado de minutos, na escala do ecrã. */
+  const span = (minutes: number) => `calc(${minutes} * var(--esc) * 1px)`
+  /** A que altura da tela cai um minuto do dia. */
+  const top = (min: number) => span(min - fromMin)
+  const height = span(toMin - fromMin)
   const nowVisible = nowMin !== null && nowMin >= fromMin && nowMin <= toMin
   // A hora "agora" na régua só se escreve longe das horas certas.
   const nowLabel = nowVisible && nowMin! % 60 >= 12 && nowMin! % 60 <= 48
@@ -111,9 +129,9 @@ export function AgendaGrid({
     // uma grelha que ficou por acabar a meio do ecrã.
     <div
       className={clsx(
-        'w-full min-w-min',
+        'grelha-dia w-full min-w-min',
         columns.length === 1 &&
-          'mx-auto max-w-3xl border-x border-[var(--line-soft)]',
+          'mx-auto max-w-3xl border-x border-[var(--line-soft)] lg:shadow-[var(--shadow-soft)]',
       )}
     >
       {/* cabeçalho das colunas ------------------------------------ */}
@@ -128,13 +146,13 @@ export function AgendaGrid({
           <div
             key={column.staffId}
             className={clsx(
-              'flex items-center gap-2.5 border-l border-[var(--line-soft)] px-3 py-2.5 first:border-l-0',
+              'flex items-center gap-2 border-l border-[var(--line-soft)] px-2.5 py-1.5 first:border-l-0 sm:gap-2.5 sm:px-3 sm:py-2.5',
               COLUMN,
             )}
           >
             <span
               aria-hidden
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border sm:h-8 sm:w-8"
               style={{
                 color: colors[column.staffId] ?? 'var(--accent)',
                 borderColor: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 55%, transparent)`,
@@ -175,7 +193,7 @@ export function AgendaGrid({
               // A etiqueta centra-se no fio, menos a primeira: essa
               // subia para fora da caixa e ficava cortada ao meio pelo
               // cabeçalho das colunas.
-              style={{ top: Math.max(top(m) - 7, 2) }}
+              style={{ top: `max(calc(${top(m)} - 7px), 2px)` }}
             >
               {formatMinutes(m)}
             </span>
@@ -183,7 +201,7 @@ export function AgendaGrid({
           {nowLabel ? (
             <span
               className="tabular absolute right-2 text-[0.625rem] font-medium text-[var(--accent)]"
-              style={{ top: top(nowMin!) - 6 }}
+              style={{ top: `calc(${top(nowMin!)} - 6px)` }}
             >
               {formatMinutes(nowMin!)}
             </span>
@@ -223,6 +241,7 @@ export function AgendaGrid({
                   fromMin={fromMin}
                   toMin={toMin}
                   top={top}
+                  span={span}
                 />
 
                 {column.absences.map((absence, index) => (
@@ -231,10 +250,10 @@ export function AgendaGrid({
                     className="absolute inset-x-0 z-[1] bg-[repeating-linear-gradient(45deg,transparent,transparent_5px,var(--line)_5px,var(--line)_6px)]"
                     style={{
                       top: top(Math.max(absence.start, fromMin)),
-                      height:
-                        (Math.min(absence.end, toMin) -
-                          Math.max(absence.start, fromMin)) *
-                        SCALE,
+                      height: span(
+                        Math.min(absence.end, toMin) -
+                          Math.max(absence.start, fromMin),
+                      ),
                     }}
                     title={absence.reason ?? absence.kind}
                   />
@@ -250,6 +269,7 @@ export function AgendaGrid({
                       selected={selectedId === block.appointmentId}
                       href={hrefFor(block.appointmentId)}
                       top={top}
+                      span={span}
                     />
                   ))}
               </div>
@@ -288,30 +308,41 @@ function Block({
   selected,
   href,
   top,
+  span,
 }: {
   block: AgendaBlock
   color: string
   selected: boolean
   href: string
-  top: (min: number) => number
+  top: (min: number) => string
+  span: (minutes: number) => string
 }) {
-  const height = Math.max(
-    22,
-    (block.blockEndMin - block.blockStartMin) * SCALE - 2,
-  )
-  const compact = height < 42
+  const minutes = block.blockEndMin - block.blockStartMin
+  /*
+    O SEGUNDO ANDAR DO BLOCO MEDE-SE EM MINUTOS, NÃO EM PÍXEIS.
+    A altura já não se sabe daqui — depende da escala que o CSS
+    escolher para o ecrã que estiver a ler. O que se sabe é a duração,
+    e uma marcação de menos de quarenta minutos não tem chão para duas
+    linhas de texto em escala nenhuma.
+  */
+  const compact = minutes < 40
 
   return (
     <Link
       href={href}
       scroll={false}
       className={clsx(
-        'absolute inset-x-1.5 z-[2] block overflow-hidden rounded-[var(--radius)] border py-0.5 pl-2.5 pr-1.5',
+        'absolute inset-x-1 z-[2] block min-h-[22px] overflow-hidden rounded-[var(--radius)] border py-0.5 pl-2 pr-1 sm:inset-x-1.5 sm:pl-2.5 sm:pr-1.5',
         'transition-shadow duration-200 hover:z-[5] hover:shadow-[var(--shadow-soft)]',
         TONE_STYLE[AGENDA_TONE[block.status]],
         selected && 'z-[6] shadow-[var(--shadow-soft)] ring-1 ring-[var(--accent)]',
       )}
-      style={{ top: top(block.blockStartMin), height }}
+      // Os dois píxeis a menos são a greta entre um bloco e o seguinte:
+      // sem ela, duas marcações encostadas leem-se como uma só.
+      style={{
+        top: top(block.blockStartMin),
+        height: `calc(${span(minutes)} - 2px)`,
+      }}
       title={`${formatMinutes(block.startMin)}–${formatMinutes(block.endMin)} · ${block.clientName} · ${block.serviceName} · ${STATUS_LABEL[block.status]}`}
     >
       {/* a cor da profissional, num fio à esquerda */}
@@ -355,11 +386,13 @@ function Shade({
   fromMin,
   toMin,
   top,
+  span,
 }: {
   schedule: { start: number; end: number }[]
   fromMin: number
   toMin: number
-  top: (min: number) => number
+  top: (min: number) => string
+  span: (minutes: number) => string
 }) {
   const gaps: { start: number; end: number }[] = []
   let cursor = fromMin
@@ -377,7 +410,7 @@ function Shade({
           className="absolute inset-x-0 bg-[var(--surface-sunken)]"
           style={{
             top: top(gap.start),
-            height: (gap.end - gap.start) * SCALE,
+            height: span(gap.end - gap.start),
           }}
         />
       ))}

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import clsx from 'clsx'
 import { requireActor, resolveUnit, unitsFor, can } from '@/lib/auth/actor'
 import { loadAgendaDay } from '@/lib/agenda'
 import { getAppointment } from '@/lib/booking'
@@ -9,14 +10,17 @@ import {
   addDays,
   dayStart,
   formatDayLong,
+  isoRange,
   today,
   type IsoDay,
 } from '@/lib/time'
 import { AgendaGrid, AgendaList } from '@/components/agenda-grid'
+import { AgendaFocus } from '@/components/agenda-focus'
 import { AppointmentPanel } from '@/components/appointment-panel'
+import { DeskDayStrip } from '@/components/desk-day-strip'
 import { UnitSwitcher } from '@/components/unit-switcher'
-import { ButtonLink } from '@/components/ui'
-import { IconChevronLeft, IconChevronRight } from '@/components/desk-icons'
+import { ButtonLink, buttonClass } from '@/components/ui'
+import { shortName } from '@/lib/text'
 
 export const metadata: Metadata = { title: 'Agenda' }
 
@@ -37,11 +41,11 @@ export default async function AgendaDayPage({
   searchParams,
 }: {
   params: Promise<{ loja: string }>
-  searchParams: Promise<{ d?: string; m?: string }>
+  searchParams: Promise<{ d?: string; m?: string; p?: string }>
 }) {
   const actor = await requireActor()
   const { loja } = await params
-  const { d, m } = await searchParams
+  const { d, m, p } = await searchParams
 
   // Loja inexistente e loja sem acesso dão a MESMA resposta.
   const unit = await resolveUnit(actor, loja)
@@ -52,7 +56,7 @@ export default async function AgendaDayPage({
   // A profissional vê só a agenda dela.
   const onlyStaffId = actor.role === 'professional' ? actor.id : null
 
-  const [agenda, units, colorRows] = await Promise.all([
+  const [full, units, colorRows] = await Promise.all([
     loadAgendaDay(unit, day, { onlyStaffId }),
     unitsFor(actor),
     sql<{ id: string; display_color: string }[]>`
@@ -63,6 +67,30 @@ export default async function AgendaDayPage({
   const colors = Object.fromEntries(
     colorRows.map((r) => [r.id, r.display_color]),
   )
+
+  /*
+    UMA PROFISSIONAL DE CADA VEZ — A SAÍDA PARA O ECRÃ ESTREITO.
+
+    Com quatro colunas numa tela de 390px, cada uma fica com noventa
+    píxeis e a agenda deixa de se ler: nome cortado, serviço cortado, e
+    o dia a fugir para fora do ecrã. A escolha vive na barra de
+    endereços, e não em memória do navegador, porque assim a dona pode
+    guardar o endereço da agenda de uma pessoa e voltar lá amanhã.
+
+    O dia carrega-se inteiro na mesma: a peneira é de olhar, não de
+    perguntar à base outra vez. E o total de marcações do dia continua
+    a contar-se do dia inteiro — é o dia da loja que ele conta, não o
+    pedaço que está à vista.
+  */
+  const picked =
+    p && full.columns.some((column) => column.staffId === p) ? p : null
+  const agenda = picked
+    ? {
+        ...full,
+        columns: full.columns.filter((column) => column.staffId === picked),
+        blocks: full.blocks.filter((block) => block.staffId === picked),
+      }
+    : full
 
   const selectedId = m && UUID_RE.test(m) ? m : null
   const selected = selectedId ? await getAppointment(selectedId) : null
@@ -80,71 +108,174 @@ export default async function AgendaDayPage({
   const confirmSent = selected ? await hasConfirm(selected.id) : false
 
   const here = `/agenda/${unit.slug}`
-  const withDay = (target: IsoDay) => `${here}?d=${target}`
+  /** Trocar de dia nunca perde a pessoa escolhida, e vice-versa. */
+  const withDay = (target: IsoDay, staffId: string | null = picked) =>
+    `${here}?d=${target}${staffId ? `&p=${staffId}` : ''}`
   const hrefFor = (appointmentId: string | null) =>
     appointmentId ? `${withDay(day)}&m=${appointmentId}` : withDay(day)
 
-  const isToday = day === today(unit.timezone, now)
+  const todayDay = today(unit.timezone, now)
+  const isToday = day === todayDay
   const nowMin = isToday
     ? Math.round((now.getTime() - dayStart(day, unit.timezone).getTime()) / 60_000)
     : null
 
-  const appointmentCount = new Set(agenda.blocks.map((b) => b.appointmentId))
-    .size
+  /*
+    A CONTA É DO QUE ESTÁ NO ECRÃ, NÃO DO QUE ESTÁ NA BASE DE DADOS.
+
+    Com uma profissional escolhida, dizer «11 marcações» quando se veem
+    quatro é dar uma conta que ninguém consegue conferir. Conta-se o que
+    está desenhado — e diz-se de quem é.
+  */
+  const appointmentCount = new Set(agenda.blocks.map((b) => b.appointmentId)).size
   const staffCount = agenda.columns.length
+  const pickedName = picked
+    ? (full.columns.find((c) => c.staffId === picked)?.name ?? null)
+    : null
+
+  /*
+    A FITA ANDA COM O DIA, EM VEZ DE FICAR PRESA À SEMANA DO CALENDÁRIO.
+
+    Sete dias com o dia aberto ao meio: ontem e amanhã estão sempre à
+    distância de um toque, mesmo quando o dia aberto é um domingo. Presa
+    à semana de calendário, o domingo caía na última célula e ver o dia
+    seguinte obrigava a mudar de semana primeiro.
+  */
+  const stripDays = isoRange(addDays(day, -3), 7)
+
+  /*
+    ONDE O DIA SE ABRE.
+
+    Uma agenda que abre no topo mostra a hora de abrir a casa — que às
+    três da tarde não é a hora que interessa a ninguém. Abre-se em
+    «agora» quando o dia é hoje, e na primeira marcação quando não é. O
+    resto do dia está a um dedo de distância, para cima e para baixo.
+  */
+  const firstBlockMin =
+    agenda.blocks.length > 0
+      ? Math.min(...agenda.blocks.map((b) => b.blockStartMin))
+      : null
+  const focusMin = nowMin ?? firstBlockMin
 
   return (
     <div className="flex h-[calc(100dvh-8rem)] flex-col lg:h-[calc(100dvh-3.5rem)]">
       {/* a fita do dia ------------------------------------------------ */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--line-soft)] bg-[var(--surface-raised)] px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-1">
-          <NavArrow href={withDay(addDays(day, -1))} label="Dia anterior">
-            <IconChevronLeft className="h-4 w-4" />
-          </NavArrow>
-          <NavArrow href={withDay(addDays(day, 1))} label="Dia seguinte">
-            <IconChevronRight className="h-4 w-4" />
-          </NavArrow>
+      <div className="shrink-0 border-b border-[var(--line-soft)] bg-[var(--surface-raised)]">
+        {/* que dia é, onde, e o que se pode fazer -------------------- */}
+        {/*
+          No telemóvel a data fica com a linha toda para ela (basis-full):
+          a partilhar a linha com o selector de loja e o Encaixe, ficava
+          «Segunda-fei…», que é pior do que não estar lá. No monitor há
+          espaço de sobra e voltam todos à mesma linha.
+        */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-3 sm:flex-nowrap sm:px-6">
+          <div className="min-w-0 flex-1 basis-full leading-tight sm:basis-auto">
+            <h1 className="display truncate text-[1.0625rem] text-[var(--ink)] sm:text-lg">
+              {capitalise(formatDayLong(day, unit.timezone))}
+            </h1>
+            <p className="truncate text-[0.6875rem] text-[var(--ink-faint)]">
+              {unit.name} ·{' '}
+              {appointmentCount === 1
+                ? '1 marcação'
+                : `${appointmentCount} marcações`}
+              {onlyStaffId
+                ? ''
+                : pickedName
+                  ? ` · ${shortName(pickedName)}`
+                  : staffCount === 1
+                    ? ' · 1 profissional'
+                    : ` · ${staffCount} profissionais`}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <UnitSwitcher
+              units={units}
+              current={unit.slug}
+              base="/agenda"
+              showAll={false}
+            />
+            {can.overrideLeadRules(actor) ? (
+              <ButtonLink href={`${here}/encaixe?d=${day}`} size="sm">
+                Encaixe
+              </ButtonLink>
+            ) : null}
+          </div>
         </div>
 
-        <div className="min-w-0 leading-tight">
-          <h1 className="display truncate text-lg text-[var(--ink)]">
-            {capitalise(formatDayLong(day, unit.timezone))}
-          </h1>
-          <p className="truncate text-[0.6875rem] text-[var(--ink-faint)]">
-            {unit.name} ·{' '}
-            {appointmentCount === 1
-              ? '1 marcação'
-              : `${appointmentCount} marcações`}
-            {onlyStaffId
-              ? ''
-              : staffCount === 1
-                ? ' · 1 profissional'
-                : ` · ${staffCount} profissionais`}
-          </p>
+        {/* a semana, e o salto para um dia longe --------------------- */}
+        {/*
+          Envolve-se de propósito: no monitor a fita e o salto de data
+          partilham a linha; no telemóvel o salto desce para baixo dela
+          sozinho, sem que haja duas marcações do mesmo no ficheiro.
+        */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-6">
+          <div className="min-w-[15rem] flex-1">
+            <DeskDayStrip
+              dense
+              days={stripDays}
+              active={day}
+              today={todayDay}
+              timezone={unit.timezone}
+              hrefFor={(value) => withDay(value)}
+              prevHref={withDay(addDays(day, -7))}
+              nextHref={withDay(addDays(day, 7))}
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {/*
+              O salto para um dia longe. Quem está a passar o livro de
+              papel marca para daqui a três meses, e chegar lá de setas
+              de semana em semana são doze toques. Aqui é um: no
+              telemóvel abre o calendário do sistema.
+            */}
+            <form action={here} className="flex items-center gap-1.5">
+              <label htmlFor="agenda-dia" className="sr-only">
+                Saltar para um dia
+              </label>
+              <input
+                id="agenda-dia"
+                type="date"
+                name="d"
+                defaultValue={day}
+                className="tabular h-8 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface)] px-2 text-[0.75rem] text-[var(--ink)]"
+              />
+              {picked ? <input type="hidden" name="p" value={picked} /> : null}
+              <button type="submit" className={buttonClass('outline', 'sm')}>
+                Ir
+              </button>
+            </form>
+
+            {!isToday ? (
+              <Link href={withDay(todayDay)} className={buttonClass('quiet', 'sm')}>
+                Hoje
+              </Link>
+            ) : null}
+          </div>
         </div>
 
-        {!isToday ? (
-          <Link
-            href={here}
-            className="rounded-[var(--radius)] border border-[var(--accent)] px-2 py-1 text-[0.625rem] font-medium uppercase tracking-[0.05em] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+        {/* uma profissional de cada vez ------------------------------ */}
+        {!onlyStaffId && full.columns.length > 1 ? (
+          <nav
+            aria-label="Ver uma profissional"
+            className="no-scrollbar flex items-center gap-1.5 overflow-x-auto border-t border-[var(--line-soft)] px-4 py-2 sm:px-6"
           >
-            Voltar a hoje
-          </Link>
+            <StaffChip href={withDay(day, null)} active={picked === null}>
+              Todas
+            </StaffChip>
+            {full.columns.map((column) => (
+              <StaffChip
+                key={column.staffId}
+                href={withDay(day, column.staffId)}
+                active={picked === column.staffId}
+                color={colors[column.staffId]}
+              >
+                {shortName(column.name)}
+              </StaffChip>
+            ))}
+          </nav>
         ) : null}
-
-        <div className="ml-auto flex items-center gap-3">
-          <UnitSwitcher
-            units={units}
-            current={unit.slug}
-            base="/agenda"
-            showAll={false}
-          />
-          {can.overrideLeadRules(actor) ? (
-            <ButtonLink href={`${here}/encaixe?d=${day}`} size="sm">
-              Encaixe
-            </ButtonLink>
-          ) : null}
-        </div>
       </div>
 
       {/* a grelha e o painel ----------------------------------------- */}
@@ -158,7 +289,17 @@ export default async function AgendaDayPage({
             className="pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-[var(--surface)] to-transparent lg:hidden"
           />
         ) : null}
-        <div className="min-w-0 flex-1 overflow-auto overscroll-contain">
+        <div
+          data-rolo-agenda
+          className="min-w-0 flex-1 overflow-auto overscroll-contain"
+        >
+          {focusMin !== null ? (
+            <AgendaFocus
+              focusMin={focusMin}
+              fromMin={agenda.fromMin}
+              chave={`${day}:${picked ?? ''}`}
+            />
+          ) : null}
           {onlyStaffId ? (
             <>
               {/* no telemóvel, o dia da profissional é uma lista */}
@@ -220,21 +361,40 @@ async function hasConfirm(appointmentId: string): Promise<boolean> {
   return rows[0]?.exists ?? false
 }
 
-function NavArrow({
+/**
+ * Uma pastilha por profissional, com o fio da cor dela à esquerda — a
+ * mesma cor que os blocos dela têm na grelha, para que a escolha e o
+ * que ela faz se leiam como a mesma coisa.
+ */
+function StaffChip({
   href,
-  label,
+  active,
+  color,
   children,
 }: {
   href: string
-  label: string
+  active: boolean
+  color?: string
   children: React.ReactNode
 }) {
   return (
     <Link
       href={href}
-      aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      aria-current={active ? 'true' : undefined}
+      className={clsx(
+        'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.75rem] transition-colors',
+        active
+          ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)]'
+          : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]',
+      )}
     >
+      {color ? (
+        <span
+          aria-hidden
+          className="block h-1.5 w-1.5 rounded-full"
+          style={{ background: color }}
+        />
+      ) : null}
       {children}
     </Link>
   )

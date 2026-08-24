@@ -4,7 +4,6 @@ import { getOrg } from '@/lib/org'
 import { BRAND } from '@/lib/branding'
 import { can, requireActor, type Actor } from '@/lib/auth/actor'
 import { signOutAction } from '@/app/(auth)/entrar/actions'
-import { formatDayLong, today } from '@/lib/time'
 import { initial } from '@/lib/text'
 import { DeskNav, type NavItem } from '@/components/desk-nav'
 import { Monogram } from '@/components/brand'
@@ -26,8 +25,17 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
 
   const home = actor.role === 'professional' ? '/agenda' : '/'
   const houseName = org?.name ?? BRAND.fallbackName
-  const tz = org?.timezone ?? 'Europe/Lisbon'
-  const dayLabel = capitalise(formatDayLong(today(tz), tz))
+
+  /*
+    A DATA NÃO MORA NA MOLDURA — MORA NA PÁGINA.
+
+    Esta barra mostrava sempre o dia de HOJE. Na agenda isso dava duas
+    datas ao mesmo tempo, uma por cima da outra: a da moldura, presa a
+    hoje, e a do título, que anda com as setas. Quem abrisse a semana
+    que vem via a barra a jurar que ainda era segunda-feira. Ficou o
+    nome da casa, que não muda de linha para linha, e a data ficou só
+    onde é verdadeira.
+  */
 
   return (
     <div className="skin-desk min-h-dvh bg-[var(--surface)] text-[var(--ink)]">
@@ -78,9 +86,6 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
 
             <div className="min-w-0 flex-1 leading-tight">
               <p className="display truncate text-[0.9375rem] text-[var(--ink)]">
-                {dayLabel}
-              </p>
-              <p className="hidden truncate text-[0.75rem] text-[var(--ink-faint)] sm:block">
                 {houseName}
               </p>
             </div>
