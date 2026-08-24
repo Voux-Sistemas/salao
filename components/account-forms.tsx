@@ -20,6 +20,7 @@ import {
 import { LANGUAGES, LANGUAGE_LABEL, type Language } from '@/lib/i18n/config'
 import { Button, Field, Input, Notice, Select } from '@/components/ui'
 import { formatPhone } from '@/lib/text'
+import { PhoneInput } from '@/components/phone-input'
 
 /**
  * A superfície da cliente fala três línguas, e por isso nenhum texto
@@ -80,14 +81,11 @@ export function PhoneForm({
       {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
 
       <Field label={labels.phone} htmlFor="phone" hint={labels.phoneHint}>
-        <Input
+        <PhoneInput
           id="phone"
           name="phone"
-          type="tel"
           required
           autoFocus
-          inputMode="tel"
-          autoComplete="tel"
           defaultValue={defaultPhone}
         />
       </Field>

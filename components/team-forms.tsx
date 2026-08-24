@@ -21,6 +21,7 @@ import {
   type TeamState,
 } from '@/app/(desk)/admin/equipe/actions'
 import { Panel } from '@/components/gestao-panel'
+import { PhoneInput } from '@/components/phone-input'
 import { Badge, Button, Field, Input, Notice, Select, Textarea } from '@/components/ui'
 import { ABSENCE_LABEL, LEVEL_LABEL } from '@/lib/status'
 import { WEEKDAY_NAMES_PT, formatIsoDay, formatMinutes } from '@/lib/time'
@@ -139,14 +140,12 @@ export function MemberForm({
             htmlFor="member-phone"
             hint="É por aqui que entra no sistema. Não se repete na rede."
           >
-            <Input
+            <PhoneInput
               id="member-phone"
               name="phone"
               defaultValue={member?.phone}
-              inputMode="tel"
               autoComplete="off"
               required
-              className="tabular"
             />
           </Field>
 

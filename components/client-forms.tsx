@@ -12,6 +12,7 @@ import {
   type ClientState,
   type ImportState,
 } from '@/app/(desk)/clientes/actions'
+import { PhoneInput } from '@/components/phone-input'
 import { Button, Field, Input, Notice, Select, Textarea } from '@/components/ui'
 import { LANGUAGES, LANGUAGE_LABEL } from '@/lib/i18n/config'
 
@@ -96,15 +97,12 @@ export function ClientForm({
             htmlFor="client-phone"
             hint="É a identidade da cliente e é único na rede."
           >
-            <Input
+            <PhoneInput
               id="client-phone"
               name="phone"
               required
-              inputMode="tel"
               autoComplete="off"
-              placeholder="+351 912 345 678"
               defaultValue={client?.phone ?? ''}
-              className="tabular"
             />
           </Field>
           <Field label="E-mail" htmlFor="client-email">

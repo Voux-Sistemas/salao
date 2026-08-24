@@ -146,7 +146,7 @@ export default async function ClientesPage({
                 key={value}
                 href={href}
                 className={clsx(
-                  'rounded-[var(--radius)] border px-2.5 py-1 text-[0.75rem] uppercase tracking-[0.05em] transition-colors',
+                  'rounded-full border px-3 py-1 text-[0.75rem] font-medium transition-colors',
                   active
                     ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
                     : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',

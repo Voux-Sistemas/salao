@@ -237,10 +237,11 @@ export async function DayPanel({
 
   return (
     <div className="mx-auto max-w-[110rem] space-y-4 px-4 py-6 sm:px-6 sm:py-8">
-      <header>
+      <header className="surge">
         <h1 className="display text-[1.75rem] leading-none text-[var(--ink)]">
           Hoje
         </h1>
+        <span aria-hidden className="fio-casa mt-3" />
         {/* A data ja esta na barra de cima; repeti-la aqui era mobilia.
             A linha diz antes o recorte: de que casas e este dia. */}
         <p className="mt-2 text-[0.875rem] text-[var(--ink-muted)]">
@@ -249,7 +250,7 @@ export async function DayPanel({
       </header>
 
       {/* ---------------------------------------------------- HOJE --- */}
-      <section aria-label="O dia">
+      <section aria-label="O dia" className="surge surge-1">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat label="Marcações" value={String(totals.appointments)} />
           <Stat label="Faturação" value={formatCents(totals.revenue, currency)} />
@@ -324,7 +325,7 @@ export async function DayPanel({
                     </div>
                     <div className="mt-2 h-[6px] w-full overflow-hidden rounded-full bg-[var(--surface-sunken)]">
                       <div
-                        className="h-full rounded-full bg-[var(--accent)]"
+                        className="enche h-full rounded-full bg-[var(--accent)]"
                         style={{
                           width: `${Math.round((marcacoes / maiorDia) * 100)}%`,
                         }}
@@ -342,7 +343,7 @@ export async function DayPanel({
       </section>
 
       {/* ----------------------------------------------------- MÊS --- */}
-      <section aria-label="O mês">
+      <section aria-label="O mês" className="surge surge-2">
         <Header title="O mês" note={`Do dia 1 a ${dayOfMonth}`} />
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -376,7 +377,7 @@ export async function DayPanel({
       </section>
 
       {/* -------------------------------------------------- EQUIPA --- */}
-      <section aria-label="A equipa">
+      <section aria-label="A equipa" className="surge surge-3">
         <Header title="A equipa" note="Produção do mês, por serviço concluído" />
 
         <div className="grid items-start gap-3 lg:grid-cols-[1.4fr_1fr]">
@@ -576,12 +577,16 @@ function MonthChart({
           title={`${d.day.slice(8)} · ${formatCents(d.cents, currency)}`}
         >
           <div
-            className="w-full rounded-t-[3px] transition-opacity group-hover:opacity-70"
+            className="cresce w-full rounded-t-[3px] transition-opacity group-hover:opacity-70"
             style={{
               height: `${Math.round((d.cents / peak) * 116)}px`,
               minHeight: d.cents > 0 ? '3px' : '2px',
               background: i === ultimo ? 'var(--gold)' : 'var(--accent)',
               opacity: d.cents > 0 ? 1 : 0.14,
+              // Uma vaga da esquerda para a direita, e não trinta e um
+              // saltos ao mesmo tempo: doze milésimos por dia chega para
+              // se ler como uma varredura e acaba antes de incomodar.
+              ['--atraso' as string]: `${i * 12}ms`,
             }}
           />
         </div>

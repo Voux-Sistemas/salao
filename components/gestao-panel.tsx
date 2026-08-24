@@ -100,7 +100,7 @@ export function TableHeader({
     <div
       className={clsx(
         'hidden items-center gap-x-4 px-5 py-2.5 sm:grid sm:px-6',
-        'text-[0.6875rem] uppercase tracking-[0.16em] text-[var(--ink-faint)]',
+        'text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-[var(--ink-faint)]',
         className,
       )}
     >

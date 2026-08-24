@@ -49,18 +49,19 @@ export function StoreChooser({
 }) {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-      <header className="mb-5">
+      <header className="surge mb-5">
         <h1 className="display text-[1.75rem] leading-none text-[var(--ink)]">
           {title}
         </h1>
+        <span aria-hidden className="fio-casa mt-3" />
         {hint ? (
-          <p className="mt-2 max-w-lg text-[0.875rem] leading-relaxed text-[var(--ink-muted)]">
+          <p className="mt-3 max-w-lg text-[0.875rem] leading-relaxed text-[var(--ink-muted)]">
             {hint}
           </p>
         ) : null}
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="surge surge-1 grid gap-3 sm:grid-cols-2">
         {stores.map((store) => (
           <Link
             key={store.href}

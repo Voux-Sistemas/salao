@@ -33,10 +33,14 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
     <div className="skin-desk min-h-dvh bg-[var(--surface)] text-[var(--ink)]">
       {/* A coluna da casa — só no ecrã largo. ------------------------ */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[4.5rem] flex-col border-r border-[var(--line-soft)] bg-[var(--surface-raised)] lg:flex">
+        {/* O monograma é a única coisa aqui pintada com o ouro do
+            logótipo. Tudo o resto na coluna é ferramenta e vai a azul;
+            este é a assinatura da casa, e é o que faz a coluna do
+            balcão pertencer ao mesmo sítio que a montra. */}
         <Link
           href={home}
           title={houseName}
-          className="flex h-14 w-full shrink-0 items-center justify-center border-b border-[var(--line-soft)] transition-colors hover:text-[var(--accent)]"
+          className="flex h-14 w-full shrink-0 items-center justify-center border-b border-[var(--line-soft)] text-[var(--house)] transition-colors hover:text-[var(--accent)]"
         >
           <Monogram className="text-xl text-current" />
         </Link>
@@ -58,12 +62,16 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
 
       <div className="flex min-h-dvh flex-col lg:pl-[4.5rem]">
         {/* A fita de cima: o dia, a casa, a pessoa. ------------------ */}
-        <header className="sticky top-0 z-30 border-b border-[var(--line-soft)] bg-[var(--surface-raised)]">
+        {/* Vidro fosco em vez de branco chapado: a lista passa por
+            baixo e vê-se que passa. Numa agenda que se rola o dia
+            inteiro, saber que ainda há conteúdo acima vale mais do que
+            a barra ser opaca. */}
+        <header className="sticky top-0 z-30 border-b border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--surface-raised)_78%,transparent)] backdrop-blur-md">
           <div className="flex h-14 items-center gap-3 px-4 sm:gap-5 sm:px-6">
             <Link
               href={home}
               aria-label={houseName}
-              className="shrink-0 transition-colors hover:text-[var(--accent)] lg:hidden"
+              className="shrink-0 text-[var(--house)] transition-colors hover:text-[var(--accent)] lg:hidden"
             >
               <Monogram className="text-xl text-current" />
             </Link>

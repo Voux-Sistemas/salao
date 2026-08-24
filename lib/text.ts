@@ -1,3 +1,5 @@
+import { DIAL_CODES } from '@/lib/phone'
+
 /** Combinantes que sobram depois de separar o acento da letra. */
 const DIACRITICS = /[̀-ͯ]/g
 
@@ -17,16 +19,6 @@ export function initial(name: string): string {
   return name.trim().charAt(0).toUpperCase() || '?'
 }
 
-/**
- * Indicativos que aparecem de facto na agenda deste salão: Portugal e
- * os países de onde vêm as clientes. Testam-se do mais longo para o
- * mais curto, que é como se desmonta um número E.164.
- */
-const DIAL_CODES = [
-  '351', '352', '353', '212', '238', '239', '244', '245', '258', '291',
-  '31', '32', '33', '34', '39', '41', '43', '44', '49', '55',
-  '1',
-]
 
 /** Espaço inquebrável — o que segura os grupos do número na mesma linha. */
 const NBSP = '\u00a0'

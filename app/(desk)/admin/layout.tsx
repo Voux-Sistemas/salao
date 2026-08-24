@@ -36,12 +36,13 @@ export default async function AdminLayout({
     // controlo compara colunas, e a 5xl a grelha de quatro indicadores
     // ficava com cartões da largura de um botão.
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <header className="mb-6">
+      <header className="surge mb-6">
         <div className="mb-4">
           <h1 className="display text-[1.75rem] leading-none text-[var(--ink)]">
             Gestão
           </h1>
-          <p className="mt-2 text-[0.8125rem] text-[var(--ink-muted)]">
+          <span aria-hidden className="fio-casa mt-3" />
+          <p className="mt-3 text-[0.8125rem] text-[var(--ink-muted)]">
             A rede em números — e as portas por onde se muda o que eles
             dizem.
           </p>

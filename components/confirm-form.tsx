@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { bookAction, type BookState } from '@/app/(public)/agendar/[loja]/confirmar/actions'
+import { PhoneInput } from '@/components/phone-input'
 import { Button, Field, Input, Notice, Textarea } from '@/components/ui'
 
 export type ConfirmLabels = {
@@ -58,13 +59,10 @@ export function ConfirmForm({
       </Field>
 
       <Field label={labels.phone} htmlFor="phone" hint={labels.phoneHint}>
-        <Input
+        <PhoneInput
           id="phone"
           name="phone"
-          type="tel"
           required
-          inputMode="tel"
-          autoComplete="tel"
           defaultValue={defaultPhone}
         />
       </Field>

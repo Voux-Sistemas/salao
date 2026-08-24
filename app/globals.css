@@ -118,50 +118,64 @@
 }
 
 /* ---------------------------------------------------------------------
-   Pele do balcão: o instrumento de trabalho.
+   Pele do balcão: o instrumento de trabalho — mas da mesma casa.
 
-   NÃO segue o desenho da cliente, e é de propósito. A porcelana, as
-   serifas e o ouro são a montra: servem quem entra uma vez por mês e
-   quer ver uma casa bonita. Quem passa aqui o dia quer outra coisa —
-   papel frio, uma só família sem serifa, números que se leem de
-   atravessado, e cor que quer dizer alguma coisa em vez de enfeitar.
+   A montra e o balcão não podem ser dois produtos diferentes. Quem
+   trabalha aqui atende ao telefone a olhar para a mesma marca que a
+   cliente vê no site, e um painel de aço azul ao lado de um site de
+   porcelana lê-se como software comprado a outra pessoa.
 
-   O ouro sai. Entra o azul de trabalho para o que se carrega, e o
-   violeta como segunda série dos gráficos. Verde, âmbar e vermelho
-   ficam livres para o que são: bom, atenção, mau. Uma cor por
-   significado — é isto que faz um painel ler-se de relance.
+   Então o balcão fica com O MESMO PAPEL da casa — o creme, dessaturado
+   e um tom mais seco, que é a diferença entre a seda da montra e o
+   papel de trabalho — e com a MESMA TINTA QUENTE. O que muda é o
+   ofício: cartões brancos por cima do creme para separar blocos,
+   uma família sem serifa para tudo o que se lê depressa, e cor com
+   significado em vez de enfeite.
+
+   Três famílias de cor, e nunca se misturam:
+     --accent   azul — o que se carrega
+     --gold     violeta (a «segunda série» dos gráficos)
+     --house    o ouro da casa, SÓ decoração: o monograma, um fio
+   Verde, âmbar e vermelho ficam livres para o que são: bom, atenção,
+   mau. Uma cor por significado — é isto que faz um painel ler-se de
+   relance, e é por isso que o ouro nunca entra num número.
    --------------------------------------------------------------------- */
 .skin-desk {
   color-scheme: light;
 
-  --surface: #F3F5F9;
+  --surface: #F1EEE8;
   --surface-raised: #FFFFFF;
-  --surface-2: #ECEFF5;
-  --surface-sunken: #E2E7F0;
-  --ink: #0F1520;
-  --ink-muted: #55606F;
-  --ink-faint: #8590A1;
-  --accent: #2D5BD7;
-  --accent-strong: #1E3F9E;
+  --surface-2: #E9E5DD;
+  --surface-sunken: #DFDACF;
+  --ink: #1C1815;
+  --ink-muted: #5E574E;
+  --ink-faint: #938B7F;
+  --accent: #2B51C9;
+  --accent-strong: #1C3893;
   --accent-ink: #FFFFFF;
   /* Não é ouro nenhum: é a segunda série. O nome do token é estrutural
      — «a outra cor» — e cada pele decide qual é. */
-  --gold: #6D5AE6;
-  --line: rgba(15, 21, 32, 0.11);
-  --line-soft: rgba(15, 21, 32, 0.055);
-  --shadow-warm: 0 18px 40px -24px rgba(15, 21, 32, 0.35);
+  --gold: #6552D9;
+  /* O ouro da casa. Não tem trabalho nenhum: existe para o balcão
+     assinar-se com a mesma tinta do logótipo. Nunca em dados. */
+  --house: #A9884C;
+  --line: rgba(28, 24, 21, 0.13);
+  --line-soft: rgba(28, 24, 21, 0.065);
+  --shadow-warm: 0 18px 40px -24px rgba(46, 38, 28, 0.38);
   --shadow-soft:
-    0 1px 2px rgba(15, 21, 32, 0.05),
-    0 10px 28px -20px rgba(15, 21, 32, 0.3);
+    0 1px 2px rgba(46, 38, 28, 0.05),
+    0 10px 28px -20px rgba(46, 38, 28, 0.32);
 
-  --ok: #157F3C;
+  --ok: #2C7A45;
   --warn: #A25C05;
-  --bad: #C0362B;
+  --bad: #B93B2E;
 
-  --radius: 12px;
-  --radius-sm: 8px;
+  /* Entre o fio quadrado do papel timbrado (2px) e o botão de telemóvel
+     (16px). Dez é onde um cartão ainda parece papel e já parece ecrã. */
+  --radius: 10px;
+  --radius-sm: 7px;
 
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%238590A1' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.25 5 4.75 9 1.25'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%23938B7F' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.25 5 4.75 9 1.25'/%3E%3C/svg%3E");
 }
 
 /* ---------------------------------------------------------------------
@@ -181,6 +195,36 @@
   font-style: normal;
   font-weight: 600;
   letter-spacing: -0.021em;
+}
+
+/* O TÍTULO DA PÁGINA É O QUE FICA DA CASA.
+   Uma exceção, e só uma: o «Hoje», o «Clientes», o «Caixa». A didone do
+   logótipo aparece aqui em tamanho de trabalho — sem versaletes, sem
+   ouro, sem centrar — e é quanto basta para o balcão ser da mesma casa
+   que a montra. Tudo o que está por baixo (os títulos de cartão, os
+   números, as etiquetas) continua na sem-serifa, que é o que se lê
+   depressa. O chique era a serifa GRANDE E SOZINHA no meio do branco;
+   aqui ela encabeça uma página densa, e passa a ser assinatura.
+
+   `h1.display` são duas classes mais um elemento — ganha à regra de
+   cima sem precisar de ordem nem de !important. */
+.skin-desk h1.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+/* O fio de ouro por baixo do título. É o único ouro da área de
+   trabalho e é literalmente um traço: quarenta pixéis a dizer de que
+   casa é este painel. Cresce da esquerda quando a página abre. */
+.fio-casa {
+  display: block;
+  height: 2px;
+  width: 2.5rem;
+  border-radius: 2px;
+  background: var(--house, var(--accent));
+  transform-origin: left;
+  animation: drawline 0.8s cubic-bezier(0.22, 0.61, 0.21, 1) 120ms both;
 }
 
 /* O versalete espaçado é o gesto mais «chique» do sistema, e é o
@@ -206,11 +250,64 @@
   box-shadow: 0 1px 2px rgba(15, 21, 32, 0.04);
 }
 
+/* O cartão que é ligação levanta-se ao passar o rato. Dois pixéis, não
+   quatro: ao lado da cliente o cartão é objeto e pode saltar; aqui é
+   informação, e informação que salta cansa. O suficiente para o dedo
+   saber que aquilo abre. */
+.skin-desk a > .card {
+  transition:
+    transform 0.25s cubic-bezier(0.22, 0.61, 0.21, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 0.61, 0.21, 1),
+    border-color 0.25s ease;
+}
+.skin-desk a:hover > .card {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgba(46, 38, 28, 0.05),
+    0 8px 20px -12px rgba(46, 38, 28, 0.4);
+}
+
+/* A ETIQUETA DEIXA DE SER UM VERSALETE.
+   «CONFIRMADA» em maiúsculas espaçadas com contorno é gesto de convite;
+   numa lista de quarenta linhas são quarenta pequenas caixas a gritar.
+   No balcão a etiqueta passa a pastilha: minúsculas, sem contorno, com
+   uma lavagem da própria cor por trás. Lê-se pela mancha, à distância a
+   que se lê uma agenda — e a cor continua a querer dizer o que dizia.
+   A lavagem sai de `currentColor`, portanto cada tom pinta-se sozinho. */
+.skin-desk .badge {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-color: transparent;
+  padding: 0.1875rem 0.5rem;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
 /* Violeta sobre castanho-escuro não se lia. A marca do texto passa a
    ser uma lavagem do azul de trabalho. */
 .skin-desk ::selection {
   background: color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--ink);
+}
+
+/* O MESMO GRÃO DA MONTRA, mais baixo.
+   É o truque que costura as duas metades: a mesma película de papel
+   algodão por cima de tudo. Do lado da cliente está a 5% e vê-se; aqui
+   a 3,5% não se vê — sente-se, e chega para o creme deixar de ser
+   hexadecimal chapado. Fica por cima de tudo e não apanha o rato. */
+.skin-desk {
+  position: relative;
+}
+.skin-desk::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
 }
 
 /* O fio por omissão, para quem só escreve `border` e não diz a cor.
@@ -422,8 +519,37 @@ body {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-10px); }
 }
+/* O painel a assentar. Nove pixéis e meio segundo — do lado da cliente
+   uma entrada é um gesto e pode demorar; num ecrã que se abre cinquenta
+   vezes por dia tem de estar acabada antes de a mão chegar ao rato. */
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: none; }
+}
+/* A barra a crescer do chão. Um gráfico que já está lá quando a página
+   abre é uma imagem; um que cresce é uma medição. */
+@keyframes crescer {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
 
 .animate-rise  { animation: rise 0.9s cubic-bezier(0.22, 0.61, 0.21, 1) both; }
+.surge   { animation: surgir 0.45s cubic-bezier(0.22, 0.61, 0.21, 1) both; }
+.surge-1 { animation-delay: 40ms; }
+.surge-2 { animation-delay: 85ms; }
+.surge-3 { animation-delay: 130ms; }
+.surge-4 { animation-delay: 175ms; }
+.surge-5 { animation-delay: 220ms; }
+/* Crescem do chão (a coluna do gráfico) e da esquerda (a barra de
+   proporção). O atraso é escalonado por quem as usa, com --atraso. */
+.cresce {
+  transform-origin: bottom;
+  animation: crescer 0.7s cubic-bezier(0.22, 0.61, 0.21, 1) var(--atraso, 0ms) both;
+}
+.enche {
+  transform-origin: left;
+  animation: drawline 0.85s cubic-bezier(0.22, 0.61, 0.21, 1) var(--atraso, 150ms) both;
+}
 .animate-fade  { animation: fade 1.1s ease both; }
 .animate-bloom { animation: bloom 1s cubic-bezier(0.22, 0.61, 0.21, 1) both; }
 .delay-1 { animation-delay: 90ms; }

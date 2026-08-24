@@ -9,6 +9,7 @@ import {
   type FormState,
 } from '@/app/(auth)/entrar/actions'
 import { setupAction } from '@/app/(auth)/comecar/actions'
+import { PhoneInput } from '@/components/phone-input'
 import { Button, Field, Input, Notice } from '@/components/ui'
 
 /**
@@ -62,12 +63,10 @@ export function SignInForm() {
       <Result state={state} />
 
       <Field label="Telemóvel" htmlFor="phone">
-        <Input
+        <PhoneInput
           id="phone"
           name="phone"
-          type="tel"
           required
-          inputMode="tel"
           autoComplete="username"
           autoFocus
         />
@@ -215,12 +214,10 @@ export function SetupForm({ timezone }: { timezone: string }) {
       </Field>
 
       <Field label="Telemóvel" htmlFor="phone" hint="É com ele que entra daqui em diante.">
-        <Input
+        <PhoneInput
           id="phone"
           name="phone"
-          type="tel"
           required
-          inputMode="tel"
           autoComplete="username"
         />
       </Field>

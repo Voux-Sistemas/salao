@@ -21,6 +21,7 @@ import {
   type UnitState,
 } from '@/app/(desk)/admin/unidades/actions'
 import { Panel } from '@/components/gestao-panel'
+import { PhoneInput } from '@/components/phone-input'
 import { Button, Field, Input, Notice, Select } from '@/components/ui'
 import { STRATEGY_LABEL } from '@/lib/status'
 import { WEEKDAY_NAMES_PT } from '@/lib/time'
@@ -198,14 +199,11 @@ export function UnitDetailsForm({
       >
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Telefone" htmlFor="unit-phone">
-            <Input
+            <PhoneInput
               id="unit-phone"
               name="phone"
               defaultValue={unit?.phone ?? ''}
-              maxLength={30}
-              inputMode="tel"
               autoComplete="off"
-              className="tabular"
             />
           </Field>
           <Field
@@ -213,14 +211,11 @@ export function UnitDetailsForm({
             htmlFor="unit-whatsapp"
             hint="As confirmações saem por aqui."
           >
-            <Input
+            <PhoneInput
               id="unit-whatsapp"
               name="whatsapp"
               defaultValue={unit?.whatsapp_phone ?? ''}
-              maxLength={30}
-              inputMode="tel"
               autoComplete="off"
-              className="tabular"
             />
           </Field>
           <Field label="E-mail" htmlFor="unit-email">

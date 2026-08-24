@@ -6,6 +6,7 @@ import {
   encaixeAction,
   type EncaixeState,
 } from '@/app/(desk)/agenda/[loja]/encaixe/actions'
+import { PhoneInput } from '@/components/phone-input'
 import { Button, Field, Input, Notice, Select, Textarea } from '@/components/ui'
 import { SOURCE_LABEL } from '@/lib/status'
 import { formatPhone } from '@/lib/text'
@@ -64,10 +65,9 @@ export function EncaixeForm({
             htmlFor="encaixe-phone"
             hint="É por aqui que a ficha se reconhece."
           >
-            <Input
+            <PhoneInput
               id="encaixe-phone"
               name="phone"
-              inputMode="tel"
               autoComplete="off"
               required
             />
