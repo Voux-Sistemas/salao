@@ -100,7 +100,24 @@ export async function encaixeAction(
     }
   }
 
-  redirect(
-    `/agenda/${unit.slug}?d=${isoDay(startsAt, unit.timezone)}&m=${result.appointmentId}`,
-  )
+  const day = isoDay(startsAt, unit.timezone)
+
+  /*
+   * «MARCAR E CONTINUAR» — O CAMINHO DE QUEM ESTÁ A PASSAR O LIVRO.
+   *
+   * A dona tem uma agenda de papel para transcrever, e faz isto dezenas
+   * de vezes seguidas. Voltar à agenda de cada vez obrigava a refazer o
+   * caminho todo: abrir o encaixe, procurar o dia, começar de novo.
+   *
+   * Este atalho fica no encaixe, no MESMO dia — que é o que se repete
+   * quando se copia uma página do livro — e larga tudo o resto: a
+   * cliente e a visita são outras. O `ok` traz o número da marcação que
+   * acabou de nascer, só para a página poder dizer que ela ficou mesmo
+   * lá, com uma ligação para a ver na agenda.
+   */
+  if (form.get('again')) {
+    redirect(`/agenda/${unit.slug}/encaixe?d=${day}&ok=${result.appointmentId}`)
+  }
+
+  redirect(`/agenda/${unit.slug}?d=${day}&m=${result.appointmentId}`)
 }

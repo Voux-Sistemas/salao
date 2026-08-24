@@ -16,11 +16,35 @@ const EMPTY: EncaixeState = { error: null }
 /** A origem de um encaixe nunca é o site — o site marca-se sozinho. */
 const SOURCES = ['counter', 'phone', 'whatsapp', 'walk_in'] as const
 
-function Submit() {
+/*
+ * DOIS BOTÕES, PORQUE HÁ DUAS MANEIRAS DE ESTAR AQUI.
+ *
+ * Ao balcão marca-se uma visita e vai-se ver a agenda — é o botão da
+ * esquerda, o de sempre. A transcrever o livro de papel marcam-se
+ * dezenas seguidas, e ir à agenda de cada vez é perder o caminho: o da
+ * direita fica no encaixe, no mesmo dia, pronto para a seguinte.
+ *
+ * O `name` só viaja no botão que foi carregado — é assim que um
+ * formulário sabe qual dos dois falou.
+ */
+function Submit({
+  again = false,
+  children,
+}: {
+  again?: boolean
+  children: React.ReactNode
+}) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" size="md" disabled={pending}>
-      Marcar encaixe
+    <Button
+      type="submit"
+      size="md"
+      variant={again ? 'outline' : 'primary'}
+      name={again ? 'again' : undefined}
+      value={again ? '1' : undefined}
+      disabled={pending}
+    >
+      {children}
     </Button>
   )
 }
@@ -95,7 +119,14 @@ export function EncaixeForm({
         />
       </Field>
 
-      <Submit />
+      <div className="flex flex-wrap gap-2">
+        <Submit>Marcar encaixe</Submit>
+        <Submit again>Marcar e continuar</Submit>
+      </div>
+      <p className="text-[0.6875rem] text-[var(--ink-faint)]">
+        «Continuar» fica neste dia, com a visita limpa, pronta para a
+        marcação seguinte.
+      </p>
     </form>
   )
 }

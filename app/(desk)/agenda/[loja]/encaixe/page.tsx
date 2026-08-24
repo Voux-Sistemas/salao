@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
-import { ArrowLeft, Plus, X } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { requireManagement, resolveUnit } from '@/lib/auth/actor'
 import {
   buildPlan,
@@ -32,6 +32,7 @@ import {
   formatDuration,
   formatMinutes,
   formatTime,
+  isoDay,
   isoRange,
   minutesOfDay,
   parseMinutes,
@@ -39,8 +40,12 @@ import {
   type IsoDay,
 } from '@/lib/time'
 import { Monogram } from '@/components/brand'
-import { Badge, Card, Empty, Input, Notice, buttonClass } from '@/components/ui'
+import { Card, Empty, Input, Notice, buttonClass } from '@/components/ui'
 import { DeskDayStrip } from '@/components/desk-day-strip'
+import {
+  DeskServicePicker,
+  type PickerCategory,
+} from '@/components/desk-service-picker'
 import { EncaixeForm } from '@/components/encaixe-form'
 import { formatPhone } from '@/lib/text'
 
@@ -53,6 +58,8 @@ const UUID_RE =
 const CLIENT_PARAM = 'cli'
 const SEARCH_PARAM = 'q'
 const HAND_PARAM = 'hm'
+/** A marcação que acabou de nascer, para o «marcar e continuar». */
+const DONE_PARAM = 'ok'
 
 type ServiceRow = {
   category_id: string
@@ -67,6 +74,12 @@ type ServiceRow = {
 type SkillRow = { service_id: string; staff_id: string; staff_name: string }
 type PriceRow = { ord: number; price_cents: number; duration_minutes: number }
 type ClientRow = { id: string; name: string; phone: string; visits: number }
+type DoneRow = {
+  id: string
+  starts_at: Date
+  client_name: string
+  services: string | null
+}
 
 type Params = {
   params: Promise<{ loja: string }>
@@ -140,9 +153,13 @@ export default async function EncaixePage({ params, searchParams }: Params) {
   // --- a cliente ----------------------------------------------------
   const search = first(query[SEARCH_PARAM])?.trim() ?? ''
   const clientId = first(query[CLIENT_PARAM])
-  const [client, matches] = await Promise.all([
+  const doneId = first(query[DONE_PARAM])
+  const [client, matches, done] = await Promise.all([
     clientId && UUID_RE.test(clientId) ? getClient(actor.orgId, clientId) : null,
     search.length >= 2 ? searchClients(actor.orgId, search) : [],
+    // Vai na mesma leva das outras duas: entre esta página e a base há
+    // um oceano, e um recibo não vale uma viagem só para ele.
+    doneId && UUID_RE.test(doneId) ? getJustBooked(actor.orgId, doneId) : null,
   ])
 
   // --- horas --------------------------------------------------------
@@ -226,14 +243,29 @@ export default async function EncaixePage({ params, searchParams }: Params) {
   const stripPrev =
     stripAnchor > todayDay ? maxDay(addDays(stripAnchor, -7), todayDay) : null
 
-  const categories = new Map<string, { name: string; services: ServiceRow[] }>()
+  // O catálogo vai inteiro para o navegador, com os endereços já feitos
+  // deste lado: a peneira que lá está só esconde e mostra, nunca decide
+  // o que é que se junta à visita.
+  const cartFull = cart.length >= MAX_CART_LINES
+  const inCart = new Set(cart.map((line) => line.serviceId))
+  const catalogue: PickerCategory[] = []
+  const byCategory = new Map<string, PickerCategory>()
   for (const row of services) {
-    const entry = categories.get(row.category_id) ?? {
-      name: row.category_name,
-      services: [],
+    let entry = byCategory.get(row.category_id)
+    if (!entry) {
+      entry = { id: row.category_id, name: row.category_name, services: [] }
+      byCategory.set(row.category_id, entry)
+      catalogue.push(entry)
     }
-    entry.services.push(row)
-    categories.set(row.category_id, entry)
+    const chosen = inCart.has(row.id)
+    entry.services.push({
+      id: row.id,
+      name: row.name,
+      meta: `${formatDuration(row.duration_minutes)} · ${formatCents(row.price_cents)}`,
+      onlyDesk: !row.bookable_online,
+      href: chosen || cartFull ? null : withCart(addLine(cart, row.id)),
+      state: chosen ? 'chosen' : cartFull ? 'full' : 'free',
+    })
   }
 
   return (
@@ -254,6 +286,25 @@ export default async function EncaixePage({ params, searchParams }: Params) {
           aceita marcação online, e sem regras de antecedência.
         </p>
       </header>
+
+      {/* O recibo da anterior. Some-se ao primeiro toque, porque o `ok`
+          não viaja em nenhuma das ligações desta página — e é isso que
+          se quer: fica à vista enquanto a página está parada, e sai do
+          caminho assim que se começa a marcação seguinte. */}
+      {done ? (
+        <div className="mb-8">
+          <Notice tone="ok">
+            Ficou marcado: {done.client_name}, {formatTime(done.starts_at, tz)}
+            {done.services ? ` · ${done.services}` : ''}.{' '}
+            <Link
+              href={`/agenda/${unit.slug}?d=${isoDay(done.starts_at, tz)}&m=${done.id}`}
+              className="underline underline-offset-4"
+            >
+              ver na agenda
+            </Link>
+          </Notice>
+        </div>
+      ) : null}
 
       <div className="grid gap-10 lg:grid-cols-[1fr_22rem] lg:items-start">
         <div className="space-y-10">
@@ -360,78 +411,10 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                 hint="Ainda não há serviços na rede."
               />
             ) : (
-              <div className="space-y-7">
-                {[...categories.values()].map((category) => (
-                  <div key={category.name}>
-                    <div className="flex items-center gap-3">
-                      <h3 className="display text-base text-[var(--ink)]">
-                        {category.name}
-                      </h3>
-                      <span
-                        className="h-px flex-1 bg-[var(--line-soft)]"
-                        aria-hidden
-                      />
-                      <span className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
-                        {category.services.length}
-                      </span>
-                    </div>
-                    <ul className="mt-2.5 grid gap-2 sm:grid-cols-2">
-                      {category.services.map((service) => {
-                        const chosen = cart.some(
-                          (l) => l.serviceId === service.id,
-                        )
-                        const full = cart.length >= MAX_CART_LINES
-                        return (
-                          <li
-                            key={service.id}
-                            className={clsx(
-                              'flex items-center gap-3 rounded-[var(--radius)] border px-3 py-2.5 transition-colors',
-                              chosen
-                                ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_5%,transparent)]'
-                                : 'border-[var(--line-soft)] bg-[var(--surface-raised)]',
-                            )}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm text-[var(--ink)]">
-                                {service.name}
-                                {service.bookable_online ? null : (
-                                  <span className="ml-2 align-middle">
-                                    <Badge>Só ao balcão</Badge>
-                                  </span>
-                                )}
-                              </p>
-                              <p className="tabular text-[0.75rem] text-[var(--ink-faint)]">
-                                {formatDuration(service.duration_minutes)} ·{' '}
-                                {formatCents(service.price_cents)}
-                              </p>
-                            </div>
-                            {chosen || full ? (
-                              <span
-                                className={clsx(
-                                  'shrink-0 text-[0.625rem] uppercase tracking-[0.05em]',
-                                  chosen
-                                    ? 'text-[var(--accent)]'
-                                    : 'text-[var(--ink-faint)]',
-                                )}
-                              >
-                                {chosen ? 'Na visita' : 'Cheio'}
-                              </span>
-                            ) : (
-                              <Link
-                                href={withCart(addLine(cart, service.id))}
-                                aria-label={`Juntar ${service.name}`}
-                                className="flex h-8 w-8 shrink-0 items-center justify-center border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                              </Link>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+              <DeskServicePicker
+                categories={catalogue}
+                total={services.length}
+              />
             )}
           </section>
         </div>
@@ -512,117 +495,166 @@ export default async function EncaixePage({ params, searchParams }: Params) {
           </Card>
 
           {/* --- dia e hora --------------------------------------- */}
-          {cart.length > 0 ? (
-            <Card className="px-4 py-4">
-              <StepTitle step="3">Quando</StepTitle>
+          {/*
+            O DIA ESCOLHE-SE SEMPRE, MESMO COM A VISITA VAZIA.
 
-              <DeskDayStrip
-                dense
-                days={stripDays}
-                active={day}
-                today={todayDay}
-                timezone={tz}
-                hrefFor={(value) =>
-                  link({ day: value, time: null, hand: null })
-                }
-                prevHref={
-                  stripPrev
-                    ? link({ day: stripPrev, time: null, hand: null })
-                    : null
-                }
-                nextHref={link({
-                  day: addDays(stripAnchor, 7),
-                  time: null,
-                  hand: null,
-                })}
-              />
+            Quem está a passar o livro de papel para o sistema lê a linha
+            pela ordem em que ela lá está: «terça, 10h, Maria, corte».
+            Obrigar a montar a visita antes de se poder sequer ver o
+            calendário era pôr essa ordem ao contrário de quem escreve.
+            As horas livres é que precisam de saber o que se vai fazer —
+            essas continuam a aparecer só depois dos serviços.
+          */}
+          <Card className="px-4 py-4">
+            <StepTitle step="3">Quando</StepTitle>
 
-              <p className="mb-3 mt-3 text-[0.8125rem] text-[var(--ink-muted)]">
-                {capitalise(formatDayLong(day, tz))}
-              </p>
+            <DeskDayStrip
+              dense
+              days={stripDays}
+              active={day}
+              today={todayDay}
+              timezone={tz}
+              hrefFor={(value) => link({ day: value, time: null, hand: null })}
+              prevHref={
+                stripPrev
+                  ? link({ day: stripPrev, time: null, hand: null })
+                  : null
+              }
+              nextHref={link({
+                day: addDays(stripAnchor, 7),
+                time: null,
+                hand: null,
+              })}
+            />
 
-              {problem === 'closed' ? (
-                <Notice tone="warn">
-                  A loja não abre neste dia. Um encaixe também precisa de porta
-                  aberta.
-                </Notice>
-              ) : null}
-
-              {slots.length > 0 ? (
-                <ul className="grid grid-cols-4 gap-1.5">
-                  {slots.map((slot) => {
-                    const iso = slot.startsAt.toISOString()
-                    const active =
-                      chosenAt !== null &&
-                      chosenAt.getTime() === slot.startsAt.getTime()
-                    return (
-                      <li key={iso}>
-                        <Link
-                          href={link({ time: iso, hand: null })}
-                          className={clsx(
-                            'tabular flex h-9 items-center justify-center border text-[0.8125rem] transition-colors',
-                            active
-                              ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
-                              : 'border-[var(--line-soft)] text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
-                          )}
-                        >
-                          {formatMinutes(slot.minutesOfDay)}
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
-              ) : problem === null ? (
-                <p className="text-[0.8125rem] text-[var(--ink-muted)]">
-                  Nenhuma hora certa está livre neste dia. Ainda pode escrever
-                  uma à mão.
-                </p>
-              ) : null}
-
-              {/* A hora à mão: fora da grelha, que é o que faz um encaixe
-                  ser um encaixe. */}
-              <form
-                method="get"
-                action={here}
-                className="mt-4 border-t border-[var(--line-soft)] pt-3"
-              >
-                <p className="eyebrow mb-2 text-[var(--ink-faint)]">
-                  Ou uma hora à mão
-                </p>
-                <input type="hidden" name={DAY_PARAM} value={day} />
+            {/* A fita anda de semana em semana: uma marcação de daqui a
+                mês e meio são seis setas. Este campo salta lá directo. A
+                hora não vai atrás — pertencia ao dia que se deixou. */}
+            <form
+              method="get"
+              action={here}
+              className="mt-2.5 flex items-center gap-2"
+            >
+              {cart.length > 0 ? (
                 <input
                   type="hidden"
                   name={CART_PARAM}
                   value={cartToParam(cart)}
                 />
-                {clientId ? (
-                  <input type="hidden" name={CLIENT_PARAM} value={clientId} />
-                ) : null}
-                <div className="flex gap-2">
-                  <Input
-                    type="time"
-                    name={HAND_PARAM}
-                    step={300}
-                    defaultValue={
-                      chosenAt ? formatMinutes(minutesOfDay(chosenAt, tz)) : ''
-                    }
-                    className="tabular max-w-[8rem]"
-                    aria-label="Hora à mão"
-                  />
-                  <button
-                    type="submit"
-                    className={buttonClass('outline', 'md', 'shrink-0')}
-                  >
-                    Usar
-                  </button>
-                </div>
-              </form>
-              <p className="mt-2 text-[0.6875rem] text-[var(--ink-faint)]">
-                A hora à mão pode cair fora da grelha — é isso que faz um
-                encaixe.
+              ) : null}
+              {clientId ? (
+                <input type="hidden" name={CLIENT_PARAM} value={clientId} />
+              ) : null}
+              <Input
+                type="date"
+                name={DAY_PARAM}
+                defaultValue={day}
+                aria-label="Saltar para um dia"
+                className="tabular min-w-0 flex-1"
+              />
+              <button
+                type="submit"
+                className={buttonClass('quiet', 'md', 'shrink-0')}
+              >
+                Ir
+              </button>
+            </form>
+
+            <p className="mb-3 mt-3 text-[0.8125rem] text-[var(--ink-muted)]">
+              {capitalise(formatDayLong(day, tz))}
+            </p>
+
+            {cart.length === 0 ? (
+              <p className="text-[0.8125rem] text-[var(--ink-muted)]">
+                Escolha os serviços para ver as horas livres deste dia.
               </p>
-            </Card>
-          ) : null}
+            ) : (
+              <>
+                {problem === 'closed' ? (
+                  <Notice tone="warn">
+                    A loja não abre neste dia. Um encaixe também precisa de
+                    porta aberta.
+                  </Notice>
+                ) : null}
+
+                {slots.length > 0 ? (
+                  <ul className="grid grid-cols-4 gap-1.5">
+                    {slots.map((slot) => {
+                      const iso = slot.startsAt.toISOString()
+                      const active =
+                        chosenAt !== null &&
+                        chosenAt.getTime() === slot.startsAt.getTime()
+                      return (
+                        <li key={iso}>
+                          <Link
+                            href={link({ time: iso, hand: null })}
+                            className={clsx(
+                              'tabular flex h-9 items-center justify-center border text-[0.8125rem] transition-colors',
+                              active
+                                ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
+                                : 'border-[var(--line-soft)] text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+                            )}
+                          >
+                            {formatMinutes(slot.minutesOfDay)}
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : problem === null ? (
+                  <p className="text-[0.8125rem] text-[var(--ink-muted)]">
+                    Nenhuma hora certa está livre neste dia. Ainda pode
+                    escrever uma à mão.
+                  </p>
+                ) : null}
+
+                {/* A hora à mão: fora da grelha, que é o que faz um
+                    encaixe ser um encaixe. */}
+                <form
+                  method="get"
+                  action={here}
+                  className="mt-4 border-t border-[var(--line-soft)] pt-3"
+                >
+                  <p className="eyebrow mb-2 text-[var(--ink-faint)]">
+                    Ou uma hora à mão
+                  </p>
+                  <input type="hidden" name={DAY_PARAM} value={day} />
+                  <input
+                    type="hidden"
+                    name={CART_PARAM}
+                    value={cartToParam(cart)}
+                  />
+                  {clientId ? (
+                    <input type="hidden" name={CLIENT_PARAM} value={clientId} />
+                  ) : null}
+                  <div className="flex gap-2">
+                    <Input
+                      type="time"
+                      name={HAND_PARAM}
+                      step={300}
+                      defaultValue={
+                        chosenAt
+                          ? formatMinutes(minutesOfDay(chosenAt, tz))
+                          : ''
+                      }
+                      className="tabular max-w-[8rem]"
+                      aria-label="Hora à mão"
+                    />
+                    <button
+                      type="submit"
+                      className={buttonClass('outline', 'md', 'shrink-0')}
+                    >
+                      Usar
+                    </button>
+                  </div>
+                </form>
+                <p className="mt-2 text-[0.6875rem] text-[var(--ink-faint)]">
+                  A hora à mão pode cair fora da grelha — é isso que faz um
+                  encaixe.
+                </p>
+              </>
+            )}
+          </Card>
 
           {/* --- fechar ------------------------------------------- */}
           {cart.length > 0 && chosenAt ? (
@@ -732,6 +764,24 @@ async function getClient(
              where a.client_id = c.id and a.status = 'completed')::int as visits
       from client c
      where c.id = ${id} and c.org_id = ${orgId}
+  `
+  return rows[0] ?? null
+}
+
+/** O recibo do «marcar e continuar»: o que acabou de ficar registado. */
+async function getJustBooked(
+  orgId: string,
+  id: string,
+): Promise<DoneRow | null> {
+  const rows = await sql<DoneRow[]>`
+    select a.id, a.starts_at, c.name as client_name,
+           (select string_agg(i.service_name, ' + '
+                              order by i.sort_order, i.starts_at)
+              from appointment_item i
+             where i.appointment_id = a.id) as services
+      from appointment a
+      join client c on c.id = a.client_id
+     where a.id = ${id} and a.org_id = ${orgId}
   `
   return rows[0] ?? null
 }

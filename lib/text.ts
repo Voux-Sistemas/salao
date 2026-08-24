@@ -19,6 +19,17 @@ export function initial(name: string): string {
   return name.trim().charAt(0).toUpperCase() || '?'
 }
 
+/**
+ * A mesma palavra para efeitos de procura: sem acentos, sem maiúsculas.
+ *
+ * Quem procura ao balcão escreve «coloracao» à pressa e tem de
+ * encontrar «Coloração». Ao contrário do `slugify`, guarda os espaços e
+ * a pontuação — aqui procura-se dentro do texto, não se faz um endereço.
+ */
+export function searchKey(input: string): string {
+  return input.normalize('NFD').replace(DIACRITICS, '').toLowerCase()
+}
+
 
 /** Espaço inquebrável — o que segura os grupos do número na mesma linha. */
 const NBSP = '\u00a0'
