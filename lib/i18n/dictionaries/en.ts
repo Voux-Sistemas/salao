@@ -90,7 +90,6 @@ export const en: Dictionary = {
     address: 'Address',
     contacts: 'Contact',
     phoneLabel: 'Phone',
-    priceList: 'Price list',
     team: 'Team',
     hours: 'Hours',
     weekHours: 'Opening hours',

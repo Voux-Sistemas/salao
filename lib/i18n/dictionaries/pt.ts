@@ -97,7 +97,6 @@ export const pt = {
     address: 'Morada',
     contacts: 'Contactos',
     phoneLabel: 'Telefone',
-    priceList: 'Preçário',
     team: 'Equipa',
     hours: 'Horário',
     weekHours: 'Horário da semana',

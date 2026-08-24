@@ -4,13 +4,10 @@ import { sql } from '@/lib/db'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { weeklyHours } from '@/lib/hours'
 import { formatMinutes, today, weekdayOf } from '@/lib/time'
-import { fill, getDictionary, getLanguage } from '@/lib/i18n'
-import { formatCents } from '@/lib/money'
-import { formatDuration } from '@/lib/time'
+import { getDictionary, getLanguage } from '@/lib/i18n'
 import { ButtonLink } from '@/components/ui'
 import { Ornament, Sprig } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
-import { PriceLine } from '@/components/price-list'
 import { Photo } from '@/components/photo'
 import { CollapseGroup } from '@/components/collapse-group'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
@@ -20,16 +17,12 @@ type Params = { params: Promise<{ loja: string }> }
 
 type Photo = { id: string; url: string; alt: string | null }
 
-type PriceRow = {
+type CatalogRow = {
   category_id: string
   category_name: string
   service_id: string
   name: string
   description: string | null
-  duration_minutes: number
-  price_cents: number
-  image_url: string | null
-  image_alt: string | null
 }
 
 /*
@@ -89,7 +82,7 @@ export default async function StorePage({ params }: Params) {
   // da cliente, e não traduzido depois à mão.
   const language = await getLanguage()
 
-  const [dict, photos, prices, week] = await Promise.all([
+  const [dict, photos, catalog, week] = await Promise.all([
     getDictionary(),
     sql<Photo[]>`
       select id, url, alt
@@ -97,28 +90,25 @@ export default async function StorePage({ params }: Params) {
        where unit_id = ${unit.id}
        order by sort_order, created_at
     `,
-    sql<PriceRow[]>`
+    sql<CatalogRow[]>`
       select c.id as category_id,
              name_in(${language}, c.name, c.name_en, c.name_es) as category_name,
              s.id as service_id,
              name_in(${language}, s.name, s.name_en, s.name_es) as name,
              name_in(${language}, s.description,
-                     s.description_en, s.description_es) as description,
-             p.duration_minutes, p.price_cents,
-             s.image_url, s.image_alt
+                     s.description_en, s.description_es) as description
         from service s
         join service_category c on c.id = s.category_id and c.is_active
-        cross join lateral effective_service_pricing(s.id, ${unit.id}::uuid, null::uuid) p
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
-       -- Pelo nome português: a ordem do preçário é a mesma nas três
+       -- Pelo nome português: a ordem do menu é a mesma nas três
        -- línguas, que é a ordem que a casa conhece de cor.
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
     weeklyHours(unit.id),
   ])
 
-  const categories = new Map<string, { name: string; services: PriceRow[] }>()
-  for (const row of prices) {
+  const categories = new Map<string, { name: string; services: CatalogRow[] }>()
+  for (const row of catalog) {
     const entry = categories.get(row.category_id) ?? {
       name: row.category_name,
       services: [],
@@ -334,13 +324,13 @@ export default async function StorePage({ params }: Params) {
         </Reveal>
       </section>
 
-      {/* ------------------------------------------------- preçário --- */}
+      {/* --------------------------------------------------- o menu --- */}
       {categories.size > 0 ? (
         <section className="mx-auto max-w-6xl px-5 sm:px-8">
           <div className="mt-20 border-t border-[var(--line-soft)] pt-14">
             <Reveal className="text-center">
               <p className="eyebrow eyebrow-gold">{dict.home.servicesEyebrow}</p>
-              <h2 className="display mt-4 text-3xl sm:text-4xl">{dict.unit.priceList}</h2>
+              <h2 className="display mt-4 text-3xl sm:text-4xl">{dict.home.servicesTitle}</h2>
               <Ornament className="mt-7" />
             </Reveal>
             <div className="mt-10 grid gap-x-20 gap-y-10 sm:mt-14 sm:grid-cols-2 sm:gap-y-14">
@@ -351,21 +341,16 @@ export default async function StorePage({ params }: Params) {
                   count={category.services.length}
                 >
                   {category.services.map((service) => (
-                    <PriceLine
-                      key={service.service_id}
-                      name={service.name}
-                      duration={formatDuration(service.duration_minutes, language)}
-                      price={formatCents(service.price_cents, org.currency, language)}
-                      description={service.description}
-                      thumb={{
-                        url: service.image_url,
-                        alt:
-                          service.image_alt ??
-                          fill(dict.home.servicePhotoAlt, {
-                            service: service.name,
-                          }),
-                      }}
-                    />
+                    <li key={service.service_id} className="mt-3.5 first:mt-0">
+                      <p className="text-[0.9375rem] leading-snug text-[var(--ink)]">
+                        {service.name}
+                      </p>
+                      {service.description ? (
+                        <p className="mt-1 max-w-sm text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
+                          {service.description}
+                        </p>
+                      ) : null}
+                    </li>
                   ))}
                 </CollapseGroup>
               ))}
