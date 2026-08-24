@@ -261,7 +261,8 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     entry.services.push({
       id: row.id,
       name: row.name,
-      meta: `${formatDuration(row.duration_minutes)} · ${formatCents(row.price_cents)}`,
+      duration: formatDuration(row.duration_minutes),
+      price: formatCents(row.price_cents),
       onlyDesk: !row.bookable_online,
       href: chosen || cartFull ? null : withCart(addLine(cart, row.id)),
       state: chosen ? 'chosen' : cartFull ? 'full' : 'free',
@@ -279,7 +280,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
       </Link>
 
       <header className="mb-8">
-        <p className="eyebrow mb-1.5">{unit.name} · Balcão</p>
+        <p className="titulo-seccao mb-2">{unit.name} · Balcão</p>
         <h1 className="display text-3xl text-[var(--ink)]">Encaixe</h1>
         <p className="mt-1.5 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
           Do balcão marca-se tudo: serviços fechados ao online, quem não
@@ -306,15 +307,15 @@ export default async function EncaixePage({ params, searchParams }: Params) {
         </div>
       ) : null}
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_22rem] lg:items-start">
-        <div className="space-y-10">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <div className="min-w-0 space-y-10">
           {/* --- cliente ------------------------------------------- */}
           <section>
             <StepTitle step="1">Cliente</StepTitle>
             {client ? (
               <Card className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-[var(--line-soft)] bg-[var(--surface-2)] text-sm text-[var(--accent)]">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--house)_40%,transparent)] bg-[color-mix(in_srgb,var(--house)_12%,var(--surface-raised))] text-sm font-semibold text-[var(--house)]">
                     <Monogram initials={initialsOf(client.name)} />
                   </span>
                   <div className="min-w-0">
@@ -420,9 +421,15 @@ export default async function EncaixePage({ params, searchParams }: Params) {
         </div>
 
         {/* --- a visita ------------------------------------------- */}
-        <aside className="space-y-6 lg:sticky lg:top-20">
+        <aside className="min-w-0 space-y-6 lg:sticky lg:top-20">
           <Card className="px-4 py-4 shadow-[var(--shadow-soft)]">
-            <h2 className="eyebrow mb-3">A visita</h2>
+            <h2 className="mb-3 flex items-baseline gap-2.5">
+              <span className="titulo-seccao shrink-0">A visita</span>
+              <span
+                aria-hidden
+                className="h-px flex-1 translate-y-[-0.2em] bg-[linear-gradient(90deg,color-mix(in_srgb,var(--house)_34%,transparent),transparent)]"
+              />
+            </h2>
             {cart.length === 0 ? (
               /* «À esquerda» só é verdade no ecrã largo: no telemóvel a
                  lista está por cima deste cartão, e a frase mandava a
@@ -589,7 +596,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                           <Link
                             href={link({ time: iso, hand: null })}
                             className={clsx(
-                              'tabular flex h-9 items-center justify-center border text-[0.8125rem] transition-colors',
+                              'tabular flex h-9 items-center justify-center rounded-[var(--radius-sm)] border text-[0.8125rem] font-medium transition-colors',
                               active
                                 ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
                                 : 'border-[var(--line-soft)] text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
@@ -615,9 +622,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                   action={here}
                   className="mt-4 border-t border-[var(--line-soft)] pt-3"
                 >
-                  <p className="eyebrow mb-2 text-[var(--ink-faint)]">
-                    Ou uma hora à mão
-                  </p>
+                  <p className="titulo-seccao mb-2">Ou uma hora à mão</p>
                   <input type="hidden" name={DAY_PARAM} value={day} />
                   <input
                     type="hidden"
@@ -718,14 +723,30 @@ function StepTitle({
   flush?: boolean
   children: React.ReactNode
 }) {
+  /*
+    O PASSO É UM ALGARISMO DA CASA, NÃO UM NÚMERO DE SENHA.
+
+    Era azul, no mesmo tom dos dados e dos botões — e a numeração de um
+    formulário não é um dado, é arrumação. Passa para o ouro do
+    logótipo, em serifa, ao lado do nome do passo em versaletes e de um
+    fio que se desvanece. São as mesmas três peças dos títulos da
+    gestão, e é o que dá a esta página uma casa a que pertencer.
+
+    O número aqui É informação: estes quatro passos são mesmo uma
+    sequência — não se escolhe a hora antes de haver serviços.
+  */
   return (
     <h2
-      className={clsx('flex items-baseline gap-2.5', flush ? null : 'mb-3')}
+      className={clsx('flex items-baseline gap-2.5', flush ? null : 'mb-3.5')}
     >
-      <span className="display text-lg leading-none text-[var(--accent)]">
+      <span className="algarismo-casa shrink-0 text-[1.25rem] leading-none text-[var(--house)]">
         {step}
       </span>
-      <span className="eyebrow">{children}</span>
+      <span className="titulo-seccao shrink-0">{children}</span>
+      <span
+        aria-hidden
+        className="h-px flex-1 translate-y-[-0.2em] bg-[linear-gradient(90deg,color-mix(in_srgb,var(--house)_34%,transparent),transparent)]"
+      />
     </h2>
   )
 }
@@ -743,7 +764,7 @@ function StaffChip({
     <Link
       href={href}
       className={clsx(
-        'border px-2 py-0.5 text-[0.6875rem] transition-colors',
+        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6875rem] transition-colors',
         active
           ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
           : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',

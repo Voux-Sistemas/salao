@@ -168,7 +168,7 @@ export default async function AgendaDayPage({
           «Segunda-fei…», que é pior do que não estar lá. No monitor há
           espaço de sobra e voltam todos à mesma linha.
         */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-3 sm:flex-nowrap sm:px-6">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-2.5 sm:flex-nowrap sm:px-6 sm:pt-3">
           <div className="min-w-0 flex-1 basis-full leading-tight sm:basis-auto">
             <h1 className="display truncate text-[1.0625rem] text-[var(--ink)] sm:text-lg">
               {capitalise(formatDayLong(day, unit.timezone))}
@@ -209,7 +209,7 @@ export default async function AgendaDayPage({
           partilham a linha; no telemóvel o salto desce para baixo dela
           sozinho, sem que haja duas marcações do mesmo no ficheiro.
         */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-6">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:px-6 sm:py-2.5">
           <div className="min-w-[15rem] flex-1">
             <DeskDayStrip
               dense
@@ -257,24 +257,38 @@ export default async function AgendaDayPage({
 
         {/* uma profissional de cada vez ------------------------------ */}
         {!onlyStaffId && full.columns.length > 1 ? (
-          <nav
-            aria-label="Ver uma profissional"
-            className="no-scrollbar flex items-center gap-1.5 overflow-x-auto border-t border-[var(--line-soft)] px-4 py-2 sm:px-6"
-          >
-            <StaffChip href={withDay(day, null)} active={picked === null}>
-              Todas
-            </StaffChip>
-            {full.columns.map((column) => (
-              <StaffChip
-                key={column.staffId}
-                href={withDay(day, column.staffId)}
-                active={picked === column.staffId}
-                color={colors[column.staffId]}
-              >
-                {shortName(column.name)}
+          <div className="relative border-t border-[var(--line-soft)]">
+            <nav
+              aria-label="Ver uma profissional"
+              className="no-scrollbar flex items-center gap-1.5 overflow-x-auto px-4 py-1.5 sm:px-6 sm:py-2"
+            >
+              <StaffChip href={withDay(day, null)} active={picked === null}>
+                Todas
               </StaffChip>
-            ))}
-          </nav>
+              {full.columns.map((column) => (
+                <StaffChip
+                  key={column.staffId}
+                  href={withDay(day, column.staffId)}
+                  active={picked === column.staffId}
+                  color={colors[column.staffId]}
+                >
+                  {shortName(column.name)}
+                </StaffChip>
+              ))}
+            </nav>
+            {/*
+              COM A EQUIPA TODA A FITA NÃO CABE NO TELEMÓVEL, E UM NOME
+              CORTADO RENTE À MARGEM PARECE UM DEFEITO DO ECRÃ.
+
+              Este esbatido diz o contrário: não está partido, há mais
+              para o lado. Não apanha toques, para não roubar o último
+              chip a quem lhe quer tocar.
+            */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[var(--surface-raised)] to-transparent"
+            />
+          </div>
         ) : null}
       </div>
 
@@ -282,11 +296,12 @@ export default async function AgendaDayPage({
       <div className="relative flex min-h-0 flex-1">
         {/* Num ecrã estreito as colunas não cabem todas: este esbatido na
             margem direita é o que diz que o dia continua para o lado. Só
-            faz sentido onde há mesmo mais do que uma coluna. */}
-        {!onlyStaffId && agenda.columns.length > 1 ? (
+            faz sentido onde há mesmo mais do que uma coluna — e só onde
+            há grelha, que abaixo de `md` já não há. */}
+        {agenda.columns.length > 1 ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-[var(--surface)] to-transparent lg:hidden"
+            className="pointer-events-none absolute inset-y-0 right-0 z-20 hidden w-10 bg-gradient-to-l from-[var(--surface)] to-transparent md:block lg:hidden"
           />
         ) : null}
         <div
@@ -300,23 +315,27 @@ export default async function AgendaDayPage({
               chave={`${day}:${picked ?? ''}`}
             />
           ) : null}
-          {onlyStaffId ? (
-            <>
-              {/* no telemóvel, o dia da profissional é uma lista */}
-              <div className="md:hidden">
-                <AgendaList agenda={agenda} hrefFor={hrefFor} nowMin={nowMin} />
-              </div>
-              <div className="hidden md:block">
-                <AgendaGrid
-                  agenda={agenda}
-                  colors={colors}
-                  selectedId={selectedId}
-                  hrefFor={hrefFor}
-                  nowMin={nowMin}
-                />
-              </div>
-            </>
-          ) : (
+          {/*
+            NO TELEMÓVEL O DIA É UMA LISTA — PARA TODA A GENTE.
+
+            Era só para a profissional, que vê uma coluna. A dona ficava
+            com a grelha: três profissionais numa tela de 390px são cento
+            e quarenta píxeis por coluna, com o nome da cliente cortado ao
+            meio e o resto do dia a fugir de lado. A lista mostra o dia
+            inteiro por ordem de hora e diz de quem é cada marcação — pela
+            cor, a mesma das pastilhas aqui em cima. Quem quiser uma
+            pessoa de cada vez toca-lhe na pastilha; a grelha volta a
+            partir do tablet, que é onde ela cabe.
+          */}
+          <div className="md:hidden">
+            <AgendaList
+              agenda={agenda}
+              colors={colors}
+              hrefFor={hrefFor}
+              nowMin={nowMin}
+            />
+          </div>
+          <div className="hidden md:block">
             <AgendaGrid
               agenda={agenda}
               colors={colors}
@@ -324,7 +343,7 @@ export default async function AgendaDayPage({
               hrefFor={hrefFor}
               nowMin={nowMin}
             />
-          )}
+          </div>
         </div>
 
         {selected ? (

@@ -263,6 +263,19 @@
   color: var(--house);
 }
 
+/* O ALGARISMO DA CASA.
+
+   O número de um passo, de um capítulo, de uma ordem — em serifa e no
+   ouro do logótipo. É a única coisa da área de trabalho escrita na
+   letra da montra, e é de propósito: distingue-se de um número que
+   seja um DADO (um preço, uma hora, um total), que vive sempre na
+   letra do balcão e em algarismos de largura fixa. */
+.algarismo-casa {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-variant-numeric: lining-nums;
+}
+
 /* O CARTÃO LEVANTA-SE DO PAPEL — E VÊ-SE QUE SE LEVANTA.
 
    Era um fio de sombra a 4% que ninguém via: contra o bege do balcão
@@ -519,18 +532,39 @@ body {
    único sítio onde ela se decide, e é aqui e não no componente porque
    depende do ecrã, e o servidor não sabe a largura do ecrã de ninguém.
 
-   0,82 no telemóvel dá 49px por hora: um dia de doze horas mais a
-   folga cabe inteiro num ecrã de 844px, sem rolar. 1,1 no monitor dá
-   66px — a altura de uma linha de texto confortável, que é o que se
-   quer onde há espaço de sobra.
+   0,9 no telemóvel dá 54px por hora — mas no telemóvel a grelha nem
+   sequer aparece (o dia é uma lista), pelo que este valor só serve de
+   rede. Quem manda é 1,25 no monitor: 75px por hora, e o que isso
+   compra é o quarto de hora. A 1,1, um serviço de quinze minutos ficava
+   com dezasseis píxeis de alto — menos do que uma linha de texto — e a
+   agenda cheia de blocos esmagados sem nome nenhum lá dentro. A 1,25 são
+   dezanove, que chega para a hora e o nome numa linha só.
    --------------------------------------------------------------------- */
 .grelha-dia {
-  --esc: 0.82;
+  --esc: 0.9;
 }
 @media (min-width: 640px) {
   .grelha-dia {
-    --esc: 1.1;
+    --esc: 1.25;
   }
+}
+
+/* ---------------------------------------------------------------------
+   FORA DA ESCALA: ONDE A FOLHA ACABA E SE VÊ A MESA.
+
+   Era um cinzento cheio (--surface-sunken), mais escuro do que qualquer
+   marcação — e numa agenda que abre às nove e fecha às nove, o que
+   saltava primeiro à vista era a hora a que ninguém trabalha. Passa a
+   ser o tom do fundo da casa com um riscado a quatro por cento: diz
+   «aqui não há folha» sem chamar por ninguém.
+   --------------------------------------------------------------------- */
+.grelha-fora {
+  background-color: var(--surface);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    color-mix(in srgb, var(--ink) 4%, transparent) 6px 7px
+  );
 }
 
 .rule {

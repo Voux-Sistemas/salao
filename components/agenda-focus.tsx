@@ -32,19 +32,76 @@ export function AgendaFocus({
 }) {
   useEffect(() => {
     const rolo = document.querySelector<HTMLElement>('[data-rolo-agenda]')
-    const grelha = rolo?.querySelector<HTMLElement>('.grelha-dia')
-    if (!rolo || !grelha) return
+    if (!rolo) return
 
-    // A escala é a que o CSS decidiu para este ecrã — pergunta-se-lhe,
-    // em vez de a repetir aqui e ficar com duas versões da verdade.
-    const escala = Number(
-      getComputedStyle(grelha).getPropertyValue('--esc').trim() || 1,
-    )
+    const apontar = () => {
+      /*
+        NO TELEMÓVEL NÃO HÁ GRELHA — HÁ UMA LISTA, E NELA NÃO SE CONTAM
+        MINUTOS: PROCURA-SE O FIO DE «AGORA».
 
-    // Um quarto da altura acima do alvo: sobra contexto do que passou, e
-    // o que vem a seguir fica com os outros três quartos.
-    const destino = (focusMin - fromMin) * escala - rolo.clientHeight * 0.25
-    rolo.scrollTop = Math.max(0, destino)
+        A lista não tem escala nenhuma (um cartão de quinze minutos e um
+        de duas horas medem quase o mesmo), por isso a conta de píxeis
+        lá em baixo não se aplica. O que se faz é o mesmo em espírito:
+        pôr a dobra do dia a um quarto da altura, com o que já passou
+        por cima dela.
+
+        E não basta perguntar se a grelha existe: ELA EXISTE SEMPRE. A
+        página desenha as duas — a lista com `md:hidden`, a grelha com
+        `hidden md:block` — e quem escolhe é o CSS. Encontrada a grelha
+        escondida, a conta saía em minutos vezes escala e a lista abria
+        quatro horas antes de horas, ao pé do meio-dia. `offsetParent`
+        é nulo em tudo o que está em `display:none`, e é assim que se
+        pergunta ao navegador qual das duas está mesmo à vista.
+      */
+      const grelha = rolo.querySelector<HTMLElement>('.grelha-dia')
+      if (!grelha || grelha.offsetParent === null) {
+        const agora = rolo.querySelector<HTMLElement>('[data-agora]')
+        if (agora) {
+          // Mede-se pelo ecrã e soma-se o que já está rolado: `offsetTop`
+          // conta a partir do primeiro antepassado posicionado, que aqui
+          // não é a caixa que rola, e dava a conta trocada.
+          const salto =
+            agora.getBoundingClientRect().top -
+            rolo.getBoundingClientRect().top +
+            rolo.scrollTop
+          rolo.scrollTop = Math.max(0, salto - rolo.clientHeight * 0.25)
+        }
+        return
+      }
+
+      // A escala é a que o CSS decidiu para este ecrã — pergunta-se-lhe,
+      // em vez de a repetir aqui e ficar com duas versões da verdade.
+      const escala = Number(
+        getComputedStyle(grelha).getPropertyValue('--esc').trim() || 1,
+      )
+
+      // Um quarto da altura acima do alvo: sobra contexto do que passou,
+      // e o que vem a seguir fica com os outros três quartos.
+      const destino = (focusMin - fromMin) * escala - rolo.clientHeight * 0.25
+      rolo.scrollTop = Math.max(0, destino)
+    }
+
+    apontar()
+
+    /*
+      E OUTRA VEZ QUANDO AS LETRAS CHEGAREM.
+
+      A lista do telemóvel mede-se em píxeis, e os píxeis mudam: enquanto
+      as fontes da casa não chegam, o navegador desenha com as letras de
+      recurso, os cartões ficam com outra altura, e a conta feita agora
+      aponta para o sítio errado — para o meio da manhã em vez do meio
+      da tarde, que foi exactamente o que se viu no ecrã pequeno.
+      Repete-se assim que as letras assentam. Na grelha a conta é de
+      minutos vezes escala e não depende de nenhuma medição, por isso
+      repetir ali não custa nada e não estraga nada.
+    */
+    let vivo = true
+    document.fonts?.ready.then(() => {
+      if (vivo) apontar()
+    })
+    return () => {
+      vivo = false
+    }
   }, [focusMin, fromMin, chave])
 
   return null
