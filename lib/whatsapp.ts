@@ -60,41 +60,154 @@ export function renderTemplate(
   )
 }
 
-/**
- * Modelos de origem, por rotina e por língua. A casa pode reescrevê-los
- * em message_template; estes são o que existe até lá.
+/*
+ * OS MODELOS SÃO ESCRITOS PARA O WHATSAPP, NÃO PARA UM PAPEL.
+ *
+ * Duas coisas mudaram depois de os ler dentro da aplicação. A primeira
+ * foi a mudança de linha: estava tudo num parágrafo só, e quem recebe
+ * no telemóvel tem de ler a frase toda para encontrar a hora. Agora o
+ * dia e a hora ficam sozinhos numa linha, com asteriscos à volta — que
+ * é como o WhatsApp faz negrito, e é a única marca de formatação que
+ * usamos.
+ *
+ * A segunda foi o que NÃO se põe aqui: nada de emojis nem de símbolos
+ * bonitos. Os acentos, o «ç» e o «¡» viajam bem — foram medidos, ida e
+ * volta, nos três idiomas. Um emoji depende da letra que o telemóvel de
+ * quem recebe tiver instalada, e num telefone antigo sai um quadrado.
+ * Para uma mensagem que a casa manda a uma cliente, não vale o risco.
+ *
+ * As linhas escrevem-se em lista porque assim vê-se o desenho da
+ * mensagem ao ler o código — uma linha vazia é uma linha vazia.
  */
+const linhas = (...partes: string[]) => partes.join('\n')
+
 export const DEFAULT_TEMPLATES: Record<Routine, Record<Language, string>> = {
   confirm: {
-    pt: 'Olá {cliente}! A sua marcação no {loja} está registada para {dia} às {hora} ({servicos}). Até já!',
-    en: 'Hello {cliente}! Your appointment at {loja} is booked for {dia} at {hora} ({servicos}). See you soon!',
-    es: '¡Hola {cliente}! Su cita en {loja} está reservada para {dia} a las {hora} ({servicos}). ¡Hasta pronto!',
+    pt: linhas(
+      'Olá {cliente}, a sua marcação no {loja} ficou registada.',
+      '',
+      '*{dia}, às {hora}*',
+      '{servicos}',
+      '',
+      'Até já!',
+    ),
+    en: linhas(
+      'Hello {cliente}, your appointment at {loja} is booked.',
+      '',
+      '*{dia}, at {hora}*',
+      '{servicos}',
+      '',
+      'See you soon!',
+    ),
+    es: linhas(
+      '¡Hola {cliente}! Su cita en {loja} ha quedado reservada.',
+      '',
+      '*{dia}, a las {hora}*',
+      '{servicos}',
+      '',
+      '¡Hasta pronto!',
+    ),
   },
   reminder_eve: {
-    pt: 'Olá {cliente}! Só para lembrar: amanhã, {dia}, às {hora}, no {loja}. Se precisar de mudar, diga-nos.',
-    en: 'Hello {cliente}! A reminder: tomorrow, {dia}, at {hora}, at {loja}. Let us know if you need to change it.',
-    es: '¡Hola {cliente}! Un recordatorio: mañana, {dia}, a las {hora}, en {loja}. Si necesita cambiarla, díganos.',
+    pt: linhas(
+      'Olá {cliente}, é já amanhã.',
+      '',
+      '*{dia}, às {hora}*',
+      '{loja}',
+      '',
+      'Se precisar de mudar, é só dizer.',
+    ),
+    en: linhas(
+      'Hello {cliente}, it is tomorrow.',
+      '',
+      '*{dia}, at {hora}*',
+      '{loja}',
+      '',
+      'Just tell us if you need to change it.',
+    ),
+    es: linhas(
+      '¡Hola {cliente}! Es mañana.',
+      '',
+      '*{dia}, a las {hora}*',
+      '{loja}',
+      '',
+      'Si necesita cambiarla, díganos.',
+    ),
   },
   reminder_today: {
-    pt: 'Olá {cliente}! É hoje às {hora}, no {loja}. Estamos à sua espera.',
-    en: 'Hello {cliente}! Today at {hora}, at {loja}. We are waiting for you.',
-    es: '¡Hola {cliente}! Hoy a las {hora}, en {loja}. La esperamos.',
+    pt: linhas(
+      'Olá {cliente}, é hoje.',
+      '',
+      '*Às {hora}*, no {loja}',
+      '',
+      'Estamos à sua espera.',
+    ),
+    en: linhas(
+      'Hello {cliente}, it is today.',
+      '',
+      '*At {hora}*, at {loja}',
+      '',
+      'We are waiting for you.',
+    ),
+    es: linhas(
+      '¡Hola {cliente}! Es hoy.',
+      '',
+      '*A las {hora}*, en {loja}',
+      '',
+      'La esperamos.',
+    ),
   },
   review: {
-    pt: 'Olá {cliente}! Foi um gosto recebê-la ontem. Se tiver um minuto, diga-nos como correu — ajuda-nos muito.',
-    en: 'Hello {cliente}! It was a pleasure to see you yesterday. If you have a minute, tell us how it went.',
-    es: '¡Hola {cliente}! Fue un gusto recibirla ayer. Si tiene un minuto, cuéntenos qué tal fue.',
+    pt: linhas(
+      'Olá {cliente}, foi um gosto recebê-la ontem.',
+      '',
+      'Se tiver um minuto, diga-nos como correu. Ajuda-nos muito.',
+    ),
+    en: linhas(
+      'Hello {cliente}, it was a pleasure to see you yesterday.',
+      '',
+      'If you have a minute, tell us how it went. It helps us a lot.',
+    ),
+    es: linhas(
+      '¡Hola {cliente}! Fue un gusto recibirla ayer.',
+      '',
+      'Si tiene un minuto, cuéntenos qué tal fue. Nos ayuda mucho.',
+    ),
   },
   winback: {
-    pt: 'Olá {cliente}! Ficámos sem a ver. Quer que lhe guardemos uma hora esta semana no {loja}?',
-    en: 'Hello {cliente}! We missed you. Shall we keep a time for you this week at {loja}?',
-    es: '¡Hola {cliente}! La echamos de menos. ¿Le guardamos una hora esta semana en {loja}?',
+    pt: linhas(
+      'Olá {cliente}, ficámos sem a ver.',
+      '',
+      'Quer que lhe guardemos uma hora esta semana no {loja}?',
+    ),
+    en: linhas(
+      'Hello {cliente}, we have missed you.',
+      '',
+      'Shall we keep a time for you this week at {loja}?',
+    ),
+    es: linhas(
+      '¡Hola {cliente}! La echamos de menos.',
+      '',
+      '¿Le guardamos una hora esta semana en {loja}?',
+    ),
   },
 }
 
 /** O código de acesso à área de conta, mandado à mão como tudo o resto. */
 export const ACCESS_CODE_TEMPLATE: Record<Language, string> = {
-  pt: 'Olá {cliente}! O seu código de acesso é {codigo}. É válido por 10 minutos.',
-  en: 'Hello {cliente}! Your access code is {codigo}. It is valid for 10 minutes.',
-  es: '¡Hola {cliente}! Su código de acceso es {codigo}. Es válido durante 10 minutos.',
+  pt: linhas(
+    'Olá {cliente}, o seu código de acesso é *{codigo}*.',
+    '',
+    'É válido por 10 minutos.',
+  ),
+  en: linhas(
+    'Hello {cliente}, your access code is *{codigo}*.',
+    '',
+    'It is valid for 10 minutes.',
+  ),
+  es: linhas(
+    '¡Hola {cliente}! Su código de acceso es *{codigo}*.',
+    '',
+    'Es válido durante 10 minutos.',
+  ),
 }

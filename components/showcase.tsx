@@ -7,7 +7,7 @@ import type { Language } from '@/lib/i18n/config'
 import { formatCents } from '@/lib/money'
 import { formatPhone } from '@/lib/text'
 import { ButtonLink } from '@/components/ui'
-import { LogoMark, Monogram, Ornament } from '@/components/brand'
+import { LogoMark, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
 import { PriceLine } from '@/components/price-list'
 import { CollapseGroup } from '@/components/collapse-group'
@@ -32,27 +32,12 @@ type CatalogRow = {
   image_alt: string | null
 }
 
-type TeamRow = {
-  id: string
-  name: string
-  bio: string | null
-  avatar_url: string | null
-}
-
 type PhotoRow = {
   id: string
   unit_id: string
   unit_name: string
   url: string
   alt: string | null
-}
-
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/)
-  return parts
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('')
 }
 
 function mapsUrl(unit: Unit) {
@@ -167,7 +152,7 @@ export async function Showcase({ org }: { org: Org }) {
   // traduzido, e a consulta precisa de saber para quem escreve.
   const language = await getLanguage()
 
-  const [dict, units, catalog, team, photos] = await Promise.all([
+  const [dict, units, catalog, photos] = await Promise.all([
     getDictionary(),
     listUnits(),
     sql<CatalogRow[]>`
@@ -185,18 +170,6 @@ export async function Showcase({ org }: { org: Org }) {
        -- Ordenar pelo nome português mantém a mesma ordem nas três
        -- línguas, que é o que a casa reconhece ao telefone.
        order by c.sort_order, c.name, s.sort_order, s.name
-    `,
-    // Alcunha, nunca o nome verdadeiro: a montra é a primeira coisa que
-    // um estranho vê. Ordenar pelo nome real entregava-o na mesma.
-    sql<TeamRow[]>`
-      select distinct s.id, coalesce(s.public_alias, s.name) as name,
-             s.bio, s.avatar_url, s.sort_order
-        from staff s
-       where s.org_id = ${org.id} and s.is_active
-         and (s.accepts_online_booking
-              or exists (select 1 from staff_role r
-                          where r.staff_id = s.id and r.role = 'professional'))
-       order by s.sort_order, coalesce(s.public_alias, s.name)
     `,
     // As fotografias das duas casas, pela ordem em que a dona as pôs.
     // Servem três sítios desta página: o fundo do herói, a ficha de
@@ -383,52 +356,6 @@ export async function Showcase({ org }: { org: Org }) {
                 </CollapseGroup>
               ))}
             </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* ------------------------------------------------- a equipa --- */}
-      {team.length > 0 ? (
-        <section className="border-t border-[var(--line-soft)]">
-          <div className="mx-auto max-w-5xl px-5 py-20 text-center sm:px-8 sm:py-28">
-            <Reveal>
-              <p className="eyebrow eyebrow-gold">{dict.home.teamEyebrow}</p>
-              <h2 className="display mt-4 text-3xl sm:text-4xl">{dict.home.teamTitle}</h2>
-            </Reveal>
-            <Reveal
-              group
-              className="mt-14 flex flex-wrap justify-center gap-x-8 gap-y-14"
-            >
-              {team.map((person) => (
-                // A 11rem a apresentação partia-se em quatro tiras estreitas
-                // e lia-se como uma legenda avariada. A 13rem cabe em duas
-                // linhas — e quatro pessoas, com o intervalo, ainda entram
-                // de uma vez nos 60rem da secção.
-                <div key={person.id} className="w-40 sm:w-52">
-                  <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-[var(--line)] bg-[var(--surface-raised)]">
-                    {person.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={person.avatar_url}
-                        alt={person.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Monogram
-                        initials={initialsOf(person.name)}
-                        className="text-[1.75rem] text-[var(--accent)]"
-                      />
-                    )}
-                  </div>
-                  <p className="display mt-5 text-lg">{person.name}</p>
-                  {person.bio ? (
-                    <p className="mt-2 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-                      {person.bio}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
-            </Reveal>
           </div>
         </section>
       ) : null}

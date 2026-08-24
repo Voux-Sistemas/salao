@@ -56,21 +56,38 @@ export function composeMessage(
     templates.get(key(routine, language)) ??
     DEFAULT_TEMPLATES[routine][language]
 
-  const text = renderTemplate(body, {
-    cliente: firstName(target.clientName),
-    loja: target.unitName,
-    dia: formatDayLong(
-      isoDay(target.startsAt, target.timezone),
-      target.timezone,
-      language,
-    ),
-    hora: formatTime(target.startsAt, target.timezone, language),
-    servicos: target.services,
-  })
+  const text = arrumar(
+    renderTemplate(body, {
+      cliente: firstName(target.clientName),
+      loja: target.unitName,
+      dia: formatDayLong(
+        isoDay(target.startsAt, target.timezone),
+        target.timezone,
+        language,
+      ),
+      hora: formatTime(target.startsAt, target.timezone, language),
+      servicos: target.services,
+    }),
+  )
 
   return { text, href: waLink(target.clientPhone, text) }
 }
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name
+}
+
+/*
+ * Uma ficha pode não ter nome — nasce no balcão com o telefone e mais
+ * nada — e então o `{cliente}` rende vazio e a mensagem começava por
+ * «Olá , a sua marcação». Em vez de remendar este modelo, arruma-se o
+ * resultado: cola-se a pontuação à palavra anterior e comem-se os
+ * espaços a dobrar. Assim também aguenta um modelo que a casa venha a
+ * escrever à mão com um marcador que fica por preencher.
+ */
+function arrumar(text: string): string {
+  return text
+    .replace(/[ \t]+([,.!?;:])/g, '$1')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/^[ \t]+|[ \t]+$/gm, '')
 }
