@@ -298,14 +298,22 @@ const LOJAS = [
 // Os telemóveis são inventados (menos o da dona): ela ainda não os deu.
 // Servem para entrar no sistema e trocam-se na ficha de cada uma.
 //
-// Sem `alias`: quem aparece no site é o nome próprio. O nome público só
-// se escreve quando alguém não quer o seu no sítio — e escreve-se na
-// gestão, não aqui. Chegou a estar «Profissional 1» a fazer de reserva e
-// era isso que as clientes liam.
+// A EQUIPA É NUMERADA, E ISSO É DECISÃO DA CASA.
+//
+// Os nomes das pessoas não entram no sistema. O que aqui está é a
+// posição — Profissional 1, 2, 3, 4 — pela mesma ordem por que elas
+// aparecem na agenda. Quem é quem sabe-se pelo telemóvel, que é o que
+// serve para entrar, e está escrito no `EQUIPA.md` para quem precisar
+// de fazer a ponte. As escalas e as habilidades abaixo são as
+// verdadeiras: é o trabalho que se aproveita, não o nome.
+//
+// Sem `alias`, porque não há nome nenhum a esconder. Se um dia alguém
+// quiser aparecer com nome de montra, escreve-se na gestão e não aqui.
+// Para renumerar uma base que já está de pé há o `scripts/numerar.mjs`.
 
 const EQUIPA = [
   {
-    nome: 'Ariadna',
+    nome: 'Profissional 1',
     telefone: '+351930000001',
     cor: '#B08968',
     loja: 'valongo',
@@ -314,7 +322,7 @@ const EQUIPA = [
     escala: [[2, 9, 21], [3, 9, 21], [4, 9, 21], [5, 9, 21], [6, 9, 21]],
   },
   {
-    nome: 'Adyr',
+    nome: 'Profissional 2',
     telefone: '+351930000002',
     cor: '#8C7A6B',
     loja: 'valongo',
@@ -325,7 +333,7 @@ const EQUIPA = [
     escala: [[1, 14, 21], [3, 10, 21], [4, 14, 21], [5, 10, 21], [6, 10, 21]],
   },
   {
-    nome: 'Nana',
+    nome: 'Profissional 3',
     telefone: '+351930000003',
     cor: '#C6A96B',
     loja: 'valongo',
@@ -334,13 +342,13 @@ const EQUIPA = [
     escala: [[1, 10, 18], [2, 10, 18], [4, 9, 17]],
   },
   {
-    nome: 'Filipa',
+    nome: 'Profissional 4',
     telefone: '+351930000004',
     cor: '#A47C6F',
     loja: 'valongo',
     papel: 'professional',
-    // PALPITE: ela não disse o que a Filipa faz. O cabelo está coberto
-    // pelas outras duas e as unhas pela Nana; fica com a estética,
+    // PALPITE: ela não disse o que a 4 faz. O cabelo está coberto
+    // pelas duas primeiras e as unhas pela 3; fica com a estética,
     // senão ninguém faz cera nem rosto em Valongo.
     categorias: ['rosto', 'corpo'],
     escala: [[1, 9, 18], [2, 9, 15], [3, 9, 18], [5, 9, 21], [6, 9, 21]],
