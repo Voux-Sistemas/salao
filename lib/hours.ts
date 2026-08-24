@@ -13,33 +13,52 @@ import { addDays, minutesOfDay, today, weekdayOf, type IsoDay } from '@/lib/time
 
 export type Window = { openMin: number; closeMin: number }
 
+/*
+ * UMA CONSULTA, NÃO DUAS.
+ *
+ * A regra continua a mesma — o dia especial substitui o normal — mas
+ * perguntar primeiro pelo especial e só depois pelo normal obrigava a
+ * esperar pela primeira resposta antes de fazer a segunda pergunta.
+ * Entre a função e a base há um oceano: cada ida-e-volta custa perto de
+ * cem milésimos, e esta função é chamada por loja e por dia, na montra,
+ * na ficha da loja e no funil de marcação todo.
+ *
+ * Traz-se tudo de uma vez e escolhe-se cá. O `not exists` no ramo do
+ * horário normal faz o mesmo que o `if` fazia — se houver linha
+ * especial, o normal nem chega a vir — mas fá-lo do lado de lá, sem
+ * gastar uma viagem a perguntar.
+ */
 export async function openingWindows(
   unitId: string,
   day: IsoDay,
 ): Promise<Window[]> {
-  const special = await sql<
-    { is_closed: boolean; opens_min: number | null; closes_min: number | null }[]
+  const rows = await sql<
+    {
+      is_closed: boolean
+      opens_min: number | null
+      closes_min: number | null
+    }[]
   >`
-    select is_closed, opens_min, closes_min
-      from special_hours
-     where unit_id = ${unitId} and on_date = ${day}
+    with especial as (
+      select is_closed, opens_min, closes_min
+        from special_hours
+       where unit_id = ${unitId} and on_date = ${day}
+    )
+    select is_closed, opens_min, closes_min from especial
+    union all
+    select false, opens_min, closes_min
+      from business_hours
+     where unit_id = ${unitId} and weekday = ${weekdayOf(day)}
+       and not exists (select 1 from especial)
      order by opens_min nulls first
   `
 
-  if (special.length > 0) {
-    if (special.some((s) => s.is_closed)) return []
-    return special
-      .filter((s) => s.opens_min !== null && s.closes_min !== null)
-      .map((s) => ({ openMin: s.opens_min!, closeMin: s.closes_min! }))
-  }
+  // Fechado por inteiro: uma linha basta para o dia não ter janelas.
+  if (rows.some((r) => r.is_closed)) return []
 
-  const regular = await sql<{ opens_min: number; closes_min: number }[]>`
-    select opens_min, closes_min
-      from business_hours
-     where unit_id = ${unitId} and weekday = ${weekdayOf(day)}
-     order by opens_min
-  `
-  return regular.map((r) => ({ openMin: r.opens_min, closeMin: r.closes_min }))
+  return rows
+    .filter((r) => r.opens_min !== null && r.closes_min !== null)
+    .map((r) => ({ openMin: r.opens_min!, closeMin: r.closes_min! }))
 }
 
 /** O horário normal da semana, para o mostrar na página da loja. */
