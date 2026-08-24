@@ -31,11 +31,21 @@ export function PhoneInput({
   value,
   onChange,
   className,
+  aceitaTexto,
   ...props
-}: ComponentProps<'input'>) {
+}: ComponentProps<'input'> & { aceitaTexto?: boolean }) {
+  /*
+   * Num campo de entrada o que se escreve nem sempre e um numero — pode
+   * ser um nome de utilizador. A mascara so limpa digitos, por isso
+   * comia essas letras e deixava o campo vazio. Com `aceitaTexto`, o que
+   * tiver letras passa tal e qual e e o servidor que decide; o que for
+   * so digitos continua a ganhar a mascara como em todo o lado.
+   */
+  const eTexto = (bruto: string) => Boolean(aceitaTexto) && /[a-z]/i.test(bruto)
+  const passa = (bruto: string) => (eTexto(bruto) ? bruto : maskPhone(bruto))
   const ref = useRef<HTMLInputElement>(null)
   const caret = useRef<number | null>(null)
-  const [texto, setTexto] = useState(() => maskPhone(String(defaultValue ?? value ?? '')))
+  const [texto, setTexto] = useState(() => passa(String(defaultValue ?? value ?? '')))
 
   useLayoutEffect(() => {
     const el = ref.current
@@ -47,8 +57,10 @@ export function PhoneInput({
   return (
     <Input
       ref={ref}
-      type="tel"
-      inputMode="tel"
+      // Um campo que pode receber letras nao pode pedir o teclado
+      // numerico: no telemovel nao havia como escrever o nome.
+      type={aceitaTexto ? 'text' : 'tel'}
+      inputMode={aceitaTexto ? 'text' : 'tel'}
       autoComplete="tel"
       placeholder="+351 912 345 678"
       // O número lê-se em coluna com outros números — na ficha, na
@@ -60,8 +72,10 @@ export function PhoneInput({
       onChange={(event) => {
         const el = event.currentTarget
         const antes = nationalDigitsBefore(el.value, el.selectionStart ?? el.value.length)
-        const proximo = maskPhone(el.value)
-        caret.current = caretAfter(proximo, antes)
+        const proximo = passa(el.value)
+        // Texto que passa tal e qual nao mexe no cursor — o navegador ja
+        // o deixou onde devia, e repo-lo por digitos punha-o no fim.
+        caret.current = eTexto(el.value) ? null : caretAfter(proximo, antes)
         setTexto(proximo)
         onChange?.(event)
       }}

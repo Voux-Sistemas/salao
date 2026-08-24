@@ -8,6 +8,8 @@ import { burnTime, hashPassword, passwordProblem, verifyPassword } from '@/lib/a
 import { createSession, destroyAllSessions, destroySession } from '@/lib/auth/session'
 import { consumeCode, issueCode } from '@/lib/auth/otp'
 import { LIMITS, allowed, callerIp } from '@/lib/auth/throttle'
+// ATALHOS DE TESTE — apagar este import e as duas linhas marcadas abaixo.
+import { telefoneDeTeste } from '@/lib/auth/teste'
 
 /** A mesma resposta para as três portas, para não dizer qual estourou. */
 const TOO_MANY = 'Demasiadas tentativas. Espere uns minutos e tente outra vez.'
@@ -22,7 +24,10 @@ export async function signInAction(
   _previous: FormState,
   form: FormData,
 ): Promise<FormState> {
-  const phone = normalisePhone(String(form.get('phone') ?? ''))
+  const escrito = String(form.get('phone') ?? '')
+  // ATALHOS DE TESTE — fora de produção, «admin» vale pelo telemóvel da
+  // dona. Apagar esta linha e a de cima devolve a porta ao normal.
+  const phone = (await telefoneDeTeste(escrito)) ?? normalisePhone(escrito)
   const password = String(form.get('password') ?? '')
 
   if (!phone || !password) {

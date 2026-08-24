@@ -69,6 +69,7 @@ export function SignInForm() {
           required
           autoComplete="username"
           autoFocus
+          aceitaTexto
         />
       </Field>
 
