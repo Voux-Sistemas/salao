@@ -14,8 +14,17 @@ export function slugify(input: string): string {
     .slice(0, 60)
 }
 
-/** A primeira letra, para os avatares sem fotografia. */
+/**
+ * A marca do avatar de quem não tem fotografia.
+ *
+ * Normalmente é a primeira letra. Mas a equipa desta casa é numerada, e
+ * «Profissional 1», «Profissional 2» e «Profissional 3» davam três
+ * círculos com um P — que é o mesmo que não ter marca nenhuma. Quando o
+ * nome acaba em número, é o número que fica.
+ */
 export function initial(name: string): string {
+  const numero = /(\d{1,2})\s*$/.exec(name.trim())
+  if (numero) return numero[1] ?? '?'
   return name.trim().charAt(0).toUpperCase() || '?'
 }
 
@@ -75,12 +84,21 @@ export function sameWord(
   return a.trim().toLocaleLowerCase('pt') === b.trim().toLocaleLowerCase('pt')
 }
 
-/** "Ana Sofia Marques" -> "Ana M." */
+/**
+ * "Ana Sofia Marques" -> "Ana M."
+ *
+ * O apelido reduz-se à inicial, que é como se trata alguém numa coluna
+ * estreita da agenda. Só que o fim de um nome nem sempre é uma palavra:
+ * a equipa desta casa é numerada — «Profissional 1» — e cortar o número
+ * à inicial dava «Profissional 1.», que não é ninguém. Quando o fim não
+ * começa por letra, o nome vem inteiro.
+ */
 export function shortName(name: string): string {
   const parts = name.trim().split(/\s+/)
   const firstPart = parts[0] ?? ''
   if (parts.length === 1) return firstPart
   const last = parts[parts.length - 1] ?? ''
+  if (!/^\p{L}/u.test(last)) return parts.join(' ')
   return `${firstPart} ${last.charAt(0)}.`
 }
 

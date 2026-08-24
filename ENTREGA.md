@@ -137,6 +137,14 @@ Por esta ordem.
    node scripts/_prod.mjs limpar --a-serio
    ```
 
+   E logo a seguir, a equipa. Os nomes que lá estão são de ensaio; a
+   casa vai numerar as pessoas — Profissional 1, 2, 3 — e criá-las uma
+   a uma. Isto deixa a primeira, com o catálogo todo, e apaga o resto:
+
+   ```bash
+   node scripts/_prod.mjs equipa --a-serio
+   ```
+
 4. **Um `SETUP_CODE` novo** no Netlify, se o antigo alguma vez foi
    partilhado. É o código que abre a instalação de raiz.
 

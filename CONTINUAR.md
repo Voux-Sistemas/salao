@@ -29,11 +29,14 @@ está na sua máquina**. Em produção essa senha já não abre nada: foi
 apagada pelo `scripts/arrancar.mjs`, e cada pessoa tem a sua.
 
 
-| Telefone | Quem | Vê |
+Entra-se pelo **nome de entrada** ou pelo telemóvel — o que a pessoa
+usar. Na base local, depois do `seed-real.mjs`:
+
+| Entrada | Quem | Vê |
 |---|---|---|
-| `+351934730344` | Nohora Ramirez | tudo, nas duas lojas |
-| `+351930000001` | Ariadna | só a agenda dela |
-| `+351930000003` | Nana | só a agenda dela |
+| `admin` | Nohora Ramirez | tudo, nas duas lojas |
+| `prof` | Profissional 1 | só a agenda dele |
+| `gerente` | Gerente de Teste | a loja de Valongo |
 
 ---
 
@@ -142,6 +145,7 @@ uma com a pergunta que a fecha. Não as trate como verdade.
   | `node scripts/_prod.mjs senha +351…` | dá palavra-passe a uma pessoa; escreve-se à mão, não aparece no ecrã |
   | `node scripts/_prod.mjs arrancar` | apaga senhas partilhadas e nomes públicos de reserva |
   | `node scripts/_prod.mjs limpar --a-serio` | apaga o movimento inventado, guarda lojas, preçário e equipa |
+  | `node scripts/_prod.mjs equipa --a-serio` | deixa a equipa em «Profissional 1»; corre **depois** do `limpar` |
   | `node scripts/_prod.mjs seed-real --apagar-tudo` | **`truncate cascade`.** Só numa base vazia. |
 - **Migrações só para a frente.** Nunca edite uma que já correu; crie
   outra com data mais alta.

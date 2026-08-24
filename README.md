@@ -121,6 +121,7 @@ Correm fora do Next. Todos vão à base pela mesma porta — o
 | `npm run senha -- +351…` | Define a palavra-passe de uma pessoa. A senha é pedida no terminal e não fica no histórico. |
 | `npm run arrancar` | Tira a palavra-passe partilhada do arranque a quem ainda a tenha e fecha as sessões abertas com ela. |
 | `node scripts/limpar.mjs --a-serio` | Apaga clientes, marcações, pagamentos, caixa e comissões. Guarda lojas, preçário, equipa, escalas, fotografias e senhas. |
+| `node scripts/equipa.mjs` | Deixa um só profissional, «Profissional 1», com o catálogo todo; apaga os outros nomes de ensaio e recria os acessos de serviço que faltarem. **Corre depois do `limpar`** — trabalho feito trava o apagar. |
 | `node scripts/seed-real.mjs` | Enche uma base **vazia** com a casa real e movimento de ensaio. Nunca em produção depois de a casa abrir. |
 
 Por omissão vão à `DATABASE_URL` do `.env` — a base local. Para os
