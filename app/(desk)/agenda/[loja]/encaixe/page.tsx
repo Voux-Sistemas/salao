@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Form from 'next/form'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeft, ChevronDown, X } from 'lucide-react'
 import { requireManagement, resolveUnit } from '@/lib/auth/actor'
 import {
   buildPlan,
@@ -42,6 +42,8 @@ import {
 } from '@/lib/time'
 import { Monogram } from '@/components/brand'
 import { Card, Empty, Input, Notice, buttonClass } from '@/components/ui'
+import { ClientPicker, type PickerClient } from '@/components/client-picker'
+import { DayJump } from '@/components/day-jump'
 import { DeskDayStrip } from '@/components/desk-day-strip'
 import {
   DeskServicePicker,
@@ -58,7 +60,6 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const CLIENT_PARAM = 'cli'
-const SEARCH_PARAM = 'q'
 const HAND_PARAM = 'hm'
 /** A marcação que acabou de nascer, para o «marcar e continuar». */
 const DONE_PARAM = 'ok'
@@ -96,8 +97,18 @@ type Params = {
  * à mão, fora da grelha. O que continua a mandar é a base de dados:
  * ninguém fica com duas clientes à mesma hora.
  *
+ * OS PASSOS SEGUEM AS DEPENDÊNCIAS, NÃO O PROTOCOLO. Era «1 Cliente»
+ * primeiro, por delicadeza — mas as horas livres precisam dos serviços,
+ * e a cliente não é precisa para nada até ao momento de confirmar. Com
+ * ela à cabeça, quem vinha da agenda com uma hora na mão tinha de
+ * atravessar um passo que ainda não lhe servia. Agora é 1 Serviços,
+ * 2 Quando, 3 Cliente e confirmar — cada passo abre o seguinte.
+ *
  * Tudo o que se escolhe vive na barra de endereços — o retrocesso do
- * navegador funciona e a ligação pode passar de mão em mão.
+ * navegador funciona e a ligação pode passar de mão em mão. A hora à
+ * mão (`hm`) SOBREVIVE a mudanças no carrinho: é o que faz o toque num
+ * buraco da agenda valer alguma coisa — chega-se cá com a hora, e ela
+ * espera que se escolham os serviços.
  */
 export default async function EncaixePage({ params, searchParams }: Params) {
   const actor = await requireManagement()
@@ -153,15 +164,17 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     })
 
   // --- a cliente ----------------------------------------------------
-  const search = first(query[SEARCH_PARAM])?.trim() ?? ''
   const clientId = first(query[CLIENT_PARAM])
+  const hasClient = Boolean(clientId && UUID_RE.test(clientId))
   const doneId = first(query[DONE_PARAM])
-  const [client, matches, done] = await Promise.all([
-    clientId && UUID_RE.test(clientId) ? getClient(actor.orgId, clientId) : null,
-    search.length >= 2 ? searchClients(actor.orgId, search) : [],
-    // Vai na mesma leva das outras duas: entre esta página e a base há
-    // um oceano, e um recibo não vale uma viagem só para ele.
+  const [client, done, allClients] = await Promise.all([
+    hasClient ? getClient(actor.orgId, clientId!) : null,
+    // Vai na mesma leva: entre esta página e a base há um oceano, e um
+    // recibo não vale uma viagem só para ele.
     doneId && UUID_RE.test(doneId) ? getJustBooked(actor.orgId, doneId) : null,
+    // As fichas vêm todas com a página, como o catálogo: a procura
+    // passa a correr no navegador, a cada letra, sem ir ao servidor.
+    hasClient ? [] : loadClients(actor.orgId),
   ])
 
   // --- horas --------------------------------------------------------
@@ -195,7 +208,6 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     time?: string | null
     hand?: string | null
     client?: string | null
-    search?: string | null
   }): string => {
     const value = new URLSearchParams()
     const nextCart = next.cart ?? cart
@@ -207,14 +219,18 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     if (handValue) value.set(HAND_PARAM, handValue)
     const who = next.client === undefined ? clientId : next.client
     if (who) value.set(CLIENT_PARAM, who)
-    const q = next.search === undefined ? search : next.search
-    if (q) value.set(SEARCH_PARAM, q)
     return `${here}?${value.toString()}`
   }
 
-  // Mudar o carrinho invalida a hora escolhida: o plano é outro.
+  /*
+    Mudar o carrinho invalida a hora ESCOLHIDA DA GRELHA (`time`): era
+    uma hora certa de um plano que já não existe. A hora À MÃO (`hm`)
+    fica — é uma intenção («às 14:30»), não um cálculo, e é ela que o
+    toque num buraco da agenda traz. Se com o carrinho novo deixar de
+    caber, o passo de confirmar di-lo com todas as letras.
+  */
   const withCart = (nextCart: CartLine[]) =>
-    link({ cart: nextCart, time: null, hand: null })
+    link({ cart: nextCart, time: null })
 
   const prices =
     cart.length === 0
@@ -271,20 +287,30 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     })
   }
 
+  const pickerClients: PickerClient[] = allClients
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    // O respiro de baixo é para a barra fixa: sem ele, a última linha
+    // da página morria escondida atrás do total.
+    <div className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:py-8">
       <Link
         href={`/agenda/${unit.slug}?d=${day}`}
-        className="mb-6 inline-flex items-center gap-1.5 text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
+        className="mb-4 inline-flex items-center gap-1.5 text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)] lg:mb-6"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         Voltar à agenda
       </Link>
 
-      <header className="mb-8">
-        <p className="titulo-seccao mb-2">{unit.name} · Balcão</p>
-        <h1 className="display text-3xl text-[var(--ink)]">Encaixe</h1>
-        <p className="mt-1.5 max-w-xl text-[0.8125rem] text-[var(--ink-muted)]">
+      {/* No telemóvel o cabeçalho é uma linha: o nome da página e a
+          casa. A explicação fica para o monitor — quem marca vinte
+          encaixes por dia já a sabe de cor, e ela custava um dedo de
+          ecrã antes do primeiro passo. */}
+      <header className="mb-5 lg:mb-8">
+        <p className="titulo-seccao mb-1 lg:mb-2">{unit.name} · Balcão</p>
+        <h1 className="display text-2xl text-[var(--ink)] lg:text-3xl">
+          Encaixe
+        </h1>
+        <p className="mt-1.5 hidden max-w-xl text-[0.8125rem] text-[var(--ink-muted)] lg:block">
           Do balcão marca-se tudo: serviços fechados ao online, quem não
           aceita marcação online, e sem regras de antecedência.
         </p>
@@ -295,7 +321,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
           se quer: fica à vista enquanto a página está parada, e sai do
           caminho assim que se começa a marcação seguinte. */}
       {done ? (
-        <div className="mb-8">
+        <div className="mb-6 lg:mb-8">
           <Notice tone="ok">
             Ficou marcado: {done.client_name}, {formatTime(done.starts_at, tz)}
             {done.services ? ` · ${done.services}` : ''}.{' '}
@@ -309,122 +335,21 @@ export default async function EncaixePage({ params, searchParams }: Params) {
         </div>
       ) : null}
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-        <div className="min-w-0 space-y-10">
-          {/* --- cliente ------------------------------------------- */}
-          <section>
-            <StepTitle step="1">Cliente</StepTitle>
-            {client ? (
-              <Card className="flex items-center justify-between gap-4 px-4 py-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--house)_40%,transparent)] bg-[color-mix(in_srgb,var(--house)_12%,var(--surface-raised))] text-sm font-semibold text-[var(--house)]">
-                    <Monogram initials={initialsOf(client.name)} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm text-[var(--ink)]">
-                      {client.name}
-                    </p>
-                    <p className="tabular text-[0.75rem] text-[var(--ink-muted)]">
-                      {formatPhone(client.phone)} · {client.visits}{' '}
-                      {client.visits === 1 ? 'visita' : 'visitas'}
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  href={link({ client: null, search: null })}
-                  scroll={false}
-                  className="shrink-0 text-[0.75rem] text-[var(--ink-muted)] underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
-                >
-                  trocar
-                </Link>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                <Form action={here} scroll={false} className="flex gap-2">
-                  <input type="hidden" name={DAY_PARAM} value={day} />
-                  {cart.length > 0 ? (
-                    <input
-                      type="hidden"
-                      name={CART_PARAM}
-                      value={cartToParam(cart)}
-                    />
-                  ) : null}
-                  {askedTime ? (
-                    <input type="hidden" name={TIME_PARAM} value={askedTime} />
-                  ) : null}
-                  <Input
-                    name={SEARCH_PARAM}
-                    defaultValue={search}
-                    placeholder="Nome ou telefone"
-                    autoComplete="off"
-                    className="max-w-xs"
-                  />
-                  <button
-                    type="submit"
-                    className={buttonClass('outline', 'md', 'shrink-0')}
-                  >
-                    Procurar
-                  </button>
-                </Form>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
+        {/* --- catálogo -------------------------------------------- */}
+        <section id="servicos" className="min-w-0 scroll-mt-20">
+          <StepTitle step="1">Serviços</StepTitle>
+          {services.length === 0 ? (
+            <Empty
+              title="Catálogo vazio"
+              hint="Ainda não há serviços na rede."
+            />
+          ) : (
+            <DeskServicePicker categories={catalogue} total={services.length} />
+          )}
+        </section>
 
-                {search.length >= 2 ? (
-                  matches.length === 0 ? (
-                    <p className="text-[0.8125rem] text-[var(--ink-muted)]">
-                      Nenhuma ficha com isso. Escreva o nome e o telefone em
-                      baixo — a ficha nasce ao marcar.
-                    </p>
-                  ) : (
-                    <Card className="divide-y divide-[var(--line-soft)]">
-                      {matches.map((row) => (
-                        <Link
-                          key={row.id}
-                          href={link({ client: row.id, search: null })}
-                          scroll={false}
-                          className="flex items-baseline justify-between gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--surface-sunken)]"
-                        >
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm text-[var(--ink)]">
-                              {row.name}
-                            </span>
-                            <span className="tabular block text-[0.75rem] text-[var(--ink-muted)]">
-                              {formatPhone(row.phone)}
-                            </span>
-                          </span>
-                          <span className="shrink-0 text-[0.75rem] text-[var(--ink-faint)]">
-                            {row.visits} {row.visits === 1 ? 'visita' : 'visitas'}
-                          </span>
-                        </Link>
-                      ))}
-                    </Card>
-                  )
-                ) : (
-                  <p className="text-[0.75rem] text-[var(--ink-faint)]">
-                    Procure pela ficha — ou marque já: a ficha nasce com o
-                    nome e o telefone, no fim.
-                  </p>
-                )}
-              </div>
-            )}
-          </section>
-
-          {/* --- catálogo ------------------------------------------ */}
-          <section>
-            <StepTitle step="2">Serviços</StepTitle>
-            {services.length === 0 ? (
-              <Empty
-                title="Catálogo vazio"
-                hint="Ainda não há serviços na rede."
-              />
-            ) : (
-              <DeskServicePicker
-                categories={catalogue}
-                total={services.length}
-              />
-            )}
-          </section>
-        </div>
-
-        {/* --- a visita ------------------------------------------- */}
+        {/* --- a visita, o quando, o fecho -------------------------- */}
         <aside className="min-w-0 space-y-6 lg:sticky lg:top-20">
           <Card className="px-4 py-4 shadow-[var(--shadow-soft)]">
             <h2 className="mb-3 flex items-baseline gap-2.5">
@@ -517,8 +442,8 @@ export default async function EncaixePage({ params, searchParams }: Params) {
             As horas livres é que precisam de saber o que se vai fazer —
             essas continuam a aparecer só depois dos serviços.
           */}
-          <Card className="px-4 py-4">
-            <StepTitle step="3">Quando</StepTitle>
+          <Card id="quando" className="scroll-mt-20 px-4 py-4">
+            <StepTitle step="2">Quando</StepTitle>
 
             <DeskDayStrip
               dense
@@ -540,41 +465,25 @@ export default async function EncaixePage({ params, searchParams }: Params) {
             />
 
             {/* A fita anda de semana em semana: uma marcação de daqui a
-                mês e meio são seis setas. Este campo salta lá directo. A
-                hora não vai atrás — pertencia ao dia que se deixou. */}
-            <Form
-              action={here}
-              scroll={false}
-              className="mt-2.5 flex items-center gap-2"
+                mês e meio eram seis setas. O nome do dia é o próprio
+                calendário — como o título da agenda — e salta lá
+                directo. A hora não vai atrás: pertencia ao dia que se
+                deixou. */}
+            <DayJump
+              day={day}
+              hrefTemplate={link({ day: '{d}', time: null, hand: null })}
+              className="mb-3 mt-3 block"
             >
-              {cart.length > 0 ? (
-                <input
-                  type="hidden"
-                  name={CART_PARAM}
-                  value={cartToParam(cart)}
+              <p className="flex items-center gap-1 text-[0.8125rem] text-[var(--ink-muted)]">
+                <span className="truncate">
+                  {capitalise(formatDayLong(day, tz))}
+                </span>
+                <ChevronDown
+                  aria-hidden
+                  className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)]"
                 />
-              ) : null}
-              {clientId ? (
-                <input type="hidden" name={CLIENT_PARAM} value={clientId} />
-              ) : null}
-              <Input
-                type="date"
-                name={DAY_PARAM}
-                defaultValue={day}
-                aria-label="Saltar para um dia"
-                className="tabular min-w-0 flex-1"
-              />
-              <button
-                type="submit"
-                className={buttonClass('quiet', 'md', 'shrink-0')}
-              >
-                Ir
-              </button>
-            </Form>
-
-            <p className="mb-3 mt-3 text-[0.8125rem] text-[var(--ink-muted)]">
-              {capitalise(formatDayLong(day, tz))}
-            </p>
+              </p>
+            </DayJump>
 
             {cart.length === 0 ? (
               <p className="text-[0.8125rem] text-[var(--ink-muted)]">
@@ -667,11 +576,17 @@ export default async function EncaixePage({ params, searchParams }: Params) {
             )}
           </Card>
 
-          {/* --- fechar ------------------------------------------- */}
+          {/* --- a cliente e o fecho ------------------------------- */}
+          {/*
+            UM PASSO SÓ PARA OS DOIS. A cliente não é precisa para
+            escolher serviços nem horas — só para fechar. Dantes era o
+            passo 1, e quem vinha da agenda com uma hora na mão tinha de
+            passar por cima dela para chegar ao que interessava.
+          */}
           {cart.length > 0 && chosenAt ? (
-            <Card className="px-4 py-4">
+            <Card id="confirmar" className="scroll-mt-20 px-4 py-4">
               <ScrollHere chave={chosenAt.toISOString()} />
-              <StepTitle step="4">Confirmar</StepTitle>
+              <StepTitle step="3">Cliente e confirmar</StepTitle>
               {plan ? (
                 <>
                   <ul className="mb-4 space-y-1.5">
@@ -692,6 +607,40 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                       </li>
                     ))}
                   </ul>
+
+                  {client ? (
+                    <div className="mb-4 flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface)] px-3.5 py-2.5">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--house)_40%,transparent)] bg-[color-mix(in_srgb,var(--house)_12%,var(--surface-raised))] text-sm font-semibold text-[var(--house)]">
+                          <Monogram initials={initialsOf(client.name)} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm text-[var(--ink)]">
+                            {client.name}
+                          </p>
+                          <p className="tabular text-[0.75rem] text-[var(--ink-muted)]">
+                            {formatPhone(client.phone)} · {client.visits}{' '}
+                            {client.visits === 1 ? 'visita' : 'visitas'}
+                          </p>
+                        </div>
+                      </div>
+                      <Link
+                        href={link({ client: null })}
+                        scroll={false}
+                        className="shrink-0 text-[0.75rem] text-[var(--ink-muted)] underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
+                      >
+                        trocar
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="mb-4">
+                      <ClientPicker
+                        clients={pickerClients}
+                        hrefTemplate={link({ client: '__ID__' })}
+                      />
+                    </div>
+                  )}
+
                   <EncaixeForm
                     unitSlug={unit.slug}
                     cartParam={cartToParam(cart)}
@@ -717,6 +666,41 @@ export default async function EncaixePage({ params, searchParams }: Params) {
           ) : null}
         </aside>
       </div>
+
+      {/*
+        A BARRA QUE NUNCA SE PERDE — só no telemóvel, onde os passos se
+        empilham e o total fica fora do ecrã. Diz o que a visita já é
+        (total, tempo, hora) e leva ao próximo passo em falta. Pousa em
+        cima da barra de navegação do balcão (4.5rem), nunca atrás dela.
+      */}
+      {cart.length > 0 ? (
+        <div
+          className="fixed inset-x-0 z-30 border-t border-[var(--line)] bg-[var(--surface-raised)] px-4 py-2.5 shadow-[0_-6px_18px_-12px_rgba(46,38,28,0.45)] lg:hidden"
+          style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+        >
+          <div className="mx-auto flex max-w-6xl items-center gap-3">
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="tabular text-sm font-semibold text-[var(--ink)]">
+                {formatCents(totalCents)}{' '}
+                <span className="font-normal text-[var(--ink-muted)]">
+                  · {formatDuration(totalMinutes)}
+                </span>
+              </p>
+              <p className="tabular truncate text-[0.6875rem] text-[var(--ink-faint)]">
+                {chosenAt
+                  ? `${capitalise(formatDayLong(day, tz))} · ${formatTime(chosenAt, tz)}`
+                  : 'Falta escolher a hora'}
+              </p>
+            </div>
+            <a
+              href={chosenAt ? '#confirmar' : '#quando'}
+              className={buttonClass('primary', 'sm', 'shrink-0')}
+            >
+              {chosenAt ? 'Confirmar' : 'Escolher a hora'}
+            </a>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -739,8 +723,9 @@ function StepTitle({
     fio que se desvanece. São as mesmas três peças dos títulos da
     gestão, e é o que dá a esta página uma casa a que pertencer.
 
-    O número aqui É informação: estes quatro passos são mesmo uma
-    sequência — não se escolhe a hora antes de haver serviços.
+    O número aqui É informação: estes três passos são mesmo uma
+    sequência — não se escolhe a hora antes de haver serviços, nem se
+    confirma antes de haver hora.
   */
   return (
     <h2
@@ -797,6 +782,27 @@ async function getClient(
   return rows[0] ?? null
 }
 
+/**
+ * As fichas para a peneira do navegador, das mais recentes para as mais
+ * paradas. O tecto de quinhentas é rede, não porta: uma casa deste
+ * tamanho não lá chega, e se um dia chegar, a procura continua a
+ * encontrar tudo o que veio — só as fichas mais antigas e paradas é que
+ * teriam de nascer pelo formulário.
+ */
+async function loadClients(orgId: string): Promise<ClientRow[]> {
+  return sql<ClientRow[]>`
+    select c.id, c.name, c.phone,
+           (select count(*) from appointment a
+             where a.client_id = c.id and a.status = 'completed')::int as visits
+      from client c
+     where c.org_id = ${orgId} and c.is_active
+     order by coalesce((select max(a.starts_at) from appointment a
+                         where a.client_id = c.id), c.created_at) desc,
+              c.name
+     limit 500
+  `
+}
+
 /** O recibo do «marcar e continuar»: o que acabou de ficar registado. */
 async function getJustBooked(
   orgId: string,
@@ -813,26 +819,6 @@ async function getJustBooked(
      where a.id = ${id} and a.org_id = ${orgId}
   `
   return rows[0] ?? null
-}
-
-async function searchClients(
-  orgId: string,
-  term: string,
-): Promise<ClientRow[]> {
-  const digits = term.replace(/\D/g, '')
-  return sql<ClientRow[]>`
-    select c.id, c.name, c.phone,
-           (select count(*) from appointment a
-             where a.client_id = c.id and a.status = 'completed')::int as visits
-      from client c
-     where c.org_id = ${orgId}
-       and (
-         c.name ilike ${'%' + term + '%'}
-         or (${digits} <> '' and regexp_replace(c.phone, '\\D', '', 'g') like ${'%' + digits + '%'})
-       )
-     order by c.name
-     limit 8
-  `
 }
 
 function initialsOf(name: string): string {

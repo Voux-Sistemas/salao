@@ -36,8 +36,7 @@ export function AgendaFocus({
 
     const apontar = () => {
       /*
-        NO TELEMÓVEL NÃO HÁ GRELHA — HÁ UMA LISTA, E NELA NÃO SE CONTAM
-        MINUTOS: PROCURA-SE O FIO DE «AGORA».
+        NA LISTA NÃO SE CONTAM MINUTOS: PROCURA-SE O FIO DE «AGORA».
 
         A lista não tem escala nenhuma (um cartão de quinze minutos e um
         de duas horas medem quase o mesmo), por isso a conta de píxeis
@@ -45,13 +44,12 @@ export function AgendaFocus({
         pôr a dobra do dia a um quarto da altura, com o que já passou
         por cima dela.
 
-        E não basta perguntar se a grelha existe: ELA EXISTE SEMPRE. A
-        página desenha as duas — a lista com `md:hidden`, a grelha com
-        `hidden md:block` — e quem escolhe é o CSS. Encontrada a grelha
-        escondida, a conta saía em minutos vezes escala e a lista abria
-        quatro horas antes de horas, ao pé do meio-dia. `offsetParent`
-        é nulo em tudo o que está em `display:none`, e é assim que se
-        pergunta ao navegador qual das duas está mesmo à vista.
+        A página desenha UMA vista de cada vez (`?v=`), por isso em
+        princípio bastava perguntar se a grelha existe. O `offsetParent`
+        fica na mesma: é o seguro contra qualquer grelha que um dia
+        volte a estar no DOM mas escondida — em `display:none` ele é
+        nulo, e é assim que se pergunta ao navegador o que está mesmo à
+        vista, em vez de se confiar no que a página acha que desenhou.
       */
       const grelha = rolo.querySelector<HTMLElement>('.grelha-dia')
       if (!grelha || grelha.offsetParent === null) {

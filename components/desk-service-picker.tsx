@@ -59,13 +59,28 @@ export function DeskServicePicker({
 }) {
   const router = useRouter()
   const [term, setTerm] = useState('')
+  /*
+    A OUTRA PENEIRA: A CATEGORIA, A UM TOQUE.
+
+    Escrever é óptimo com um teclado à frente; ao balcão, com o telefone
+    numa mão, um toque em «Cabeleireiro» vale por sete letras. As
+    pastilhas compõem-se com o texto — pode tocar-se na categoria e
+    escrever dentro dela. Vive em memória do componente, não no
+    endereço: é um jeito de olhar para a lista, não uma escolha da
+    visita.
+  */
+  const [catId, setCatId] = useState<string | null>(null)
   const box = useRef<HTMLInputElement>(null)
 
   const chave = searchKey(term.trim())
 
   const visible = useMemo(() => {
-    if (!chave) return categories
-    return categories
+    const pool =
+      catId === null
+        ? categories
+        : categories.filter((category) => category.id === catId)
+    if (!chave) return pool
+    return pool
       .map((category) => {
         // Uma categoria que dá o nome fica inteira: quem escreve
         // «barbearia» quer ver a barbearia toda, não um corte dela.
@@ -76,7 +91,7 @@ export function DeskServicePicker({
         return services.length > 0 ? { ...category, services } : null
       })
       .filter((category): category is PickerCategory => category !== null)
-  }, [categories, chave])
+  }, [categories, catId, chave])
 
   const shown = visible.reduce((sum, c) => sum + c.services.length, 0)
 
@@ -124,9 +139,31 @@ export function DeskServicePicker({
           ) : null}
         </div>
         <p className="tabular shrink-0 text-[0.75rem] text-[var(--ink-faint)]">
-          {chave ? `${shown} de ${total}` : `${total} serviços`}
+          {chave || catId ? `${shown} de ${total}` : `${total} serviços`}
         </p>
       </div>
+
+      {categories.length > 1 ? (
+        <div className="no-scrollbar -mx-1 mb-4 flex items-center gap-1.5 overflow-x-auto px-1">
+          <CategoryChip
+            active={catId === null}
+            onClick={() => setCatId(null)}
+          >
+            Todas
+          </CategoryChip>
+          {categories.map((category) => (
+            <CategoryChip
+              key={category.id}
+              active={catId === category.id}
+              onClick={() =>
+                setCatId(catId === category.id ? null : category.id)
+              }
+            >
+              {category.name}
+            </CategoryChip>
+          ))}
+        </div>
+      ) : null}
 
       {visible.length === 0 ? (
         <p className="text-[0.8125rem] text-[var(--ink-muted)]">
@@ -182,6 +219,33 @@ export function DeskServicePicker({
         </div>
       )}
     </div>
+  )
+}
+
+/** Uma pastilha de categoria: botão, não ligação — não muda o endereço. */
+function CategoryChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={clsx(
+        'inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-[0.75rem] transition-colors',
+        active
+          ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)]'
+          : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]',
+      )}
+    >
+      {children}
+    </button>
   )
 }
 

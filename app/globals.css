@@ -532,20 +532,69 @@ body {
    único sítio onde ela se decide, e é aqui e não no componente porque
    depende do ecrã, e o servidor não sabe a largura do ecrã de ninguém.
 
-   0,9 no telemóvel dá 54px por hora — mas no telemóvel a grelha nem
-   sequer aparece (o dia é uma lista), pelo que este valor só serve de
-   rede. Quem manda é 1,25 no monitor: 75px por hora, e o que isso
-   compra é o quarto de hora. A 1,1, um serviço de quinze minutos ficava
-   com dezasseis píxeis de alto — menos do que uma linha de texto — e a
-   agenda cheia de blocos esmagados sem nome nenhum lá dentro. A 1,25 são
-   dezanove, que chega para a hora e o nome numa linha só.
+   No telemóvel a grelha é a vista principal do dia, e a escala escolhe
+   o que a dona vê sem rolar: a 1,0 são 60px por hora, e um dia de dez
+   horas mede 600px — o dia INTEIRO cabe praticamente num ecrã, que é o
+   que ela pediu. Meia hora fica com 30px, que ainda se toca com o
+   polegar; o quarto de hora esmaga-se, mas o bloco tem um mínimo de
+   20px e no telemóvel quase tudo dura meia hora ou mais.
+
+   No monitor manda 1,25: 75px por hora, e o que isso compra é o quarto
+   de hora — dezanove píxeis, que chega para a hora e o nome numa linha.
    --------------------------------------------------------------------- */
 .grelha-dia {
-  --esc: 0.9;
+  --esc: 1;
 }
 @media (min-width: 640px) {
   .grelha-dia {
     --esc: 1.25;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   A COLUNA ESTREITA CONTA-SE A SI PRÓPRIA.
+
+   No telemóvel as colunas da grelha apertam-se para caberem TODAS no
+   ecrã — quatro profissionais são colunas de oitenta píxeis. O servidor
+   não sabe quantos píxeis calharam a cada uma; quem sabe é a própria
+   coluna, e é ela que decide o que ainda se consegue ler lá dentro:
+
+     larga    hora + nome da cliente + serviço, como no monitor
+     estreita só o nome — a POSIÇÃO já diz a hora, e a régua confirma-a
+
+   O cabeçalho faz o mesmo: em largo é medalhão ao lado do nome e da
+   escala; em estreito o medalhão sobe e o primeiro nome fica por baixo.
+
+   Estas regras vivem fora de qualquer @layer de propósito: é o que lhes
+   deixa ganhar às classes utilitárias dos elementos sem elevar
+   especificidade.
+   --------------------------------------------------------------------- */
+.coluna-agenda {
+  container-type: inline-size;
+}
+@container (max-width: 8rem) {
+  .cab-coluna {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.125rem;
+    text-align: center;
+  }
+  .cab-coluna p {
+    font-size: 0.625rem;
+    letter-spacing: 0;
+  }
+  .cab-escala {
+    display: none;
+  }
+  .bloco-hora,
+  .bloco-servico,
+  .bloco-rodape {
+    display: none;
+  }
+  .bloco-marcacao {
+    padding-left: 0.4375rem;
+    padding-right: 0.1875rem;
   }
 }
 

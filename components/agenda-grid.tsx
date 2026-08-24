@@ -2,6 +2,7 @@ import Link from 'next/link'
 import clsx from 'clsx'
 import type { AgendaBlock, AgendaDay } from '@/lib/agenda'
 import type { Status } from '@/lib/booking'
+import { merge, subtract, type Interval } from '@/lib/intervals'
 import { formatMinutes } from '@/lib/time'
 import { formatCents } from '@/lib/money'
 import { STATUS_LABEL, type Tone } from '@/lib/status'
@@ -42,11 +43,17 @@ const RAIL = 'w-12 sm:w-14'
  * muitas encolhem até ao mínimo e a grelha passa a deslizar na
  * horizontal.
  *
- * A grelha só aparece a partir de `md`: no telemóvel o dia é uma lista.
- * Por isso o mínimo pode ser largo — não há aqui nenhum ecrã de 390px
- * a tentar caber três colunas ao mesmo tempo.
+ * NO TELEMÓVEL O MÍNIMO É APERTADO DE PROPÓSITO. A primeira tentativa
+ * de grelha no telemóvel deu colunas de 140px com o nome cortado ao
+ * meio e o resto do dia a fugir de lado; a resposta a isso não foi
+ * desistir da grelha (a lista esconde os buracos, e os buracos são a
+ * informação), foi deixar a coluna encolher até caberem TODAS no ecrã:
+ * a 5rem, quatro profissionais mais a régua são 368px — cabem num
+ * telemóvel de 390. O que se faz a uma coluna assim tão estreita não
+ * se decide aqui: decide-o a própria coluna, por container query
+ * (`coluna-agenda` no globals.css), mostrando só o que ainda se lê.
  */
-const COLUMN = 'min-w-[11rem] flex-1 basis-[11rem] sm:min-w-[14rem] sm:basis-[14rem]'
+const COLUMN = 'min-w-[5rem] flex-1 basis-[8.5rem] sm:min-w-[14rem] sm:basis-[14rem]'
 
 /**
  * O tom de cada estado, como a casa o lê na agenda: neutro enquanto só
@@ -92,7 +99,7 @@ const TONE_STYLE: Record<Tone, string> = {
 }
 
 /** A cor de fio que cada tom usa: o fio do bloco, a barra da lista. */
-export const TONE_BAR: Record<Tone, string> = {
+const TONE_BAR: Record<Tone, string> = {
   neutral: 'var(--ink-faint)',
   accent: 'var(--accent)',
   ok: 'var(--ok)',
@@ -114,6 +121,7 @@ export function AgendaGrid({
   colors,
   selectedId,
   hrefFor,
+  encaixeHref,
   nowMin,
 }: {
   agenda: AgendaDay
@@ -122,6 +130,13 @@ export function AgendaGrid({
   selectedId: string | null
   /** Como se abre o painel lateral de uma marcação. */
   hrefFor: (appointmentId: string | null) => string
+  /**
+   * Como se abre o encaixe já com uma hora na mão — ou null para quem
+   * não pode marcar (as profissionais veem a agenda, não a escrevem).
+   * Com isto, os buracos da grelha passam a ser tocáveis: meia hora
+   * livre é um convite, não só um espaço em branco.
+   */
+  encaixeHref: ((hm: string) => string) | null
   /** Minutos locais de agora, ou null se o dia mostrado não for hoje. */
   nowMin: number | null
 }) {
@@ -181,35 +196,44 @@ export function AgendaGrid({
             RAIL,
           )}
         />
+        {/*
+          Cada célula é um contentor (`coluna-agenda`): quando a coluna
+          aperta, é o CSS de `cab-coluna` que a põe ao alto — medalhão em
+          cima, primeiro nome por baixo, escala escondida. Uma container
+          query não pode estilizar o próprio contentor, só o que está lá
+          dentro — daí o embrulho.
+        */}
         {columns.map((column) => (
           <div
             key={column.staffId}
             className={clsx(
-              'flex items-center gap-2 border-l border-[var(--line-soft)] px-2.5 py-2 first:border-l-0 sm:gap-2.5 sm:px-3.5 sm:py-3',
+              'coluna-agenda border-l border-[var(--line-soft)] first:border-l-0',
               COLUMN,
             )}
           >
-            <span
-              aria-hidden
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border sm:h-8 sm:w-8"
-              style={{
-                color: colors[column.staffId] ?? 'var(--accent)',
-                borderColor: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 55%, transparent)`,
-                background: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 12%, var(--surface-raised))`,
-              }}
-            >
-              <Monogram
-                initials={initial(column.name)}
-                className="text-[0.8125rem]"
-              />
-            </span>
-            <div className="min-w-0 leading-tight">
-              <p className="truncate text-[0.8125rem] font-semibold tracking-[0.005em] text-[var(--ink)]">
-                {shortName(column.name)}
-              </p>
-              <p className="tabular truncate text-[0.625rem] tracking-[0.04em] text-[var(--ink-faint)]">
-                {scheduleLabel(column.schedule)}
-              </p>
+            <div className="cab-coluna flex items-center gap-2 px-2.5 py-2 sm:gap-2.5 sm:px-3.5 sm:py-3">
+              <span
+                aria-hidden
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border sm:h-8 sm:w-8"
+                style={{
+                  color: colors[column.staffId] ?? 'var(--accent)',
+                  borderColor: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 55%, transparent)`,
+                  background: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 12%, var(--surface-raised))`,
+                }}
+              >
+                <Monogram
+                  initials={initial(column.name)}
+                  className="text-[0.8125rem]"
+                />
+              </span>
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-[0.8125rem] font-semibold tracking-[0.005em] text-[var(--ink)]">
+                  {shortName(column.name)}
+                </p>
+                <p className="cab-escala tabular truncate text-[0.625rem] tracking-[0.04em] text-[var(--ink-faint)]">
+                  {scheduleLabel(column.schedule)}
+                </p>
+              </div>
             </div>
           </div>
         ))}
@@ -284,7 +308,7 @@ export function AgendaGrid({
               <div
                 key={column.staffId}
                 className={clsx(
-                  'relative h-full border-l border-[var(--line)] first:border-l-0',
+                  'coluna-agenda relative h-full border-l border-[var(--line)] first:border-l-0',
                   COLUMN,
                 )}
               >
@@ -311,6 +335,47 @@ export function AgendaGrid({
                     title={absence.reason ?? absence.kind}
                   />
                 ))}
+
+                {/*
+                  OS BURACOS SÃO TOCÁVEIS. Meia hora livre na escala é
+                  uma célula invisível que abre o encaixe já com o dia e
+                  a hora postos — o gesto de marcar passa a começar onde
+                  a dona já está a olhar. No monitor, pousar o rato
+                  mostra «+ 14:30»; no telemóvel não se vê nada e não
+                  faz falta: o dedo cai no branco e o encaixe abre.
+                */}
+                {encaixeHref
+                  ? freeWindows(column, blocks, fromMin, toMin).flatMap(
+                      (window) => {
+                        const cells = []
+                        for (
+                          let m = Math.ceil(window.start / 30) * 30;
+                          m + 15 <= window.end;
+                          m += 30
+                        ) {
+                          const len = Math.min(30, window.end - m)
+                          cells.push(
+                            <Link
+                              key={m}
+                              href={encaixeHref(formatMinutes(m))}
+                              scroll={false}
+                              aria-label={`Encaixe às ${formatMinutes(m)}`}
+                              className="absolute inset-x-0.5 z-[1] flex items-center justify-center rounded-[7px] text-transparent transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_7%,transparent)] hover:text-[var(--accent)] focus-visible:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+                              style={{
+                                top: top(m),
+                                height: `calc(${span(len)} - 2px)`,
+                              }}
+                            >
+                              <span className="tabular text-[0.6875rem] font-medium">
+                                + {formatMinutes(m)}
+                              </span>
+                            </Link>,
+                          )
+                        }
+                        return cells
+                      },
+                    )
+                  : null}
 
                 {blocks
                   .filter((b) => b.staffId === column.staffId)
@@ -375,7 +440,8 @@ function Block({
       daí para cima  ainda cabe o rodapé com o estado por extenso
 
     As contas são a 1,25 píxeis por minuto, que é a escala do monitor
-    (no telemóvel não há grelha nenhuma). Uma linha de nome mede uns
+    (no telemóvel a escala é 1,0 — mas aí a coluna estreita já reduziu
+    o bloco ao nome, e os andares extra escondem-se por CSS). Uma linha de nome mede uns
     dezassete píxeis e a do serviço quinze; com o respiro e o fio da
     borda, o segundo andar precisa de quarenta e sete píxeis para não
     sair cortado a meio das letras, e o terceiro de sessenta e nove.
@@ -394,7 +460,9 @@ function Block({
       href={href}
       scroll={false}
       className={clsx(
-        'group absolute inset-x-1 z-[2] flex min-h-[20px] flex-col overflow-hidden rounded-[9px] border py-1 pl-3 pr-2 sm:inset-x-1.5 sm:pl-3.5 sm:pr-2.5',
+        // `bloco-marcacao`: numa coluna apertada o CSS tira-lhe o
+        // respiro lateral — cada píxel passa a ser do nome da cliente.
+        'bloco-marcacao group absolute inset-x-1 z-[2] flex min-h-[20px] flex-col overflow-hidden rounded-[9px] border py-1 pl-3 pr-2 sm:inset-x-1.5 sm:pl-3.5 sm:pr-2.5',
         'transition-shadow duration-200 hover:z-[5] hover:shadow-[0_2px_4px_-1px_rgba(46,38,28,0.10),0_12px_24px_-14px_rgba(46,38,28,0.45)]',
         'focus-visible:z-[6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]',
         TONE_STYLE[tone],
@@ -422,8 +490,14 @@ function Block({
         style={{ background: TONE_BAR[tone] }}
       />
 
+      {/*
+        Na coluna apertada sobra SÓ O NOME: a hora já a diz a posição do
+        bloco (e a régua ali ao lado confirma-a), o serviço e o rodapé
+        não cabem sem partir letras. É o CSS do contentor que os apaga —
+        `bloco-hora`, `bloco-servico`, `bloco-rodape`.
+      */}
       <span className="flex items-baseline gap-1.5">
-        <span className="tabular shrink-0 text-[0.6875rem] font-medium text-[var(--ink-muted)]">
+        <span className="bloco-hora tabular shrink-0 text-[0.6875rem] font-medium text-[var(--ink-muted)]">
           {formatMinutes(block.startMin)}
         </span>
         <span
@@ -447,14 +521,14 @@ function Block({
       </span>
 
       {andares >= 2 ? (
-        <span className="mt-px block truncate text-[0.6875rem] leading-snug text-[var(--ink-muted)]">
+        <span className="bloco-servico mt-px block truncate text-[0.6875rem] leading-snug text-[var(--ink-muted)]">
           {block.serviceName}
           {block.itemCount > 1 ? ` +${block.itemCount - 1}` : ''}
         </span>
       ) : null}
 
       {andares === 3 ? (
-        <span className="mt-auto flex items-baseline gap-2 pt-1">
+        <span className="bloco-rodape mt-auto flex items-baseline gap-2 pt-1">
           <span
             className={clsx(
               'truncate text-[0.5625rem] font-semibold uppercase tracking-[0.11em]',
@@ -470,6 +544,38 @@ function Block({
       ) : null}
     </Link>
   )
+}
+
+/**
+ * O QUE SOBRA DA ESCALA: escala, menos marcações, menos ausências.
+ *
+ * É o negativo da agenda — e é a informação que a casa mais consulta:
+ * «onde é que ainda cabe alguém hoje?». As canceladas e as faltas não
+ * ocupam a cadeira, por isso não tapam buraco nenhum.
+ */
+function freeWindows(
+  column: AgendaDay['columns'][number],
+  blocks: AgendaBlock[],
+  fromMin: number,
+  toMin: number,
+): Interval[] {
+  const busy = blocks
+    .filter(
+      (b) =>
+        b.staffId === column.staffId &&
+        b.status !== 'no_show' &&
+        !b.status.startsWith('cancel'),
+    )
+    .map((b) => ({ start: b.blockStartMin, end: b.blockEndMin }))
+
+  return subtract(
+    subtract(column.schedule, merge(busy)),
+    column.absences,
+  ).flatMap((window) => {
+    const start = Math.max(window.start, fromMin)
+    const end = Math.min(window.end, toMin)
+    return end > start ? [{ start, end }] : []
+  })
 }
 
 /** "10:00–19:00", ou «Fora de escala» quando não está escalada. */
@@ -526,15 +632,15 @@ function Shade({
 }
 
 // ---------------------------------------------------------------------
-// A LISTA DO DIA — o dia no telemóvel, cartão a cartão, com a hora
-// grande à esquerda.
+// A LISTA DO DIA — o dia cartão a cartão, com a hora grande à esquerda.
 //
-// NO TELEMÓVEL A GRELHA NÃO SE LÊ, E NÃO É SÓ NA VISTA DA PROFISSIONAL.
-// Três colunas numa tela de 390px dão cento e quarenta píxeis cada, com
-// o nome cortado ao meio e o dia a fugir para fora do ecrã de lado.
-// Passa a ser esta lista para toda a gente; quando há mais do que uma
-// profissional no ecrã, cada cartão diz de quem é — pelo nome e pela
-// cor, a mesma cor da pastilha lá em cima.
+// Já foi a vista obrigatória do telemóvel; agora é uma ESCOLHA (`?v=`),
+// porque a grelha aprendeu a caber no ecrã. A lista continua a ser a
+// melhor maneira de LER o dia — quem vem, o que faz, quanto paga — e
+// a pior de ver onde ele tem espaço; por isso, quando mostra uma
+// profissional só, os buracos entram como linhas próprias. Quando há
+// mais do que uma, cada cartão diz de quem é — pelo nome e pela cor,
+// a mesma cor da pastilha lá em cima.
 // ---------------------------------------------------------------------
 
 type DayCard = {
@@ -549,16 +655,24 @@ type DayCard = {
   confirmSent: boolean
 }
 
+/** Uma linha da lista: um cartão de marcação, ou um buraco livre. */
+type ListRow =
+  | { kind: 'card'; startMin: number; card: DayCard }
+  | { kind: 'gap'; startMin: number; endMin: number }
+
 export function AgendaList({
   agenda,
   colors,
   hrefFor,
+  encaixeHref,
   nowMin,
 }: {
   agenda: AgendaDay
   /** display_color de cada profissional, por staffId. */
   colors: Record<string, string>
   hrefFor: (appointmentId: string | null) => string
+  /** Como na grelha: null para quem só pode ver a agenda. */
+  encaixeHref: ((hm: string) => string) | null
   nowMin: number | null
 }) {
   const cards = toCards(agenda.blocks)
@@ -566,17 +680,65 @@ export function AgendaList({
   const mostrarQuem = agenda.columns.length > 1
   const nomes = new Map(agenda.columns.map((c) => [c.staffId, c.name]))
 
+  /*
+    A LISTA DIZIA SÓ O QUE ESTÁ MARCADO — E O NEGÓCIO VIVE DO RESTO.
+    Com uma profissional no ecrã, os buracos da escala dela entram na
+    lista como linhas próprias: hora, um tracejado, e quanto tempo é.
+    Com várias profissionais os buracos sobrepõem-se uns aos outros e
+    uma lista única mentiria — aí quem quer ver buracos tem a grelha.
+  */
+  const gaps =
+    agenda.columns.length === 1
+      ? freeWindows(
+          agenda.columns[0]!,
+          agenda.blocks,
+          agenda.fromMin,
+          agenda.toMin,
+        ).filter((gap) => gap.end - gap.start >= 15)
+      : []
+
   if (cards.length === 0) {
     return <Empty title="Dia livre" hint="Não há nenhuma marcação neste dia." />
   }
 
+  const rows: ListRow[] = [
+    ...cards.map((card) => ({
+      kind: 'card' as const,
+      startMin: card.startMin,
+      card,
+    })),
+    ...gaps.map((gap) => ({
+      kind: 'gap' as const,
+      startMin: gap.start,
+      endMin: gap.end,
+    })),
+  ].sort((a, b) => a.startMin - b.startMin)
+
   // O fio de «agora» entra entre o que já passou e o que vem a seguir.
   const nowIndex =
-    nowMin === null ? -1 : cards.findIndex((c) => c.startMin >= nowMin)
+    nowMin === null ? -1 : rows.findIndex((r) => r.startMin >= nowMin)
 
   return (
     <ol className="bg-[var(--surface-raised)]">
-      {cards.map((card, index) => {
+      {rows.map((row, index) => {
+        if (row.kind === 'gap') {
+          return (
+            <li
+              key={`livre-${row.startMin}`}
+              className="border-b border-[var(--line-soft)]"
+            >
+              {index === nowIndex ? <NowRule nowMin={nowMin!} /> : null}
+              <GapRow
+                startMin={row.startMin}
+                endMin={row.endMin}
+                encaixeHref={encaixeHref}
+                nowMin={nowMin}
+              />
+            </li>
+          )
+        }
+
+        const { card } = row
         const tone = AGENDA_TONE[card.status]
         const falhou =
           card.status === 'no_show' || card.status.startsWith('cancel')
@@ -681,6 +843,75 @@ export function AgendaList({
       ) : null}
     </ol>
   )
+}
+
+/**
+ * Um buraco na lista: a hora, um tracejado, e quanto tempo é. Para quem
+ * pode marcar é também uma porta — toca-se e o encaixe abre já com a
+ * hora na mão. Se o dia é hoje e o buraco já começou, a hora que se
+ * leva é a próxima meia hora, não uma que já passou; um buraco todo
+ * passado deixa de ser porta e fica só o registo.
+ */
+function GapRow({
+  startMin,
+  endMin,
+  encaixeHref,
+  nowMin,
+}: {
+  startMin: number
+  endMin: number
+  encaixeHref: ((hm: string) => string) | null
+  nowMin: number | null
+}) {
+  const handMin =
+    nowMin !== null && nowMin > startMin
+      ? Math.ceil(nowMin / 30) * 30
+      : startMin
+  const aproveitavel = handMin + 15 <= endMin
+  const corpo = (
+    <>
+      <span className="tabular w-[3.75rem] shrink-0 text-right text-[0.75rem] font-medium">
+        {formatMinutes(startMin)}
+      </span>
+      <span
+        aria-hidden
+        className="h-px flex-1 border-t border-dashed border-[var(--line)]"
+      />
+      <span className="tabular shrink-0 text-[0.6875rem]">
+        {dur(endMin - startMin)} livre
+      </span>
+    </>
+  )
+
+  if (!encaixeHref || !aproveitavel) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-2 text-[var(--ink-faint)] opacity-80">
+        {corpo}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={encaixeHref(formatMinutes(handMin))}
+      scroll={false}
+      className="flex items-center gap-3 px-4 py-2 text-[var(--ink-faint)] transition-colors active:bg-[var(--surface-2)]"
+    >
+      {corpo}
+      <span className="shrink-0 text-[0.6875rem] font-semibold text-[var(--accent)]">
+        + Encaixe
+      </span>
+    </Link>
+  )
+}
+
+/** "2h05" / "45m" — a duração no corpo mais curto que ela tem. */
+function dur(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h${String(m).padStart(2, '0')}`
 }
 
 function NowRule({ nowMin }: { nowMin: number }) {
