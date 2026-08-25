@@ -53,7 +53,60 @@ const RAIL = 'w-12 sm:w-14'
  * se decide aqui: decide-o a própria coluna, por container query
  * (`coluna-agenda` no globals.css), mostrando só o que ainda se lê.
  */
-const COLUMN = 'min-w-[5rem] flex-1 basis-[8.5rem] sm:min-w-[14rem] sm:basis-[14rem]'
+const COLUMN =
+  'min-w-[var(--col-min)] flex-1 basis-[8.5rem] sm:min-w-[14rem] sm:basis-[14rem]'
+/**
+ * O MÍNIMO DA COLUNA NÃO É FIXO: PAGA-SE AS LOMBADAS COM ELE.
+ *
+ * As 5rem de origem estavam calibradas para uma grelha sem folgas —
+ * quatro profissionais mais a régua davam 368px num ecrã de 390. Com as
+ * lombadas a somar, esse mínimo deixou de chegar: medido no browser,
+ * três a trabalhar mais cinco de folga pediam 388px de 356 disponíveis,
+ * e o que se via era a última lombada cortada ao meio pela margem —
+ * pior do que não a mostrar.
+ *
+ * A PRIMEIRA CORRECÇÃO FOI CONTAR PÍXEIS AQUI, E ESTAVA ERRADA. Partia
+ * de 390 (o ecrã) quando o que a grelha tem é 356 — a agenda vive
+ * dentro de um contentor com margem, e o servidor não sabe qual é. O
+ * resultado foi encolher as colunas e continuar a transbordar por 30px.
+ *
+ * Quem sabe a largura é o CSS. Por isso o mínimo é uma conta em
+ * `calc()`: cem por cento do que a grelha tem, menos a régua e as
+ * lombadas — que são as únicas medidas fixas e conhecidas — a dividir
+ * por quem trabalha. O servidor só diz QUANTAS lombadas há; a largura
+ * fica com quem a tem.
+ *
+ * O `max()` com 3.5rem é o travão: abaixo disso a container query já
+ * não tem onde escrever o nome e a coluna deixa de se ler. A partir
+ * daí é melhor deslizar do que mostrar colunas ilegíveis.
+ */
+/** Régua das horas: `w-12` no telemóvel, `w-14` a partir de `sm`. */
+const RAIL_PX = 48
+/** Lombada de folga: `w-5` no telemóvel. */
+const OFF_PX = 20
+/**
+ * A COLUNA DE QUEM HOJE NÃO VEM.
+ *
+ * A dona quis a equipa toda à vista para ter o panorama da casa. O
+ * risco óbvio disso é o dia de trabalho ficar espremido por causa de
+ * quem não está a trabalhar — e aí o panorama custava mais do que
+ * valia. Por isso a coluna de folga não é uma coluna a sério: é uma
+ * lombada, o suficiente para o medalhão e para se perceber que aquela
+ * pessoa existe e hoje não vem.
+ *
+ * NO TELEMÓVEL É UM RISCO, NÃO UMA LOMBADA. A primeira versão dava-lhe
+ * 2.5rem em todo o lado, e a conta desmentiu-a: numa equipa de oito com
+ * três a trabalhar, cinco folgas a 40px comiam 200 dos 390 píxeis do
+ * ecrã — metade da agenda gasta a dizer quem NÃO está lá. A 1.25rem o
+ * medalhão ainda se vê (é o que identifica a pessoa, pela cor), o nome
+ * ao alto cala-se, e as mesmas cinco folgas passam a custar 100px.
+ *
+ * `shrink-0 grow-0` é o que segura isto: sem eles o `flex-1` das outras
+ * colunas dividia o espaço em partes iguais e a folga voltava a ganhar
+ * terreno.
+ */
+const COLUMN_OFF =
+  'w-5 shrink-0 grow-0 basis-5 sm:w-11 sm:basis-11'
 
 /**
  * O tom de cada estado, como a casa o lê na agenda: neutro enquanto só
@@ -142,14 +195,44 @@ export function AgendaGrid({
 }) {
   const { fromMin, toMin, columns, blocks, opening } = agenda
 
-  if (columns.length === 0) {
+  /*
+    NINGUÉM A TRABALHAR NÃO É O MESMO QUE NÃO HAVER GRELHA.
+
+    Com a equipa toda pedida, um dia sem escala nenhuma traz na mesma
+    uma lombada por pessoa — e cinco lombadas encostadas umas às outras,
+    sem uma única coluna a que pertençam, não dizem nada a ninguém. O
+    aviso é mais honesto, e nomeia quem hoje não vem para a pergunta
+    ficar respondida sem se ir a lado nenhum.
+  */
+  if (columns.every((c) => c.offDuty)) {
     return (
       <Empty
         title="Ninguém escalado neste dia"
-        hint="A escala define-se em Gestão · Equipa, e tem vigência: trocar de escala é fechar a antiga e abrir uma nova."
+        hint={
+          columns.length === 0
+            ? 'A escala define-se em Gestão · Equipa, e tem vigência: trocar de escala é fechar a antiga e abrir uma nova.'
+            : `De folga: ${columns.map((c) => shortName(c.name)).join(', ')}. A escala define-se em Gestão · Equipa.`
+        }
       />
     )
   }
+
+  /*
+    A folha estreita e centrada é para o dia de UMA pessoa. Com a equipa
+    toda ligada há mais colunas no ecrã, mas se só uma trabalha o dia
+    continua a ser dela — são as lombadas de folga que a acompanham, e
+    espalhar isso por um monitor inteiro não o tornava mais legível.
+  */
+  const working = columns.filter((c) => !c.offDuty).length
+  const off = columns.length - working
+  /*
+    Só se aperta o mínimo quando há lombadas a pagar; sem folgas a
+    grelha fica exactamente como estava antes desta funcionalidade.
+  */
+  const colMin =
+    off > 0 && working > 0
+      ? `max(3.5rem, calc((100% - ${RAIL_PX + off * OFF_PX}px) / ${working}))`
+      : '5rem'
 
   const hours: number[] = []
   for (let m = Math.ceil(fromMin / 60) * 60; m <= toMin; m += 60) hours.push(m)
@@ -170,9 +253,10 @@ export function AgendaGrid({
     // fecha-se dos lados: passa a ler-se como a folha do dia, e não como
     // uma grelha que ficou por acabar a meio do ecrã.
     <div
+      style={{ '--col-min': colMin } as React.CSSProperties}
       className={clsx(
         'grelha-dia w-full min-w-min bg-[var(--surface-raised)]',
-        columns.length === 1 &&
+        working <= 1 &&
           'mx-auto max-w-3xl border-x border-[var(--line-soft)] lg:shadow-[var(--shadow-soft)]',
       )}
     >
@@ -203,40 +287,97 @@ export function AgendaGrid({
           query não pode estilizar o próprio contentor, só o que está lá
           dentro — daí o embrulho.
         */}
-        {columns.map((column) => (
-          <div
-            key={column.staffId}
-            className={clsx(
-              'coluna-agenda border-l border-[var(--line-soft)] first:border-l-0',
-              COLUMN,
-            )}
-          >
-            <div className="cab-coluna flex items-center gap-2 px-2.5 py-2 sm:gap-2.5 sm:px-3.5 sm:py-3">
+        {columns.map((column) =>
+          column.offDuty ? (
+            /*
+              A LOMBADA DE QUEM ESTÁ DE FOLGA.
+
+              Sem cabeçalho a sério: o medalhão diz quem é, o nome ao
+              alto confirma-o a quem tiver dúvidas, e o `title` dá a
+              resposta inteira a quem parar o rato. Fica esbatido de
+              propósito — está na grelha para se contar a equipa, não
+              para disputar o olhar com o dia de trabalho.
+            */
+            <div
+              key={column.staffId}
+              title={`${column.name} · folga`}
+              className={clsx(
+                'flex flex-col items-center gap-1 border-l border-[var(--line-soft)] bg-[var(--surface-2)]/40 px-0 py-1.5 first:border-l-0 sm:gap-1.5 sm:px-1 sm:py-3',
+                COLUMN_OFF,
+              )}
+            >
+              {/*
+                No telemóvel o medalhão é um ponto da cor dela: a 20px de
+                largura não há sítio para uma inicial que se leia, e uma
+                letra ilegível dentro de um círculo é ruído. A cor chega
+                para a reconhecer — é a mesma do chip lá em cima.
+              */}
               <span
                 aria-hidden
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border sm:h-8 sm:w-8"
+                className="flex h-2 w-2 shrink-0 items-center justify-center rounded-full border border-dashed opacity-60 sm:h-7 sm:w-7"
                 style={{
                   color: colors[column.staffId] ?? 'var(--accent)',
-                  borderColor: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 55%, transparent)`,
-                  background: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 12%, var(--surface-raised))`,
+                  borderColor: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 45%, transparent)`,
+                  background: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 30%, transparent)`,
                 }}
               >
-                <Monogram
-                  initials={initial(column.name)}
-                  className="text-[0.8125rem]"
-                />
+                <span className="hidden sm:block">
+                  <Monogram
+                    initials={initial(column.name)}
+                    className="text-[0.6875rem]"
+                  />
+                </span>
               </span>
-              <div className="min-w-0 leading-tight">
-                <p className="truncate text-[0.8125rem] font-semibold tracking-[0.005em] text-[var(--ink)]">
-                  {shortName(column.name)}
-                </p>
-                <p className="cab-escala tabular truncate text-[0.625rem] tracking-[0.04em] text-[var(--ink-faint)]">
-                  {scheduleLabel(column.schedule)}
-                </p>
+              {/*
+                O nome ao alto, a subir, como num rótulo de lombada — e
+                só onde há largura para ele. `vertical-rl` é o modo que
+                todos os navegadores conhecem (o `sideways-lr`, que dava
+                isto de uma vez só, ainda não chegou ao Safari) e a
+                rotação de meia volta endireita-o.
+              */}
+              <span
+                className="hidden min-h-0 flex-1 overflow-hidden text-[0.625rem] font-medium tracking-[0.02em] text-[var(--ink-faint)] sm:block"
+                style={{ writingMode: 'vertical-rl', rotate: '180deg' }}
+              >
+                {shortName(column.name)}
+              </span>
+              <span className="sr-only">{column.name}, de folga</span>
+            </div>
+          ) : (
+            <div
+              key={column.staffId}
+              className={clsx(
+                'coluna-agenda border-l border-[var(--line-soft)] first:border-l-0',
+                COLUMN,
+              )}
+            >
+              <div className="cab-coluna flex items-center gap-2 px-2.5 py-2 sm:gap-2.5 sm:px-3.5 sm:py-3">
+                <span
+                  aria-hidden
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border sm:h-8 sm:w-8"
+                  style={{
+                    color: colors[column.staffId] ?? 'var(--accent)',
+                    borderColor: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 55%, transparent)`,
+                    background: `color-mix(in srgb, ${colors[column.staffId] ?? 'var(--accent)'} 12%, var(--surface-raised))`,
+                  }}
+                >
+                  <Monogram
+                    initials={initial(column.name)}
+                    className="text-[0.8125rem]"
+                  />
+                </span>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate text-[0.8125rem] font-semibold tracking-[0.005em] text-[var(--ink)]">
+                    {shortName(column.name)}
+                  </p>
+                  <p className="cab-escala tabular truncate text-[0.625rem] tracking-[0.04em] text-[var(--ink-faint)]">
+                    {scheduleLabel(column.schedule)}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ),
+        )}
       </div>
 
       {/* corpo ---------------------------------------------------- */}
@@ -304,7 +445,25 @@ export function AgendaGrid({
           ))}
 
           <div className="flex h-full">
-            {columns.map((column) => (
+            {columns.map((column) =>
+              column.offDuty ? (
+                /*
+                  A FAIXA DE FOLGA NÃO TEM DIA DENTRO.
+
+                  Nem células de encaixe — marcar a quem não vem hoje não
+                  é um descuido que se conserte, é uma escala que se
+                  muda primeiro. Quem quiser mesmo pôr lá alguém dá-lhe
+                  escala na ficha e a coluna abre-se sozinha.
+                */
+                <div
+                  key={column.staffId}
+                  aria-hidden
+                  className={clsx(
+                    'relative h-full border-l border-[var(--line)] bg-[var(--surface-2)]/40 first:border-l-0',
+                    COLUMN_OFF,
+                  )}
+                />
+              ) : (
               <div
                 key={column.staffId}
                 className={clsx(
@@ -390,7 +549,8 @@ export function AgendaGrid({
                     />
                   ))}
               </div>
-            ))}
+              ),
+            )}
           </div>
 
           {/* a linha de agora — atravessa o dia e não se confunde com uma hora */}
@@ -676,8 +836,18 @@ export function AgendaList({
   nowMin: number | null
 }) {
   const cards = toCards(agenda.blocks)
+  /*
+    A LISTA É O DIA, E QUEM ESTÁ DE FOLGA NÃO TEM DIA.
+
+    Estas colunas vêm da grelha, que as mostra para se contar a equipa.
+    Aqui não há nada para desenhar delas — não têm marcações nem buracos
+    — e contá-las mudava as duas decisões que se tomam a seguir: com
+    quatro folgas e uma pessoa ao balcão, os buracos DELA deixavam de
+    aparecer e cada cartão passava a repetir um nome que já era o único.
+  */
+  const trabalham = agenda.columns.filter((c) => !c.offDuty)
   /** Com uma coluna só, dizer de quem é em cada cartão é dizê-lo 12 vezes. */
-  const mostrarQuem = agenda.columns.length > 1
+  const mostrarQuem = trabalham.length > 1
   const nomes = new Map(agenda.columns.map((c) => [c.staffId, c.name]))
 
   /*
@@ -688,9 +858,9 @@ export function AgendaList({
     uma lista única mentiria — aí quem quer ver buracos tem a grelha.
   */
   const gaps =
-    agenda.columns.length === 1
+    trabalham.length === 1
       ? freeWindows(
-          agenda.columns[0]!,
+          trabalham[0]!,
           agenda.blocks,
           agenda.fromMin,
           agenda.toMin,

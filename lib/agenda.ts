@@ -30,6 +30,12 @@ export type AgendaColumn = {
   schedule: Interval[]
   /** Ausências que tocam este dia, em minutos locais. */
   absences: (Interval & { kind: string; reason: string | null })[]
+  /**
+   * Não trabalha hoje e não tem nada marcado: entrou na grelha só
+   * porque se pediu a equipa toda. Quem desenha usa isto para lhe dar
+   * menos espaço — ver `folgas` em `loadAgendaDay`.
+   */
+  offDuty: boolean
 }
 
 export type AgendaBlock = {
@@ -120,13 +126,31 @@ const PADDING = 30
 const DEFAULT_FROM = 9 * 60
 const DEFAULT_TO = 20 * 60
 
+/**
+ * QUEM É QUE FAZ COLUNA.
+ *
+ * `dia` é o que a agenda sempre fez: quem trabalha hoje, mais quem tem
+ * trabalho marcado sem estar escalada. É a vista de quem está a tocar
+ * a casa — mostra o dia e nada mais.
+ *
+ * `equipa` acrescenta a essas quem hoje não vem. A dona pediu-o para
+ * ter o panorama da casa inteira num relance: ver de repente que na
+ * terça só estão duas pessoas ao balcão é uma decisão de gestão, e não
+ * se toma a folhear sete dias um a um. Quem entra por aqui vem marcado
+ * com `offDuty` e a grelha dá-lhe uma coluna estreita — está lá, sabe-se
+ * que está de folga, e não rouba o espaço a quem está a trabalhar.
+ */
+export type AgendaScope = 'dia' | 'equipa'
+
 export async function loadAgendaDay(
   unit: Unit,
   day: IsoDay,
-  options: { onlyStaffId?: string | null } = {},
+  options: { onlyStaffId?: string | null; scope?: AgendaScope } = {},
 ): Promise<AgendaDay> {
   const tz = unit.timezone
   const only = options.onlyStaffId ?? null
+  /* Uma profissional vê a agenda dela: a equipa toda não lhe diz respeito. */
+  const scope: AgendaScope = only ? 'dia' : (options.scope ?? 'dia')
 
   // A janela é o dia local, de meia-noite a meia-noite. O teste é de
   // sobreposição, não de início: um bloco que atravessa a meia-noite
@@ -186,11 +210,35 @@ export async function loadAgendaDay(
 
   // As colunas são quem está escalada, mais quem tem trabalho marcado
   // sem estar escalada — um encaixe não pode ficar invisível.
-  const columnIds = new Set<string>([
+  const dutyIds = new Set<string>([
     ...scheduleRows.map((r) => r.staff_id),
     ...blockRows.map((r) => r.staff_id),
   ])
-  const ids = [...columnIds]
+
+  /*
+    A EQUIPA TODA, QUANDO SE PEDE.
+
+    Só quem está activa e atribuída a ESTA loja: a agenda de Valongo não
+    é sítio para quem só atende na Maia, e uma ficha desactivada saiu da
+    casa — mostrá-la seria ressuscitar na grelha quem já não lá está.
+
+    Quem não faz turno em loja nenhuma (a conta da Voux, uma ficha só de
+    balcão) também fica de fora: não tem agenda para mostrar.
+  */
+  const rosterIds =
+    scope === 'equipa'
+      ? (
+          await sql<{ id: string }[]>`
+            select s.id
+              from staff s
+              join staff_unit su on su.staff_id = s.id and su.unit_id = ${unit.id}
+             where s.org_id = ${unit.org_id}
+               and s.is_active
+          `
+        ).map((r) => r.id)
+      : []
+
+  const ids = [...new Set<string>([...dutyIds, ...rosterIds])]
 
   const [staffRows, absenceRows] = await Promise.all([
     ids.length === 0
@@ -236,6 +284,12 @@ export async function loadAgendaDay(
     avatarUrl: s.avatar_url,
     schedule: merge(scheduleByStaff.get(s.id) ?? []),
     absences: absencesByStaff.get(s.id) ?? [],
+    /*
+      De folga é quem entrou por ser da casa e não por ter dia: sem
+      escala E sem trabalho marcado. Quem tem um encaixe fora de escala
+      trabalha hoje — a coluna é inteira, como sempre foi.
+    */
+    offDuty: !dutyIds.has(s.id),
   }))
 
   const blocks: AgendaBlock[] = blockRows.map((r) => ({

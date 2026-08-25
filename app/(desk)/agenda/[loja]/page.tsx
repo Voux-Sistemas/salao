@@ -2,9 +2,9 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
-import { ChevronDown, Columns3, Rows3 } from 'lucide-react'
+import { ChevronDown, Columns3, Rows3, Users } from 'lucide-react'
 import { requireActor, resolveUnit, unitsFor, can } from '@/lib/auth/actor'
-import { loadAgendaDay } from '@/lib/agenda'
+import { loadAgendaDay, type AgendaScope } from '@/lib/agenda'
 import { getAppointment } from '@/lib/booking'
 import { sql } from '@/lib/db'
 import {
@@ -48,11 +48,17 @@ export default async function AgendaDayPage({
   searchParams,
 }: {
   params: Promise<{ loja: string }>
-  searchParams: Promise<{ d?: string; m?: string; p?: string; v?: string }>
+  searchParams: Promise<{
+    d?: string
+    m?: string
+    p?: string
+    v?: string
+    e?: string
+  }>
 }) {
   const actor = await requireActor()
   const { loja } = await params
-  const { d, m, p, v } = await searchParams
+  const { d, m, p, v, e } = await searchParams
 
   // Loja inexistente e loja sem acesso dão a MESMA resposta.
   const unit = await resolveUnit(actor, loja)
@@ -62,11 +68,22 @@ export default async function AgendaDayPage({
   /** A vista: grelha por omissão, lista para quem a pedir. */
   const view: 'grelha' | 'lista' = v === 'lista' ? 'lista' : 'grelha'
 
+  /*
+    O DIA, OU A CASA INTEIRA.
+
+    Por omissão a agenda mostra quem trabalha — é o que serve para tocar
+    o dia. `?e=equipa` acrescenta quem hoje não vem, em coluna estreita:
+    a dona pediu-o para ver a casa toda de uma vez e perceber num relance
+    quantas mãos tem numa terça-feira. Fica no endereço como tudo o
+    resto, para se poder guardar e voltar lá.
+  */
+  const scope: AgendaScope = e === 'equipa' ? 'equipa' : 'dia'
+
   // A profissional vê só a agenda dela.
   const onlyStaffId = actor.role === 'professional' ? actor.id : null
 
   const [full, units, colorRows] = await Promise.all([
-    loadAgendaDay(unit, day, { onlyStaffId }),
+    loadAgendaDay(unit, day, { onlyStaffId, scope }),
     unitsFor(actor),
     sql<{ id: string; display_color: string }[]>`
       select id, display_color from staff where org_id = ${unit.org_id}
@@ -114,15 +131,16 @@ export default async function AgendaDayPage({
   const confirmSent = selected ? await hasConfirm(selected.id) : false
 
   const here = `/agenda/${unit.slug}`
-  /** Trocar de dia nunca perde a pessoa escolhida nem a vista. */
+  /** Trocar de dia nunca perde a pessoa escolhida, a vista nem o âmbito. */
   const withDay = (
     target: IsoDay,
     staffId: string | null = picked,
     nextView: 'grelha' | 'lista' = view,
+    nextScope: AgendaScope = scope,
   ) =>
     `${here}?d=${target}${staffId ? `&p=${staffId}` : ''}${
       nextView === 'lista' ? '&v=lista' : ''
-    }`
+    }${nextScope === 'equipa' ? '&e=equipa' : ''}`
   const hrefFor = (appointmentId: string | null) =>
     appointmentId ? `${withDay(day)}&m=${appointmentId}` : withDay(day)
   /*
@@ -142,7 +160,17 @@ export default async function AgendaDayPage({
     : null
 
   const appointmentCount = new Set(agenda.blocks.map((b) => b.appointmentId)).size
-  const staffCount = agenda.columns.length
+  /*
+    QUEM TRABALHA CONTA-SE À PARTE DE QUEM ESTÁ DE FOLGA.
+
+    Somar as duas dava «5 profissionais» num dia com duas pessoas ao
+    balcão — a linha que devia dizer a lotação do dia passava a
+    escondê-la, e era exactamente por causa dela que a dona quis ver a
+    equipa toda. Contam-se as que trabalham; as folgas dizem-se a seguir,
+    e só quando existem.
+  */
+  const staffCount = agenda.columns.filter((c) => !c.offDuty).length
+  const offCount = agenda.columns.length - staffCount
   const pickedName = picked
     ? (full.columns.find((c) => c.staffId === picked)?.name ?? null)
     : null
@@ -215,6 +243,9 @@ export default async function AgendaDayPage({
                   : staffCount === 1
                     ? ' · 1 profissional'
                     : ` · ${staffCount} profissionais`}
+              {!onlyStaffId && !pickedName && offCount > 0
+                ? ` · ${offCount} de folga`
+                : ''}
             </p>
           </div>
 
@@ -303,11 +334,11 @@ export default async function AgendaDayPage({
         </div>
 
         {/* uma profissional de cada vez ------------------------------ */}
-        {!onlyStaffId && full.columns.length > 1 ? (
+        {!onlyStaffId && (full.columns.length > 1 || scope === 'equipa') ? (
           <div className="relative border-t border-[var(--line-soft)]">
             <nav
               aria-label="Ver uma profissional"
-              className="no-scrollbar flex items-center gap-1.5 overflow-x-auto px-4 py-1.5 sm:px-6 sm:py-2"
+              className="no-scrollbar flex items-center gap-1.5 overflow-x-auto px-4 py-1.5 pr-16 sm:px-6 sm:py-2 sm:pr-20"
             >
               <StaffChip href={withDay(day, null)} active={picked === null}>
                 Todas
@@ -318,11 +349,46 @@ export default async function AgendaDayPage({
                   href={withDay(day, column.staffId)}
                   active={picked === column.staffId}
                   color={colors[column.staffId]}
+                  muted={column.offDuty}
                 >
                   {shortName(column.name)}
                 </StaffChip>
               ))}
             </nav>
+            {/*
+              O INTERRUPTOR DA CASA INTEIRA.
+
+              Fica preso à direita, por cima do esbatido, porque a fita
+              desliza e um botão que fugisse com ela deixava de se
+              encontrar. Diz o que se ganha ao carregar, não o que está
+              — «Equipa» leva à casa toda, «Só hoje» volta ao dia — que é
+              a pergunta que a dona tem na cabeça quando olha para ali.
+            */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pl-6 pr-3 sm:pr-5">
+              <Link
+                href={withDay(
+                  day,
+                  picked,
+                  view,
+                  scope === 'equipa' ? 'dia' : 'equipa',
+                )}
+                scroll={false}
+                title={
+                  scope === 'equipa'
+                    ? 'Mostrar só quem trabalha hoje'
+                    : 'Mostrar a equipa toda, incluindo folgas'
+                }
+                className={clsx(
+                  'pointer-events-auto inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[0.6875rem] font-semibold tracking-[0.01em] shadow-[0_1px_2px_rgba(28,24,21,0.06)] transition-colors',
+                  scope === 'equipa'
+                    ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
+                    : 'border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:text-[var(--ink)]',
+                )}
+              >
+                <Users aria-hidden className="h-3.5 w-3.5" />
+                {scope === 'equipa' ? 'Só hoje' : 'Equipa'}
+              </Link>
+            </div>
             {/*
               COM A EQUIPA TODA A FITA NÃO CABE NO TELEMÓVEL, E UM NOME
               CORTADO RENTE À MARGEM PARECE UM DEFEITO DO ECRÃ.
@@ -333,7 +399,7 @@ export default async function AgendaDayPage({
             */}
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[var(--surface-raised)] to-transparent"
+              className="pointer-events-none absolute inset-y-0 right-14 w-8 bg-gradient-to-l from-[var(--surface-raised)] to-transparent sm:right-16"
             />
           </div>
         ) : null}
@@ -346,7 +412,7 @@ export default async function AgendaDayPage({
             acontece com cinco ou mais profissionais (a coluna mínima é
             5rem); no monitor, entre `md` e `lg`, quando o painel rouba
             espaço à grelha. */}
-        {view === 'grelha' && agenda.columns.length > 1 ? (
+        {view === 'grelha' && staffCount > 1 ? (
           <div
             aria-hidden
             className={clsx(
@@ -425,15 +491,23 @@ async function hasConfirm(appointmentId: string): Promise<boolean> {
  * mesma cor que os blocos dela têm na grelha, para que a escolha e o
  * que ela faz se leiam como a mesma coisa.
  */
+/**
+ * `muted` é quem hoje está de folga, quando se pede a equipa toda: o
+ * chip fica a tracejado e desmaiado. Continua a levar à agenda dela —
+ * ver o dia vazio de alguém é uma resposta legítima — mas não se
+ * confunde com quem está a trabalhar.
+ */
 function StaffChip({
   href,
   active,
   color,
+  muted,
   children,
 }: {
   href: string
   active: boolean
   color?: string
+  muted?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -445,13 +519,15 @@ function StaffChip({
         'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.75rem] transition-colors',
         active
           ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)]'
-          : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]',
+          : muted
+            ? 'border-dashed border-[var(--line-soft)] text-[var(--ink-faint)] opacity-70 hover:opacity-100'
+            : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]',
       )}
     >
       {color ? (
         <span
           aria-hidden
-          className="block h-1.5 w-1.5 rounded-full"
+          className={clsx('block h-1.5 w-1.5 rounded-full', muted && 'opacity-45')}
           style={{ background: color }}
         />
       ) : null}
