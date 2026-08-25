@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
 import clsx from 'clsx'
 import { getOrg, listUnits } from '@/lib/org'
+import { allWeeklyHours, weekDigest } from '@/lib/hours'
 import { getDictionary, getLanguage, LANGUAGE_TAG } from '@/lib/i18n'
 import { getClientActor } from '@/lib/auth/client-actor'
 import { BRAND } from '@/lib/branding'
@@ -27,12 +28,21 @@ export async function PublicChrome({
   /** Página com herói escuro no topo: o cabeçalho vira vidro fumado. */
   hero?: boolean
 }) {
-  const [org, dict, language, client, units] = await Promise.all([
+  const [org, dict, language, client, units, horas] = await Promise.all([
     getOrg(),
     getDictionary(),
     getLanguage(),
     getClientActor(),
     listUnits(),
+    /*
+     * As horas de TODAS as lojas numa consulta só, e em cache: a
+     * coluna das moradas precisa da semana de cada casa, e pedi-las
+     * uma a uma dava tantas idas à base quantas as lojas. Só serve o
+     * monitor, mas o servidor não sabe a largura do ecrã — e uma
+     * consulta indexada por duas linhas é mais barata do que a
+     * cerimónia de a evitar.
+     */
+    allWeeklyHours(),
   ])
 
   const name = org?.name ?? BRAND.fallbackName
@@ -42,6 +52,33 @@ export async function PublicChrome({
     ? `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(dict.footer.whatsappMessage)}`
     : null
   const year = new Date().getFullYear()
+
+  /*
+   * AS MORADAS VOLTAM — MAS SÓ ONDE HÁ ESPAÇO PARA ELAS.
+   *
+   * Saíram porque num telemóvel davam dois ecrãs de rodapé para
+   * repetir o que a ficha de cada loja diz duas dedadas acima. Esse
+   * argumento continua de pé — no telemóvel.
+   *
+   * Num monitor, quando se chega ao fim, a secção das lojas ficou
+   * dez ecrãs atrás, e o rodapé tinha duas colunas encostadas às
+   * bordas com novecentos pixéis de nada no meio. A mesma
+   * informação, o mesmo sítio, decisões diferentes: é para isso que
+   * serve saber a largura do ecrã.
+   *
+   * E há um ganho que não é de desenho: uma morada no rodapé de
+   * todas as páginas é o que os motores de busca procuram para saber
+   * onde fica um negócio local. Escondida por CSS continua no HTML,
+   * e o Google lê o HTML.
+   */
+  const casas = units.slice(0, 2).map((unit) => {
+    const semana = weekDigest(
+      horas.get(unit.id) ?? new Map(),
+      dict.common.weekdaysShort,
+      dict.unit.closedNow,
+    ).filter((row) => row.hours !== dict.unit.closedNow)[0]
+    return { unit, semana: semana ?? null }
+  })
 
   /*
    * O TELEFONE SAIU DAQUI, E NÃO SE PERDEU.
@@ -204,7 +241,7 @@ export async function PublicChrome({
               pelo Google, direito a um serviço, nunca subiu à capa —
               esta é a única linha do rodapé que diz o que a casa faz.
             */}
-            <div className="grid gap-8 sm:grid-cols-2 sm:items-start sm:gap-12">
+            <div className="grid gap-8 sm:grid-cols-2 sm:items-start sm:gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_auto] lg:gap-14">
               <div>
                 <LogoSeal size="lg" />
 
@@ -214,6 +251,38 @@ export async function PublicChrome({
                 <p className="mt-2.5 max-w-xs text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
                   {dict.footer.tagline}
                 </p>
+              </div>
+
+              {/*
+                ONDE ESTAMOS — SÓ A PARTIR DOS 1024 PIXÉIS.
+
+                `hidden lg:block`: abaixo disso não existe, e o
+                telemóvel fica exactamente com o rodapé de sempre.
+              */}
+              <div className="hidden lg:block">
+                <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-[var(--ink-faint)]">
+                  {dict.footer.addressesLabel}
+                </p>
+                <div className="mt-4 grid gap-5">
+                  {casas.map(({ unit, semana }) => (
+                    <div key={unit.id}>
+                      <p className="display text-[0.9375rem] text-[var(--ink)]">
+                        {unit.name}
+                      </p>
+                      {unit.address_line ? (
+                        <p className="mt-1 text-[0.75rem] leading-relaxed text-[var(--ink-muted)]">
+                          {unit.address_line}
+                          {unit.postal_code ? ` · ${unit.postal_code}` : ''}
+                        </p>
+                      ) : null}
+                      {semana ? (
+                        <p className="tabular mt-0.5 text-[0.75rem] text-[var(--ink-faint)]">
+                          {semana.days} · {semana.hours}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/*
