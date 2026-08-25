@@ -343,6 +343,23 @@ export default async function AgendaDayPage({
               </Link>
             </div>
 
+            {/*
+              A PORTA PARA A SEMANA.
+
+              Fica ao lado da vista porque é da mesma família — é outra
+              maneira de olhar para a mesma agenda — mas não entra no
+              interruptor lista/grelha: esses dois desenham O DIA, e a
+              semana é outra pergunta, com endereço próprio. Leva o dia
+              aberto consigo, para abrir na semana a que ele pertence.
+            */}
+            <Link
+              href={`${here}/semana?d=${day}`}
+              title="Panorama da semana"
+              className={buttonClass('quiet', 'sm')}
+            >
+              Semana
+            </Link>
+
             {!isToday ? (
               <Link
                 href={withDay(todayDay)}
