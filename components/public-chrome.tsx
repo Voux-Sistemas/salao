@@ -247,7 +247,7 @@ export async function PublicChrome({
                       rel="noreferrer"
                       aria-label={dict.footer.whatsapp}
                       title={dict.footer.whatsapp}
-                      className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
+                      className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                     >
                       <svg
                         viewBox="0 0 24 24"
@@ -270,7 +270,7 @@ export async function PublicChrome({
                       rel="noreferrer"
                       aria-label={dict.footer.instagram}
                       title={dict.footer.instagram}
-                      className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
+                      className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                     >
                       <svg
                         viewBox="0 0 24 24"
@@ -319,7 +319,7 @@ export async function PublicChrome({
           </div>
 
           <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line-soft)] pt-4">
-            <p className="text-[0.6875rem] text-[var(--ink-faint)]">
+            <p className="text-[0.6875rem] text-[var(--ink-muted)]">
               © {year} {BRAND.legalName}
             </p>
 
@@ -333,7 +333,7 @@ export async function PublicChrome({
             */}
             <Link
               href="/entrar"
-              className="toque inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] px-3.5 py-1.5 text-[0.6875rem] font-medium text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
+              className="toque inline-flex items-center gap-2 rounded-full border border-[var(--line-soft)] px-3.5 py-1.5 text-[0.6875rem] font-medium text-[var(--ink-muted)] transition-colors hover:border-[var(--line)] hover:text-[var(--ink)]"
             >
               <svg
                 viewBox="0 0 24 24"

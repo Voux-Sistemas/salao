@@ -1142,16 +1142,29 @@ html.js .so-sem-js {
    --------------------------------------------------------------------- */
 
 .fundo-casa {
+  /*
+   * OS CLARÕES SÃO UMA INSINUAÇÃO, NÃO UMA LUZ.
+   *
+   * À primeira tentativa estavam a 30% e o fundo subia até #4A3D28 —
+   * e os tokens do band-dark foram calibrados para #131009. Nesse
+   * ponto o texto esbatido caía para 2,1:1 de contraste, que é
+   * ilegível, e a banda inteira passou a ler-se como uma mancha só.
+   *
+   * A 10% sobre um castanho quase preto, o ponto mais claro fica em
+   * #2B2417: o texto esbatido volta aos 6,3:1 e ainda se vê o calor.
+   * O calor era o objectivo; a luz era um efeito secundário que eu
+   * confundi com ele.
+   */
   background-image:
     radial-gradient(
-      ellipse 46% 60% at 22% 26%,
-      color-mix(in srgb, var(--gold) 30%, transparent),
-      transparent 62%
+      ellipse 50% 62% at 20% 24%,
+      color-mix(in srgb, var(--gold) 10%, transparent),
+      transparent 64%
     ),
     radial-gradient(
-      ellipse 40% 50% at 78% 70%,
-      color-mix(in srgb, var(--accent) 26%, transparent),
-      transparent 66%
+      ellipse 44% 52% at 80% 72%,
+      color-mix(in srgb, var(--accent) 9%, transparent),
+      transparent 68%
     ),
-    linear-gradient(158deg, #2E251A 0%, #3E3223 38%, #241C13 74%, #1A140D 100%);
+    linear-gradient(158deg, #1E1811 0%, #18130C 46%, #141009 100%);
 }
