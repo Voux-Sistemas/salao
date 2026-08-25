@@ -4,7 +4,6 @@ import { getActor, unitsFor } from '@/lib/auth/actor'
 import { PublicChrome } from '@/components/public-chrome'
 import { DeskChrome } from '@/components/desk-chrome'
 import { Showcase } from '@/components/showcase'
-import { BookingBar } from '@/components/booking-bar'
 import { DayPanel } from '@/components/day-panel'
 
 export const dynamic = 'force-dynamic'
@@ -27,7 +26,6 @@ export default async function Home() {
     return (
       <PublicChrome hero>
         <Showcase org={org} />
-        <BookingBar />
       </PublicChrome>
     )
   }

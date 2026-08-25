@@ -6,7 +6,6 @@ import { env } from '@/lib/env'
 import { ButtonLink } from '@/components/ui'
 import { CollapseGroup } from '@/components/collapse-group'
 import { Reveal } from '@/components/reveal'
-import { BookingBar } from '@/components/booking-bar'
 
 export const dynamic = 'force-dynamic'
 
@@ -130,8 +129,6 @@ export default async function ServicosPage() {
           </div>
         </>
       )}
-
-      <BookingBar />
     </div>
   )
 }

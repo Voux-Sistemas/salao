@@ -1,15 +1,8 @@
 import { Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
 import clsx from 'clsx'
-import { getOrg, listUnits, type Unit } from '@/lib/org'
-import { allWeeklyHours, weeklyHours, type Window } from '@/lib/hours'
-import { formatMinutes } from '@/lib/time'
-import {
-  getDictionary,
-  getLanguage,
-  LANGUAGE_TAG,
-  type Dictionary,
-} from '@/lib/i18n'
+import { getOrg, listUnits } from '@/lib/org'
+import { getDictionary, getLanguage, LANGUAGE_TAG } from '@/lib/i18n'
 import { getClientActor } from '@/lib/auth/client-actor'
 import { BRAND } from '@/lib/branding'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -20,130 +13,9 @@ import { formatPhone } from '@/lib/text'
 /**
  * A moldura da superfície pública: um cabeçalho fixo e fino, em vidro
  * fumado sobre o herói escuro (ou em porcelana translúcida nas páginas
- * interiores), e um rodapé rico em banda escura com as duas casas.
+ * interiores), e um rodapé em banda escura com a marca, os caminhos
+ * e a porta da equipa. As moradas vivem na página, não aqui.
  */
-
-/** "Seg–Sex · 09:00–19:00" — o horário da semana condensado em 2–3 linhas. */
-function weekDigest(
-  hours: Map<number, Window[]>,
-  shortNames: readonly string[],
-  closedLabel: string,
-): { days: string; hours: string }[] {
-  const ORDER = [1, 2, 3, 4, 5, 6, 0]
-  const label = (windows: Window[]) =>
-    windows.length === 0
-      ? closedLabel
-      : windows
-          .map((w) => `${formatMinutes(w.openMin)}–${formatMinutes(w.closeMin)}`)
-          .join(' · ')
-
-  const rows: { days: string; hours: string }[] = []
-  let start = 0
-  while (start < ORDER.length) {
-    const signature = label(hours.get(ORDER[start]!) ?? [])
-    let end = start
-    while (
-      end + 1 < ORDER.length &&
-      label(hours.get(ORDER[end + 1]!) ?? []) === signature
-    ) {
-      end++
-    }
-    const days =
-      start === end
-        ? shortNames[ORDER[start]!]!
-        : `${shortNames[ORDER[start]!]}–${shortNames[ORDER[end]!]}`
-    rows.push({ days, hours: signature })
-    start = end + 1
-  }
-  return rows
-}
-
-function mapsUrl(unit: Unit) {
-  const address = [unit.address_line, unit.postal_code, unit.city]
-    .filter(Boolean)
-    .join(', ')
-  return `https://maps.google.com/?q=${encodeURIComponent(address || unit.name)}`
-}
-
-async function FooterHouse({
-  unit,
-  dict,
-  /* Falso quando o número é o mesmo nas duas casas: nesse caso sobe uma
-     vez para junto da marca, em vez de se repetir por baixo de cada loja
-     como se fossem contactos diferentes. */
-  withPhone,
-}: {
-  unit: Unit
-  dict: Dictionary
-  withPhone: boolean
-}) {
-  const digest = weekDigest(
-    await weeklyHours(unit.id),
-    dict.common.weekdaysShort,
-    dict.unit.closedNow,
-  )
-
-  /*
-   * O HORÁRIO É UMA FRASE, NÃO UMA TABELA.
-   *
-   * O `weekDigest` já junta os dias com as mesmas horas; o que estava
-   * mal era imprimi-los como uma lista de definições, com o dia à
-   * esquerda e as horas à direita. Num rodapé isso lê-se como uma
-   * grelha de aeroporto para dizer, afinal, «de segunda a sábado».
-   * Os dias fechados descem de tom em vez de ocuparem uma linha igual
-   * às outras: o que interessa é quando está aberto.
-   */
-  const open = digest.filter((row) => row.hours !== dict.unit.closedNow)
-  const shut = digest.filter((row) => row.hours === dict.unit.closedNow)
-
-  return (
-    <div>
-      <p className="display text-lg text-[var(--ink)]">{unit.name}</p>
-
-      {unit.address_line ? (
-        <p className="mt-3 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-          {unit.address_line}
-          <br />
-          {[unit.postal_code, unit.city].filter(Boolean).join(' ')}
-        </p>
-      ) : null}
-
-      <p className="tabular mt-3 text-[0.8125rem] leading-relaxed">
-        {open.map((row) => (
-          <span key={row.days} className="block text-[var(--ink-muted)]">
-            <span className="text-[var(--ink)]">{row.days}</span> · {row.hours}
-          </span>
-        ))}
-        {shut.length > 0 ? (
-          <span className="block text-[var(--ink-faint)]">
-            {shut.map((row) => row.days).join(', ')}{' '}
-            {dict.unit.closedNow.toLowerCase()}
-          </span>
-        ) : null}
-      </p>
-
-      {withPhone && unit.phone ? (
-        <p className="mt-3">
-          <a
-            href={`tel:${unit.phone.replace(/\s/g, '')}`}
-            className="toque tabular text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
-          >
-            {formatPhone(unit.phone)}
-          </a>
-        </p>
-      ) : null}
-
-      <a
-        href={mapsUrl(unit)}
-        target="_blank"
-        rel="noreferrer"
-        className="link-slide toque mt-3 inline-block text-[0.8125rem] text-[var(--accent)]"
-      >
-        {dict.unit.directions}
-      </a>
-    </div>
-  )
-}
 
 export async function PublicChrome({
   children,
@@ -155,22 +27,12 @@ export async function PublicChrome({
   /** Página com herói escuro no topo: o cabeçalho vira vidro fumado. */
   hero?: boolean
 }) {
-  /*
-    * O horário vai junto de propósito, mesmo que a moldura não o use.
-    *
-    * Quem o usa é o rodapé, que só é desenhado depois desta função
-    * responder — e então pediria à base numa altura em que já ninguém
-    * mais está a pedir nada, sozinho, a pagar a travessia inteira só
-    * para ele. Pedido aqui, viaja no mesmo comboio que o resto e chega
-    * ao rodapé já em memória.
-    */
   const [org, dict, language, client, units] = await Promise.all([
     getOrg(),
     getDictionary(),
     getLanguage(),
     getClientActor(),
     listUnits(),
-    allWeeklyHours(),
   ])
 
   const name = org?.name ?? BRAND.fallbackName
@@ -288,15 +150,36 @@ export async function PublicChrome({
       <main className={clsx('flex-1', !hero && 'pt-16')}>{children}</main>
 
       {/* --------------------------------------------------- rodapé --- */}
+      {/*
+        A ESCALA: 8 · 12 · 20 · 32.
+
+        Aqui viviam um `mt-3` cinco vezes, um `mt-6` três, dois `mt-4`,
+        um `mt-5`, um `gap-12`, um `pt-16`, um `pt-20` e um `pt-6` —
+        cada bloco a escolher o seu espaço a olho, e o resultado a
+        ler-se como desarrumação mesmo com o conteúdo certo.
+
+        Quatro degraus, e mais nenhum. O espaço deixa de ser uma decisão
+        de cada vez e passa a dizer o quanto duas coisas se pertencem:
+        8 entre uma coisa e a legenda dela, 12 entre irmãos de uma
+        lista, 20 entre assuntos vizinhos, 32 entre blocos.
+
+        E AS MORADAS SAÍRAM. A secção «onde estamos», na mesma página,
+        já dá a morada, o horário de hoje, o «como chegar» e o botão de
+        marcar de cada loja. Escrevê-las outra vez aqui — com horários e
+        tudo — dava dois ecrãs de rodapé num telemóvel para repetir o
+        que estava dois dedos acima. Quem quer a morada tem o «nossas
+        lojas» aqui ao lado.
+      */}
       <footer className="band-dark border-t border-[var(--line-soft)]">
-        <div className="mx-auto max-w-6xl px-5 sm:px-8 pt-16 pb-10 sm:pt-20">
-          <div className="grid gap-12 lg:grid-cols-[minmax(0,16rem)_auto_1fr] lg:gap-16">
+        <div className="mx-auto max-w-6xl px-5 pb-8 pt-14 sm:px-8 sm:pt-16">
+          <div className="grid gap-8 sm:grid-cols-[minmax(0,22rem)_auto] sm:justify-between sm:gap-16">
             <div>
               <LogoSeal size="lg" />
+
               <p className="display mt-5 text-lg uppercase tracking-[0.18em] text-[var(--ink)]">
                 {name}
               </p>
-              <p className="mt-4 max-w-xs text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+              <p className="mt-2 max-w-xs text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
                 {dict.footer.tagline}
               </p>
 
@@ -305,45 +188,52 @@ export async function PublicChrome({
 
                 Quando as duas lojas atendem no mesmo número, repeti-lo
                 por baixo de cada uma fazia-o parecer dois contactos
-                diferentes — e obrigava a lê-los aos dois para perceber
-                que eram iguais. Aqui é uma coisa só, do tamanho de uma
-                coisa em que se toca. Se um dia a Maia tiver linha
-                própria, cada número volta para a sua loja sozinho.
+                diferentes. Aqui é uma coisa só, do tamanho de uma coisa
+                em que se toca. Se um dia a Maia tiver linha própria,
+                cada número volta para a ficha da sua loja sozinho.
               */}
               {housePhone ? (
                 <a
                   href={`tel:${housePhone.replace(/\s/g, '')}`}
-                  className="display toque tabular mt-6 block text-[1.375rem] text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+                  className="display toque tabular mt-5 block text-[1.375rem] text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
                 >
                   {formatPhone(housePhone)}
                 </a>
               ) : null}
 
-              {whatsappHref ? (
-                <a
-                  href={whatsappHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={clsx(
-                    'link-slide toque inline-block text-[0.8125rem] text-[var(--accent)]',
-                    housePhone ? 'mt-3' : 'mt-6',
-                  )}
-                >
-                  {dict.footer.whatsapp}
-                </a>
-              ) : null}
-
               {/*
-                O INSTAGRAM É ONDE ESTE OFÍCIO SE MOSTRA.
+                DUAS MANEIRAS DE FALAR COM A CASA, LADO A LADO.
 
-                Um salão prova-se com fotografias do que fez, e é lá que
-                elas estão — muito mais do que aqui. O ícone leva-as para
-                fora do site, e isso é o que se quer: quem vê o trabalho
-                volta a marcar. Só aparece se houver endereço em
-                `lib/branding.ts`; vazio, não fica um botão morto.
+                O WhatsApp era uma linha de texto dourada e o Instagram
+                um círculo por baixo dela — dois pesos para duas coisas
+                que são a mesma. Em círculo, a par, poupam uma linha e
+                dizem o que são sem se lerem.
               */}
-              {BRAND.social.instagram ? (
-                <div className="mt-6">
+              <div className="mt-3 flex items-center gap-3">
+                {whatsappHref ? (
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={dict.footer.whatsapp}
+                    title={dict.footer.whatsapp}
+                    className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                      aria-hidden
+                      className="h-[1.05rem] w-[1.05rem]"
+                    >
+                      <path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20.5l1.8-5.2A8.5 8.5 0 1 1 21 11.5z" />
+                    </svg>
+                  </a>
+                ) : null}
+
+                {BRAND.social.instagram ? (
                   <a
                     href={BRAND.social.instagram}
                     target="_blank"
@@ -365,8 +255,8 @@ export async function PublicChrome({
                       <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
                     </svg>
                   </a>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
 
             {/*
@@ -374,15 +264,15 @@ export async function PublicChrome({
 
               O cabeçalho leva-as todas, mas quem chega ao fim da página
               a rolar não volta lá acima para decidir. Escritas por
-              extenso — «Nossas lojas», e não «Lojas» — porque num
-              rodapé a palavra solta parece uma etiqueta, e a frase
-              parece um convite.
+              extenso — «nossas lojas», e não «lojas» à seca — porque num
+              rodapé a palavra solta parece uma etiqueta e a frase parece
+              um convite.
             */}
-            <nav className="lg:min-w-40">
+            <nav>
               <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-[var(--ink-faint)]">
                 {dict.footer.navLabel}
               </p>
-              <ul className="mt-4 space-y-2.5 text-[0.8125rem]">
+              <ul className="mt-3 space-y-3 text-[0.8125rem]">
                 {[
                   { href: '/loja', label: dict.footer.links.stores },
                   { href: '/servicos', label: dict.footer.links.services },
@@ -410,33 +300,9 @@ export async function PublicChrome({
                 </li>
               </ul>
             </nav>
-
-            <div>
-              <p className="mb-4 text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-[var(--ink-faint)]">
-                {dict.footer.addressesLabel}
-              </p>
-              <div className="grid gap-10 sm:grid-cols-2 sm:gap-12">
-                {houses.map((unit) => (
-                  <FooterHouse
-                    key={unit.id}
-                    unit={unit}
-                    dict={dict}
-                    withPhone={housePhone === null}
-                  />
-                ))}
-              </div>
-            </div>
           </div>
 
-          {/*
-            UM FIO A FECHAR, E NÃO TRÊS FAIXAS.
-
-            Havia aqui um ornamento sozinho numa faixa, a separar duas
-            coisas que o fio já separava — e o selector de língua, que
-            está no cabeçalho e se repetia em baixo. Ficou o que fecha:
-            quem assina, e a porta de quem trabalha cá dentro.
-          */}
-          <div className="mt-14 flex flex-col items-start justify-between gap-5 border-t border-[var(--line-soft)] pt-6 sm:flex-row sm:items-center">
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line-soft)] pt-5">
             <p className="text-[0.75rem] text-[var(--ink-faint)]">
               © {year} {BRAND.legalName}
             </p>
@@ -444,13 +310,12 @@ export async function PublicChrome({
             {/*
               A PORTA DA EQUIPA VÊ-SE.
 
-              O «Entrar» do cabeçalho é a área da cliente; esta é outra
-              porta, e é a que se abre mais vezes por dia — estava em
-              cinzento de letra miudinha, ao lado do ano. Continua no
-              rodapé, onde uma porta de serviço pertence, mas com
-              contorno e um cadeado a dizer de quem é. Em cima, ao lado
-              do outro «entrar», eram duas portas parecidas a levar a
-              sítios diferentes.
+              O «entrar» do cabeçalho é a área da cliente; esta é outra,
+              e é a que se abre mais vezes por dia. Fica no rodapé, onde
+              uma porta de serviço pertence, mas com contorno e um
+              cadeado a dizer de quem é — em cima, ao lado do outro
+              «entrar», eram duas portas parecidas a levar a sítios
+              diferentes.
             */}
             <Link
               href="/entrar"

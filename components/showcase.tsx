@@ -341,19 +341,6 @@ export async function Showcase({ org }: { org: Org }) {
         </div>
       </section>
 
-      {/* ------------------------------------------------ manifesto --- */}
-      <section className="mx-auto max-w-3xl px-5 py-24 text-center sm:px-8 sm:py-32">
-        <Reveal>
-          <Ornament />
-          <p className="eyebrow mt-10">{dict.home.manifestoEyebrow}</p>
-        </Reveal>
-        <Reveal delay={120}>
-          <p className="display mt-6 text-balance text-2xl leading-[1.4] sm:text-[2rem]">
-            {dict.home.manifesto}
-          </p>
-        </Reveal>
-      </section>
-
       {/* ------------------------------ o que se faz nesta casa ------- */}
       {/*
         SETE FAMÍLIAS, SETE FOTOGRAFIAS.
@@ -371,10 +358,10 @@ export async function Showcase({ org }: { org: Org }) {
         className="scroll-mt-16 border-t border-[var(--line-soft)]"
       >
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
-          <Reveal className="mb-10 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+          <Reveal className="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
             <div>
               <p className="eyebrow eyebrow-gold">{dict.home.servicesTitle}</p>
-              <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-[var(--ink-muted)]">
+              <p className="mt-2 max-w-md text-[0.9375rem] leading-relaxed text-[var(--ink-muted)]">
                 {dict.home.servicesSubtitle}
               </p>
             </div>
@@ -390,7 +377,7 @@ export async function Showcase({ org }: { org: Org }) {
           */}
           <Reveal
             group
-            className="scrollbar-none -mx-5 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-2 sm:mx-0 sm:flex-wrap sm:justify-between sm:overflow-visible sm:px-0"
+            className="scrollbar-none -mr-5 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 pr-5 sm:mr-0 sm:flex-wrap sm:justify-between sm:overflow-visible sm:pr-0"
           >
             {families.map((family) => (
               <Link
@@ -437,16 +424,29 @@ export async function Showcase({ org }: { org: Org }) {
                   )}
                 </span>
 
-                <span className="display mt-3.5 block text-[0.875rem] leading-tight text-[var(--ink)]">
+                <span className="display mt-3 block text-[0.875rem] leading-tight text-[var(--ink)]">
                   {family.name}
                 </span>
-                <span className="tabular mt-0.5 block text-[0.6875rem] text-[var(--ink-faint)]">
+                <span className="tabular mt-1 block text-[0.6875rem] text-[var(--ink-faint)]">
                   {family.count}
                 </span>
               </Link>
             ))}
           </Reveal>
         </div>
+      </section>
+
+      {/* ------------------------------------------------ manifesto --- */}
+      <section className="mx-auto max-w-3xl px-5 py-24 text-center sm:px-8 sm:py-32">
+        <Reveal>
+          <Ornament />
+          <p className="eyebrow mt-10">{dict.home.manifestoEyebrow}</p>
+        </Reveal>
+        <Reveal delay={120}>
+          <p className="display mt-6 text-balance text-2xl leading-[1.4] sm:text-[2rem]">
+            {dict.home.manifesto}
+          </p>
+        </Reveal>
       </section>
 
       {/* ------------------------------------------------ as casas ---- */}
