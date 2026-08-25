@@ -840,6 +840,7 @@ type ListRow =
 export function AgendaList({
   agenda,
   colors,
+  selectedId,
   hrefFor,
   encaixeHref,
   nowMin,
@@ -847,6 +848,16 @@ export function AgendaList({
   agenda: AgendaDay
   /** display_color de cada profissional, por staffId. */
   colors: Record<string, string>
+  /*
+    A MARCAÇÃO ABERTA TAMBÉM SE ASSINALA AQUI.
+
+    A grelha sempre soube qual é; a lista não, porque era o desvio e
+    quase ninguém lá chegava com uma marcação na mão. Agora é a vista
+    que abre, e chega-se-lhe do caixa, dos avisos e de um encaixe
+    acabado de fazer, todos com `&m=` no endereço: o painel abria ao
+    lado sem que nada na lista dissesse de onde tinha vindo.
+  */
+  selectedId: string | null
   hrefFor: (appointmentId: string | null) => string
   /** Como na grelha: null para quem só pode ver a agenda. */
   encaixeHref: ((hm: string) => string) | null
@@ -940,11 +951,25 @@ export function AgendaList({
             <Link
               href={hrefFor(card.appointmentId)}
               scroll={false}
+              aria-current={
+                selectedId === card.appointmentId ? 'true' : undefined
+              }
               className={clsx(
-                'flex items-stretch gap-3 px-4 py-3.5 transition-colors active:bg-[var(--surface-2)]',
+                'flex items-stretch gap-3 py-3.5 pr-4 transition-colors active:bg-[var(--surface-2)]',
                 // O que já acabou apaga-se um pouco: a lista do dia é
                 // sobretudo uma lista do que falta.
                 passou && !falhou && 'opacity-65',
+                /*
+                  Na grelha a escolhida leva um anel à volta; aqui as
+                  linhas encostam às duas margens e um anel ficaria
+                  apertado contra elas. A marca é um fio na margem
+                  esquerda e o fundo levantado — lê-se à mesma distância
+                  e não empurra nada, porque o fio ocupa o sítio do
+                  `pl-4` que a linha já tinha.
+                */
+                selectedId === card.appointmentId
+                  ? 'border-l-4 border-[var(--accent)] bg-[var(--surface-2)] pl-3'
+                  : 'border-l-4 border-transparent pl-3',
               )}
             >
               <span className="w-[3.75rem] shrink-0 pt-0.5 text-right">

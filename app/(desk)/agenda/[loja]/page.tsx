@@ -39,10 +39,16 @@ const UUID_RE =
  * marcação aberta, a profissional escolhida e a vista também — assim o
  * retrocesso funciona e a ligação pode ser partilhada.
  *
- * A GRELHA É A VISTA PRINCIPAL EM TODOS OS ECRÃS. No telemóvel as
- * colunas apertam-se até caberem todas (e é cada coluna que decide o
- * que ainda se lê lá dentro — ver `agenda-grid`); a lista fica a um
- * toque, em `?v=lista`, para quem quer LER o dia em vez de o ver.
+ * A LISTA É O QUE SE ABRE PRIMEIRO. Quem entra na agenda chega quase
+ * sempre com a mesma pergunta — quem vem hoje, a que horas — e essa
+ * lê-se, não se mede. A grelha responde à outra pergunta, a de onde há
+ * espaço para encaixar mais alguém, e fica a um toque em `?v=grelha`.
+ *
+ * O endereço limpo é a lista, e é isso que faz a omissão ser mesmo uma
+ * omissão: `?v=grelha` é que marca o desvio. Trocar as duas coisas ao
+ * mesmo tempo é obrigatório — inverter só a omissão faria os endereços
+ * já guardados pela dona abrir a vista errada.
+ *
  * Desenha-se UMA vista, não as duas com o CSS a esconder a outra:
  * metade do DOM da agenda escondido era peso que o telemóvel pagava
  * sem nunca o mostrar.
@@ -69,8 +75,8 @@ export default async function AgendaDayPage({
 
   const now = new Date()
   const day: IsoDay = d && DAY_RE.test(d) ? d : today(unit.timezone, now)
-  /** A vista: grelha por omissão, lista para quem a pedir. */
-  const view: 'grelha' | 'lista' = v === 'lista' ? 'lista' : 'grelha'
+  /** A vista: lista por omissão, grelha para quem a pedir. */
+  const view: 'grelha' | 'lista' = v === 'grelha' ? 'grelha' : 'lista'
 
   /*
     O DIA, OU A CASA INTEIRA.
@@ -143,7 +149,7 @@ export default async function AgendaDayPage({
     nextScope: AgendaScope = scope,
   ) =>
     `${here}?d=${target}${staffId ? `&p=${staffId}` : ''}${
-      nextView === 'lista' ? '&v=lista' : ''
+      nextView === 'grelha' ? '&v=grelha' : ''
     }${nextScope === 'equipa' ? '&e=equipa' : ''}`
   const hrefFor = (appointmentId: string | null) =>
     appointmentId ? `${withDay(day)}&m=${appointmentId}` : withDay(day)
@@ -294,10 +300,13 @@ export default async function AgendaDayPage({
 
           <div className="flex items-center gap-1.5">
             {/*
-              GRELHA OU LISTA. A grelha mostra o dia como espaço — onde
-              está cheio, onde há buracos; a lista mostra-o como texto —
-              quem vem, o que faz, quanto é. São perguntas diferentes e
-              a escolha fica no endereço, como tudo o resto.
+              LISTA OU GRELHA, POR ESTA ORDEM. A lista mostra o dia
+              como texto — quem vem, o que faz, quanto é; a grelha
+              mostra-o como espaço — onde está cheio, onde há buracos.
+              São perguntas diferentes, e a primeira é a que se faz mais
+              vezes, por isso é a que abre e a que fica à esquerda: a
+              ordem dos botões conta a mesma história que a omissão.
+              A escolha fica no endereço, como tudo o resto.
             */}
             <div
               role="group"
@@ -305,32 +314,32 @@ export default async function AgendaDayPage({
               className="flex h-8 items-center overflow-hidden rounded-[var(--radius)] border border-[var(--line)]"
             >
               <Link
-                href={withDay(day, picked, 'grelha')}
-                scroll={false}
-                title="Grelha do dia"
-                aria-current={view === 'grelha' ? 'true' : undefined}
-                className={clsx(
-                  'flex h-full w-9 items-center justify-center transition-colors',
-                  view === 'grelha'
-                    ? 'bg-[var(--surface-2)] text-[var(--ink)]'
-                    : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
-                )}
-              >
-                <Columns3 aria-hidden className="h-4 w-4" />
-              </Link>
-              <Link
                 href={withDay(day, picked, 'lista')}
                 scroll={false}
                 title="Lista do dia"
                 aria-current={view === 'lista' ? 'true' : undefined}
                 className={clsx(
-                  'flex h-full w-9 items-center justify-center border-l border-[var(--line-soft)] transition-colors',
+                  'flex h-full w-9 items-center justify-center transition-colors',
                   view === 'lista'
                     ? 'bg-[var(--surface-2)] text-[var(--ink)]'
                     : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
                 )}
               >
                 <Rows3 aria-hidden className="h-4 w-4" />
+              </Link>
+              <Link
+                href={withDay(day, picked, 'grelha')}
+                scroll={false}
+                title="Grelha do dia"
+                aria-current={view === 'grelha' ? 'true' : undefined}
+                className={clsx(
+                  'flex h-full w-9 items-center justify-center border-l border-[var(--line-soft)] transition-colors',
+                  view === 'grelha'
+                    ? 'bg-[var(--surface-2)] text-[var(--ink)]'
+                    : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
+                )}
+              >
+                <Columns3 aria-hidden className="h-4 w-4" />
               </Link>
             </div>
 
@@ -481,6 +490,7 @@ export default async function AgendaDayPage({
             <AgendaList
               agenda={agenda}
               colors={colors}
+              selectedId={selectedId}
               hrefFor={hrefFor}
               encaixeHref={encaixeHref}
               nowMin={nowMin}
