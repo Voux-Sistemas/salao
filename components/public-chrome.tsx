@@ -9,7 +9,6 @@ import { LanguageSwitcher } from '@/components/language-switcher'
 import { LogoSeal } from '@/components/brand'
 import { ButtonLink } from '@/components/ui'
 import { FooterInvite } from '@/components/footer-invite'
-import { formatPhone } from '@/lib/text'
 
 /**
  * A moldura da superfície pública: um cabeçalho fixo e fino, em vidro
@@ -45,20 +44,14 @@ export async function PublicChrome({
   const year = new Date().getFullYear()
 
   /*
-   * UM NÚMERO, OU UM POR LOJA — E É A BASE QUE DECIDE.
+   * O TELEFONE SAIU DAQUI, E NÃO SE PERDEU.
    *
-   * Hoje as duas casas atendem no mesmo telefone. Isso não é uma regra
-   * do salão, é o estado de agora: no dia em que a Maia tiver linha
-   * própria, esta comparação passa a falhar sozinha e cada número volta
-   * para baixo da sua loja, sem ninguém ter de vir aqui mudar nada.
+   * Esteve neste rodapé de várias maneiras — em serifa grande, dentro
+   * de uma pílula, com ícone à frente — e nenhuma resultou, porque um
+   * número geral não é o número de lado nenhum. A ficha de cada loja,
+   * na mesma página, dá o número DAQUELA casa; e quem quiser escrever
+   * tem o «fale connosco» aqui em baixo, que abre o WhatsApp.
    */
-  const houses = units.slice(0, 2)
-  const digits = houses.map((unit) => (unit.phone ?? '').replace(/\D/g, ''))
-  const housePhone =
-    houses.length > 0 &&
-    digits.every((d) => d !== '' && d === digits[0])
-      ? houses[0]!.phone
-      : null
 
   return (
     /*
@@ -159,10 +152,9 @@ export async function PublicChrome({
         um buraco no meio, e a última linha empilhava-se num canto. Nada
         parecia estar ao lado de nada.
 
-        Agora tudo arranca da mesma linha vertical. Só duas coisas se
-        encostam à direita, e de propósito — os ícones e a porta da
-        equipa. O olho passa a ter uma margem para seguir em vez de
-        quatro.
+        Agora tudo arranca da mesma linha vertical, e só a porta da
+        equipa se encosta à direita. O olho passa a ter uma margem
+        para seguir em vez de quatro.
 
         E a página ganha CHÃO. A última linha sai de dentro do castanho
         para uma faixa clara própria: uma página que acaba na mesma banda
@@ -198,113 +190,75 @@ export async function PublicChrome({
               <div className="mb-9 h-px bg-[var(--line-soft)]" />
             </FooterInvite>
 
+            {/*
+              A MARCA DE UM LADO, OS CAMINHOS DO OUTRO.
+
+              O selo em cima, o nome por baixo, a frase da casa a fechar
+              — e ao lado, os caminhos com o seu rótulo. É o empilhamento
+              que a casa já tinha, e resulta por uma razão simples: a
+              coluna da esquerda precisa de CORPO. Um selo sozinho ao pé
+              de quatro linhas não tem o mesmo peso, e a banda fica a
+              pender para a direita.
+
+              A frase não é repetição da capa: quem chega a esta página
+              pelo Google, direito a um serviço, nunca subiu à capa —
+              esta é a única linha do rodapé que diz o que a casa faz.
+            */}
             <div className="grid gap-8 sm:grid-cols-2 sm:items-start sm:gap-12">
               <div>
-                {/* O selo ao lado do nome: eram duas linhas para uma coisa. */}
-                <div className="flex items-center gap-3.5">
-                  <LogoSeal />
-                  <p className="display text-[0.8125rem] uppercase leading-snug tracking-[0.18em] text-[var(--ink)]">
-                    {name}
-                  </p>
-                </div>
+                <LogoSeal size="lg" />
 
-                {/*
-                  AS DUAS PONTAS DA MESMA LINHA.
-
-                  O número e os ícones são o mesmo assunto — as maneiras
-                  de falar com a casa. Estavam encostados um ao outro com
-                  os ícones a boiar a meio do vazio; agora ancoram nas
-                  duas pontas e o espaço entre eles passa a ser
-                  intencional em vez de sobra.
-                */}
-                <div className="mt-5 flex items-center justify-between gap-4">
-                  {housePhone ? (
-                    <a
-                      href={`tel:${housePhone.replace(/\s/g, '')}`}
-                      className="display toque tabular text-[1.25rem] text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
-                    >
-                      {formatPhone(housePhone)}
-                    </a>
-                  ) : (
-                    <span />
-                  )}
-
-                  <div className="flex shrink-0 items-center gap-2.5">
-                    {whatsappHref ? (
-                      <a
-                        href={whatsappHref}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={dict.footer.whatsapp}
-                        title={dict.footer.whatsapp}
-                        className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.7"
-                          strokeLinejoin="round"
-                          aria-hidden
-                          className="h-[1.05rem] w-[1.05rem]"
-                        >
-                          <path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20.5l1.8-5.2A8.5 8.5 0 1 1 21 11.5z" />
-                        </svg>
-                      </a>
-                    ) : null}
-
-                    {BRAND.social.instagram ? (
-                      <a
-                        href={BRAND.social.instagram}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={dict.footer.instagram}
-                        title={dict.footer.instagram}
-                        className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.7"
-                          aria-hidden
-                          className="h-[1.05rem] w-[1.05rem]"
-                        >
-                          <rect x="3" y="3" width="18" height="18" rx="5" />
-                          <circle cx="12" cy="12" r="4" />
-                          <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-                        </svg>
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
+                <p className="display mt-5 text-[0.875rem] uppercase tracking-[0.18em] text-[var(--ink)]">
+                  {name}
+                </p>
+                <p className="mt-2.5 max-w-xs text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+                  {dict.footer.tagline}
+                </p>
               </div>
 
               {/*
-                UM CAMINHO POR LINHA.
+                OS QUATRO CAMINHOS.
 
-                Estavam os três numa linha esticada de borda a borda, com
-                um buraco no meio — a forma de uma barra de navegação, não
-                a de uma lista. Empilhados, leem-se de cima para baixo,
-                que é o que uma lista pede.
+                O «fale connosco» vem primeiro de propósito: é o único
+                dos quatro que resolve um problema em vez de mostrar uma
+                página. Quem desce até aqui com uma pergunta encontra-o
+                antes de tudo o resto — e sai do site para o WhatsApp,
+                que é a resposta mais rápida que a casa consegue dar.
               */}
-              <nav className="grid justify-items-start gap-3 text-[0.8125rem] sm:justify-items-end">
-                {[
-                  { href: '/loja', label: dict.footer.links.stores },
-                  { href: '/servicos', label: dict.footer.links.services },
-                  {
-                    href: client ? '/conta' : '/conta/entrar',
-                    label: dict.footer.links.account,
-                  },
-                ].map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+              <nav className="sm:justify-self-end">
+                <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-[var(--ink-faint)]">
+                  {dict.footer.navLabel}
+                </p>
+
+                <div className="mt-4 grid justify-items-start gap-3.5 text-[0.875rem]">
+                  {whatsappHref ? (
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
+                    >
+                      {dict.home.contactCta}
+                    </a>
+                  ) : null}
+
+                  {[
+                    { href: '/loja', label: dict.footer.links.stores },
+                    { href: '/servicos', label: dict.footer.links.services },
+                    {
+                      href: client ? '/conta' : '/conta/entrar',
+                      label: dict.footer.links.account,
+                    },
+                  ].map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
               </nav>
             </div>
           </div>
