@@ -1,8 +1,7 @@
 import Link from 'next/link'
 import { sql } from '@/lib/db'
 import { listUnits, type Org, type Unit } from '@/lib/org'
-import { openingWindows, type Window } from '@/lib/hours'
-import { formatMinutes, today } from '@/lib/time'
+import { weekDigest, weeklyHours } from '@/lib/hours'
 import { getDictionary, getLanguage, type Dictionary } from '@/lib/i18n'
 import type { Language } from '@/lib/i18n/config'
 import { formatPhone } from '@/lib/text'
@@ -74,36 +73,45 @@ function mapsUrl(unit: Unit) {
   return `https://maps.google.com/?q=${encodeURIComponent(address || unit.name)}`
 }
 
-/** Uma linha da ficha da casa: rótulo à esquerda, valor à direita. */
-function HouseRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-6 py-3">
-      <dt className="eyebrow shrink-0">{label}</dt>
-      <dd className="text-right text-[0.875rem] leading-relaxed text-[var(--ink-muted)]">
-        {children}
-      </dd>
-    </div>
-  )
-}
-
-function HouseCard({
+/**
+ * A FICHA DE UMA CASA.
+ *
+ * Tinha o nome escrito duas vezes — a cidade por cima e o nome por
+ * baixo, e nesta rede são a mesma palavra —, a morada alinhada à
+ * direita em três linhas de margem esquerda irregular, e uma lista de
+ * definições que mandava o olho de uma ponta à outra do ecrã em cada
+ * linha. Era isso o desarrumado, não a quantidade de coisas.
+ *
+ * E o horário dizia «hoje». O «hoje» muda conforme a hora a que se olha
+ * para ele, e ficava a contradizer o distintivo do estado mesmo quando
+ * ambos estavam certos: «abre amanhã às 09:00» por cima de «hoje
+ * 09:00–21:00». Passa a dizer a semana, que não muda; o ESTADO vive no
+ * distintivo, o HORÁRIO vive na ficha, e nunca se pisam.
+ */
+async function HouseCard({
   unit,
   cover,
-  todayWindows,
   dict,
   language,
 }: {
   unit: Unit
   cover: PhotoRow | null
-  todayWindows: Window[]
   dict: Dictionary
   language: Language
 }) {
+  const digest = weekDigest(
+    await weeklyHours(unit.id),
+    dict.common.weekdaysShort,
+    dict.unit.closedNow,
+  )
+  const open = digest.filter((row) => row.hours !== dict.unit.closedNow)
+  const semana = open[0] ?? null
+
   return (
-    <article className="lift group flex h-full flex-col overflow-hidden border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-soft)]">
+    <article className="lift group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-soft)]">
       {/* A cara da casa antes da morada dela. Quem escolhe entre duas
           lojas escolhe pelo sítio, não pelo código postal. */}
-      <div className="aspect-[16/9] w-full overflow-hidden bg-[var(--surface)]">
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--surface)]">
         {cover ? (
           <Photo
             src={cover.url}
@@ -113,67 +121,119 @@ function HouseCard({
         ) : (
           <PhotoFallback seed={unit.name} />
         )}
-      </div>
 
-      <div className="flex flex-1 flex-col p-8 sm:p-10">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="eyebrow eyebrow-gold">{unit.city ?? ''}</p>
-            <h3 className="display mt-2 text-[1.375rem] leading-tight sm:text-[1.75rem]">{unit.name}</h3>
-          </div>
+        {/*
+          O ESTADO POR CIMA DA FOTOGRAFIA.
+
+          Estava numa caixa ao lado do nome, a empurrar a linha do
+          título e a disputar-lhe a atenção. Aqui é onde o olho já está
+          — e o vidro fumado deixa-o legível sobre qualquer imagem, seja
+          a montra clara de Valongo ou a parede escura da Maia.
+        */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[color-mix(in_srgb,#131009_38%,transparent)] to-transparent to-45%"
+        />
+        {/*
+          O `band-dark` NÃO É DECORAÇÃO AQUI: É O QUE O TORNA LEGÍVEL.
+
+          O Badge pinta-se com a cor do próprio tom sobre transparente,
+          e foi feito para assentar no creme da página. Sobre uma
+          fotografia — a montra clara de Valongo, por exemplo — o tom
+          neutro ficava tinta esbatida sobre fundo esbatido.
+
+          Envolvê-lo em `band-dark` faz os tokens virarem para a paleta
+          escura, e o vidro fumado por baixo dá-lhe um chão constante:
+          o distintivo passa a ler-se igual seja qual for a fotografia.
+        */}
+        <div className="band-dark absolute right-3 top-3 rounded-full border border-[color-mix(in_srgb,var(--ink)_18%,transparent)] bg-[color-mix(in_srgb,var(--surface)_66%,transparent)] px-1 py-0.5 backdrop-blur-md">
           <UnitStatusBadge unit={unit} dict={dict} language={language} />
         </div>
+      </div>
 
-        <dl className="mt-7 flex-1 divide-y divide-[var(--line-soft)] border-y border-[var(--line-soft)]">
-          {unit.address_line ? (
-            <HouseRow label={dict.unit.address}>
-              {unit.address_line}
-              {unit.city ? `, ${unit.city}` : ''}
-              <br />
-              <a
-                href={mapsUrl(unit)}
-                target="_blank"
-                rel="noreferrer"
-                className="link-slide toque text-[0.8125rem] text-[var(--accent)]"
-              >
-                {dict.unit.directions}
-              </a>
-            </HouseRow>
-          ) : null}
+      <div className="flex flex-1 flex-col p-6 sm:p-7">
+        <h3 className="display text-[1.5rem] leading-tight text-[var(--ink)]">
+          {unit.name}
+        </h3>
+
+        {/* A morada lê-se como um endereço: alinhada à esquerda, por
+            baixo do nome, e não como uma coluna de números. */}
+        {unit.address_line ? (
+          <p className="mt-2.5 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+            {unit.address_line}
+            <br />
+            {[unit.postal_code, unit.city].filter(Boolean).join(' ')}
+          </p>
+        ) : null}
+
+        <a
+          href={mapsUrl(unit)}
+          target="_blank"
+          rel="noreferrer"
+          className="link-slide toque mt-2 inline-flex w-fit items-center gap-1.5 text-[0.8125rem] text-[var(--accent)]"
+        >
+          {dict.unit.directions}
+          <span aria-hidden className="text-[0.6875rem] opacity-70">
+            ↗
+          </span>
+        </a>
+
+        {/*
+          OS DOIS FACTOS, LADO A LADO.
+
+          Eram uma lista de definições com o rótulo à esquerda e o valor
+          à direita — o olho a saltar de ponta a ponta do ecrã em cada
+          linha. Em duas caixinhas, cada rótulo fica por cima do seu
+          valor e lê-se de uma vez.
+        */}
+        <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--line-soft)] bg-[var(--line-soft)]">
           {unit.phone ? (
-            <HouseRow label={dict.unit.phoneLabel}>
-              <a
-                href={`tel:${unit.phone.replace(/\s/g, '')}`}
-                className="tabular toque transition-colors hover:text-[var(--ink)]"
-              >
-                {formatPhone(unit.phone)}
-              </a>
-            </HouseRow>
+            <div className="bg-[var(--surface)] px-3.5 py-3">
+              <dt className="eyebrow">{dict.unit.phoneLabel}</dt>
+              <dd className="tabular mt-1 text-[0.8125rem] text-[var(--ink)]">
+                {/* Sem o +351: numa caixa estreita gasta um quinto da
+                    largura para dizer o que toda a gente cá sabe. O
+                    link leva-o por dentro, para quem ligar de fora. */}
+                <a
+                  href={`tel:${unit.phone.replace(/\s/g, '')}`}
+                  className="toque transition-colors hover:text-[var(--accent)]"
+                >
+                  {formatPhone(unit.phone).replace(/^\+351\s*/, '')}
+                </a>
+              </dd>
+            </div>
           ) : null}
-          <HouseRow label={dict.funnel.today}>
-            {todayWindows.length === 0 ? (
-              <span className="text-[var(--ink-faint)]">{dict.unit.closedToday}</span>
-            ) : (
-              <span className="tabular">
-                {todayWindows
-                  .map((w) => `${formatMinutes(w.openMin)}–${formatMinutes(w.closeMin)}`)
-                  .join(' · ')}
-              </span>
-            )}
-          </HouseRow>
+
+          <div className="bg-[var(--surface)] px-3.5 py-3">
+            <dt className="eyebrow">
+              {semana ? semana.days : dict.unit.closedNow}
+            </dt>
+            <dd className="tabular mt-1 text-[0.8125rem] text-[var(--ink)]">
+              {semana ? semana.hours : '—'}
+            </dd>
+          </div>
         </dl>
 
-        <div className="mt-8 flex flex-wrap gap-3">
-          <ButtonLink href={`/agendar/${unit.slug}`}>{dict.home.houseBook}</ButtonLink>
-          <ButtonLink href={`/loja/${unit.slug}`} variant="outline">
+        {/* As duas acções na forma da casa — a mesma pílula dos
+            serviços e do fecho. */}
+        <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+          <Link
+            href={`/agendar/${unit.slug}`}
+            className="pilula-casa toque justify-center sm:justify-start"
+          >
+            {dict.home.houseBook}
+          </Link>
+          <Link
+            href={`/loja/${unit.slug}`}
+            className="toque inline-flex h-[2.875rem] items-center justify-center rounded-full border border-[var(--line)] px-6 text-[0.8125rem] font-semibold text-[var(--ink)] transition-colors hover:border-[var(--ink-faint)]"
+          >
             {dict.home.houseVisit}
-          </ButtonLink>
+          </Link>
         </div>
       </div>
     </article>
   )
 }
-
 export async function Showcase({ org }: { org: Org }) {
   // A língua vem antes de tudo o resto: o catálogo sai da base já
   // traduzido, e a consulta precisa de saber para quem escreve.
@@ -225,13 +285,18 @@ export async function Showcase({ org }: { org: Org }) {
   // outro salão: um sítio onde a morada nunca pode estar errada.
   const cities = [...new Set(units.map((u) => u.city).filter(Boolean))].join(' · ')
 
-  const houses = await Promise.all(
-    units.map(async (unit) => ({
-      unit,
-      cover: coverOf.get(unit.id) ?? null,
-      todayWindows: await openingWindows(unit.id, today(unit.timezone)),
-    })),
-  )
+  /*
+   * O HORÁRIO DEIXOU DE SE PEDIR AQUI.
+   *
+   * Cada ficha pedia as janelas de HOJE, e o cartão dizia «hoje
+   * 09:00–21:00» — uma frase que muda conforme a hora a que se olha
+   * para ela, e que ficava a contradizer o distintivo do estado. O
+   * cartão passa a pedir a semana, que não muda.
+   */
+  const houses = units.map((unit) => ({
+    unit,
+    cover: coverOf.get(unit.id) ?? null,
+  }))
 
   const categories = new Map<string, { name: string; services: CatalogRow[] }>()
   for (const row of catalog) {
@@ -481,12 +546,11 @@ export async function Showcase({ org }: { org: Org }) {
           </Reveal>
 
           <Reveal group className="grid gap-6 lg:grid-cols-2">
-            {houses.map(({ unit, cover, todayWindows }) => (
+            {houses.map(({ unit, cover }) => (
               <HouseCard
                 key={unit.id}
                 unit={unit}
                 cover={cover}
-                todayWindows={todayWindows}
                 dict={dict}
                 language={language}
               />

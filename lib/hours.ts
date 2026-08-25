@@ -2,7 +2,14 @@ import 'server-only'
 import { cache } from 'react'
 import { sql } from '@/lib/db'
 import type { Unit } from '@/lib/org'
-import { addDays, minutesOfDay, today, weekdayOf, type IsoDay } from '@/lib/time'
+import {
+  addDays,
+  formatMinutes,
+  minutesOfDay,
+  today,
+  weekdayOf,
+  type IsoDay,
+} from '@/lib/time'
 
 /**
  * O horário de funcionamento, num sítio só.
@@ -223,4 +230,51 @@ export async function unitStatus(
   }
 
   return { open: false, nextDay: null }
+}
+
+/**
+ * "Seg–Sáb · 09:00–21:00" — a semana condensada em duas ou três linhas.
+ *
+ * Junta dias seguidos com o mesmo horário. Viveu dentro do
+ * `public-chrome` enquanto só o rodapé o usava, e saiu de lá com as
+ * moradas; volta aqui, ao pé das horas, que é o sítio dele — agora que
+ * a ficha de cada loja também precisa de dizer a semana em vez de
+ * dizer «hoje».
+ *
+ * O «hoje» era o problema: mudava conforme a hora a que se olhava para
+ * ele, e ficava a contradizer o distintivo do estado mesmo quando os
+ * dois estavam certos.
+ */
+export function weekDigest(
+  hours: Map<number, Window[]>,
+  shortNames: readonly string[],
+  closedLabel: string,
+): { days: string; hours: string }[] {
+  const ORDER = [1, 2, 3, 4, 5, 6, 0]
+  const label = (windows: Window[]) =>
+    windows.length === 0
+      ? closedLabel
+      : windows
+          .map((w) => `${formatMinutes(w.openMin)}–${formatMinutes(w.closeMin)}`)
+          .join(' · ')
+
+  const rows: { days: string; hours: string }[] = []
+  let start = 0
+  while (start < ORDER.length) {
+    const signature = label(hours.get(ORDER[start]!) ?? [])
+    let end = start
+    while (
+      end + 1 < ORDER.length &&
+      label(hours.get(ORDER[end + 1]!) ?? []) === signature
+    ) {
+      end++
+    }
+    const days =
+      start === end
+        ? shortNames[ORDER[start]!]!
+        : `${shortNames[ORDER[start]!]}–${shortNames[ORDER[end]!]}`
+    rows.push({ days, hours: signature })
+    start = end + 1
+  }
+  return rows
 }
