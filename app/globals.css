@@ -1065,32 +1065,37 @@ html.js .so-sem-js {
    --------------------------------------------------------------------- */
 
 .fita-janela {
+  /*
+   * O DESVANECER É UMA MÁSCARA, NÃO DUAS CAMADAS POR CIMA.
+   *
+   * Antes eram dois rectângulos pintados da cor do fundo, um em cada
+   * ponta. Duas coisas correram mal: dependiam de acertar na cor exacta
+   * do fundo, e a fita anima com transform — o que lhe dá um contexto
+   * de pintura próprio e punha as palavras por cima da tinta que as
+   * devia esconder. Viam-se meias palavras cortadas a direito nas duas
+   * bordas.
+   *
+   * A máscara apaga o CONTEÚDO em vez de o tapar: funciona sobre
+   * qualquer fundo, não tem cor para acertar, e não há camada nenhuma
+   * a disputar a ordem de pintura.
+   */
   position: relative;
   overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 12%,
+    #000 88%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 12%,
+    #000 88%,
+    transparent
+  );
 }
-
-/* As pontas desvanecem para a fita não parecer cortada a direito. */
-.fita-janela::before,
-.fita-janela::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 4rem;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.fita-janela::before {
-  left: 0;
-  background: linear-gradient(to right, var(--surface), transparent);
-}
-
-.fita-janela::after {
-  right: 0;
-  background: linear-gradient(to left, var(--surface), transparent);
-}
-
 .fita-marcas {
   display: flex;
   width: max-content;

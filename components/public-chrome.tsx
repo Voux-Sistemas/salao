@@ -152,188 +152,194 @@ export async function PublicChrome({
 
       {/* --------------------------------------------------- rodapé --- */}
       {/*
-        A ESCALA: 8 · 12 · 20 · 32.
+        UMA MARGEM SÓ, DO PRINCÍPIO AO FIM.
 
-        Aqui viviam um `mt-3` cinco vezes, um `mt-6` três, dois `mt-4`,
-        um `mt-5`, um `gap-12`, um `pt-16`, um `pt-20` e um `pt-6` —
-        cada bloco a escolher o seu espaço a olho, e o resultado a
-        ler-se como desarrumação mesmo com o conteúdo certo.
+        Cada bloco daqui estava a usar a largura que lhe apetecia: o nome
+        começava na borda, os caminhos espalhavam-se por todo o ecrã com
+        um buraco no meio, e a última linha empilhava-se num canto. Nada
+        parecia estar ao lado de nada.
 
-        Quatro degraus, e mais nenhum. O espaço deixa de ser uma decisão
-        de cada vez e passa a dizer o quanto duas coisas se pertencem:
-        8 entre uma coisa e a legenda dela, 12 entre irmãos de uma
-        lista, 20 entre assuntos vizinhos, 32 entre blocos.
+        Agora tudo arranca da mesma linha vertical. Só duas coisas se
+        encostam à direita, e de propósito — os ícones e a porta da
+        equipa. O olho passa a ter uma margem para seguir em vez de
+        quatro.
 
-        E AS MORADAS SAÍRAM. A secção «onde estamos», na mesma página,
-        já dá a morada, o horário de hoje, o «como chegar» e o botão de
-        marcar de cada loja. Escrevê-las outra vez aqui — com horários e
-        tudo — dava dois ecrãs de rodapé num telemóvel para repetir o
-        que estava dois dedos acima. Quem quer a morada tem o «nossas
-        lojas» aqui ao lado.
+        E a página ganha CHÃO. A última linha sai de dentro do castanho
+        para uma faixa clara própria: uma página que acaba na mesma banda
+        em que estava a conversar continua a descer até acabar o ecrã, e
+        esta faixa é o degrau que diz que ali acabou de propósito.
       */}
-      {/* --------------------------------------------------- rodapé --- */}
-      {/*
-        O FECHO, EM OITO COISAS.
+      <footer>
+        <div className="band-dark fundo-casa border-t border-[var(--line-soft)]">
+          <div className="mx-auto max-w-6xl px-5 pb-10 pt-12 sm:px-8 sm:pt-14">
+            {/* O convite abre o fecho — mas nunca dentro do funil. */}
+            <FooterInvite>
+              {/*
+                O ÚNICO BLOCO AO CENTRO, E DE PROPÓSITO.
 
-        Tinha catorze, e seis delas estavam escritas noutro sítio da
-        mesma página: a legenda do convite dizia o que o título já dizia,
-        o «fale connosco» duplicava o ícone do WhatsApp, a frase da marca
-        está na capa, e o rótulo «navegar» apresentava quatro palavras
-        que se apresentam sozinhas. Nada disso desapareceu do site —
-        deixou de estar escrito duas vezes.
-
-        O que sobra são três assuntos, por esta ordem: o convite, quem
-        somos e como se fala connosco, e por onde se anda. Cabe num ecrã
-        de telemóvel, que é o que faz uma página ACABAR em vez de
-        continuar a descer.
-
-        O fundo é o `.fundo-casa` do globals.css — o calor da madeira
-        sem a fotografia da sala, que competia com o texto.
-      */}
-      <footer className="band-dark fundo-casa border-t border-[var(--line-soft)]">
-        <div className="mx-auto max-w-6xl px-5 pb-6 pt-12 sm:px-8 sm:pt-14">
-          {/* O convite abre o fecho — mas nunca dentro do funil. */}
-          <FooterInvite>
-            <div className="pb-9 text-center">
-              <h2 className="display text-balance text-[1.375rem] leading-tight sm:text-[2rem]">
-                {dict.home.finalTitle1}{' '}
-                <span className="display-italic text-[var(--accent)]">
-                  {dict.home.finalTitleItalic}
-                </span>
-                {dict.home.finalTitle2}
-              </h2>
-              <div className="mt-5">
-                <ButtonLink href="/agendar" size="lg">
-                  {dict.home.cta}
-                </ButtonLink>
+                Tudo o resto encosta à esquerda. Este fica ao meio porque
+                é o único que fala — um convite ao centro lê-se como um
+                convite; alinhado com o resto, ficava a par de um menu.
+              */}
+              <div className="pb-9 text-center">
+                <h2 className="display text-balance text-[1.375rem] leading-tight sm:text-[2rem]">
+                  {dict.home.finalTitle1}{' '}
+                  <span className="display-italic text-[var(--accent)]">
+                    {dict.home.finalTitleItalic}
+                  </span>
+                  {dict.home.finalTitle2}
+                </h2>
+                <div className="mt-5">
+                  <ButtonLink href="/agendar" size="lg">
+                    {dict.home.cta}
+                  </ButtonLink>
+                </div>
               </div>
-            </div>
-            <div className="mb-9 h-px bg-[var(--line-soft)]" />
-          </FooterInvite>
+              <div className="mb-9 h-px bg-[var(--line-soft)]" />
+            </FooterInvite>
 
-          <div className="grid gap-7 sm:grid-cols-2 sm:items-start sm:gap-12">
-            <div>
-              {/* O selo ao lado do nome, e não por cima: eram duas
-                  linhas para dizer uma coisa. */}
-              <div className="flex items-center gap-3.5">
-                <LogoSeal />
-                <p className="display text-[0.8125rem] uppercase leading-snug tracking-[0.18em] text-[var(--ink)]">
-                  {name}
-                </p>
+            <div className="grid gap-8 sm:grid-cols-2 sm:items-start sm:gap-12">
+              <div>
+                {/* O selo ao lado do nome: eram duas linhas para uma coisa. */}
+                <div className="flex items-center gap-3.5">
+                  <LogoSeal />
+                  <p className="display text-[0.8125rem] uppercase leading-snug tracking-[0.18em] text-[var(--ink)]">
+                    {name}
+                  </p>
+                </div>
+
+                {/*
+                  AS DUAS PONTAS DA MESMA LINHA.
+
+                  O número e os ícones são o mesmo assunto — as maneiras
+                  de falar com a casa. Estavam encostados um ao outro com
+                  os ícones a boiar a meio do vazio; agora ancoram nas
+                  duas pontas e o espaço entre eles passa a ser
+                  intencional em vez de sobra.
+                */}
+                <div className="mt-5 flex items-center justify-between gap-4">
+                  {housePhone ? (
+                    <a
+                      href={`tel:${housePhone.replace(/\s/g, '')}`}
+                      className="display toque tabular text-[1.25rem] text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+                    >
+                      {formatPhone(housePhone)}
+                    </a>
+                  ) : (
+                    <span />
+                  )}
+
+                  <div className="flex shrink-0 items-center gap-2.5">
+                    {whatsappHref ? (
+                      <a
+                        href={whatsappHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={dict.footer.whatsapp}
+                        title={dict.footer.whatsapp}
+                        className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinejoin="round"
+                          aria-hidden
+                          className="h-[1.05rem] w-[1.05rem]"
+                        >
+                          <path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20.5l1.8-5.2A8.5 8.5 0 1 1 21 11.5z" />
+                        </svg>
+                      </a>
+                    ) : null}
+
+                    {BRAND.social.instagram ? (
+                      <a
+                        href={BRAND.social.instagram}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={dict.footer.instagram}
+                        title={dict.footer.instagram}
+                        className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          aria-hidden
+                          className="h-[1.05rem] w-[1.05rem]"
+                        >
+                          <rect x="3" y="3" width="18" height="18" rx="5" />
+                          <circle cx="12" cy="12" r="4" />
+                          <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                        </svg>
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
               </div>
 
               {/*
-                O NÚMERO E OS ÍCONES SÃO O MESMO ASSUNTO.
+                UM CAMINHO POR LINHA.
 
-                As maneiras de falar com a casa. Estavam em linhas
-                separadas, com o número a parecer um título e os ícones
-                uma secção; a par, leem-se como o que são.
+                Estavam os três numa linha esticada de borda a borda, com
+                um buraco no meio — a forma de uma barra de navegação, não
+                a de uma lista. Empilhados, leem-se de cima para baixo,
+                que é o que uma lista pede.
               */}
-              <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
-                {housePhone ? (
-                  <a
-                    href={`tel:${housePhone.replace(/\s/g, '')}`}
-                    className="display toque tabular text-[1.25rem] text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+              <nav className="grid justify-items-start gap-3 text-[0.8125rem] sm:justify-items-end">
+                {[
+                  { href: '/loja', label: dict.footer.links.stores },
+                  { href: '/servicos', label: dict.footer.links.services },
+                  {
+                    href: client ? '/conta' : '/conta/entrar',
+                    label: dict.footer.links.account,
+                  },
+                ].map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
                   >
-                    {formatPhone(housePhone)}
-                  </a>
-                ) : null}
-
-                <div className="flex items-center gap-2.5">
-                  {whatsappHref ? (
-                    <a
-                      href={whatsappHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={dict.footer.whatsapp}
-                      title={dict.footer.whatsapp}
-                      className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        strokeLinejoin="round"
-                        aria-hidden
-                        className="h-[1.05rem] w-[1.05rem]"
-                      >
-                        <path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20.5l1.8-5.2A8.5 8.5 0 1 1 21 11.5z" />
-                      </svg>
-                    </a>
-                  ) : null}
-
-                  {BRAND.social.instagram ? (
-                    <a
-                      href={BRAND.social.instagram}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={dict.footer.instagram}
-                      title={dict.footer.instagram}
-                      className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        aria-hidden
-                        className="h-[1.05rem] w-[1.05rem]"
-                      >
-                        <rect x="3" y="3" width="18" height="18" rx="5" />
-                        <circle cx="12" cy="12" r="4" />
-                        <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-                      </svg>
-                    </a>
-                  ) : null}
-                </div>
-              </div>
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
             </div>
-
-            {/*
-              OS CAMINHOS NUMA LINHA CORRIDA.
-
-              Eram uma lista de pé com um rótulo por cima — o peso de uma
-              secção para um menu de rodapé. Três palavras a par leem-se
-              de relance. E o «marcar hora» saiu daqui: o botão grande
-              está dez centímetros acima e faz exactamente isso.
-            */}
-            <nav className="flex flex-wrap gap-x-6 gap-y-2.5 text-[0.8125rem] sm:justify-end">
-              {[
-                { href: '/loja', label: dict.footer.links.stores },
-                { href: '/servicos', label: dict.footer.links.services },
-                {
-                  href: client ? '/conta' : '/conta/entrar',
-                  label: dict.footer.links.account,
-                },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
           </div>
+        </div>
 
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line-soft)] pt-4">
+        {/*
+          A BASE.
+
+          Fora do castanho, e sem nada de emocional lá dentro: quem
+          assina à esquerda, a porta de serviço à direita. É a faixa que
+          dá chão à página — e devolve o claro no fim sem trazer de volta
+          uma banda vazia.
+        */}
+        <div className="border-t border-[var(--line-soft)] bg-[var(--surface-2)]">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3.5 sm:px-8">
             <p className="text-[0.6875rem] text-[var(--ink-muted)]">
-              © {year} {BRAND.legalName}
+              {/* No telemóvel o nome completo mais o botão não cabem na
+                  mesma linha, e uma barra que se parte deixa de ser uma
+                  base. O nome curto chega para assinar. */}
+              <span className="sm:hidden">© {year} {BRAND.fallbackName}</span>
+              <span className="hidden sm:inline">© {year} {BRAND.legalName}</span>
             </p>
 
             {/*
-              A PORTA DA EQUIPA VÊ-SE.
+              A PORTA DA EQUIPA.
 
-              O «entrar» do cabeçalho é a área da cliente; esta é outra,
-              e é a que se abre mais vezes por dia. Fica no rodapé, onde
-              uma porta de serviço pertence, mas com contorno e um
-              cadeado a dizer de quem é.
+              O «entrar» do cabeçalho é a área da cliente; esta é outra, e
+              é a que se abre mais vezes por dia. Aqui em baixo, com
+              contorno e um cadeado a dizer de quem é — em cima, ao lado
+              do outro «entrar», eram duas portas parecidas a levar a
+              sítios diferentes.
             */}
             <Link
               href="/entrar"
-              className="toque inline-flex items-center gap-2 rounded-full border border-[var(--line-soft)] px-3.5 py-1.5 text-[0.6875rem] font-medium text-[var(--ink-muted)] transition-colors hover:border-[var(--line)] hover:text-[var(--ink)]"
+              className="toque inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3.5 py-1.5 text-[0.6875rem] font-medium text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
             >
               <svg
                 viewBox="0 0 24 24"
