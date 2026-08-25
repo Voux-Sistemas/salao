@@ -39,6 +39,11 @@ export default async function AdminLayout({
   if (can.manageTeam(actor)) {
     tabs.push({ href: '/admin/equipe', label: 'Equipa' })
   }
+  /* Por último, e só para quem monta o sistema: é a porta que a dona
+     não precisa de saber que existe. */
+  if (can.manageMasters(actor)) {
+    tabs.push({ href: '/admin/sistema', label: 'Sistema' })
+  }
 
   return (
     // Mais largo do que o resto do balcão de propósito: um painel de

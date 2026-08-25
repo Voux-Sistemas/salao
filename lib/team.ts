@@ -24,10 +24,10 @@ import type { IsoDay, Minutes } from '@/lib/time'
  */
 
 /*
- * O `master` está aqui para as fichas o saberem MOSTRAR, não para o
- * saberem DAR: o formulário não o oferece e a acção não o aceita. Quem
- * monta o sistema põe-se lá com a mão na base, e não pela aplicação —
- * é o degrau que decide quem tem degraus.
+ * O `master` só se dá de dentro dele: o formulário só o oferece a quem
+ * já o tem, e a acção só o aceita dessa mão. A dona não promove ninguém
+ * acima dela — é o degrau que decide quem tem degraus. O primeiro nasce
+ * com a mão na base, pelo `scripts/equipa.mjs`.
  */
 export type Level = 'master' | 'owner' | 'manager' | 'professional'
 export type AbsenceKind = 'day_off' | 'vacation' | 'training' | 'block'
@@ -950,8 +950,18 @@ export async function saveFicha(
   const units = input.unitIds.filter((unitId) => canSeeUnit(actor, unitId))
   const canGrantNetwork = actor.orgScope && actor.role !== 'manager'
   for (const role of input.roles) {
-    // O degrau de sistema não se dá pela aplicação. Nunca.
-    if (role.role === 'master') return { ok: false, reason: 'forbidden' }
+    /*
+     * O DEGRAU DE SISTEMA SÓ SE DÁ DE DENTRO DELE.
+     *
+     * Era recusado sempre, e isso tinha uma consequência que passou
+     * despercebida: nem o próprio master conseguia gravar a ficha
+     * dele, porque o papel que já lá estava voltava e era recusado.
+     * Agora quem é master dá e mantém master; para todos os outros a
+     * porta continua fechada, e a dona não promove ninguém acima dela.
+     */
+    if (role.role === 'master' && actor.role !== 'master') {
+      return { ok: false, reason: 'forbidden' }
+    }
     if (role.unitId !== null && !canSeeUnit(actor, role.unitId)) {
       return { ok: false, reason: 'forbidden' }
     }

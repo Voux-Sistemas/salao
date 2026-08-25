@@ -137,6 +137,7 @@ export function Ficha({
   sources,
   today,
   canGrantNetwork,
+  canGrantMaster,
   aside,
 }: {
   /** Nulo: é uma pessoa a nascer. */
@@ -149,6 +150,8 @@ export function Ficha({
   sources: SkillSource[]
   today: string
   canGrantNetwork: boolean
+  /** Só de dentro do degrau se dá o degrau. */
+  canGrantMaster: boolean
   /** O que vive dentro do cartão da escala mas grava na hora: ausências. */
   aside?: { password?: React.ReactNode; absences?: React.ReactNode }
 }) {
@@ -290,7 +293,10 @@ export function Ficha({
     roles: [
       {
         role: level,
-        unitId: level === 'professional' ? null : scope || null,
+        // Só a gerente se prende a uma loja. A base recusa o resto:
+        // master e dona são sempre escopo rede, e uma profissional não
+        // manda em sítio nenhum.
+        unitId: level === 'manager' ? scope || null : null,
       },
       ...extras.map((r) => ({
         role: r.role,
@@ -395,8 +401,12 @@ export function Ficha({
               value={level}
               onChange={(e) => setLevel(e.target.value as Level)}
             >
-              {(['professional', 'manager', 'owner'] as Level[])
-                .filter((l) => l === 'professional' || canGrantNetwork || l === 'manager')
+              {(['professional', 'manager', 'owner', 'master'] as Level[])
+                .filter(
+                  (l) =>
+                    l !== 'master' || canGrantMaster || level === 'master',
+                )
+                .filter((l) => l !== 'owner' || canGrantNetwork)
                 .map((l) => (
                   <option key={l} value={l}>
                     {LEVEL_NAME[l]}
@@ -417,7 +427,7 @@ export function Ficha({
             <Select
               id="f-scope"
               value={scope}
-              disabled={level === 'professional'}
+              disabled={level !== 'manager'}
               onChange={(e) => setScope(e.target.value)}
             >
               {canGrantNetwork ? <option value="">Rede toda</option> : null}

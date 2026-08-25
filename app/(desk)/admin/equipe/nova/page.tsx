@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import { requireManagement, unitsFor } from '@/lib/auth/actor'
+import { can, requireManagement, unitsFor } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { listSkills, listSkillSources } from '@/lib/team'
 import { today } from '@/lib/time'
@@ -53,6 +53,7 @@ export default async function NovaPessoaPage() {
         sources={sources}
         today={today(org.timezone)}
         canGrantNetwork={actor.orgScope && actor.role !== 'manager'}
+        canGrantMaster={can.manageMasters(actor)}
       />
     </div>
   )
