@@ -15,7 +15,11 @@ import {
   today,
   type IsoDay,
 } from '@/lib/time'
-import { AgendaGrid, AgendaList } from '@/components/agenda-grid'
+import {
+  AgendaGrid,
+  AgendaList,
+  larguraMinimaDaGrelha,
+} from '@/components/agenda-grid'
 import { AgendaFocus } from '@/components/agenda-focus'
 import { AppointmentPanel } from '@/components/appointment-panel'
 import { DayJump } from '@/components/day-jump'
@@ -171,6 +175,15 @@ export default async function AgendaDayPage({
   */
   const staffCount = agenda.columns.filter((c) => !c.offDuty).length
   const offCount = agenda.columns.length - staffCount
+  /*
+    Zero quando a grelha cabe, 40px quando transborda — e é o browser
+    que decide, porque o `100%` aqui dentro é a largura real que ela
+    tem. Ver o comentário do esbatido, mais abaixo.
+  */
+  const larguraDoEsbatido = `max(0px, min(2.5rem, ${larguraMinimaDaGrelha(
+    staffCount,
+    offCount,
+  )}px - 100%))`
   const pickedName = picked
     ? (full.columns.find((c) => c.staffId === picked)?.name ?? null)
     : null
@@ -335,90 +348,122 @@ export default async function AgendaDayPage({
 
         {/* uma profissional de cada vez ------------------------------ */}
         {!onlyStaffId && (full.columns.length > 1 || scope === 'equipa') ? (
-          <div className="relative border-t border-[var(--line-soft)]">
-            <nav
-              aria-label="Ver uma profissional"
-              className="no-scrollbar flex items-center gap-1.5 overflow-x-auto px-4 py-1.5 pr-16 sm:px-6 sm:py-2 sm:pr-20"
-            >
-              <StaffChip href={withDay(day, null)} active={picked === null}>
-                Todas
-              </StaffChip>
-              {full.columns.map((column) => (
-                <StaffChip
-                  key={column.staffId}
-                  href={withDay(day, column.staffId)}
-                  active={picked === column.staffId}
-                  color={colors[column.staffId]}
-                  muted={column.offDuty}
-                >
-                  {shortName(column.name)}
+          <div className="flex items-center gap-1 border-t border-[var(--line-soft)] pr-3 sm:gap-1.5 sm:pr-5">
+            <div className="relative min-w-0 flex-1">
+              <nav
+                aria-label="Ver uma profissional"
+                className="no-scrollbar flex items-center gap-1.5 overflow-x-auto py-1.5 pl-4 pr-6 sm:py-2 sm:pl-6"
+              >
+                <StaffChip href={withDay(day, null)} active={picked === null}>
+                  Todas
                 </StaffChip>
-              ))}
-            </nav>
+                {full.columns.map((column) => (
+                  <StaffChip
+                    key={column.staffId}
+                    href={withDay(day, column.staffId)}
+                    active={picked === column.staffId}
+                    color={colors[column.staffId]}
+                    muted={column.offDuty}
+                  >
+                    {shortName(column.name)}
+                  </StaffChip>
+                ))}
+              </nav>
+              {/*
+                COM A EQUIPA TODA A FITA NÃO CABE NO TELEMÓVEL, E UM NOME
+                CORTADO RENTE À MARGEM PARECE UM DEFEITO DO ECRÃ.
+
+                Este esbatido diz o contrário: não está partido, há mais
+                para o lado. Não apanha toques, para não roubar o último
+                chip a quem lhe quer tocar.
+              */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[var(--surface-raised)] to-transparent"
+              />
+            </div>
             {/*
               O INTERRUPTOR DA CASA INTEIRA.
 
-              Fica preso à direita, por cima do esbatido, porque a fita
-              desliza e um botão que fugisse com ela deixava de se
-              encontrar. Diz o que se ganha ao carregar, não o que está
-              — «Equipa» leva à casa toda, «Só hoje» volta ao dia — que é
-              a pergunta que a dona tem na cabeça quando olha para ali.
-            */}
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pl-6 pr-3 sm:pr-5">
-              <Link
-                href={withDay(
-                  day,
-                  picked,
-                  view,
-                  scope === 'equipa' ? 'dia' : 'equipa',
-                )}
-                scroll={false}
-                title={
-                  scope === 'equipa'
-                    ? 'Mostrar só quem trabalha hoje'
-                    : 'Mostrar a equipa toda, incluindo folgas'
-                }
-                className={clsx(
-                  'pointer-events-auto inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[0.6875rem] font-semibold tracking-[0.01em] shadow-[0_1px_2px_rgba(28,24,21,0.06)] transition-colors',
-                  scope === 'equipa'
-                    ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
-                    : 'border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:text-[var(--ink)]',
-                )}
-              >
-                <Users aria-hidden className="h-3.5 w-3.5" />
-                {scope === 'equipa' ? 'Só hoje' : 'Equipa'}
-              </Link>
-            </div>
-            {/*
-              COM A EQUIPA TODA A FITA NÃO CABE NO TELEMÓVEL, E UM NOME
-              CORTADO RENTE À MARGEM PARECE UM DEFEITO DO ECRÃ.
+              ESTEVE POUSADO EM CIMA DA FITA, E ESTAVA ERRADO. Ficava em
+              `absolute` sobre ela, com um `pr-16` a fingir de espaço
+              reservado — mas o botão mede 81px com «Só hoje», e medido
+              no browser invadia a fita em 93px: dois chips desapareciam
+              por baixo dele. Alargar a reserva não resolvia: a fita
+              DESLIZA, e ao primeiro arrasto os chips voltavam a passar
+              por baixo. Um elemento sobreposto a uma fita que corre não
+              se conserta com padding.
 
-              Este esbatido diz o contrário: não está partido, há mais
-              para o lado. Não apanha toques, para não roubar o último
-              chip a quem lhe quer tocar.
+              Agora é vizinho e não inquilino: a fita ocupa o que sobra
+              (`min-w-0 flex-1`, que é o que a deixa encolher dentro do
+              flex) e desliza dentro disso. Nada se sobrepõe, em nenhuma
+              posição de scroll.
+
+              Diz o que se ganha ao carregar, não o que está — «Equipa»
+              leva à casa toda, «Só hoje» volta ao dia — que é a
+              pergunta que a dona tem na cabeça quando olha para ali.
             */}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-y-0 right-14 w-8 bg-gradient-to-l from-[var(--surface-raised)] to-transparent sm:right-16"
-            />
+            <Link
+              href={withDay(
+                day,
+                picked,
+                view,
+                scope === 'equipa' ? 'dia' : 'equipa',
+              )}
+              scroll={false}
+              title={
+                scope === 'equipa'
+                  ? 'Mostrar só quem trabalha hoje'
+                  : 'Mostrar a equipa toda, incluindo folgas'
+              }
+              className={clsx(
+                'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[0.6875rem] font-semibold tracking-[0.01em] shadow-[0_1px_2px_rgba(28,24,21,0.06)] transition-colors',
+                scope === 'equipa'
+                  ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
+                  : 'border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:text-[var(--ink)]',
+              )}
+            >
+              <Users aria-hidden className="h-3.5 w-3.5" />
+              {scope === 'equipa' ? 'Só hoje' : 'Equipa'}
+            </Link>
           </div>
         ) : null}
       </div>
 
       {/* a grelha e o painel ----------------------------------------- */}
       <div className="relative flex min-h-0 flex-1">
-        {/* Onde as colunas não cabem todas, este esbatido na margem
-            direita diz que o dia continua para o lado. No telemóvel só
-            acontece com cinco ou mais profissionais (a coluna mínima é
-            5rem); no monitor, entre `md` e `lg`, quando o painel rouba
-            espaço à grelha. */}
+        {/*
+          ESTE ESBATIDO ESTAVA A PINTAR A COR ERRADA, E LIA-SE COMO UM
+          DEFEITO.
+
+          Dizia `from-[var(--surface)]` — o bege do fundo da página —
+          mas por baixo dele está a grelha, que é `--surface-raised`,
+          mais claro. Resultado: uma faixa escura de 40px colada à
+          margem direita, por cima da última coluna. Numa fotografia de
+          telemóvel não se lê como «há mais para o lado»; lê-se como se
+          a grelha tivesse ficado cortada a meio da última lombada.
+
+          E APARECIA QUANDO NÃO DEVIA. A conta era `columns.length > 4`,
+          mas com a equipa toda as lombadas de folga medem 20px: cinco
+          colunas em que três são folgas cabem à vontade, e o esbatido
+          prometia um lado que não existia. Contar só quem trabalha
+          também não servia — cinco a trabalhar mais uma de folga dá
+          388px certos num ecrã de 388, cabe, e a conta dizia que não.
+
+          Nenhuma contagem serve, porque a pergunta não é quantas são: é
+          se somadas passam da largura do ecrã, e essa largura o
+          servidor não a sabe. Então não decide — mede. A largura do
+          esbatido é um `calc()` com `100%` lá dentro, que é o browser a
+          dizer o que tem. Se a grelha cabe, dá zero e o esbatido
+          desaparece sozinho; se transborda, cresce até 40px. A mesma
+          saída que a coluna mínima já tinha tomado: dar ao CSS as
+          medidas fixas e deixá-lo fazer a divisão.
+        */}
         {view === 'grelha' && staffCount > 1 ? (
           <div
             aria-hidden
-            className={clsx(
-              'pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-[var(--surface)] to-transparent lg:hidden',
-              agenda.columns.length > 4 ? 'block' : 'hidden md:block',
-            )}
+            style={{ width: larguraDoEsbatido } as React.CSSProperties}
+            className="pointer-events-none absolute inset-y-0 right-0 z-20 bg-gradient-to-l from-[var(--surface-raised)] to-transparent lg:hidden"
           />
         ) : null}
         <div

@@ -84,6 +84,23 @@ const COLUMN =
 const RAIL_PX = 48
 /** Lombada de folga: `w-5` no telemóvel. */
 const OFF_PX = 20
+/** O travão do `max()` acima, em píxeis: abaixo disto não se lê. */
+const COL_MIN_PX = 56
+/** Coluna sem folgas nenhumas — a largura de sempre, `5rem`. */
+const COL_SO_PX = 80
+
+/**
+ * A LARGURA QUE A GRELHA PRECISA, NO PIOR CASO.
+ *
+ * Mora aqui ao lado das medidas que a compõem para não poder
+ * divergir delas: quem desenha a margem direita da agenda precisa de
+ * saber, ao píxel, a partir de que largura de ecrã a grelha deixa de
+ * caber — e essa conta tem de ser a MESMA que a `colMin` faz.
+ */
+export function larguraMinimaDaGrelha(working: number, off: number) {
+  const col = off > 0 && working > 0 ? COL_MIN_PX : COL_SO_PX
+  return RAIL_PX + working * col + off * OFF_PX
+}
 /**
  * A COLUNA DE QUEM HOJE NÃO VEM.
  *
