@@ -101,26 +101,3 @@ export const getUnitBySlug = cache(
   },
 )
 
-/**
- * A FOTOGRAFIA QUE FECHA A PÁGINA.
- *
- * O rodapé assenta numa fotografia da casa, escurecida. Não é enfeite:
- * quem chega ao fim já sabe o que se faz, onde é e com que produtos — o
- * que ainda não viu é COMO É LÁ DENTRO, e é a última coisa que falta
- * antes de marcar. Uma superfície chapada é uma parede; uma fotografia
- * é um sítio, e um sítio convida.
- *
- * A ÚLTIMA da ordem, de propósito: a primeira já abre a página no
- * herói, e repetir a mesma imagem em cima e em baixo faria a página
- * parecer curta. Assim entra-se por uma e sai-se por outra.
- */
-export const backdropPhoto = cache(async (): Promise<UnitPhoto | null> => {
-  const rows = await sql<UnitPhoto[]>`
-    select p.id, p.unit_id, p.url, p.alt
-      from unit_photo p
-      join unit u on u.id = p.unit_id and u.is_active
-     order by u.sort_order desc, u.name desc, p.sort_order desc
-     limit 1
-  `
-  return rows[0] ?? null
-})

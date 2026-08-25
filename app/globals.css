@@ -1122,3 +1122,36 @@ html.js .so-sem-js {
    círculos das famílias no telemóvel. O dedo já diz que se arrasta. */
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* ---------------------------------------------------------------------
+   O FUNDO DO FECHO.
+
+   Aqui esteve uma fotografia da sala, escurecida. A ideia era boa — um
+   sítio convida, uma parede não — mas na prática não resultou: a sala
+   tem cadeiras, espelhos e reflexos, e mesmo puxada para baixo o olho
+   tenta lê-la. O texto ficava a competir com o fundo.
+
+   Isto é o calor da madeira sem a desarrumação dela. Dois clarões
+   quentes em diagonal — um ouro em cima à esquerda, um âmbar em baixo à
+   direita — sobre um castanho que escurece ao descer. Dá o mesmo que a
+   fotografia dava (não é preto chapado, tem luz lá dentro) e não pede
+   nada ao olho.
+
+   E é mais barato do que parece: não há imagem para descarregar, nem
+   uma ida à base de dados para saber qual.
+   --------------------------------------------------------------------- */
+
+.fundo-casa {
+  background-image:
+    radial-gradient(
+      ellipse 46% 60% at 22% 26%,
+      color-mix(in srgb, var(--gold) 30%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 40% 50% at 78% 70%,
+      color-mix(in srgb, var(--accent) 26%, transparent),
+      transparent 66%
+    ),
+    linear-gradient(158deg, #2E251A 0%, #3E3223 38%, #241C13 74%, #1A140D 100%);
+}

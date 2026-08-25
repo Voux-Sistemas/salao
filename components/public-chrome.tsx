@@ -1,14 +1,13 @@
 import { Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
 import clsx from 'clsx'
-import { backdropPhoto, getOrg, listUnits } from '@/lib/org'
+import { getOrg, listUnits } from '@/lib/org'
 import { getDictionary, getLanguage, LANGUAGE_TAG } from '@/lib/i18n'
 import { getClientActor } from '@/lib/auth/client-actor'
 import { BRAND } from '@/lib/branding'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { LogoSeal } from '@/components/brand'
-import { ButtonLink, buttonClass } from '@/components/ui'
-import { Photo } from '@/components/photo'
+import { ButtonLink } from '@/components/ui'
 import { FooterInvite } from '@/components/footer-invite'
 import { formatPhone } from '@/lib/text'
 
@@ -29,13 +28,12 @@ export async function PublicChrome({
   /** Página com herói escuro no topo: o cabeçalho vira vidro fumado. */
   hero?: boolean
 }) {
-  const [org, dict, language, client, units, backdrop] = await Promise.all([
+  const [org, dict, language, client, units] = await Promise.all([
     getOrg(),
     getDictionary(),
     getLanguage(),
     getClientActor(),
     listUnits(),
-    backdropPhoto(),
   ])
 
   const name = org?.name ?? BRAND.fallbackName
@@ -173,207 +171,155 @@ export async function PublicChrome({
         que estava dois dedos acima. Quem quer a morada tem o «nossas
         lojas» aqui ao lado.
       */}
+      {/* --------------------------------------------------- rodapé --- */}
       {/*
-        O FECHO ASSENTA NUMA FOTOGRAFIA DA CASA.
+        O FECHO, EM OITO COISAS.
 
-        Era uma banda de carvão chapado, e antes disso tinha sido creme
-        fundo. Nenhuma das duas resolvia, porque o problema não era a
-        cor: era ser uma PAREDE. Uma superfície chapada não convida
-        ninguém a lado nenhum — e este é o sítio da página onde se pede
-        a uma pessoa que marque hora para tratar de si.
+        Tinha catorze, e seis delas estavam escritas noutro sítio da
+        mesma página: a legenda do convite dizia o que o título já dizia,
+        o «fale connosco» duplicava o ícone do WhatsApp, a frase da marca
+        está na capa, e o rótulo «navegar» apresentava quatro palavras
+        que se apresentam sozinhas. Nada disso desapareceu do site —
+        deixou de estar escrito duas vezes.
 
-        Uma fotografia da sala é um SÍTIO, e um sítio convida. Além
-        disso responde à última coisa que a página ainda não tinha
-        respondido: como é lá dentro. É a mesma razão por que a capa
-        funciona — também ela é a casa por baixo do nome.
+        O que sobra são três assuntos, por esta ordem: o convite, quem
+        somos e como se fala connosco, e por onde se anda. Cabe num ecrã
+        de telemóvel, que é o que faz uma página ACABAR em vez de
+        continuar a descer.
 
-        Duas camadas por cima: uma escurece por igual para as letras
-        assentarem, a outra puxa o fundo ao centro. Sem elas a
-        fotografia come o texto; com elas ainda se vê madeira e luz
-        quente, que é o que a distingue do preto.
+        O fundo é o `.fundo-casa` do globals.css — o calor da madeira
+        sem a fotografia da sala, que competia com o texto.
       */}
-      <footer
-        className="band-dark relative isolate overflow-hidden border-t border-[var(--line-soft)]"
-      >
-        {backdrop ? (
-          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-            <Photo src={backdrop.url} alt="" className="scale-105 [filter:saturate(0.85)]" />
-            <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--surface)_72%,transparent)]" />
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  'radial-gradient(ellipse 80% 70% at 50% 40%, color-mix(in srgb, var(--surface) 62%, transparent), color-mix(in srgb, var(--surface) 88%, transparent) 78%)',
-              }}
-            />
-          </div>
-        ) : null}
-
-        <div className="mx-auto max-w-6xl px-5 pb-8 pt-14 sm:px-8 sm:pt-16">
+      <footer className="band-dark fundo-casa border-t border-[var(--line-soft)]">
+        <div className="mx-auto max-w-6xl px-5 pb-6 pt-12 sm:px-8 sm:pt-14">
           {/* O convite abre o fecho — mas nunca dentro do funil. */}
           <FooterInvite>
-            <div className="mx-auto max-w-lg pb-11 text-center">
-              <p className="eyebrow eyebrow-gold">{dict.home.finalEyebrow}</p>
-              <h2 className="display mt-3 text-balance text-[1.5rem] leading-tight sm:text-[2rem]">
+            <div className="pb-9 text-center">
+              <h2 className="display text-balance text-[1.375rem] leading-tight sm:text-[2rem]">
                 {dict.home.finalTitle1}{' '}
                 <span className="display-italic text-[var(--accent)]">
                   {dict.home.finalTitleItalic}
                 </span>
                 {dict.home.finalTitle2}
               </h2>
-              <p className="mt-3 text-[0.875rem] leading-relaxed text-[var(--ink-muted)]">
-                {dict.home.finalSubtitle}
-              </p>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <div className="mt-5">
                 <ButtonLink href="/agendar" size="lg">
                   {dict.home.cta}
                 </ButtonLink>
-                {whatsappHref ? (
-                  <a
-                    href={whatsappHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={buttonClass('outline', 'lg')}
-                  >
-                    {dict.home.contactCta}
-                  </a>
-                ) : null}
               </div>
             </div>
-            <div className="mb-11 h-px bg-[var(--line-soft)]" />
+            <div className="mb-9 h-px bg-[var(--line-soft)]" />
           </FooterInvite>
-          <div className="grid gap-8 sm:grid-cols-[minmax(0,22rem)_auto] sm:justify-between sm:gap-16">
+
+          <div className="grid gap-7 sm:grid-cols-2 sm:items-start sm:gap-12">
             <div>
-              <LogoSeal size="lg" />
-
-              <p className="display mt-5 text-lg uppercase tracking-[0.18em] text-[var(--ink)]">
-                {name}
-              </p>
-              <p className="mt-2 max-w-xs text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-                {dict.footer.tagline}
-              </p>
-
-              {/*
-                O TELEFONE DA CASA.
-
-                Quando as duas lojas atendem no mesmo número, repeti-lo
-                por baixo de cada uma fazia-o parecer dois contactos
-                diferentes. Aqui é uma coisa só, do tamanho de uma coisa
-                em que se toca. Se um dia a Maia tiver linha própria,
-                cada número volta para a ficha da sua loja sozinho.
-              */}
-              {housePhone ? (
-                <a
-                  href={`tel:${housePhone.replace(/\s/g, '')}`}
-                  className="display toque tabular mt-5 block text-[1.375rem] text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
-                >
-                  {formatPhone(housePhone)}
-                </a>
-              ) : null}
+              {/* O selo ao lado do nome, e não por cima: eram duas
+                  linhas para dizer uma coisa. */}
+              <div className="flex items-center gap-3.5">
+                <LogoSeal />
+                <p className="display text-[0.8125rem] uppercase leading-snug tracking-[0.18em] text-[var(--ink)]">
+                  {name}
+                </p>
+              </div>
 
               {/*
-                DUAS MANEIRAS DE FALAR COM A CASA, LADO A LADO.
+                O NÚMERO E OS ÍCONES SÃO O MESMO ASSUNTO.
 
-                O WhatsApp era uma linha de texto dourada e o Instagram
-                um círculo por baixo dela — dois pesos para duas coisas
-                que são a mesma. Em círculo, a par, poupam uma linha e
-                dizem o que são sem se lerem.
+                As maneiras de falar com a casa. Estavam em linhas
+                separadas, com o número a parecer um título e os ícones
+                uma secção; a par, leem-se como o que são.
               */}
-              <div className="mt-3 flex items-center gap-3">
-                {whatsappHref ? (
+              <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+                {housePhone ? (
                   <a
-                    href={whatsappHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={dict.footer.whatsapp}
-                    title={dict.footer.whatsapp}
-                    className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
+                    href={`tel:${housePhone.replace(/\s/g, '')}`}
+                    className="display toque tabular text-[1.25rem] text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.7"
-                      strokeLinejoin="round"
-                      aria-hidden
-                      className="h-[1.05rem] w-[1.05rem]"
-                    >
-                      <path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20.5l1.8-5.2A8.5 8.5 0 1 1 21 11.5z" />
-                    </svg>
+                    {formatPhone(housePhone)}
                   </a>
                 ) : null}
 
-                {BRAND.social.instagram ? (
-                  <a
-                    href={BRAND.social.instagram}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={dict.footer.instagram}
-                    title={dict.footer.instagram}
-                    className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.7"
-                      aria-hidden
-                      className="h-[1.05rem] w-[1.05rem]"
+                <div className="flex items-center gap-2.5">
+                  {whatsappHref ? (
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={dict.footer.whatsapp}
+                      title={dict.footer.whatsapp}
+                      className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
                     >
-                      <rect x="3" y="3" width="18" height="18" rx="5" />
-                      <circle cx="12" cy="12" r="4" />
-                      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-                    </svg>
-                  </a>
-                ) : null}
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinejoin="round"
+                        aria-hidden
+                        className="h-[1.05rem] w-[1.05rem]"
+                      >
+                        <path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20.5l1.8-5.2A8.5 8.5 0 1 1 21 11.5z" />
+                      </svg>
+                    </a>
+                  ) : null}
+
+                  {BRAND.social.instagram ? (
+                    <a
+                      href={BRAND.social.instagram}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={dict.footer.instagram}
+                      title={dict.footer.instagram}
+                      className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        aria-hidden
+                        className="h-[1.05rem] w-[1.05rem]"
+                      >
+                        <rect x="3" y="3" width="18" height="18" rx="5" />
+                        <circle cx="12" cy="12" r="4" />
+                        <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                      </svg>
+                    </a>
+                  ) : null}
+                </div>
               </div>
             </div>
 
             {/*
-              AS QUATRO PORTAS DA CLIENTE.
+              OS CAMINHOS NUMA LINHA CORRIDA.
 
-              O cabeçalho leva-as todas, mas quem chega ao fim da página
-              a rolar não volta lá acima para decidir. Escritas por
-              extenso — «nossas lojas», e não «lojas» à seca — porque num
-              rodapé a palavra solta parece uma etiqueta e a frase parece
-              um convite.
+              Eram uma lista de pé com um rótulo por cima — o peso de uma
+              secção para um menu de rodapé. Três palavras a par leem-se
+              de relance. E o «marcar hora» saiu daqui: o botão grande
+              está dez centímetros acima e faz exactamente isso.
             */}
-            <nav>
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-[var(--ink-faint)]">
-                {dict.footer.navLabel}
-              </p>
-              <ul className="mt-3 space-y-3 text-[0.8125rem]">
-                {[
-                  { href: '/loja', label: dict.footer.links.stores },
-                  { href: '/servicos', label: dict.footer.links.services },
-                  {
-                    href: client ? '/conta' : '/conta/entrar',
-                    label: dict.footer.links.account,
-                  },
-                ].map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-                <li>
-                  <Link
-                    href="/agendar"
-                    className="link-slide toque text-[var(--accent)]"
-                  >
-                    {dict.footer.links.book}
-                  </Link>
-                </li>
-              </ul>
+            <nav className="flex flex-wrap gap-x-6 gap-y-2.5 text-[0.8125rem] sm:justify-end">
+              {[
+                { href: '/loja', label: dict.footer.links.stores },
+                { href: '/servicos', label: dict.footer.links.services },
+                {
+                  href: client ? '/conta' : '/conta/entrar',
+                  label: dict.footer.links.account,
+                },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
+                >
+                  {item.label}
+                </Link>
+              ))}
             </nav>
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line-soft)] pt-5">
-            <p className="text-[0.75rem] text-[var(--ink-faint)]">
+          <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line-soft)] pt-4">
+            <p className="text-[0.6875rem] text-[var(--ink-faint)]">
               © {year} {BRAND.legalName}
             </p>
 
@@ -383,13 +329,11 @@ export async function PublicChrome({
               O «entrar» do cabeçalho é a área da cliente; esta é outra,
               e é a que se abre mais vezes por dia. Fica no rodapé, onde
               uma porta de serviço pertence, mas com contorno e um
-              cadeado a dizer de quem é — em cima, ao lado do outro
-              «entrar», eram duas portas parecidas a levar a sítios
-              diferentes.
+              cadeado a dizer de quem é.
             */}
             <Link
               href="/entrar"
-              className="toque inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] px-4 py-2 text-[0.75rem] font-medium text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
+              className="toque inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] px-3.5 py-1.5 text-[0.6875rem] font-medium text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -398,7 +342,7 @@ export async function PublicChrome({
                 strokeWidth="2"
                 strokeLinecap="round"
                 aria-hidden
-                className="h-3.5 w-3.5 shrink-0"
+                className="h-3 w-3 shrink-0"
               >
                 <rect x="4" y="10" width="16" height="11" rx="2" />
                 <path d="M8 10V7a4 4 0 0 1 8 0v3" />
