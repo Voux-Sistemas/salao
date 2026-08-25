@@ -1039,3 +1039,75 @@ html.js .so-sem-js {
     transform: none;
   }
 }
+
+/* ---------------------------------------------------------------------
+   A FITA DAS MARCAS.
+
+   Uma fila que anda sozinha da direita para a esquerda, com o conteúdo
+   escrito duas vezes lá dentro: quando a primeira cópia sai do ecrã, a
+   segunda já está no lugar dela — e a animação salta para trás sem que
+   se veja emenda. É por isso que anda metade (-50%) e não o todo.
+
+   Pára quando o rato assenta em cima, para se conseguir ler o nome em
+   que se está a olhar. E quem tem o sistema a pedir menos movimento não
+   a vê a andar de todo: fica uma fila parada, que se arrasta com o dedo.
+   --------------------------------------------------------------------- */
+
+.fita-janela {
+  position: relative;
+  overflow: hidden;
+}
+
+/* As pontas desvanecem para a fita não parecer cortada a direito. */
+.fita-janela::before,
+.fita-janela::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4rem;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.fita-janela::before {
+  left: 0;
+  background: linear-gradient(to right, var(--surface), transparent);
+}
+
+.fita-janela::after {
+  right: 0;
+  background: linear-gradient(to left, var(--surface), transparent);
+}
+
+.fita-marcas {
+  display: flex;
+  width: max-content;
+  animation: fita-correr 34s linear infinite;
+}
+
+.fita-marcas:hover {
+  animation-play-state: paused;
+}
+
+.fita-grupo {
+  display: flex;
+  align-items: center;
+  gap: 3.5rem;
+  padding-right: 3.5rem;
+}
+
+@keyframes fita-correr {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fita-marcas { animation: none; }
+  .fita-janela { overflow-x: auto; }
+}
+
+/* Barra de rolagem escondida onde o arrastar é a interacção — os
+   círculos das famílias no telemóvel. O dedo já diz que se arrasta. */
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }

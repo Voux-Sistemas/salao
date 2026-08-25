@@ -10,8 +10,6 @@ import { formatPhone } from '@/lib/text'
 import { ButtonLink, buttonClass } from '@/components/ui'
 import { LogoMark, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
-import { CollapseGroup } from '@/components/collapse-group'
-import { ShowcaseTabs } from '@/components/showcase-tabs'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 import { Photo, PhotoFallback } from '@/components/photo'
 
@@ -29,6 +27,7 @@ import { Photo, PhotoFallback } from '@/components/photo'
  */
 
 type CatalogRow = {
+  category_slug: string
   category_id: string
   category_name: string
   service_id: string
@@ -43,6 +42,31 @@ type PhotoRow = {
   url: string
   alt: string | null
 }
+
+/**
+ * As famílias que já têm fotografia em public/fotos/familias.
+ *
+ * Escrito à mão de propósito: o servidor não vai ao disco perguntar se
+ * o ficheiro existe a cada pedido, e uma família sem fotografia mostra
+ * o disco de ouro com a inicial em vez de uma imagem partida. Quando
+ * chegar a oitava família, acrescenta-se aqui o nome do ficheiro.
+ */
+const FAMILY_PHOTOS = new Set([
+  'cabelo',
+  'coloracao',
+  'tratamentos-capilares',
+  'barbearia',
+  'maos-e-pes',
+  'rosto',
+  'corpo',
+])
+
+/**
+ * As marcas que entram nos tratamentos da casa. Saíram do preçário —
+ * «Tratamento Truss», «Coloração (inoa)», «Tratamento plex» — e não de
+ * uma lista de marcas bonitas. Mudar aqui muda a fita.
+ */
+const BRANDS = ['Truss', 'Brae', 'L’Oréal', 'Inoa', 'Plex', 'BaByliss']
 
 function mapsUrl(unit: Unit) {
   const address = [unit.address_line, unit.postal_code, unit.city]
@@ -164,6 +188,7 @@ export async function Showcase({ org }: { org: Org }) {
     // era pagar a travessia para os deitar fora deste lado.
     sql<CatalogRow[]>`
       select c.id as category_id,
+             c.slug as category_slug,
              name_in(${language}, c.name, c.name_en, c.name_es) as category_name,
              s.id as service_id,
              name_in(${language}, s.name, s.name_en, s.name_es) as name,
@@ -221,6 +246,22 @@ export async function Showcase({ org }: { org: Org }) {
     entry.services.push(row)
     categories.set(row.category_id, entry)
   }
+
+  /*
+   * AS FAMÍLIAS, PARA OS DISCOS.
+   *
+   * O nome sai da base já traduzido; o `slug` não se traduz e é ele que
+   * encontra a fotografia em `public/fotos/familias`. Uma família sem
+   * serviços activos não aparece — um disco que abre uma lista vazia é
+   * pior do que um disco a menos.
+   */
+  const families = [...categories.entries()]
+    .map(([id, entry]) => ({
+      slug: catalog.find((row) => row.category_id === id)?.category_slug ?? '',
+      name: entry.name,
+      count: entry.services.length,
+    }))
+    .filter((family) => family.slug !== '' && family.count > 0)
 
   // «Fale connosco» é o WhatsApp da casa, e é uma conversa que ela
   // começa — não há automatismo nenhum do outro lado, só a mensagem já
@@ -313,165 +354,164 @@ export async function Showcase({ org }: { org: Org }) {
         </Reveal>
       </section>
 
-      {/* ------------------------------ as casas e o que lá se faz ---- */}
+      {/* ------------------------------ o que se faz nesta casa ------- */}
       {/*
-        O `id` é o da PRIMEIRA aba de propósito: é o alvo do botão do
-        herói, e é ele que diz ao componente das abas que o navegador já
-        rolou sozinho. A segunda aba (#servicos) não tem dono no HTML —
-        quem lá salta é o JavaScript.
+        SETE FAMÍLIAS, SETE FOTOGRAFIAS.
+
+        Estavam numa aba a disputar espaço com as lojas, como se «o quê»
+        e «onde» fossem duas vistas da mesma coisa. E estavam escritas:
+        sessenta e sete nomes de serviço em lista, que ninguém lê de pé
+        num telemóvel. Uma fotografia dentro de um círculo diz o que é
+        antes de se ler o nome por baixo — e o anel é o mesmo do selo da
+        casa, para isto não parecer o carrossel de categorias de uma
+        loja qualquer.
       */}
-      <section id="casas" className="scroll-mt-16 border-t border-[var(--line-soft)]">
-        <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-          <Reveal className="mb-10 text-center sm:mb-12">
-            <Ornament />
+      <section
+        id="servicos"
+        className="scroll-mt-16 border-t border-[var(--line-soft)]"
+      >
+        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
+          <Reveal className="mb-10 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+            <div>
+              <p className="eyebrow eyebrow-gold">{dict.home.servicesTitle}</p>
+              <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-[var(--ink-muted)]">
+                {dict.home.servicesSubtitle}
+              </p>
+            </div>
+            <ButtonLink href="/servicos" variant="outline">
+              {dict.footer.links.services}
+            </ButtonLink>
           </Reveal>
-          <ShowcaseTabs
-            tabs={[
-              {
-                id: 'casas',
-                label: dict.home.tabHouses,
-                headingSemJs: dict.home.housesTitle,
-                panel: (
-                  <>
-                    <p className="mx-auto mb-10 max-w-md text-center text-[0.875rem] leading-relaxed text-[var(--ink-muted)] sm:mb-12">
-                      {dict.unit.listLead}
-                    </p>
-                    <Reveal group className="grid gap-6 lg:grid-cols-2">
-                      {houses.map(({ unit, cover, todayWindows }) => (
-                        <HouseCard
-                          key={unit.id}
-                          unit={unit}
-                          cover={cover}
-                          todayWindows={todayWindows}
-                          dict={dict}
-                          language={language}
-                        />
-                      ))}
-                    </Reveal>
-                  </>
-                ),
-              },
-              {
-                id: 'servicos',
-                label: dict.home.tabServices,
-                headingSemJs: dict.home.servicesTitle,
-                panel: (
-                  <>
-                    <p className="mx-auto mb-10 max-w-md text-center text-[0.875rem] leading-relaxed text-[var(--ink-muted)] sm:mb-14">
-                      {dict.home.servicesSubtitle}
-                    </p>
-                    {categories.size === 0 ? (
-                      <p className="text-center text-[0.875rem] text-[var(--ink-faint)]">
-                        {dict.unit.noStoresHint}
-                      </p>
-                    ) : (
-                      <>
-                        {/*
-                          UMA EMENTA, NÃO UMA TABELA.
 
-                          Sem preço e sem duração, cada linha é só o nome
-                          do serviço — e é isso que a faz respirar. Duas
-                          colunas no monitor, categorias que fecham ao
-                          telemóvel (o `CollapseGroup` é o mesmo do funil,
-                          e a lista inteira continua no HTML para o
-                          Ctrl+F e para os motores de busca).
-                        */}
-                        <div className="mx-auto grid max-w-5xl gap-x-16 gap-y-10 sm:grid-cols-2 sm:gap-y-14">
-                          {[...categories.values()].map((category) => (
-                            <CollapseGroup
-                              key={category.name}
-                              title={category.name}
-                              count={category.services.length}
-                            >
-                              {category.services.map((service) => (
-                                <li
-                                  key={service.service_id}
-                                  className="mt-3.5 first:mt-0"
-                                >
-                                  <p className="text-[0.9375rem] leading-snug text-[var(--ink)]">
-                                    {service.name}
-                                  </p>
-                                  {service.description ? (
-                                    <p className="mt-1 max-w-sm text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-                                      {service.description}
-                                    </p>
-                                  ) : null}
-                                </li>
-                              ))}
-                            </CollapseGroup>
-                          ))}
-                        </div>
+          {/*
+            No telemóvel as sete não cabem, e espremê-las em duas colunas
+            dava discos do tamanho de uma moeda. Arrastam-se com o dedo,
+            com encaixe — cada família pára no sítio, não a meio.
+          */}
+          <Reveal
+            group
+            className="scrollbar-none -mx-5 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-2 sm:mx-0 sm:flex-wrap sm:justify-between sm:overflow-visible sm:px-0"
+          >
+            {families.map((family) => (
+              <Link
+                key={family.slug}
+                href="/servicos"
+                className="toque group w-[6.5rem] shrink-0 snap-start text-center"
+              >
+                <span
+                  className="relative block aspect-square overflow-hidden rounded-full transition-transform duration-500 group-hover:scale-[1.04]"
+                  style={{
+                    boxShadow:
+                      '0 0 0 1px var(--line), 0 0 0 5px var(--surface), 0 0 0 6px color-mix(in srgb, var(--gold) 55%, transparent)',
+                  }}
+                >
+                  {FAMILY_PHOTOS.has(family.slug) ? (
+                    <>
+                      <Photo
+                        src={`/fotos/familias/${family.slug}.jpg`}
+                        alt={family.name}
+                      />
+                      {/* Escurece o fundo do disco: sem isto, uma
+                          fotografia clara encosta no creme da página e o
+                          círculo desaparece. */}
+                      <span
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'linear-gradient(to top, color-mix(in srgb, #131009 34%, transparent), transparent 58%)',
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <span
+                      aria-hidden
+                      className="display absolute inset-0 grid place-items-center text-2xl text-[var(--accent)]"
+                      style={{
+                        background:
+                          'linear-gradient(150deg, color-mix(in srgb, var(--gold) 22%, var(--surface-2)), var(--surface-2))',
+                      }}
+                    >
+                      {family.name.slice(0, 1)}
+                    </span>
+                  )}
+                </span>
 
-                        {/* Uma ementa sem preços deixa uma pergunta no
-                            ar. A resposta é a marcação, onde o valor
-                            aparece já com a loja e a profissional
-                            escolhidas — por isso o caminho fica aqui,
-                            no fim da lista. */}
-                        <div className="mt-16 text-center">
-                          <Ornament className="mb-8" />
-                          <ButtonLink href="/agendar" size="lg">
-                            {dict.home.cta}
-                          </ButtonLink>
-                        </div>
-                      </>
-                    )}
-                  </>
-                ),
-              },
-            ]}
-          />
+                <span className="display mt-3.5 block text-[0.875rem] leading-tight text-[var(--ink)]">
+                  {family.name}
+                </span>
+                <span className="tabular mt-0.5 block text-[0.6875rem] text-[var(--ink-faint)]">
+                  {family.count}
+                </span>
+              </Link>
+            ))}
+          </Reveal>
         </div>
       </section>
 
-      {/* ------------------------------------------- a galeria -------- */}
-      {photos.length > 0 ? (
-        <section className="border-t border-[var(--line-soft)]">
-          <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-            <Reveal className="text-center">
-              <p className="eyebrow eyebrow-gold">{dict.home.galleryEyebrow}</p>
-              <h2 className="display mt-4 text-3xl sm:text-4xl">
-                {dict.home.galleryTitle}
-              </h2>
-              <Ornament className="mt-8" />
-            </Reveal>
+      {/* ------------------------------------------------ as casas ---- */}
+      <section id="casas" className="scroll-mt-16 border-t border-[var(--line-soft)]">
+        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
+          <Reveal className="mb-10">
+            <p className="eyebrow eyebrow-gold">{dict.home.storesTitle}</p>
+            <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-[var(--ink-muted)]">
+              {dict.unit.listLead}
+            </p>
+          </Reveal>
 
-            {/* A primeira ocupa quatro lugares — é a que se vê de longe.
-                `auto-rows-fr` obriga todas as filas à mesma altura, senão
-                a grande esticava-se e as pequenas encolhiam por baixo.
-                `dense` é seguro de propósito: se um dia a dona apagar
-                metade das fotografias, o mosaico fecha os buracos em vez
-                de deixar um vazio no meio. */}
-            <Reveal
-              group
-              className="mt-12 grid auto-rows-fr grid-flow-row-dense grid-cols-2 gap-2 sm:mt-16 sm:grid-cols-4 sm:gap-3"
-            >
-              {photos.map((photo, index) => (
-                <figure
-                  key={photo.id}
-                  className={
-                    'group relative overflow-hidden bg-[var(--surface-raised)] ' +
-                    (index === 0
-                      ? 'col-span-2 aspect-[4/3] sm:row-span-2 sm:aspect-auto'
-                      : 'aspect-square')
-                  }
-                >
-                  <Photo
-                    src={photo.url}
-                    alt={photo.alt ?? photo.unit_name}
-                    className="transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]"
-                  />
-                  {/* O nome da casa só aparece a pairar, e só no monitor:
-                      ao telemóvel não há rato para o revelar e uma tarja
-                      permanente por cima de nove fotografias é ruído. */}
-                  <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-[color-mix(in_srgb,var(--surface)_88%,transparent)] to-transparent px-4 pb-3 pt-10 text-[0.6875rem] uppercase tracking-[0.16em] text-[var(--ink-muted)] opacity-0 transition-opacity duration-500 group-hover:opacity-100 sm:block">
-                    {photo.unit_name}
-                  </figcaption>
-                </figure>
+          <Reveal group className="grid gap-6 lg:grid-cols-2">
+            {houses.map(({ unit, cover, todayWindows }) => (
+              <HouseCard
+                key={unit.id}
+                unit={unit}
+                cover={cover}
+                todayWindows={todayWindows}
+                dict={dict}
+                language={language}
+              />
+            ))}
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------- as marcas -- */}
+      {/*
+        NÃO É ENFEITE, É PROVA.
+
+        Truss, Brae, Inoa, Plex — saíram do preçário da casa, não de uma
+        lista de marcas bonitas. Quem procura salão olha para isto para
+        saber com que produto lhe vão tocar no cabelo, e é a pergunta
+        que uma galeria de fotografias não responde.
+
+        A fita anda sozinha e pára quando o rato lhe assenta em cima —
+        para se conseguir ler o nome em que se está a olhar. Quem tiver o
+        sistema a pedir menos movimento vê uma fila parada, que se
+        arrasta com o dedo (ver `.fita-marcas` no globals.css).
+      */}
+      <section className="border-t border-[var(--line-soft)]">
+        <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-14">
+          <p className="eyebrow eyebrow-gold mb-7 text-center">
+            {dict.home.brandsEyebrow}
+          </p>
+
+          <div className="fita-janela">
+            <div className="fita-marcas">
+              {[0, 1].map((copia) => (
+                <div key={copia} className="fita-grupo" aria-hidden={copia === 1}>
+                  {BRANDS.map((brand) => (
+                    <span
+                      key={brand}
+                      className="display whitespace-nowrap text-xl text-[var(--ink-faint)] sm:text-2xl"
+                    >
+                      {brand}
+                    </span>
+                  ))}
+                </div>
               ))}
-            </Reveal>
+            </div>
           </div>
-        </section>
-      ) : null}
+        </div>
+      </section>
 
       {/* ------------------------------------------ chamada final ----- */}
       <section className="band-dark">
