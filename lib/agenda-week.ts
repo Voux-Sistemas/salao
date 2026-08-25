@@ -2,41 +2,57 @@ import 'server-only'
 import { sql } from '@/lib/db'
 import type { Unit } from '@/lib/org'
 import { openingWindowsRange } from '@/lib/hours'
+import { merge, type Interval } from '@/lib/intervals'
 import { addDays, dayStart, isoRange, weekdayOf, type IsoDay } from '@/lib/time'
 
 /**
- * O PANORAMA DA SEMANA — a casa vista de longe.
+ * O PANORAMA DA SEMANA — a casa vista de longe, mas com as horas.
  *
- * A agenda do dia responde a «o que é que acontece hoje». Esta responde
- * a outra pergunta, que se faz com o telefone na mão e o dia inteiro
- * pela frente: como está a semana. Onde está cheio, onde há espaço,
- * quem lá anda.
+ * A primeira versão disto trazia somatórios: minutos de escala, minutos
+ * ocupados, uma percentagem por dia. A dona olhou e não viu nada — e
+ * tinha razão, porque a pergunta dela não é «quão cheio está o dia», é
+ * «QUEM tem O QUÊ, e A QUE HORAS». Uma percentagem esconde exactamente
+ * as duas coisas que ela quer ver.
  *
- * NÃO SE CARREGAM SETE AGENDAS. Seria sete vezes o trabalho — cada
- * marcação com o nome da cliente, o preço, os serviços — para desenhar
- * barras. O que se traz é o que se mostra: quanto tempo está ocupado em
- * cada dia, por quem, e quantas marcações são. O detalhe está a um
- * toque de distância, no dia.
+ * Por isso o que se traz agora é o desenho inteiro, só que de longe:
+ * por cada dia, uma pista por profissional; na pista, o turno dela e
+ * cada marcação na posição real da hora. Os buracos livres não se
+ * calculam — aparecem sozinhos, que é como os buracos aparecem numa
+ * agenda de papel.
  *
- * Por isso o número que manda aqui é o MINUTO OCUPADO, não a marcação:
- * um dia com duas madeixas de duas horas está mais cheio do que um dia
- * com quatro franjas de meia hora, e contar marcações dizia o
- * contrário.
+ * O que NÃO se traz é o resto da ficha: preço, telefone, estado,
+ * comanda. Isso é do dia, e o dia está a um toque.
  */
 
-/** Um dia, visto de longe. */
+/** Uma marcação vista de longe: onde está e de quem é. */
+export type WeekBlock = {
+  appointmentId: string
+  /** O bloco de ocupação (folgas de tinta incluídas), em minutos locais. */
+  startMin: number
+  endMin: number
+  clientName: string
+  serviceName: string
+}
+
+/** A pista de uma profissional num dia. */
+export type WeekLane = {
+  staffId: string
+  /** Turnos do dia, em minutos locais, já fundidos. */
+  shifts: Interval[]
+  blocks: WeekBlock[]
+}
+
 export type WeekDay = {
   day: IsoDay
-  /** Minutos de escala somados de toda a equipa. Zero = casa fechada. */
-  capacityMin: number
-  /** Desses, quantos estão ocupados por trabalho marcado. */
-  bookedMin: number
-  /** Quantas marcações (não itens: uma cliente com três serviços é uma). */
-  appointments: number
-  /** Quem faz turno neste dia, por ordem de entrada. */
-  staffIds: string[]
   /** A casa abre neste dia? Um feriado fechado não é um dia vazio. */
   open: boolean
+  /**
+   * Quem tem dia: turno na escala ou trabalho marcado. Pela ordem da
+   * equipa, para a mesma pessoa estar sempre na mesma altura da lista.
+   */
+  lanes: WeekLane[]
+  /** Marcações distintas do dia (uma cliente com três serviços é uma). */
+  appointments: number
 }
 
 export type AgendaWeek = {
@@ -46,10 +62,17 @@ export type AgendaWeek = {
   /** Domingo. */
   to: IsoDay
   days: WeekDay[]
-  /** Quem aparece na semana, com o nome já resolvido. */
-  staff: { staffId: string; name: string }[]
-  /** Somatórios da semana, para não os recontar em cada sítio. */
-  totals: { capacityMin: number; bookedMin: number; appointments: number }
+  /** Quem aparece na semana, com nome e cor já resolvidos. */
+  staff: { staffId: string; name: string; color: string }[]
+  /**
+   * A régua das horas, igual para os sete dias — é o que deixa comparar
+   * uma quarta com um sábado de relance. Vai da abertura mais cedo ao
+   * fecho mais tarde da semana, esticada se algum turno ou encaixe
+   * viver fora do horário da casa, e arredondada à hora certa.
+   */
+  fromMin: number
+  toMin: number
+  totals: { appointments: number }
 }
 
 /**
@@ -65,6 +88,10 @@ export function mondayOf(day: IsoDay): IsoDay {
   return addDays(day, -((dow + 6) % 7))
 }
 
+/** A régua quando não há nada: o dia útil de sempre. */
+const DEFAULT_FROM = 9 * 60
+const DEFAULT_TO = 20 * 60
+
 export async function loadAgendaWeek(
   unit: Unit,
   anyDayOfWeek: IsoDay,
@@ -79,23 +106,29 @@ export async function loadAgendaWeek(
   const windowStart = dayStart(from, tz)
   const windowEnd = dayStart(addDays(to, 1), tz)
 
-  const [opening, scheduleRows, bookedRows, staffRows] = await Promise.all([
+  const [opening, scheduleRows, blockRows, staffRows] = await Promise.all([
     openingWindowsRange(unit.id, from, 7),
 
     /*
-      A escala de sete dias de uma vez. A do dia filtra por um `weekday`
-      só; aqui geram-se os sete dias e cruza-se cada um com a escala que
-      lhe corresponde — a vigência (`valid_from`/`valid_to`) tem de ser
-      testada dia a dia, porque uma escala pode começar a meio da semana.
+      A escala de sete dias de uma vez, turno a turno. A vigência
+      (`valid_from`/`valid_to`) testa-se dia a dia, porque uma escala
+      pode começar a meio da semana — e começa mesmo: as primeiras
+      escalas desta casa nasceram numa terça.
     */
-    sql<{ day: IsoDay; staff_id: string; minutes: number }[]>`
+    sql<
+      {
+        day: IsoDay
+        staff_id: string
+        starts_min: number
+        ends_min: number
+      }[]
+    >`
       with dias as (
         select d::date as on_date, extract(dow from d)::int as weekday
           from generate_series(${from}::date, ${to}::date, interval '1 day') d
       )
       select to_char(dias.on_date, 'YYYY-MM-DD') as day,
-             ss.staff_id,
-             sum(ss.ends_min - ss.starts_min)::int as minutes
+             ss.staff_id, ss.starts_min, ss.ends_min
         from dias
         join staff_schedule ss
           on ss.unit_id = ${unit.id}
@@ -103,14 +136,12 @@ export async function loadAgendaWeek(
          and ss.valid_from <= dias.on_date
          and (ss.valid_to is null or ss.valid_to >= dias.on_date)
        where (${only}::uuid is null or ss.staff_id = ${only}::uuid)
-       group by day, ss.staff_id
     `,
 
     /*
-      O trabalho marcado, contado em minutos de BLOCO — que é o que
-      ocupa a agenda de verdade, folgas de tinta incluídas. É o mesmo
-      critério da grelha do dia, para os dois números não se
-      contradizerem quando se toca no dia.
+      O trabalho marcado, bloco a bloco — que é o que ocupa a agenda de
+      verdade, folgas de tinta incluídas. O mesmo critério da grelha do
+      dia, para as duas vistas nunca se contradizerem.
 
       Um bloco que atravessa a meia-noite conta no dia em que começa:
       cortá-lo pelos dois dias dava meias marcações, e ninguém pensa
@@ -118,30 +149,38 @@ export async function loadAgendaWeek(
 
       Não se filtra por estado. Cancelar uma marcação APAGA os blocos
       (`freeBlocks`, em `lib/booking.ts`), portanto o que está aqui é o
-      que ainda ocupa a agenda — o mesmo critério da grelha do dia, que
-      também não filtra. Acrescentar um filtro de estado seria inventar
-      uma diferença entre a semana e o dia.
+      que ainda ocupa a agenda.
     */
     sql<
-      { day: IsoDay; staff_id: string; minutes: number; marcacoes: number }[]
+      {
+        day: IsoDay
+        staff_id: string
+        appointment_id: string
+        starts_at: Date
+        ends_at: Date
+        client_name: string
+        service_name: string
+      }[]
     >`
       select to_char(lower(sb.during) at time zone ${tz}, 'YYYY-MM-DD') as day,
-             ai.staff_id,
-             sum(
-               extract(epoch from (upper(sb.during) - lower(sb.during))) / 60
-             )::int as minutes,
-             count(distinct ai.appointment_id)::int as marcacoes
+             ai.staff_id, ai.appointment_id,
+             lower(sb.during) as starts_at,
+             upper(sb.during) as ends_at,
+             c.name as client_name,
+             ai.service_name
         from staff_block sb
         join appointment_item ai on ai.id = sb.appointment_item_id
+        join appointment a on a.id = ai.appointment_id
+        join client c on c.id = a.client_id
        where sb.unit_id = ${unit.id}
          and lower(sb.during) >= ${windowStart}
          and lower(sb.during) < ${windowEnd}
          and (${only}::uuid is null or ai.staff_id = ${only}::uuid)
-       group by day, ai.staff_id
+       order by starts_at
     `,
 
-    sql<{ id: string; name: string; public_alias: string | null }[]>`
-      select s.id, s.name, s.public_alias
+    sql<{ id: string; name: string; display_color: string }[]>`
+      select s.id, s.name, s.display_color
         from staff s
         join staff_unit su on su.staff_id = s.id
        where su.unit_id = ${unit.id}
@@ -151,46 +190,106 @@ export async function loadAgendaWeek(
     `,
   ])
 
-  const nomes = new Map(staffRows.map((s) => [s.id, s.name]))
+  const daZona = new Set(staffRows.map((s) => s.id))
 
-  const porDia = new Map<IsoDay, WeekDay>(
-    days.map((day) => [
-      day,
-      {
-        day,
-        capacityMin: 0,
-        bookedMin: 0,
-        appointments: 0,
-        staffIds: [],
-        open: (opening.get(day) ?? []).length > 0,
-      },
-    ]),
-  )
+  /** Minutos desde a meia-noite local DESTE dia, como em lib/agenda. */
+  const localMinutes = (instant: Date, day: IsoDay): number =>
+    Math.round((instant.getTime() - dayStart(day, tz).getTime()) / 60_000)
+
+  const porDia = new Map<
+    IsoDay,
+    Map<string, { shifts: Interval[]; blocks: WeekBlock[] }>
+  >(days.map((day) => [day, new Map()]))
+
+  const pista = (day: IsoDay, staffId: string) => {
+    const dia = porDia.get(day)!
+    let lane = dia.get(staffId)
+    if (!lane) {
+      lane = { shifts: [], blocks: [] }
+      dia.set(staffId, lane)
+    }
+    return lane
+  }
 
   for (const row of scheduleRows) {
-    const d = porDia.get(row.day)
-    if (!d || !nomes.has(row.staff_id)) continue
-    d.capacityMin += row.minutes
-    if (!d.staffIds.includes(row.staff_id)) d.staffIds.push(row.staff_id)
+    if (!porDia.has(row.day) || !daZona.has(row.staff_id)) continue
+    pista(row.day, row.staff_id).shifts.push({
+      start: row.starts_min,
+      end: row.ends_min,
+    })
   }
 
-  for (const row of bookedRows) {
-    const d = porDia.get(row.day)
-    if (!d) continue
-    d.bookedMin += row.minutes
-    d.appointments += row.marcacoes
+  for (const row of blockRows) {
     /*
-      Um encaixe fora da escala não pode desaparecer do panorama: quem o
-      fez trabalhou nesse dia, esteja ou não na escala. É a mesma regra
-      da grelha, onde uma coluna nasce de ter trabalho marcado.
+      Um encaixe fora da escala não desaparece do panorama: quem o fez
+      trabalha nesse dia, esteja ou não na escala. A pista nasce do
+      trabalho, como a coluna da grelha do dia.
     */
-    if (nomes.has(row.staff_id) && !d.staffIds.includes(row.staff_id)) {
-      d.staffIds.push(row.staff_id)
+    if (!porDia.has(row.day) || !daZona.has(row.staff_id)) continue
+    pista(row.day, row.staff_id).blocks.push({
+      appointmentId: row.appointment_id,
+      startMin: localMinutes(row.starts_at, row.day),
+      endMin: localMinutes(row.ends_at, row.day),
+      clientName: row.client_name,
+      serviceName: row.service_name,
+    })
+  }
+
+  const lista: WeekDay[] = days.map((day) => {
+    const dia = porDia.get(day)!
+    // A ordem das pistas é a ordem da equipa, sempre a mesma.
+    const lanes: WeekLane[] = staffRows
+      .filter((s) => dia.has(s.id))
+      .map((s) => {
+        const lane = dia.get(s.id)!
+        return {
+          staffId: s.id,
+          shifts: merge(lane.shifts),
+          blocks: lane.blocks,
+        }
+      })
+    return {
+      day,
+      open: (opening.get(day) ?? []).length > 0,
+      lanes,
+      appointments: new Set(
+        lanes.flatMap((l) => l.blocks.map((b) => b.appointmentId)),
+      ).size,
+    }
+  })
+
+  // A régua da semana: aberturas da casa, esticada pelo que viva fora
+  // delas, arredondada à hora certa.
+  const starts: number[] = []
+  const ends: number[] = []
+  for (const day of days) {
+    for (const w of opening.get(day) ?? []) {
+      starts.push(w.openMin)
+      ends.push(w.closeMin)
     }
   }
+  for (const d of lista) {
+    for (const lane of d.lanes) {
+      for (const s of lane.shifts) {
+        starts.push(s.start)
+        ends.push(s.end)
+      }
+      for (const b of lane.blocks) {
+        starts.push(b.startMin)
+        ends.push(b.endMin)
+      }
+    }
+  }
+  const fromMin =
+    starts.length === 0
+      ? DEFAULT_FROM
+      : Math.floor(Math.min(...starts) / 60) * 60
+  const toMin =
+    ends.length === 0
+      ? DEFAULT_TO
+      : Math.max(Math.ceil(Math.max(...ends) / 60) * 60, fromMin + 120)
 
-  const lista = days.map((day) => porDia.get(day)!)
-  const presentes = new Set(lista.flatMap((d) => d.staffIds))
+  const presentes = new Set(lista.flatMap((d) => d.lanes.map((l) => l.staffId)))
 
   return {
     unit,
@@ -199,10 +298,10 @@ export async function loadAgendaWeek(
     days: lista,
     staff: staffRows
       .filter((s) => presentes.has(s.id))
-      .map((s) => ({ staffId: s.id, name: s.name })),
+      .map((s) => ({ staffId: s.id, name: s.name, color: s.display_color })),
+    fromMin,
+    toMin,
     totals: {
-      capacityMin: lista.reduce((n, d) => n + d.capacityMin, 0),
-      bookedMin: lista.reduce((n, d) => n + d.bookedMin, 0),
       appointments: lista.reduce((n, d) => n + d.appointments, 0),
     },
   }

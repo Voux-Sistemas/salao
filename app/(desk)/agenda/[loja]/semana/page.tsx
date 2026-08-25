@@ -3,11 +3,16 @@ import type { Metadata } from 'next'
 import clsx from 'clsx'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { requireActor, resolveUnit } from '@/lib/auth/actor'
-import { loadAgendaWeek, mondayOf, type WeekDay } from '@/lib/agenda-week'
+import {
+  loadAgendaWeek,
+  mondayOf,
+  type AgendaWeek,
+  type WeekDay,
+} from '@/lib/agenda-week'
 import { shortName } from '@/lib/text'
 import {
   addDays,
-  formatDuration,
+  formatMinutes,
   formatMonthShort,
   formatWeekdayShort,
   today,
@@ -19,18 +24,30 @@ export const metadata: Metadata = { title: 'Semana' }
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 
+/*
+  A LARGURA DA COLUNA DOS NOMES, UMA VEZ SÓ.
+
+  A régua das horas e as pistas têm de partilhar esta medida ao píxel —
+  é o que faz o «12h» do cabeçalho cair em cima do meio-dia das pistas.
+  Vive numa constante para não se poder desafinar uma sem a outra.
+*/
+const GOTEIRA = 'w-[4.5rem] sm:w-[5.75rem]'
+
 /**
  * O PANORAMA DA SEMANA.
  *
  * A agenda do dia responde a «o que acontece hoje». Esta responde à
- * pergunta que se faz de manhã, com o café na mão: como está a semana.
+ * pergunta que se faz de manhã, com o café na mão: como está a semana —
+ * quem tem o quê, e a que horas.
  *
- * NÃO É UMA GRELHA DE SETE DIAS. Cinco profissionais vezes sete dias
- * são trinta e cinco colunas — dez píxeis cada num telemóvel, que não é
- * uma agenda, é um código de barras. A semana não é uma pergunta sobre
- * horas, é uma pergunta sobre dias: sete linhas, uma por dia, cada uma
- * a dizer o quanto está cheia e quem lá anda. E cada linha é uma porta
- * para o dia, que é onde as horas estão.
+ * NÃO É UMA GRELHA DE SETE DIAS, nem uma fila de percentagens. Por cada
+ * dia, uma pista por profissional no eixo real das horas: o turno é o
+ * fundo, cada marcação é um bloco na posição a que começa, com a
+ * largura do que dura e a cor da ficha de quem a faz. Os buracos livres
+ * não se desenham — aparecem sozinhos, como numa agenda de papel.
+ *
+ * Cada peça é uma porta: o cabeçalho do dia abre a agenda desse dia, um
+ * bloco abre a própria marcação.
  */
 export default async function SemanaPage({
   params,
@@ -53,30 +70,17 @@ export default async function SemanaPage({
   const onlyStaffId = actor.role === 'professional' ? actor.id : null
 
   const week = await loadAgendaWeek(unit, day, { onlyStaffId })
-  const nomes = new Map(week.staff.map((s) => [s.staffId, s.name]))
+  const equipa = new Map(week.staff.map((s) => [s.staffId, s]))
 
   const here = `/agenda/${unit.slug}/semana`
   const semana = (target: IsoDay) => `${here}?d=${target}`
   const diaHref = (target: IsoDay) => `/agenda/${unit.slug}?d=${target}`
 
   const estaSemana = mondayOf(todayDay) === week.from
-  const ocupacao = week.totals.capacityMin
-    ? Math.round((100 * week.totals.bookedMin) / week.totals.capacityMin)
-    : null
-
-  /*
-    A MEDIDA DE «CHEIO» É A MESMA PARA TODA A SEMANA.
-
-    Se cada barra se medisse por si, um sábado com uma profissional e
-    quatro horas marcadas ficava tão comprido como uma sexta com cinco
-    profissionais e trinta — e o panorama passava a mentir exactamente
-    onde devia ajudar. A régua é o dia de maior capacidade da semana,
-    para as barras se poderem comparar de relance.
-  */
-  const regua = Math.max(...week.days.map((x) => x.capacityMin), 1)
+  const vazia = week.days.every((x) => x.lanes.length === 0)
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-16 pt-5 sm:px-6 lg:py-8">
+    <div className="mx-auto max-w-5xl px-4 pb-16 pt-5 sm:px-6 lg:py-8">
       {/* A volta é para o dia que se estava a ver, não para hoje. */}
       <Link
         href={diaHref(day)}
@@ -86,8 +90,8 @@ export default async function SemanaPage({
         Voltar à agenda
       </Link>
 
-      <header className="mb-5 lg:mb-7">
-        <p className="titulo-seccao mb-1 lg:mb-2">{unit.name} · Panorama</p>
+      <header className="mb-4 lg:mb-6">
+        <p className="titulo-seccao mb-1 lg:mb-2">{unit.name} · Semana</p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <h1 className="display text-2xl text-[var(--ink)] lg:text-3xl">
             {intervalo(week.from, week.to, unit.timezone)}
@@ -129,7 +133,6 @@ export default async function SemanaPage({
           {week.totals.appointments === 1
             ? '1 marcação'
             : `${week.totals.appointments} marcações`}
-          {ocupacao !== null ? ` · ${ocupacao}% do tempo de equipa` : ''}
           {week.staff.length > 0 && !onlyStaffId
             ? ` · ${
                 week.staff.length === 1
@@ -140,152 +143,280 @@ export default async function SemanaPage({
         </p>
       </header>
 
-      {week.totals.capacityMin === 0 && week.totals.appointments === 0 ? (
+      {vazia && week.totals.appointments === 0 ? (
         <Empty
           title="Semana sem escala"
           hint="Ninguém tem turno nesta semana. As escalas fazem-se na ficha de cada profissional."
         />
       ) : (
-        <ol className="overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)]">
+        <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)]">
+          <Regua fromMin={week.fromMin} toMin={week.toMin} />
           {week.days.map((dia) => (
-            <DiaLinha
+            <DiaSemana
               key={dia.day}
               dia={dia}
-              regua={regua}
-              nomes={nomes}
+              week={week}
+              equipa={equipa}
               href={diaHref(dia.day)}
               hoje={dia.day === todayDay}
               timezone={unit.timezone}
-              soEu={onlyStaffId !== null}
             />
           ))}
-        </ol>
+        </div>
       )}
     </div>
   )
 }
 
-function DiaLinha({
+/** Onde cai um minuto na pista, em percentagem da régua. */
+function pos(min: number, week: Pick<AgendaWeek, 'fromMin' | 'toMin'>): number {
+  return (100 * (min - week.fromMin)) / (week.toMin - week.fromMin)
+}
+
+/**
+ * A régua das horas, uma vez para a semana toda. Marcas de três em três
+ * horas: à hora a hora não cabem num telemóvel, e de três em três ainda
+ * dizem «manhã, almoço, tarde, fim do dia», que é a precisão que uma
+ * vista de longe precisa.
+ */
+function Regua({ fromMin, toMin }: { fromMin: number; toMin: number }) {
+  const marcas: number[] = []
+  for (let m = Math.ceil(fromMin / 180) * 180; m <= toMin; m += 180) {
+    // Rente à margem direita, o rótulo saía da caixa.
+    if (pos(m, { fromMin, toMin }) > 97) continue
+    marcas.push(m)
+  }
+  return (
+    <div className="flex items-stretch border-b border-[var(--line)]">
+      <div
+        className={clsx(GOTEIRA, 'shrink-0 border-r border-[var(--line-soft)]')}
+      />
+      <div className="relative mr-2 h-6 min-w-0 flex-1">
+        {marcas.map((m) => (
+          <span
+            key={m}
+            className="absolute top-1.5 -translate-x-1/2 text-[0.625rem] tabular-nums text-[var(--ink-faint)]"
+            style={{ left: `${pos(m, { fromMin, toMin })}%` }}
+          >
+            {Math.floor(m / 60)}h
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DiaSemana({
   dia,
-  regua,
-  nomes,
+  week,
+  equipa,
   href,
   hoje,
   timezone,
-  soEu,
 }: {
   dia: WeekDay
-  regua: number
-  nomes: Map<string, string>
+  week: AgendaWeek
+  equipa: Map<string, { name: string; color: string }>
   href: string
   hoje: boolean
   timezone: string
-  soEu: boolean
 }) {
-  /*
-    A barra tem duas larguras: a da CAPACIDADE, medida pela régua da
-    semana, e a do MARCADO, dentro dela. É por isso que um sábado com
-    uma pessoa se lê logo como um dia pequeno mesmo quando está cheio —
-    a barra curta diz «pouca casa», o preenchimento diz «cheia». Uma
-    barra só, de percentagem, dizia as duas coisas ao mesmo tempo e
-    baralhava-as.
-  */
-  const taxa = dia.capacityMin
-    ? Math.round((100 * dia.bookedMin) / dia.capacityMin)
-    : 0
-  const largura = Math.round((100 * dia.capacityMin) / regua)
-
-  // Fechado é diferente de vazio: um feriado não é um dia mau.
-  const fechado = !dia.open && dia.capacityMin === 0
+  // Fechado é diferente de vazio: um feriado não é um dia mau. Mas um
+  // turno num dia fechado mostra-se na mesma — apagá-lo era esconder
+  // exactamente o erro de escala que esta vista serve para apanhar.
+  const fechado = !dia.open && dia.lanes.length === 0
 
   return (
-    <li className="border-b border-[var(--line-soft)] last:border-b-0">
+    <section
+      className={clsx(
+        'border-b border-[var(--line)] last:border-b-0',
+        hoje && 'bg-[var(--surface-2)]',
+      )}
+    >
       <Link
         href={href}
-        className={clsx(
-          'flex items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--surface-2)] sm:gap-4 sm:py-3',
-          // O rail de hoje sem empurrar nada: a borda transparente dos
-          // outros dias guarda-lhe o lugar.
-          hoje
-            ? 'border-l-4 border-[var(--accent)] bg-[var(--surface-2)] pl-3'
-            : 'border-l-4 border-transparent pl-3',
-        )}
-        aria-current={hoje ? 'date' : undefined}
+        className="flex items-baseline gap-2 px-2.5 pb-1 pt-1.5 transition-colors hover:bg-[var(--surface-2)] sm:px-3"
       >
-        <div className="w-11 shrink-0 leading-tight sm:w-12">
-          <p
+        <span
+          className={clsx(
+            'text-[0.6875rem] font-semibold uppercase tracking-wide',
+            hoje ? 'text-[var(--accent)]' : 'text-[var(--ink-faint)]',
+          )}
+        >
+          {formatWeekdayShort(dia.day, timezone).replace(/\.$/, '')}
+        </span>
+        <span className="display text-[0.9375rem] tabular-nums text-[var(--ink)]">
+          {Number(dia.day.slice(8))}
+        </span>
+        {hoje ? (
+          <span className="rounded-[2px] border border-current px-1 text-[0.5625rem] uppercase tracking-[0.08em] text-[var(--accent)]">
+            hoje
+          </span>
+        ) : null}
+        <span className="ml-auto text-[0.6875rem] tabular-nums text-[var(--ink-faint)]">
+          {fechado
+            ? ''
+            : dia.appointments === 0
+              ? 'sem marcações'
+              : dia.appointments === 1
+                ? '1 marcação'
+                : `${dia.appointments} marcações`}
+        </span>
+      </Link>
+
+      {fechado ? (
+        <p className="px-2.5 pb-2 text-[0.75rem] text-[var(--ink-faint)] sm:px-3">
+          Fechado
+        </p>
+      ) : dia.lanes.length === 0 ? (
+        /* Aberta e sem ninguém: uma pista vazia que o diz por extenso. */
+        <div className="flex items-stretch border-t border-[var(--line-soft)]">
+          <div
             className={clsx(
-              'text-[0.6875rem] uppercase tracking-wide',
-              hoje ? 'text-[var(--accent)]' : 'text-[var(--ink-faint)]',
+              GOTEIRA,
+              'shrink-0 border-r border-[var(--line-soft)]',
             )}
-          >
-            {formatWeekdayShort(dia.day, timezone).replace(/\.$/, '')}
-          </p>
-          <p className="display text-[0.9375rem] tabular-nums text-[var(--ink)]">
-            {Number(dia.day.slice(8))}
+          />
+          <p className="my-2 mr-2 flex-1 text-[0.625rem] text-[var(--ink-faint)]">
+            <span className="pl-1">Ninguém escalado</span>
           </p>
         </div>
+      ) : (
+        <>
+          {dia.lanes.map((lane) => (
+            <Faixa
+              key={lane.staffId}
+              lane={lane}
+              week={week}
+              pessoa={equipa.get(lane.staffId)}
+              href={href}
+              hoje={hoje}
+            />
+          ))}
+          {!dia.open ? (
+            <p className="px-2.5 pb-2 pt-1 text-[0.75rem] text-[var(--warn)] sm:px-3">
+              A casa está fechada neste dia — a escala acima é um engano a
+              corrigir.
+            </p>
+          ) : null}
+        </>
+      )}
+    </section>
+  )
+}
 
-        <div className="min-w-0 flex-1">
-          {fechado ? (
-            <p className="text-[0.8125rem] text-[var(--ink-faint)]">Fechado</p>
-          ) : (
-            <>
-              {/*
-                A BARRA TEM TECTO. Num monitor largo, esticada de lado a
-                lado, o olho perde o caminho entre o comprimento dela e
-                o número que lhe pertence, do outro lado do ecrã — e o
-                panorama, que serve para comparar dias de relance,
-                passava a obrigar a varrer a linha toda. Presa a 26rem,
-                os sete dias ficam num golpe de vista.
-              */}
-              <div className="max-w-[26rem]">
-                <div
-                  className="h-2 overflow-hidden rounded-full bg-[var(--surface-2)]"
-                  style={{ width: `${Math.max(largura, 6)}%` }}
-                >
-                  <div
-                    className="h-full rounded-full bg-[var(--accent)]"
-                    style={{ width: `${taxa}%` }}
-                  />
-                </div>
-              </div>
-              {/*
-                Quem lá anda, enquanto couber na linha. É a segunda
-                pergunta da semana — «quem trabalha na quinta?» — e
-                responde-se sem sair daqui. Para a profissional, que só
-                se vê a ela, o nome dela não diria nada: diz-se as horas
-                que tem de turno.
-              */}
-              <p className="mt-1 truncate text-[0.6875rem] text-[var(--ink-faint)]">
-                {dia.staffIds.length === 0
-                  ? 'Sem escala'
-                  : soEu
-                    ? formatDuration(dia.capacityMin)
-                    : dia.staffIds
-                        .map((id) => shortName(nomes.get(id) ?? ''))
-                        .filter(Boolean)
-                        .join(' · ')}
-              </p>
-            </>
-          )}
+function Faixa({
+  lane,
+  week,
+  pessoa,
+  href,
+  hoje,
+}: {
+  lane: WeekDay['lanes'][number]
+  week: AgendaWeek
+  pessoa: { name: string; color: string } | undefined
+  href: string
+  hoje: boolean
+}) {
+  const p = (min: number) => pos(min, week)
+
+  // As linhas das horas, referência muda por trás de tudo.
+  const linhas: number[] = []
+  for (
+    let m = Math.ceil(week.fromMin / 60) * 60;
+    m < week.toMin;
+    m += 60
+  ) {
+    linhas.push(m)
+  }
+
+  return (
+    <div className="flex min-h-[1.875rem] items-stretch border-t border-[var(--line-soft)]">
+      <div
+        className={clsx(
+          GOTEIRA,
+          'flex shrink-0 items-center gap-1.5 border-r border-[var(--line-soft)] pl-2.5 pr-1.5',
+        )}
+      >
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ background: pessoa?.color }}
+        />
+        <span className="truncate text-[0.6875rem] text-[var(--ink-muted)]">
+          {shortName(pessoa?.name ?? '')}
+        </span>
+      </div>
+
+      <div className="relative my-1 mr-2 min-w-0 flex-1">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          {linhas.map((m) => (
+            <span
+              key={m}
+              className={clsx(
+                'absolute -bottom-1 -top-1 w-px',
+                m % 180 === 0
+                  ? 'bg-[rgba(34,29,23,0.11)]'
+                  : 'bg-[rgba(34,29,23,0.055)]',
+              )}
+              style={{ left: `${p(m)}%` }}
+            />
+          ))}
         </div>
 
         {/*
-          Num dia fechado a coluna fica VAZIA, e não a zeros. «0 · 0%»
-          ao lado de «Fechado» lê-se como um dia mau — e um domingo de
-          porta fechada não é um dia mau, é um dia que não houve.
+          O TURNO É UM FUNDO, NÃO UMA BARRA. Cheio de cinzento, um dia
+          sem marcações lia-se como um dia ocupado — ao contrário do que
+          devia dizer. Assim é um véu que diz «está cá» sem gritar
+          «está cheia»; o que salta à vista é só a marcação.
         */}
-        <div className="w-14 shrink-0 text-right leading-tight sm:w-16">
-          <p className="text-[0.9375rem] tabular-nums text-[var(--ink)]">
-            {fechado ? '' : dia.appointments}
-          </p>
-          <p className="text-[0.6875rem] tabular-nums text-[var(--ink-faint)]">
-            {fechado ? '' : `${taxa}%`}
-          </p>
-        </div>
-      </Link>
-    </li>
+        {lane.shifts.map((s) => (
+          <span
+            key={s.start}
+            aria-hidden
+            className={clsx(
+              'absolute inset-y-0 rounded-[2px] shadow-[inset_0_-1px_0_var(--line-soft)]',
+              hoje ? 'bg-[rgba(34,29,23,0.07)]' : 'bg-[rgba(34,29,23,0.045)]',
+            )}
+            style={{
+              left: `${p(s.start)}%`,
+              width: `${p(s.end) - p(s.start)}%`,
+            }}
+          />
+        ))}
+
+        {lane.blocks.map((b) => {
+          const largura = p(b.endMin) - p(b.startMin)
+          return (
+            <Link
+              key={`${b.appointmentId}-${b.startMin}`}
+              href={`${href}&m=${b.appointmentId}`}
+              title={`${formatMinutes(b.startMin)}–${formatMinutes(
+                b.endMin,
+              )} · ${b.clientName} · ${b.serviceName}`}
+              className="absolute inset-y-0 flex min-w-[7px] items-center overflow-hidden rounded-[2px] px-1 shadow-[0_0_0_1px_rgba(34,29,23,0.22),0_1px_2px_rgba(34,29,23,0.14)]"
+              style={{
+                left: `${p(b.startMin)}%`,
+                width: `${largura}%`,
+                background: `color-mix(in srgb, ${pessoa?.color ?? 'var(--accent)'} 42%, #FBF8F1)`,
+                borderLeft: `3px solid ${pessoa?.color ?? 'var(--accent)'}`,
+              }}
+            >
+              {/*
+                O nome só quando cabe. Abaixo disto o bloco tem uns
+                vinte píxeis num telemóvel — a cor e a posição já dizem
+                o que há a dizer, e o nome vem no toque.
+              */}
+              {largura > 7 ? (
+                <span className="truncate text-[0.625rem] font-semibold leading-none text-[rgba(20,15,10,0.78)]">
+                  {shortName(b.clientName)}
+                </span>
+              ) : null}
+            </Link>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
