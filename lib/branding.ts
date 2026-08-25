@@ -18,7 +18,7 @@ export const BRAND = {
   monogram: 'NR',
 
   social: {
-    instagram: '',
+    instagram: 'https://www.instagram.com/nohoraramirezbeautystudio',
     facebook: '',
   },
 

@@ -234,13 +234,30 @@ export async function PublicChrome({
           </Link>
 
           <nav className="flex shrink-0 items-center gap-1 sm:gap-4">
+            {/*
+              «ONDE» E «O QUÊ» SÃO DUAS PERGUNTAS, E CADA UMA TEM A SUA
+              PORTA.
+
+              Os serviços viviam escondidos numa aba a meio da página:
+              quem chegasse a perguntar o que se faz aqui tinha de rolar
+              até lá e adivinhar que a segunda aba era essa. No menu, a
+              pergunta responde-se sem rolar nada.
+            */}
             {!compact ? (
-              <Link
-                href="/loja"
-                className="link-slide hidden text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)] md:block"
-              >
-                {dict.nav.stores}
-              </Link>
+              <>
+                <Link
+                  href="/loja"
+                  className="link-slide hidden text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)] md:block"
+                >
+                  {dict.nav.stores}
+                </Link>
+                <Link
+                  href="/servicos"
+                  className="link-slide hidden text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)] md:block"
+                >
+                  {dict.nav.services}
+                </Link>
+              </>
             ) : null}
 
             <Link
@@ -273,7 +290,7 @@ export async function PublicChrome({
       {/* --------------------------------------------------- rodapé --- */}
       <footer className="band-dark border-t border-[var(--line-soft)]">
         <div className="mx-auto max-w-6xl px-5 sm:px-8 pt-16 pb-10 sm:pt-20">
-          <div className="grid gap-12 lg:grid-cols-[minmax(0,17rem)_1fr] lg:gap-20">
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,16rem)_auto_1fr] lg:gap-16">
             <div>
               <LogoSeal size="lg" />
               <p className="display mt-5 text-lg uppercase tracking-[0.18em] text-[var(--ink)]">
@@ -315,17 +332,99 @@ export async function PublicChrome({
                   {dict.footer.whatsapp}
                 </a>
               ) : null}
+
+              {/*
+                O INSTAGRAM É ONDE ESTE OFÍCIO SE MOSTRA.
+
+                Um salão prova-se com fotografias do que fez, e é lá que
+                elas estão — muito mais do que aqui. O ícone leva-as para
+                fora do site, e isso é o que se quer: quem vê o trabalho
+                volta a marcar. Só aparece se houver endereço em
+                `lib/branding.ts`; vazio, não fica um botão morto.
+              */}
+              {BRAND.social.instagram ? (
+                <div className="mt-6">
+                  <a
+                    href={BRAND.social.instagram}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={dict.footer.instagram}
+                    title={dict.footer.instagram}
+                    className="toque grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      aria-hidden
+                      className="h-[1.05rem] w-[1.05rem]"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="5" />
+                      <circle cx="12" cy="12" r="4" />
+                      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                    </svg>
+                  </a>
+                </div>
+              ) : null}
             </div>
 
-            <div className="grid gap-10 sm:grid-cols-2 sm:gap-12">
-              {houses.map((unit) => (
-                <FooterHouse
-                  key={unit.id}
-                  unit={unit}
-                  dict={dict}
-                  withPhone={housePhone === null}
-                />
-              ))}
+            {/*
+              AS QUATRO PORTAS DA CLIENTE.
+
+              O cabeçalho leva-as todas, mas quem chega ao fim da página
+              a rolar não volta lá acima para decidir. Escritas por
+              extenso — «Nossas lojas», e não «Lojas» — porque num
+              rodapé a palavra solta parece uma etiqueta, e a frase
+              parece um convite.
+            */}
+            <nav className="lg:min-w-40">
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-[var(--ink-faint)]">
+                {dict.footer.navLabel}
+              </p>
+              <ul className="mt-4 space-y-2.5 text-[0.8125rem]">
+                {[
+                  { href: '/loja', label: dict.footer.links.stores },
+                  { href: '/servicos', label: dict.footer.links.services },
+                  {
+                    href: client ? '/conta' : '/conta/entrar',
+                    label: dict.footer.links.account,
+                  },
+                ].map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+                <li>
+                  <Link
+                    href="/agendar"
+                    className="link-slide toque text-[var(--accent)]"
+                  >
+                    {dict.footer.links.book}
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+
+            <div>
+              <p className="mb-4 text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-[var(--ink-faint)]">
+                {dict.footer.addressesLabel}
+              </p>
+              <div className="grid gap-10 sm:grid-cols-2 sm:gap-12">
+                {houses.map((unit) => (
+                  <FooterHouse
+                    key={unit.id}
+                    unit={unit}
+                    dict={dict}
+                    withPhone={housePhone === null}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 

@@ -23,6 +23,7 @@ export const pt = {
   },
   nav: {
     stores: 'Lojas',
+    services: 'Serviços',
     book: 'Marcar',
     account: 'A minha conta',
     signIn: 'Entrar',
@@ -79,6 +80,7 @@ export const pt = {
     servicesSubtitle: 'Tudo o que se faz nesta casa, do cabelo às unhas.',
     teamTitle: 'Quem a recebe',
     hoursTitle: 'Horário',
+    brandsEyebrow: 'Com que trabalhamos',
     galleryEyebrow: 'A casa por dentro',
     galleryTitle: 'Um olhar',
     servicePhotoAlt: 'Fotografia de {service}',
@@ -114,6 +116,15 @@ export const pt = {
     whatsapp: 'Fale connosco no WhatsApp',
     whatsappMessage: 'Olá! Gostava de fazer uma marcação.',
     staffAccess: 'Acesso da equipa',
+    navLabel: 'Navegar',
+    addressesLabel: 'Moradas',
+    instagram: 'Seguir no Instagram',
+    links: {
+      stores: 'Nossas lojas',
+      services: 'Nossos serviços',
+      account: 'Área do cliente',
+      book: 'Marcar hora',
+    },
   },
   funnel: {
     eyebrow: 'Marcação online',

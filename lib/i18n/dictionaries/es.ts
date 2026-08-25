@@ -24,6 +24,7 @@ export const es: Dictionary = {
   },
   nav: {
     stores: 'Centros',
+    services: 'Servicios',
     book: 'Reservar',
     account: 'Mi cuenta',
     signIn: 'Entrar',
@@ -72,6 +73,7 @@ export const es: Dictionary = {
     servicesSubtitle: 'Todo lo que se hace en esta casa, del cabello a las uñas.',
     teamTitle: 'Quién te atiende',
     hoursTitle: 'Horario',
+    brandsEyebrow: 'Con qué trabajamos',
     galleryEyebrow: 'La casa por dentro',
     galleryTitle: 'Una mirada',
     servicePhotoAlt: 'Fotografía de {service}',
@@ -104,6 +106,15 @@ export const es: Dictionary = {
     whatsapp: 'Escríbenos por WhatsApp',
     whatsappMessage: '¡Hola! Me gustaría reservar una cita.',
     staffAccess: 'Acceso del equipo',
+    navLabel: 'Navegar',
+    addressesLabel: 'Direcciones',
+    instagram: 'Seguir en Instagram',
+    links: {
+      stores: 'Nuestros centros',
+      services: 'Nuestros servicios',
+      account: 'Área de cliente',
+      book: 'Reservar hora',
+    },
   },
   funnel: {
     eyebrow: 'Reserva online',

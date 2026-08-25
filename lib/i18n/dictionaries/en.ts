@@ -24,6 +24,7 @@ export const en: Dictionary = {
   },
   nav: {
     stores: 'Locations',
+    services: 'Services',
     book: 'Book',
     account: 'My account',
     signIn: 'Sign in',
@@ -72,6 +73,7 @@ export const en: Dictionary = {
     servicesSubtitle: 'Everything this house does, from hair to nails.',
     teamTitle: 'Who will look after you',
     hoursTitle: 'Opening hours',
+    brandsEyebrow: 'What we work with',
     galleryEyebrow: 'Inside the house',
     galleryTitle: 'A closer look',
     servicePhotoAlt: 'Photograph of {service}',
@@ -104,6 +106,15 @@ export const en: Dictionary = {
     whatsapp: 'Message us on WhatsApp',
     whatsappMessage: 'Hello! I would like to book an appointment.',
     staffAccess: 'Staff access',
+    navLabel: 'Navigate',
+    addressesLabel: 'Addresses',
+    instagram: 'Follow on Instagram',
+    links: {
+      stores: 'Our locations',
+      services: 'Our services',
+      account: 'Client area',
+      book: 'Book now',
+    },
   },
   funnel: {
     eyebrow: 'Book online',
