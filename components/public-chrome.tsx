@@ -13,7 +13,7 @@ import {
 import { getClientActor } from '@/lib/auth/client-actor'
 import { BRAND } from '@/lib/branding'
 import { LanguageSwitcher } from '@/components/language-switcher'
-import { LogoSeal, Ornament } from '@/components/brand'
+import { LogoSeal } from '@/components/brand'
 import { ButtonLink } from '@/components/ui'
 import { formatPhone } from '@/lib/text'
 
@@ -68,9 +68,14 @@ function mapsUrl(unit: Unit) {
 async function FooterHouse({
   unit,
   dict,
+  /* Falso quando o número é o mesmo nas duas casas: nesse caso sobe uma
+     vez para junto da marca, em vez de se repetir por baixo de cada loja
+     como se fossem contactos diferentes. */
+  withPhone,
 }: {
   unit: Unit
   dict: Dictionary
+  withPhone: boolean
 }) {
   const digest = weekDigest(
     await weeklyHours(unit.id),
@@ -78,46 +83,64 @@ async function FooterHouse({
     dict.unit.closedNow,
   )
 
+  /*
+   * O HORÁRIO É UMA FRASE, NÃO UMA TABELA.
+   *
+   * O `weekDigest` já junta os dias com as mesmas horas; o que estava
+   * mal era imprimi-los como uma lista de definições, com o dia à
+   * esquerda e as horas à direita. Num rodapé isso lê-se como uma
+   * grelha de aeroporto para dizer, afinal, «de segunda a sábado».
+   * Os dias fechados descem de tom em vez de ocuparem uma linha igual
+   * às outras: o que interessa é quando está aberto.
+   */
+  const open = digest.filter((row) => row.hours !== dict.unit.closedNow)
+  const shut = digest.filter((row) => row.hours === dict.unit.closedNow)
+
   return (
     <div>
       <p className="display text-lg text-[var(--ink)]">{unit.name}</p>
-      <div className="mt-4 space-y-1.5 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-        {unit.address_line ? (
-          <p>
-            {unit.address_line}
-            <br />
-            {[unit.postal_code, unit.city].filter(Boolean).join(' ')}
-          </p>
+
+      {unit.address_line ? (
+        <p className="mt-3 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+          {unit.address_line}
+          <br />
+          {[unit.postal_code, unit.city].filter(Boolean).join(' ')}
+        </p>
+      ) : null}
+
+      <p className="tabular mt-3 text-[0.8125rem] leading-relaxed">
+        {open.map((row) => (
+          <span key={row.days} className="block text-[var(--ink-muted)]">
+            <span className="text-[var(--ink)]">{row.days}</span> · {row.hours}
+          </span>
+        ))}
+        {shut.length > 0 ? (
+          <span className="block text-[var(--ink-faint)]">
+            {shut.map((row) => row.days).join(', ')}{' '}
+            {dict.unit.closedNow.toLowerCase()}
+          </span>
         ) : null}
-        {unit.phone ? (
-          <p>
-            <a
-              href={`tel:${unit.phone.replace(/\s/g, '')}`}
-              className="toque tabular transition-colors hover:text-[var(--ink)]"
-            >
-              {formatPhone(unit.phone)}
-            </a>
-          </p>
-        ) : null}
-        <p>
+      </p>
+
+      {withPhone && unit.phone ? (
+        <p className="mt-3">
           <a
-            href={mapsUrl(unit)}
-            target="_blank"
-            rel="noreferrer"
-            className="link-slide toque text-[var(--accent)]"
+            href={`tel:${unit.phone.replace(/\s/g, '')}`}
+            className="toque tabular text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
           >
-            {dict.unit.directions}
+            {formatPhone(unit.phone)}
           </a>
         </p>
-      </div>
-      <dl className="mt-5 space-y-1 border-t border-[var(--line-soft)] pt-4 text-[0.75rem]">
-        {digest.map((row) => (
-          <div key={row.days} className="flex items-baseline justify-between gap-4">
-            <dt className="text-[var(--ink-faint)]">{row.days}</dt>
-            <dd className="tabular text-[var(--ink-muted)]">{row.hours}</dd>
-          </div>
-        ))}
-      </dl>
+      ) : null}
+
+      <a
+        href={mapsUrl(unit)}
+        target="_blank"
+        rel="noreferrer"
+        className="link-slide toque mt-3 inline-block text-[0.8125rem] text-[var(--accent)]"
+      >
+        {dict.unit.directions}
+      </a>
     </div>
   )
 }
@@ -157,6 +180,22 @@ export async function PublicChrome({
     ? `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(dict.footer.whatsappMessage)}`
     : null
   const year = new Date().getFullYear()
+
+  /*
+   * UM NÚMERO, OU UM POR LOJA — E É A BASE QUE DECIDE.
+   *
+   * Hoje as duas casas atendem no mesmo telefone. Isso não é uma regra
+   * do salão, é o estado de agora: no dia em que a Maia tiver linha
+   * própria, esta comparação passa a falhar sozinha e cada número volta
+   * para baixo da sua loja, sem ninguém ter de vir aqui mudar nada.
+   */
+  const houses = units.slice(0, 2)
+  const digits = houses.map((unit) => (unit.phone ?? '').replace(/\D/g, ''))
+  const housePhone =
+    houses.length > 0 &&
+    digits.every((d) => d !== '' && d === digits[0])
+      ? houses[0]!.phone
+      : null
 
   return (
     /*
@@ -234,8 +273,8 @@ export async function PublicChrome({
       {/* --------------------------------------------------- rodapé --- */}
       <footer className="band-dark border-t border-[var(--line-soft)]">
         <div className="mx-auto max-w-6xl px-5 sm:px-8 pt-16 pb-10 sm:pt-20">
-          <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="lg:col-span-2 lg:pr-16">
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,17rem)_1fr] lg:gap-20">
+            <div>
               <LogoSeal size="lg" />
               <p className="display mt-5 text-lg uppercase tracking-[0.18em] text-[var(--ink)]">
                 {name}
@@ -243,42 +282,95 @@ export async function PublicChrome({
               <p className="mt-4 max-w-xs text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
                 {dict.footer.tagline}
               </p>
+
+              {/*
+                O TELEFONE DA CASA.
+
+                Quando as duas lojas atendem no mesmo número, repeti-lo
+                por baixo de cada uma fazia-o parecer dois contactos
+                diferentes — e obrigava a lê-los aos dois para perceber
+                que eram iguais. Aqui é uma coisa só, do tamanho de uma
+                coisa em que se toca. Se um dia a Maia tiver linha
+                própria, cada número volta para a sua loja sozinho.
+              */}
+              {housePhone ? (
+                <a
+                  href={`tel:${housePhone.replace(/\s/g, '')}`}
+                  className="display toque tabular mt-6 block text-[1.375rem] text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+                >
+                  {formatPhone(housePhone)}
+                </a>
+              ) : null}
+
               {whatsappHref ? (
                 <a
                   href={whatsappHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="link-slide toque mt-6 inline-block text-[0.8125rem] text-[var(--accent)]"
+                  className={clsx(
+                    'link-slide toque inline-block text-[0.8125rem] text-[var(--accent)]',
+                    housePhone ? 'mt-3' : 'mt-6',
+                  )}
                 >
                   {dict.footer.whatsapp}
                 </a>
               ) : null}
             </div>
 
-            {units.slice(0, 2).map((unit) => (
-              <FooterHouse key={unit.id} unit={unit} dict={dict} />
-            ))}
+            <div className="grid gap-10 sm:grid-cols-2 sm:gap-12">
+              {houses.map((unit) => (
+                <FooterHouse
+                  key={unit.id}
+                  unit={unit}
+                  dict={dict}
+                  withPhone={housePhone === null}
+                />
+              ))}
+            </div>
           </div>
 
-          <div className="mt-14 text-center">
-            <Ornament className="opacity-60" />
-          </div>
+          {/*
+            UM FIO A FECHAR, E NÃO TRÊS FAIXAS.
 
-          <div className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-[var(--line-soft)] pt-6 sm:flex-row sm:items-center">
+            Havia aqui um ornamento sozinho numa faixa, a separar duas
+            coisas que o fio já separava — e o selector de língua, que
+            está no cabeçalho e se repetia em baixo. Ficou o que fecha:
+            quem assina, e a porta de quem trabalha cá dentro.
+          */}
+          <div className="mt-14 flex flex-col items-start justify-between gap-5 border-t border-[var(--line-soft)] pt-6 sm:flex-row sm:items-center">
             <p className="text-[0.75rem] text-[var(--ink-faint)]">
               © {year} {BRAND.legalName}
             </p>
-            <div className="flex items-center gap-5">
-              <Link
-                href="/entrar"
-                className="toque text-[0.75rem] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink-muted)]"
+
+            {/*
+              A PORTA DA EQUIPA VÊ-SE.
+
+              O «Entrar» do cabeçalho é a área da cliente; esta é outra
+              porta, e é a que se abre mais vezes por dia — estava em
+              cinzento de letra miudinha, ao lado do ano. Continua no
+              rodapé, onde uma porta de serviço pertence, mas com
+              contorno e um cadeado a dizer de quem é. Em cima, ao lado
+              do outro «entrar», eram duas portas parecidas a levar a
+              sítios diferentes.
+            */}
+            <Link
+              href="/entrar"
+              className="toque inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] px-4 py-2 text-[0.75rem] font-medium text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden
+                className="h-3.5 w-3.5 shrink-0"
               >
-                {dict.footer.staffAccess}
-              </Link>
-              <Suspense fallback={null}>
-                <LanguageSwitcher current={language} />
-              </Suspense>
-            </div>
+                <rect x="4" y="10" width="16" height="11" rx="2" />
+                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+              </svg>
+              {dict.footer.staffAccess}
+            </Link>
           </div>
         </div>
       </footer>
