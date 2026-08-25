@@ -1231,3 +1231,21 @@ html.js .so-sem-js {
     transform: none;
   }
 }
+
+/* ---------------------------------------------------------------------
+   OS BOTÕES DA MONTRA SÃO REDONDOS.
+
+   O `--radius: 2px` da montra é o fio quadrado do papel timbrado, e num
+   cartão é exactamente o que se quer. Num botão fica seco — e desde que
+   a `.pilula-casa` apareceu nos serviços, no fecho e nas lojas, os que
+   ficaram de canto vivo passaram a ser a excepção em vez da regra.
+
+   Só na montra. O balcão fica com os seus dez pixéis: lá dentro
+   trabalha-se, e um painel de controlo com botões de comprimido lê-se
+   como um brinquedo.
+   --------------------------------------------------------------------- */
+
+.skin-salon .botao,
+.band-dark .botao {
+  border-radius: 999px;
+}

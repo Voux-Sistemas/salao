@@ -418,7 +418,7 @@ export async function Showcase({ org }: { org: Org }) {
         id="servicos"
         className="scroll-mt-16 border-t border-[var(--line-soft)]"
       >
-        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
+        <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
           {/*
             UM TÍTULO, E MAIS NADA ESCRITO.
 
@@ -499,31 +499,11 @@ export async function Showcase({ org }: { org: Org }) {
             ))}
           </Reveal>
 
-          {/*
-            O BOTÃO VEM DEPOIS DE SE VER.
-
-            Estava antes das fotografias, encostado à esquerda, num
-            rectângulo de canto vivo — o fio quadrado do papel timbrado,
-            que serve num cartão e fica seco num botão. Aqui é a mesma
-            forma do «marcar agora» do fecho: cheia, redonda, com uma
-            sombra quente por baixo. Duas acções da mesma página com a
-            mesma forma leem-se ambas como botões.
-
-            E não repete o título: «ver o preçário» diz o que está do
-            outro lado, «nossos serviços» dizia outra vez o que já está
-            escrito em cima.
-          */}
-          <Reveal className="mt-10 flex justify-center">
-            <Link href="/servicos" className="pilula-casa toque">
-              {dict.footer.links.services}
-              <span aria-hidden>&rarr;</span>
-            </Link>
-          </Reveal>
         </div>
       </section>
 
       {/* ------------------------------------------------ manifesto --- */}
-      <section className="mx-auto max-w-3xl px-5 py-24 text-center sm:px-8 sm:py-32">
+      <section className="mx-auto max-w-3xl px-5 py-16 text-center sm:px-8 sm:py-20">
         <Reveal>
           <Ornament />
           <p className="eyebrow mt-10">{dict.home.manifestoEyebrow}</p>
@@ -557,26 +537,6 @@ export async function Showcase({ org }: { org: Org }) {
             ))}
           </Reveal>
 
-          {/*
-            O BOTÃO VEM DEPOIS DE SE VER.
-
-            Estava antes das fotografias, encostado à esquerda, num
-            rectângulo de canto vivo — o fio quadrado do papel timbrado,
-            que serve num cartão e fica seco num botão. Aqui é a mesma
-            forma do «marcar agora» do fecho: cheia, redonda, com uma
-            sombra quente por baixo. Duas acções da mesma página com a
-            mesma forma leem-se ambas como botões.
-
-            E não repete o título: «ver o preçário» diz o que está do
-            outro lado, «nossos serviços» dizia outra vez o que já está
-            escrito em cima.
-          */}
-          <Reveal className="mt-10 flex justify-center">
-            <Link href="/servicos" className="pilula-casa toque">
-              {dict.footer.links.services}
-              <span aria-hidden>&rarr;</span>
-            </Link>
-          </Reveal>
         </div>
       </section>
 

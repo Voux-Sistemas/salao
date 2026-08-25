@@ -16,8 +16,15 @@ import { Ornament } from '@/components/brand'
 type Variant = 'primary' | 'outline' | 'quiet' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
 
+/*
+ * A classe "botao" não pinta nada: existe para o globals.css lhe poder
+ * pegar. A montra arredonda-os por completo — é a forma da casa, a
+ * mesma da pílula — e o balcão fica com o canto dele. Sem esta âncora,
+ * arredondar a montra obrigava a mexer no --radius, que também é o
+ * canto dos cartões, e o fio quadrado do papel timbrado perdia-se.
+ */
 const BASE =
-  'inline-flex items-center justify-center gap-2 font-medium transition-all duration-300 ' +
+  'botao inline-flex items-center justify-center gap-2 font-medium transition-all duration-300 ' +
   'disabled:opacity-40 disabled:pointer-events-none select-none whitespace-nowrap ' +
   'active:translate-y-px'
 
