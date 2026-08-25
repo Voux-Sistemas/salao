@@ -5,9 +5,8 @@ import { openingWindows, type Window } from '@/lib/hours'
 import { formatMinutes, today } from '@/lib/time'
 import { getDictionary, getLanguage, type Dictionary } from '@/lib/i18n'
 import type { Language } from '@/lib/i18n/config'
-import { getClientActor } from '@/lib/auth/client-actor'
 import { formatPhone } from '@/lib/text'
-import { ButtonLink, buttonClass } from '@/components/ui'
+import { ButtonLink } from '@/components/ui'
 import { LogoMark, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
@@ -120,7 +119,7 @@ function HouseCard({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="eyebrow eyebrow-gold">{unit.city ?? ''}</p>
-            <h3 className="display mt-2 text-[1.75rem] leading-tight">{unit.name}</h3>
+            <h3 className="display mt-2 text-[1.375rem] leading-tight sm:text-[1.75rem]">{unit.name}</h3>
           </div>
           <UnitStatusBadge unit={unit} dict={dict} language={language} />
         </div>
@@ -180,7 +179,7 @@ export async function Showcase({ org }: { org: Org }) {
   // traduzido, e a consulta precisa de saber para quem escreve.
   const language = await getLanguage()
 
-  const [dict, units, catalog, photos, client] = await Promise.all([
+  const [dict, units, catalog, photos] = await Promise.all([
     getDictionary(),
     listUnits(),
     // Só o que se mostra: nome, categoria e a linha de descrição. O
@@ -210,9 +209,6 @@ export async function Showcase({ org }: { org: Org }) {
         join unit u on u.id = p.unit_id and u.is_active
        order by u.sort_order, u.name, p.sort_order
     `,
-    // Quem já tem sessão de cliente não deve ser mandado para o «entrar»:
-    // a moldura já fez esta pergunta, e a resposta está em memória.
-    getClientActor(),
   ])
 
   // A primeira fotografia de cada casa é a capa dela; a primeira de
@@ -443,7 +439,7 @@ export async function Showcase({ org }: { org: Org }) {
           <p className="eyebrow mt-10">{dict.home.manifestoEyebrow}</p>
         </Reveal>
         <Reveal delay={120}>
-          <p className="display mt-6 text-balance text-2xl leading-[1.4] sm:text-[2rem]">
+          <p className="display mt-6 text-balance text-[1.25rem] leading-[1.45] sm:text-[2rem]">
             {dict.home.manifesto}
           </p>
         </Reveal>
@@ -513,64 +509,6 @@ export async function Showcase({ org }: { org: Org }) {
         </div>
       </section>
 
-      {/* ------------------------------------------ chamada final ----- */}
-      <section className="band-dark">
-        <div className="mx-auto max-w-4xl px-5 py-24 text-center sm:px-8 sm:py-32">
-          <Reveal>
-            <p className="eyebrow eyebrow-gold">{dict.home.finalEyebrow}</p>
-            <h2 className="display mt-5 text-balance text-4xl sm:text-5xl">
-              {dict.home.finalTitle1}{' '}
-              <span className="display-italic text-[var(--accent)]">
-                {dict.home.finalTitleItalic}
-              </span>
-              {dict.home.finalTitle2}
-            </h2>
-            <p className="mt-6 text-[0.9375rem] text-[var(--ink-muted)]">
-              {dict.home.finalSubtitle}
-            </p>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              <ButtonLink href="/agendar" size="lg">
-                {dict.home.cta}
-              </ButtonLink>
-              {/* Âncora crua e não `ButtonLink`: isto sai da casa — vai
-                  para o WhatsApp ou para a aplicação de telefone — e o
-                  `Link` do Next existe para navegar cá dentro. */}
-              {contactHref ? (
-                <a
-                  href={contactHref}
-                  className={buttonClass('outline', 'lg')}
-                  {...(whatsapp ? { target: '_blank', rel: 'noreferrer' } : {})}
-                >
-                  {dict.home.contactCta}
-                </a>
-              ) : null}
-            </div>
-
-            {/*
-              A PORTA DE QUEM JÁ CÁ ANDA.
-
-              Estava só no cabeçalho, num «Entrar» de treze pixéis que
-              desaparecia por completo abaixo dos 640 — ou seja, no
-              telemóvel, que é onde ela está. Quem já é cliente não vem
-              cá marcar às cegas: vem ver o que tem marcado, e essa porta
-              tem de estar à vista. Fica aqui em baixo, depois do convite
-              principal, porque é para quem já cá esteve — não é o que se
-              oferece a quem chega.
-            */}
-            <p className="mx-auto mt-14 flex max-w-sm flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-[var(--line-soft)] pt-8 text-[0.8125rem]">
-              <span className="text-[var(--ink-faint)]">
-                {dict.home.clientPrompt}
-              </span>
-              <Link
-                href={client ? '/conta' : '/conta/entrar'}
-                className="link-slide toque text-[var(--accent)]"
-              >
-                {client ? dict.nav.account : dict.home.clientCta}
-              </Link>
-            </p>
-          </Reveal>
-        </div>
-      </section>
     </>
   )
 }

@@ -461,7 +461,18 @@ body {
 .display-hero {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(2.75rem, 1.2rem + 6.5vw, 5.75rem);
+  /*
+   * O CHÃO DO CLAMP ERA DE PORTÁTIL.
+   *
+   * O clamp encolhe conforme o ecrã, mas nunca abaixo do primeiro
+   * número — e num telemóvel de 390px é sempre esse mínimo que manda.
+   * Estava em 2.75rem: quarenta e quatro pixéis de altura de letra num
+   * ecrã de dez centímetros, que é o que fazia a capa parecer gritada.
+   * A 1.875rem o título ainda é a coisa maior da página e já cabe em
+   * duas linhas em vez de quatro. No monitor nada muda: o tecto e a
+   * inclinação são os mesmos.
+   */
+  font-size: clamp(1.875rem, 1.2rem + 6.5vw, 5.75rem);
   line-height: 1.02;
   letter-spacing: -0.02em;
 }

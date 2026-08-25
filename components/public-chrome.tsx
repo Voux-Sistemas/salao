@@ -1,13 +1,15 @@
 import { Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
 import clsx from 'clsx'
-import { getOrg, listUnits } from '@/lib/org'
+import { backdropPhoto, getOrg, listUnits } from '@/lib/org'
 import { getDictionary, getLanguage, LANGUAGE_TAG } from '@/lib/i18n'
 import { getClientActor } from '@/lib/auth/client-actor'
 import { BRAND } from '@/lib/branding'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { LogoSeal } from '@/components/brand'
-import { ButtonLink } from '@/components/ui'
+import { ButtonLink, buttonClass } from '@/components/ui'
+import { Photo } from '@/components/photo'
+import { FooterInvite } from '@/components/footer-invite'
 import { formatPhone } from '@/lib/text'
 
 /**
@@ -27,12 +29,13 @@ export async function PublicChrome({
   /** Página com herói escuro no topo: o cabeçalho vira vidro fumado. */
   hero?: boolean
 }) {
-  const [org, dict, language, client, units] = await Promise.all([
+  const [org, dict, language, client, units, backdrop] = await Promise.all([
     getOrg(),
     getDictionary(),
     getLanguage(),
     getClientActor(),
     listUnits(),
+    backdropPhoto(),
   ])
 
   const name = org?.name ?? BRAND.fallbackName
@@ -170,8 +173,75 @@ export async function PublicChrome({
         que estava dois dedos acima. Quem quer a morada tem o «nossas
         lojas» aqui ao lado.
       */}
-      <footer className="band-dark border-t border-[var(--line-soft)]">
+      {/*
+        O FECHO ASSENTA NUMA FOTOGRAFIA DA CASA.
+
+        Era uma banda de carvão chapado, e antes disso tinha sido creme
+        fundo. Nenhuma das duas resolvia, porque o problema não era a
+        cor: era ser uma PAREDE. Uma superfície chapada não convida
+        ninguém a lado nenhum — e este é o sítio da página onde se pede
+        a uma pessoa que marque hora para tratar de si.
+
+        Uma fotografia da sala é um SÍTIO, e um sítio convida. Além
+        disso responde à última coisa que a página ainda não tinha
+        respondido: como é lá dentro. É a mesma razão por que a capa
+        funciona — também ela é a casa por baixo do nome.
+
+        Duas camadas por cima: uma escurece por igual para as letras
+        assentarem, a outra puxa o fundo ao centro. Sem elas a
+        fotografia come o texto; com elas ainda se vê madeira e luz
+        quente, que é o que a distingue do preto.
+      */}
+      <footer
+        className="band-dark relative isolate overflow-hidden border-t border-[var(--line-soft)]"
+      >
+        {backdrop ? (
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+            <Photo src={backdrop.url} alt="" className="scale-105 [filter:saturate(0.85)]" />
+            <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--surface)_72%,transparent)]" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(ellipse 80% 70% at 50% 40%, color-mix(in srgb, var(--surface) 62%, transparent), color-mix(in srgb, var(--surface) 88%, transparent) 78%)',
+              }}
+            />
+          </div>
+        ) : null}
+
         <div className="mx-auto max-w-6xl px-5 pb-8 pt-14 sm:px-8 sm:pt-16">
+          {/* O convite abre o fecho — mas nunca dentro do funil. */}
+          <FooterInvite>
+            <div className="mx-auto max-w-lg pb-11 text-center">
+              <p className="eyebrow eyebrow-gold">{dict.home.finalEyebrow}</p>
+              <h2 className="display mt-3 text-balance text-[1.5rem] leading-tight sm:text-[2rem]">
+                {dict.home.finalTitle1}{' '}
+                <span className="display-italic text-[var(--accent)]">
+                  {dict.home.finalTitleItalic}
+                </span>
+                {dict.home.finalTitle2}
+              </h2>
+              <p className="mt-3 text-[0.875rem] leading-relaxed text-[var(--ink-muted)]">
+                {dict.home.finalSubtitle}
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <ButtonLink href="/agendar" size="lg">
+                  {dict.home.cta}
+                </ButtonLink>
+                {whatsappHref ? (
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={buttonClass('outline', 'lg')}
+                  >
+                    {dict.home.contactCta}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+            <div className="mb-11 h-px bg-[var(--line-soft)]" />
+          </FooterInvite>
           <div className="grid gap-8 sm:grid-cols-[minmax(0,22rem)_auto] sm:justify-between sm:gap-16">
             <div>
               <LogoSeal size="lg" />
