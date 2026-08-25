@@ -175,6 +175,7 @@ export default async function PessoaPage({
         today={todayIso}
         canGrantNetwork={actor.orgScope && actor.role !== 'manager'}
         canGrantMaster={can.manageMasters(actor)}
+        self={member.id === actor.id}
         aside={{
           /* Acontecimentos, não campos: gravam na hora. */
           password: (

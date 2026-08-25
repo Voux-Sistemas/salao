@@ -138,6 +138,7 @@ export function Ficha({
   today,
   canGrantNetwork,
   canGrantMaster,
+  self,
   aside,
 }: {
   /** Nulo: é uma pessoa a nascer. */
@@ -152,6 +153,8 @@ export function Ficha({
   canGrantNetwork: boolean
   /** Só de dentro do degrau se dá o degrau. */
   canGrantMaster: boolean
+  /** A ficha de quem a está a abrir. O papel próprio não se mexe. */
+  self?: boolean
   /** O que vive dentro do cartão da escala mas grava na hora: ausências. */
   aside?: { password?: React.ReactNode; absences?: React.ReactNode }
 }) {
@@ -395,10 +398,19 @@ export function Ficha({
             />
           </Field>
 
-          <Field label="Papel" htmlFor="f-level" hint={LEVEL_HINT[level]}>
+          <Field
+            label="Papel"
+            htmlFor="f-level"
+            hint={
+              self
+                ? 'O seu próprio papel não se muda aqui. Peça a outra pessoa.'
+                : LEVEL_HINT[level]
+            }
+          >
             <Select
               id="f-level"
               value={level}
+              disabled={self}
               onChange={(e) => setLevel(e.target.value as Level)}
             >
               {(['professional', 'manager', 'owner', 'master'] as Level[])
@@ -427,7 +439,7 @@ export function Ficha({
             <Select
               id="f-scope"
               value={scope}
-              disabled={level !== 'manager'}
+              disabled={self || level !== 'manager'}
               onChange={(e) => setScope(e.target.value)}
             >
               {canGrantNetwork ? <option value="">Rede toda</option> : null}

@@ -1026,12 +1026,28 @@ export async function saveFicha(
       }
 
       // --- papéis ---------------------------------------------------
-      await tx`delete from staff_role where staff_id = ${staffId}`
-      for (const role of input.roles) {
-        await tx`
-          insert into staff_role (staff_id, role, unit_id)
-          values (${staffId}, ${role.role}, ${role.unitId})
-        `
+      /*
+       * NINGUÉM SE DESPROMOVE A SI PRÓPRIO.
+       *
+       * Os papéis gravam-se substituindo os que lá estavam, e isso tem
+       * um buraco que custou caro a descobrir: bastava abrir a ficha
+       * de quem se é, mudar o telemóvel e gravar, para o papel do
+       * ecrã passar por cima do papel da base. Quem monta o sistema
+       * fechou-se de fora com uma alteração que nada tinha a ver com
+       * papéis.
+       *
+       * A regra fica: a própria ficha não mexe no próprio papel. Quem
+       * quiser mudar de degrau pede a outra pessoa — que é a mesma
+       * razão por que uma fechadura não se abre por dentro do cofre.
+       */
+      if (staffId !== actor.id) {
+        await tx`delete from staff_role where staff_id = ${staffId}`
+        for (const role of input.roles) {
+          await tx`
+            insert into staff_role (staff_id, role, unit_id)
+            values (${staffId}, ${role.role}, ${role.unitId})
+          `
+        }
       }
 
       // --- lojas ----------------------------------------------------
