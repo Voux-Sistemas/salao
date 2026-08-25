@@ -1,22 +1,36 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { requireManagement, unitsFor } from '@/lib/auth/actor'
-import { MemberForm } from '@/components/team-forms'
+import { requireOrg } from '@/lib/org'
+import { listSkills, listSkillSources } from '@/lib/team'
+import { today } from '@/lib/time'
+import { Ficha } from '@/components/team-ficha'
 import { BackLink } from '@/components/gestao-panel'
 
 export const metadata: Metadata = { title: 'Nova pessoa' }
 
 /**
- * Nasce profissional e sem palavra-passe. Os papéis, as habilidades e a
- * escala vêm a seguir, na ficha dela.
+ * É A MESMA PÁGINA DA FICHA, POR PREENCHER.
+ *
+ * Antes eram dois ecrãs: um pedia meia dúzia de campos, e o outro —
+ * logo a seguir a gravar — voltava a pedir os mesmos mais sete painéis.
+ * A repetição é que dava a sensação de formulário gigante, não o
+ * tamanho. Agora escreve-se tudo uma vez, e o servidor cria a pessoa, as
+ * lojas, o papel, a escala e as habilidades numa transacção só.
  */
 export default async function NovaPessoaPage() {
   const actor = await requireManagement()
   const units = await unitsFor(actor)
   if (units.length === 0) redirect('/admin/equipe')
 
+  const org = await requireOrg()
+  const [groups, sources] = await Promise.all([
+    listSkills(actor.orgId, null),
+    listSkillSources(actor, null),
+  ])
+
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <div className="mb-4">
         <BackLink href="/admin/equipe" label="Equipa" />
       </div>
@@ -25,12 +39,20 @@ export default async function NovaPessoaPage() {
         Nova pessoa
       </h2>
       <p className="mb-6 text-[0.8125rem] text-[var(--ink-muted)]">
-        Entra como profissional. Depois de criada dizem-se as habilidades, a
-        escala e — se for o caso — outro papel.
+        Preenche o que sabes. O que ficar por dizer diz-se depois — a página
+        é a mesma.
       </p>
 
-      <MemberForm
+      <Ficha
+        member={null}
         units={units.map((unit) => ({ id: unit.id, name: unit.name }))}
+        memberUnits={[]}
+        roles={[{ role: 'professional', unitId: null }]}
+        groups={groups}
+        schedule={[]}
+        sources={sources}
+        today={today(org.timezone)}
+        canGrantNetwork={actor.orgScope && actor.role !== 'manager'}
       />
     </div>
   )

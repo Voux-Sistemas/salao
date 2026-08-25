@@ -20,14 +20,18 @@ import {
   removeAbsence,
   removeRole,
   removeSchedule,
+  saveFicha,
   setPassword,
   setSkill,
+  skillsOf,
   updateMember,
   type AbsenceKind,
+  type FichaInput,
   type Level,
   type MemberInput,
 } from '@/lib/team'
 import { atMinutes, dayEnd, dayStart, parseMinutes, today } from '@/lib/time'
+import type { IsoDay } from '@/lib/time'
 
 export type TeamState = { error: string | null; done?: string | null }
 
@@ -89,7 +93,7 @@ function memberError(reason: string): string {
   }
   if (reason === 'email_taken') return 'Esse e-mail já está noutra ficha.'
   if (reason === 'login_taken') {
-    return 'Esse nome de entrada já é de outra pessoa. Escolha outro.'
+    return 'Esse usuário já é de outra pessoa. Escolha outro.'
   }
   if (reason === 'not_found') return 'Essa pessoa não existe.'
   return 'Falta o nome ou o telefone.'
@@ -447,4 +451,135 @@ export async function removeAbsenceAction(form: FormData): Promise<void> {
   const id = String(form.get('id') ?? '')
   if (id) await removeAbsence(found.actor, found.member.id, id)
   refresh(found.member.id)
+}
+
+// ---------------------------------------------------------------------
+// A FICHA NUM GRAVAR SÓ
+//
+// O ecrã manda tudo o que sabe num campo só, em JSON. Não é preguiça de
+// formulário: são cinco assuntos com formas diferentes — texto, listas
+// de identificadores, uma grelha de sete dias — e escrevê-los como
+// campos soltos de FormData dava um analisador maior do que isto.
+//
+// Nada aqui confia no que vem: o `lib/team` volta a validar o alcance,
+// os papéis e as horas antes de tocar na base.
+// ---------------------------------------------------------------------
+
+const LEVELS: Level[] = ['owner', 'manager', 'professional']
+
+function fichaError(reason: string): string {
+  if (reason === 'taken') {
+    return 'Já há alguém na equipa com esse telefone. O telefone é a identidade e não se repete.'
+  }
+  if (reason === 'email_taken') return 'Esse e-mail já está noutra ficha.'
+  if (reason === 'login_taken') {
+    return 'Esse usuário já é de outra pessoa. Escolha outro.'
+  }
+  if (reason === 'not_found') return 'Essa pessoa não existe.'
+  if (reason === 'forbidden') return 'Esse papel não é seu para dar.'
+  if (reason === 'not_there') {
+    return 'A escala parte de uma loja onde ela não atende. Marque a loja primeiro.'
+  }
+  if (reason === 'overlap') {
+    return 'Já há escala aberta nesse dia. Feche a antiga antes de abrir outra.'
+  }
+  return 'Falta o nome, o telefone, ou uma hora da escala está por preencher.'
+}
+
+/** Aceita só o que reconhece; o resto cai para o valor seguro. */
+function parseFicha(raw: string): FichaInput | null {
+  let data: unknown
+  try {
+    data = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (typeof data !== 'object' || data === null) return null
+  const body = data as Record<string, unknown>
+  const person = body.member
+  if (typeof person !== 'object' || person === null) return null
+  const m = person as Record<string, unknown>
+
+  const text = (value: unknown): string =>
+    typeof value === 'string' ? value.trim() : ''
+  const orNull = (value: unknown): string | null => text(value) || null
+  const ids = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((v) => typeof v === 'string') : []
+
+  const member: MemberInput = {
+    name: text(m.name),
+    publicAlias: orNull(m.publicAlias),
+    login: orNull(m.login),
+    phone: normalisePhone(text(m.phone)),
+    email: orNull(m.email),
+    bio: orNull(m.bio),
+    displayColor: text(m.displayColor) || '#C6A96B',
+    acceptsOnline: m.acceptsOnline !== false,
+  }
+
+  const roles: { role: Level; unitId: string | null }[] = []
+  if (Array.isArray(body.roles)) {
+    for (const entry of body.roles) {
+      if (typeof entry !== 'object' || entry === null) continue
+      const r = entry as Record<string, unknown>
+      const level = LEVELS.find((known) => known === r.role)
+      if (!level) continue
+      roles.push({ role: level, unitId: orNull(r.unitId) })
+    }
+  }
+  if (roles.length === 0) roles.push({ role: 'professional', unitId: null })
+
+  let week: FichaInput['week'] = null
+  if (typeof body.week === 'object' && body.week !== null) {
+    const w = body.week as Record<string, unknown>
+    const unitId = orNull(w.unitId)
+    const from = orNull(w.from)
+    if (unitId && from && Array.isArray(w.days) && w.days.length === 7) {
+      const days = w.days.map((entry) => {
+        const d = (entry ?? {}) as Record<string, unknown>
+        return {
+          on: d.on === true,
+          startsMin: Number(d.startsMin) || 0,
+          endsMin: Number(d.endsMin) || 0,
+        }
+      })
+      week = { unitId, from: from as IsoDay, days }
+    }
+  }
+
+  return {
+    member,
+    unitIds: ids(body.unitIds),
+    roles,
+    skillIds: ids(body.skillIds),
+    week,
+  }
+}
+
+export async function saveFichaAction(
+  _previous: TeamState,
+  form: FormData,
+): Promise<TeamState> {
+  const actor = await requireManagement()
+  const input = parseFicha(String(form.get('ficha') ?? ''))
+  if (!input) return { error: 'Não percebi o que veio do formulário.' }
+
+  const raw = String(form.get('staff') ?? '')
+  const id = raw ? raw : null
+  const nasceu = id === null
+
+  const result = await saveFicha(actor, id, input)
+  if (!result.ok) return { error: fichaError(result.reason) }
+
+  refresh(result.id)
+  if (nasceu) redirect(`/admin/equipe/${result.id}`)
+  return { error: null, done: 'Ficha guardada.' }
+}
+
+/** As habilidades de outra pessoa, para o «Copiar de…». */
+export async function copySkillsAction(
+  staffId: string,
+): Promise<{ ids: string[] }> {
+  const actor = await requireManagement()
+  return { ids: await skillsOf(actor, staffId) }
 }

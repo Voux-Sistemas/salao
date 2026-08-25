@@ -35,7 +35,7 @@ export async function signInAction(
    * O telemóvel era o identificador porque já era o da cliente, e
    * pareceu natural que servisse para toda a gente. Não serve: muda de
    * operadora, muda de país, e não é coisa que se escreva vinte vezes
-   * por dia. Cada pessoa passa a poder ter um nome de entrada seu.
+   * por dia. Cada pessoa passa a poder ter um usuário seu.
    *
    * O telemóvel continua a valer — quem nunca escolheu nome nenhum
    * entra como sempre entrou, e ninguém fica de fora.

@@ -10,22 +10,18 @@ import {
   listRoles,
   listSchedule,
   listSkills,
+  listSkillSources,
 } from '@/lib/team'
 import { formatDateTime, today } from '@/lib/time'
 import {
   AbsenceForm,
   MemberExit,
-  MemberForm,
-  MemberUnits,
-  OpenScheduleForm,
   PasswordForm,
   RemoveAbsence,
-  RolesPanel,
-  ScheduleLine,
-  SkillsPanel,
 } from '@/components/team-forms'
-import { BackLink, Panel } from '@/components/gestao-panel'
-import { Badge, Divider, Notice } from '@/components/ui'
+import { Ficha } from '@/components/team-ficha'
+import { BackLink } from '@/components/gestao-panel'
+import { Badge, Divider } from '@/components/ui'
 import { formatPhone } from '@/lib/text'
 
 export const metadata: Metadata = { title: 'Ficha' }
@@ -33,11 +29,15 @@ export const metadata: Metadata = { title: 'Ficha' }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
- * UMA PESSOA POR DENTRO.
+ * UMA PESSOA POR DENTRO — TRÊS CARTÕES.
  *
- * Papéis, lojas, habilidades, escala e ausências. A escala é o único
- * sítio do sistema onde uma linha se fecha em vez de se corrigir: mudar
- * as horas de uma vigência que já correu mudaria o passado da agenda.
+ * Colaborador, escala e serviços. Os oito painéis de antes eram oito
+ * assuntos e nove botões de guardar; isto são três assuntos e um.
+ *
+ * A escala continua a ser o único sítio do sistema onde uma linha se
+ * fecha em vez de se corrigir: mudar as horas de uma vigência que já
+ * correu mudaria o passado da agenda. A diferença é que agora essa
+ * regra é trabalho do servidor, não de quem preenche.
  */
 export default async function PessoaPage({
   params,
@@ -54,7 +54,7 @@ export default async function PessoaPage({
   const org = await requireOrg()
   const todayIso = today(org.timezone)
 
-  const [units, roles, memberUnits, skills, schedule, absences] =
+  const [units, roles, memberUnits, skills, schedule, absences, sources] =
     await Promise.all([
       unitsFor(actor),
       listRoles(member.id),
@@ -62,42 +62,47 @@ export default async function PessoaPage({
       listSkills(actor.orgId, member.id),
       listSchedule(member.id, todayIso),
       listAbsences(member.id),
+      listSkillSources(actor, member.id),
     ])
 
   const options = units.map((unit) => ({ id: unit.id, name: unit.name }))
   const timezones = new Map(units.map((unit) => [unit.id, unit.timezone]))
-  const isOwner = actor.orgScope && actor.role !== 'manager'
 
   const skillCount = skills.reduce(
     (total, group) => total + group.services.filter((s) => s.has).length,
     0,
   )
   const mine = memberUnits.filter((unitId) => timezones.has(unitId))
+  const current = schedule.filter((row) => row.is_current)
 
-  const warnings: string[] = []
-  if (!member.has_password) {
-    warnings.push(
-      'Ainda não tem palavra-passe — e sem ela não entra no sistema.',
-    )
-  }
-  if (mine.length === 0) {
-    warnings.push(
-      'Não atende em loja nenhuma. Enquanto assim for, não aparece em agenda nenhuma.',
-    )
-  }
-  if (member.accepts_online_booking && skillCount === 0) {
-    warnings.push(
-      'Aceita marcação online mas não tem habilidade nenhuma: no funil público não há serviço que a ofereça.',
-    )
-  }
-  if (mine.length > 0 && schedule.length === 0) {
-    warnings.push(
-      'Sem escala aberta. A loja pode estar de portas abertas — se ela não está escalada, não há horário para dar.',
-    )
-  }
+  /*
+   * OS AVISOS CABEM NUMA LINHA.
+   *
+   * Eram três faixas empilhadas, cada uma do tamanho de um parágrafo, a
+   * empurrar a ficha para fora do ecrã antes de se chegar ao primeiro
+   * campo. O que uma pessoa precisa de saber é o que falta — e isso
+   * escreve-se em cinco palavras.
+   */
+  const gaps: string[] = []
+  if (!member.has_password) gaps.push('palavra-passe')
+  if (mine.length === 0) gaps.push('loja')
+  else if (current.length === 0) gaps.push('escala')
+  if (member.accepts_online_booking && skillCount === 0) gaps.push('serviços')
+
+  const resumo = [
+    mine.length > 0
+      ? options
+          .filter((unit) => mine.includes(unit.id))
+          .map((unit) => unit.name)
+          .join(' · ')
+      : null,
+    skillCount > 0
+      ? `${skillCount} ${skillCount === 1 ? 'serviço' : 'serviços'}`
+      : null,
+  ].filter(Boolean)
 
   return (
-    <div className="space-y-10">
+    <div className="max-w-3xl space-y-5">
       <div>
         <div className="mb-4">
           <BackLink href="/admin/equipe" label="Equipa" />
@@ -128,19 +133,22 @@ export default async function PessoaPage({
             {formatPhone(member.phone)}
           </p>
         </div>
+
+        {resumo.length > 0 ? (
+          <p className="mt-1.5 text-[0.8125rem] text-[var(--ink-muted)]">
+            {resumo.join(' · ')}
+          </p>
+        ) : null}
+
+        {gaps.length > 0 ? (
+          <p className="mt-3 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_8%,transparent)] px-3 py-2 text-[0.8125rem] text-[var(--warn)]">
+            Falta {gaps.join(', ')} — e sem isso não entra na agenda nem no
+            funil.
+          </p>
+        ) : null}
       </div>
 
-      {warnings.length > 0 ? (
-        <div className="space-y-2">
-          {warnings.map((warning) => (
-            <Notice key={warning} tone="warn">
-              {warning}
-            </Notice>
-          ))}
-        </div>
-      ) : null}
-
-      <MemberForm
+      <Ficha
         member={{
           id: member.id,
           name: member.name,
@@ -152,137 +160,74 @@ export default async function PessoaPage({
           display_color: member.display_color,
           accepts_online_booking: member.accepts_online_booking,
         }}
-      />
-
-      {/* --- papéis -------------------------------------------------- */}
-      <Panel
-        title="Papéis"
-        hint="Um papel guarda-se com uma loja. Sem loja associada vale a rede toda."
-        flush
-      >
-        <RolesPanel
-          staffId={member.id}
-          roles={roles}
-          units={options}
-          canGrantNetwork={isOwner}
-        />
-      </Panel>
-
-      {/* --- lojas --------------------------------------------------- */}
-      <Panel
-        title="Lojas onde atende"
-        hint="Onde põe os pés — coisa diferente do papel. É daqui que a escala pode partir."
-      >
-        <MemberUnits staffId={member.id} units={options} current={memberUnits} />
-      </Panel>
-
-      {/* --- habilidades --------------------------------------------- */}
-      <Panel
-        title="Habilidades"
-        hint="Quem não tem a habilidade nunca aparece como opção nesse serviço — nem no site, nem ao balcão."
-      >
-        {skills.length === 0 ? (
-          <p className="text-[0.8125rem] text-[var(--ink-faint)]">
-            O catálogo ainda está vazio.
-          </p>
-        ) : (
-          <SkillsPanel staffId={member.id} groups={skills} />
-        )}
-      </Panel>
-
-      {/* --- escala -------------------------------------------------- */}
-      <Panel
-        title="Escala"
-        hint="Cada linha vale de uma data até outra. Mudar de escala é fechar a antiga com um último dia e abrir uma nova — nunca corrigir a que já correu."
-        flush
-      >
-        {schedule.length > 0 ? (
-          <div className="divide-y divide-[var(--line-soft)]">
-            {schedule.map((row) => (
-              <ScheduleLine
-                key={row.id}
+        units={options}
+        memberUnits={memberUnits}
+        roles={roles.map((role) => ({ role: role.role, unitId: role.unit_id }))}
+        groups={skills}
+        schedule={current.map((row) => ({
+          unit_id: row.unit_id,
+          weekday: row.weekday,
+          starts_min: row.starts_min,
+          ends_min: row.ends_min,
+          is_current: row.is_current,
+        }))}
+        sources={sources}
+        today={todayIso}
+        canGrantNetwork={actor.orgScope && actor.role !== 'manager'}
+        aside={{
+          /* Acontecimentos, não campos: gravam na hora. */
+          password: (
+            <PasswordForm
+              staffId={member.id}
+              hasPassword={member.has_password}
+            />
+          ),
+          absences: (
+            <div className="space-y-3">
+              <AbsenceForm
                 staffId={member.id}
-                row={row}
+                units={options}
                 today={todayIso}
               />
-            ))}
-          </div>
-        ) : null}
-
-        {mine.length > 0 ? (
-          <div
-            className={`bg-[var(--surface-2)] px-5 py-4 sm:px-6 ${
-              schedule.length > 0 ? 'border-t border-[var(--line-soft)]' : ''
-            }`}
-          >
-            <OpenScheduleForm
-              staffId={member.id}
-              units={options.filter((unit) => memberUnits.includes(unit.id))}
-              today={todayIso}
-            />
-          </div>
-        ) : (
-          <p className="px-5 py-4 text-[0.8125rem] text-[var(--ink-faint)] sm:px-6">
-            Primeiro a loja, depois a escala.
-          </p>
-        )}
-      </Panel>
-
-      {/* --- ausências ----------------------------------------------- */}
-      <Panel
-        title="Ausências"
-        hint="Folga, férias, formação ou um bloqueio avulso. Fecha o horário, mas não desmarca ninguém: as marcações que já lá estiverem tratam-se na agenda."
-        flush
-      >
-        <div className="px-5 py-5 sm:px-6">
-          <AbsenceForm staffId={member.id} units={options} today={todayIso} />
-        </div>
-
-        {absences.length > 0 ? (
-          <div className="divide-y divide-[var(--line-soft)] border-t border-[var(--line-soft)]">
-            {absences.map((row) => {
-              const timezone =
-                (row.unit_id ? timezones.get(row.unit_id) : null) ??
-                org.timezone
-              return (
-                <div
-                  key={row.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 sm:px-6"
-                >
-                  <Badge className="w-24 justify-center">
-                    {ABSENCE_LABEL[row.kind]}
-                  </Badge>
-                  <span className="tabular shrink-0 text-[0.8125rem] text-[var(--ink)]">
-                    {formatDateTime(row.starts_at, timezone)} →{' '}
-                    {formatDateTime(row.ends_at, timezone)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[0.75rem] text-[var(--ink-muted)]">
-                      {row.unit_name ?? 'Todas as lojas'}
-                      {row.reason ? ` · ${row.reason}` : ''}
-                      {row.author ? ` · ${row.author}` : ''}
-                    </p>
-                  </div>
-                  <RemoveAbsence staffId={member.id} id={row.id} />
+              {absences.length > 0 ? (
+                <div className="divide-y divide-[var(--line-soft)] border-t border-[var(--line-soft)]">
+                  {absences.map((row) => {
+                    const timezone =
+                      (row.unit_id ? timezones.get(row.unit_id) : null) ??
+                      org.timezone
+                    return (
+                      <div
+                        key={row.id}
+                        className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5"
+                      >
+                        <Badge className="w-24 justify-center">
+                          {ABSENCE_LABEL[row.kind]}
+                        </Badge>
+                        <span className="tabular shrink-0 text-[0.8125rem] text-[var(--ink)]">
+                          {formatDateTime(row.starts_at, timezone)} →{' '}
+                          {formatDateTime(row.ends_at, timezone)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[0.75rem] text-[var(--ink-muted)]">
+                            {row.unit_name ?? 'Todas as lojas'}
+                            {row.reason ? ` · ${row.reason}` : ''}
+                          </p>
+                        </div>
+                        <RemoveAbsence staffId={member.id} id={row.id} />
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="border-t border-[var(--line-soft)] px-5 py-3 text-[0.8125rem] text-[var(--ink-faint)] sm:px-6">
-            Nada marcado. Quando faltar, diz-se aqui — e a agenda fecha
-            sozinha.
-          </p>
-        )}
-      </Panel>
-
-      {/* --- entrada e saída ----------------------------------------- */}
-      <Panel
-        title="Entrada no sistema"
-        hint="Entra com o nome de entrada — ou o telefone, se não tiver nome — e a palavra-passe. Repô-la fecha todas as sessões abertas em nome dela."
-      >
-        <PasswordForm staffId={member.id} hasPassword={member.has_password} />
-      </Panel>
+              ) : (
+                <p className="text-[0.75rem] text-[var(--ink-faint)]">
+                  Nada marcado. Fecha o horário, mas não desmarca ninguém —
+                  isso trata-se na agenda.
+                </p>
+              )}
+            </div>
+          ),
+        }}
+      />
 
       <Divider />
 

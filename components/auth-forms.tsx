@@ -62,12 +62,12 @@ export function SignInForm() {
     <form action={action} className="space-y-5">
       <Result state={state} />
 
-      {/* A entrada é o nome de quem entra, ou o telemóvel para quem
-          nunca escolheu nome nenhum. As duas portas dão ao mesmo sítio. */}
+      {/* A entrada é o usuário de quem entra, ou o telemóvel para quem
+          nunca escolheu nenhum. As duas portas dão ao mesmo sítio. */}
       <Field
         label="Entrada"
         htmlFor="phone"
-        hint="O seu nome de entrada, ou o telemóvel."
+        hint="O seu usuário, ou o telemóvel."
       >
         <PhoneInput
           id="phone"

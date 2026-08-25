@@ -146,7 +146,7 @@ export type Member = {
   org_id: string
   name: string
   public_alias: string | null
-  /** Nome de entrada. Nulo: entra pelo telemóvel, como sempre entrou. */
+  /** Usuário. Nulo: entra pelo telemóvel, como sempre entrou. */
   login: string | null
   phone: string
   email: string | null
@@ -184,7 +184,7 @@ export type MemberInput = {
   name: string
   /** Nome mostrado a cliente. Nulo mostra o verdadeiro. */
   publicAlias: string | null
-  /** Nome de entrada. Nulo deixa a porta no telemóvel. */
+  /** Usuário. Nulo deixa a porta no telemóvel. */
   login: string | null
   phone: string
   email: string | null
@@ -561,7 +561,8 @@ export type SkillGroup = {
 
 export async function listSkills(
   orgId: string,
-  staffId: string,
+  /** Nulo: ninguém ainda — o catálogo vem todo por marcar. */
+  staffId: string | null,
 ): Promise<SkillGroup[]> {
   const rows = await sql<
     { category: string; id: string; name: string; has: boolean }[]
@@ -569,7 +570,7 @@ export async function listSkills(
     select c.name as category, s.id, s.name,
            exists (
              select 1 from staff_skill k
-              where k.staff_id = ${staffId} and k.service_id = s.id
+              where k.staff_id = ${staffId}::uuid and k.service_id = s.id
            ) as has
       from service s
       join service_category c on c.id = s.category_id
@@ -869,4 +870,311 @@ export async function removeAbsence(
     delete from staff_absence where id = ${id} and staff_id = ${staffId}
   `
   return true
+}
+
+// ---------------------------------------------------------------------
+// A FICHA INTEIRA, NUM GRAVAR SÓ
+//
+// Até aqui cada pedaço da ficha tinha a sua acção e o seu botão: o
+// nome, cada loja, cada habilidade, cada dia de escala. Pôr uma pessoa
+// a trabalhar custava vinte e duas idas ao servidor. Isto é a mesma
+// coisa dita de uma vez.
+//
+// O que NÃO muda é a regra que a base de dados escreveu primeiro: uma
+// vigência de escala não se corrige, fecha-se na véspera e abre-se
+// outra por cima. Aqui isso deixa de ser trabalho de quem está do outro
+// lado do ecrã e passa a ser trabalho deste ficheiro.
+// ---------------------------------------------------------------------
+
+/** Um dia da grelha da semana. Desligado, o dia não dá horário. */
+export type WeekDay = {
+  on: boolean
+  startsMin: Minutes
+  endsMin: Minutes
+}
+
+export type FichaInput = {
+  member: MemberInput
+  /** Lojas onde põe os pés. Substitui as que lá estavam. */
+  unitIds: string[]
+  /** Papéis. Substitui os que lá estavam — o ecrã manda a lista toda. */
+  roles: { role: Level; unitId: string | null }[]
+  /** Serviços que sabe fazer. Substitui os que lá estavam. */
+  skillIds: string[]
+  /** A semana, de domingo (0) a sábado (6). Nulo: não se mexe na escala. */
+  week: { unitId: string; from: IsoDay; days: WeekDay[] } | null
+}
+
+export type FichaResult =
+  | { ok: true; id: string }
+  | {
+      ok: false
+      reason:
+        | 'taken'
+        | 'email_taken'
+        | 'login_taken'
+        | 'invalid'
+        | 'not_found'
+        | 'forbidden'
+        | 'overlap'
+        | 'not_there'
+    }
+
+/** O dia anterior, para fechar uma vigência na véspera da seguinte. */
+function dayBefore(iso: IsoDay): IsoDay {
+  const parts = iso.split('-').map(Number)
+  const date = new Date(
+    Date.UTC(parts[0] ?? 1970, (parts[1] ?? 1) - 1, parts[2] ?? 1),
+  )
+  date.setUTCDate(date.getUTCDate() - 1)
+  return date.toISOString().slice(0, 10) as IsoDay
+}
+
+/**
+ * Grava a ficha toda. Ou entra tudo, ou não entra nada — é o mesmo
+ * padrão que a instalação usa para criar a rede e a dona ao mesmo tempo.
+ *
+ * `id` nulo cria a pessoa; com id, actualiza a que já existe.
+ */
+export async function saveFicha(
+  actor: Actor,
+  id: string | null,
+  input: FichaInput,
+): Promise<FichaResult> {
+  const member = input.member
+  if (!member.name.trim() || !member.phone.trim()) {
+    return { ok: false, reason: 'invalid' }
+  }
+
+  // O alcance decide-se aqui, uma vez, e não em cada pedaço lá dentro.
+  const units = input.unitIds.filter((unitId) => canSeeUnit(actor, unitId))
+  const canGrantNetwork = actor.orgScope && actor.role !== 'manager'
+  for (const role of input.roles) {
+    // O degrau de sistema não se dá pela aplicação. Nunca.
+    if (role.role === 'master') return { ok: false, reason: 'forbidden' }
+    if (role.unitId !== null && !canSeeUnit(actor, role.unitId)) {
+      return { ok: false, reason: 'forbidden' }
+    }
+    if (role.unitId === null && role.role !== 'professional') {
+      if (!canGrantNetwork) return { ok: false, reason: 'forbidden' }
+    }
+  }
+
+  const week = input.week
+  if (week) {
+    if (!canSeeUnit(actor, week.unitId)) {
+      return { ok: false, reason: 'forbidden' }
+    }
+    if (!units.includes(week.unitId)) return { ok: false, reason: 'not_there' }
+    if (week.days.length !== 7) return { ok: false, reason: 'invalid' }
+    for (const day of week.days) {
+      if (day.on && day.endsMin <= day.startsMin) {
+        return { ok: false, reason: 'invalid' }
+      }
+    }
+  }
+
+  // Quem já existe tem de estar ao alcance de quem está a gravar.
+  if (id !== null) {
+    const existing = await getMember(actor, id)
+    if (!existing) return { ok: false, reason: 'not_found' }
+  }
+
+  try {
+    return await sql.begin(async (tx) => {
+      let staffId = id
+
+      if (staffId === null) {
+        const rows = await tx<{ id: string }[]>`
+          insert into staff
+            (org_id, name, public_alias, login, phone, email, bio,
+             display_color, accepts_online_booking, sort_order)
+          values
+            (${actor.orgId}, ${member.name.trim()}, ${member.publicAlias},
+             ${member.login}, ${member.phone.trim()}, ${member.email},
+             ${member.bio}, ${member.displayColor}, ${member.acceptsOnline},
+             (select coalesce(max(sort_order), 0) + 1 from staff
+               where org_id = ${actor.orgId}))
+          returning id
+        `
+        const row = rows[0]
+        if (!row) return { ok: false, reason: 'invalid' } as FichaResult
+        staffId = row.id
+      } else {
+        await tx`
+          update staff
+             set name = ${member.name.trim()},
+                 public_alias = ${member.publicAlias},
+                 login = ${member.login},
+                 phone = ${member.phone.trim()},
+                 email = ${member.email},
+                 bio = ${member.bio},
+                 display_color = ${member.displayColor},
+                 accepts_online_booking = ${member.acceptsOnline}
+           where id = ${staffId} and org_id = ${actor.orgId}
+        `
+      }
+
+      // --- papéis ---------------------------------------------------
+      await tx`delete from staff_role where staff_id = ${staffId}`
+      for (const role of input.roles) {
+        await tx`
+          insert into staff_role (staff_id, role, unit_id)
+          values (${staffId}, ${role.role}, ${role.unitId})
+        `
+      }
+
+      // --- lojas ----------------------------------------------------
+      await tx`
+        delete from staff_unit
+         where staff_id = ${staffId}
+           and unit_id <> all(${units}::uuid[])
+      `
+      if (units.length > 0) {
+        await tx`
+          insert into staff_unit (staff_id, unit_id)
+          select ${staffId}, t.u from unnest(${units}::uuid[]) as t(u)
+          on conflict do nothing
+        `
+      }
+
+      // --- habilidades ----------------------------------------------
+      const skills = input.skillIds
+      await tx`
+        delete from staff_skill
+         where staff_id = ${staffId}
+           and service_id <> all(${skills}::uuid[])
+      `
+      if (skills.length > 0) {
+        await tx`
+          insert into staff_skill (staff_id, service_id)
+          select ${staffId}, s.id from service s
+           where s.org_id = ${actor.orgId}
+             and s.id = any(${skills}::uuid[])
+          on conflict do nothing
+        `
+      }
+
+      // --- escala ---------------------------------------------------
+      // Uma vigência não se corrige. O dia que mudou fecha na véspera
+      // do novo começo, e abre-se outro por cima; o dia que não mudou
+      // fica quieto, para não encher o passado de linhas iguais.
+      if (week) {
+        const eve = dayBefore(week.from)
+
+        const current = await tx<
+          {
+            id: string
+            weekday: number
+            starts_min: number
+            ends_min: number
+            valid_from: IsoDay
+          }[]
+        >`
+          select id, weekday, starts_min, ends_min,
+                 to_char(valid_from, 'YYYY-MM-DD') as valid_from
+            from staff_schedule
+           where staff_id = ${staffId} and unit_id = ${week.unitId}
+             and (valid_to is null or valid_to >= ${week.from}::date)
+        `
+
+        for (let weekday = 0; weekday < 7; weekday++) {
+          const day = week.days[weekday]
+          if (!day) continue
+          const open = current.filter((row) => row.weekday === weekday)
+          const only = open[0]
+
+          const same =
+            day.on &&
+            open.length === 1 &&
+            only !== undefined &&
+            only.starts_min === day.startsMin &&
+            only.ends_min === day.endsMin
+          if (same) continue
+
+          for (const row of open) {
+            if (row.valid_from >= week.from) {
+              // Ainda não começou: apaga-se, que não há passado a guardar.
+              await tx`delete from staff_schedule where id = ${row.id}`
+            } else {
+              await tx`
+                update staff_schedule set valid_to = ${eve}::date
+                 where id = ${row.id}
+              `
+            }
+          }
+
+          if (day.on) {
+            await tx`
+              insert into staff_schedule
+                (staff_id, unit_id, weekday, starts_min, ends_min,
+                 valid_from, valid_to)
+              values
+                (${staffId}, ${week.unitId}, ${weekday},
+                 ${day.startsMin}, ${day.endsMin}, ${week.from}::date, null)
+            `
+          }
+        }
+      }
+
+      return { ok: true, id: staffId } as FichaResult
+    })
+  } catch (error) {
+    const reason = takenReason(error)
+    if (reason) return { ok: false, reason }
+    if (isOverlapError(error)) return { ok: false, reason: 'overlap' }
+    throw error
+  }
+}
+
+/**
+ * Quem mais há na equipa, e quantos serviços cada uma sabe fazer.
+ * É o que alimenta o «Copiar de…»: numa casa de cinco pessoas, a sexta
+ * quase nunca é original.
+ */
+export type SkillSource = {
+  id: string
+  name: string
+  count: number
+  top: string | null
+}
+
+export async function listSkillSources(
+  actor: Actor,
+  exceptId: string | null,
+): Promise<SkillSource[]> {
+  return sql<SkillSource[]>`
+    select s.id, s.name,
+           count(k.service_id)::int as count,
+           (select c.name
+              from staff_skill k2
+              join service v on v.id = k2.service_id
+              join service_category c on c.id = v.category_id
+             where k2.staff_id = s.id
+             group by c.name
+             order by count(*) desc, c.name
+             limit 1) as top
+      from staff s
+      join staff_skill k on k.staff_id = s.id
+     where s.org_id = ${actor.orgId}
+       and s.is_active
+       and (${exceptId}::uuid is null or s.id <> ${exceptId}::uuid)
+       and ${reach(actor)}
+     group by s.id, s.name
+     order by count(k.service_id) desc, s.name
+  `
+}
+
+/** Os serviços que uma pessoa sabe fazer — para o «Copiar de…». */
+export async function skillsOf(
+  actor: Actor,
+  staffId: string,
+): Promise<string[]> {
+  const rows = await sql<{ service_id: string }[]>`
+    select k.service_id
+      from staff_skill k
+      join staff s on s.id = k.staff_id
+     where k.staff_id = ${staffId} and s.org_id = ${actor.orgId}
+  `
+  return rows.map((row) => row.service_id)
 }
