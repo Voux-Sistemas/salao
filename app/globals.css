@@ -1173,3 +1173,61 @@ html.js .so-sem-js {
     ),
     linear-gradient(158deg, #1E1811 0%, #18130C 46%, #141009 100%);
 }
+
+/* ---------------------------------------------------------------------
+   A PÍLULA DA CASA.
+
+   A montra não tinha nenhum botão redondo cheio, porque até hoje não
+   precisou de um: o `--radius: 2px` é o fio quadrado do papel timbrado,
+   e num cartão resulta. Num botão de acção fica seco — foi isso que
+   fazia a chamada dos serviços não parecer um site.
+
+   Escuro sobre o creme, com uma sombra quente por baixo. É a mesma
+   forma do «marcar agora» do fecho, e duas acções da mesma página com a
+   mesma forma leem-se ambas como botões.
+   --------------------------------------------------------------------- */
+
+.pilula-casa {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  height: 2.875rem;
+  padding: 0 1.65rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  box-shadow: 0 12px 26px -16px color-mix(in srgb, var(--ink) 70%, transparent);
+  transition:
+    transform 300ms ease,
+    box-shadow 300ms ease;
+}
+
+.pilula-casa:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px -16px color-mix(in srgb, var(--ink) 78%, transparent);
+}
+
+.pilula-casa span {
+  transition: transform 300ms ease;
+}
+
+.pilula-casa:hover span {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pilula-casa,
+  .pilula-casa span {
+    transition: none;
+  }
+  .pilula-casa:hover {
+    transform: none;
+  }
+  .pilula-casa:hover span {
+    transform: none;
+  }
+}

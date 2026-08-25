@@ -354,16 +354,20 @@ export async function Showcase({ org }: { org: Org }) {
         className="scroll-mt-16 border-t border-[var(--line-soft)]"
       >
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
-          <Reveal className="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
-            <div>
-              <p className="eyebrow eyebrow-gold">{dict.home.servicesTitle}</p>
-              <p className="mt-2 max-w-md text-[0.9375rem] leading-relaxed text-[var(--ink-muted)]">
-                {dict.home.servicesSubtitle}
-              </p>
-            </div>
-            <ButtonLink href="/servicos" variant="outline">
-              {dict.footer.links.services}
-            </ButtonLink>
+          {/*
+            UM TÍTULO, E MAIS NADA ESCRITO.
+
+            Aqui estavam três coisas a dizer a mesma: um rótulo em
+            maiúsculas, uma frase de duas linhas, e um botão — tudo
+            antes de se chegar às fotografias. As sete imagens por baixo
+            dizem o que se faz aqui melhor e mais depressa do que
+            qualquer frase, e o botão desceu para depois delas: pedi-lo
+            antes era fazer uma pergunta antes de haver resposta.
+          */}
+          <Reveal>
+            <h2 className="display text-balance text-center text-[1.5rem] leading-tight text-[var(--ink)] sm:text-[2rem]">
+              {dict.home.servicesTitle}
+            </h2>
           </Reveal>
 
           {/*
@@ -373,7 +377,7 @@ export async function Showcase({ org }: { org: Org }) {
           */}
           <Reveal
             group
-            className="scrollbar-none -mr-5 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 pr-5 sm:mr-0 sm:flex-wrap sm:justify-between sm:overflow-visible sm:pr-0"
+            className="scrollbar-none -mr-5 mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 pr-5 sm:mr-0 sm:flex-wrap sm:justify-between sm:overflow-visible sm:pr-0"
           >
             {families.map((family) => (
               <Link
@@ -420,7 +424,7 @@ export async function Showcase({ org }: { org: Org }) {
                   )}
                 </span>
 
-                <span className="display mt-3 block text-[0.875rem] leading-tight text-[var(--ink)]">
+                <span className="display mt-3 block min-h-[2.5em] text-[0.875rem] leading-tight text-[var(--ink)]">
                   {family.name}
                 </span>
                 <span className="tabular mt-1 block text-[0.6875rem] text-[var(--ink-faint)]">
@@ -428,6 +432,27 @@ export async function Showcase({ org }: { org: Org }) {
                 </span>
               </Link>
             ))}
+          </Reveal>
+
+          {/*
+            O BOTÃO VEM DEPOIS DE SE VER.
+
+            Estava antes das fotografias, encostado à esquerda, num
+            rectângulo de canto vivo — o fio quadrado do papel timbrado,
+            que serve num cartão e fica seco num botão. Aqui é a mesma
+            forma do «marcar agora» do fecho: cheia, redonda, com uma
+            sombra quente por baixo. Duas acções da mesma página com a
+            mesma forma leem-se ambas como botões.
+
+            E não repete o título: «ver o preçário» diz o que está do
+            outro lado, «nossos serviços» dizia outra vez o que já está
+            escrito em cima.
+          */}
+          <Reveal className="mt-10 flex justify-center">
+            <Link href="/servicos" className="pilula-casa toque">
+              {dict.footer.links.services}
+              <span aria-hidden>&rarr;</span>
+            </Link>
           </Reveal>
         </div>
       </section>
@@ -466,6 +491,27 @@ export async function Showcase({ org }: { org: Org }) {
                 language={language}
               />
             ))}
+          </Reveal>
+
+          {/*
+            O BOTÃO VEM DEPOIS DE SE VER.
+
+            Estava antes das fotografias, encostado à esquerda, num
+            rectângulo de canto vivo — o fio quadrado do papel timbrado,
+            que serve num cartão e fica seco num botão. Aqui é a mesma
+            forma do «marcar agora» do fecho: cheia, redonda, com uma
+            sombra quente por baixo. Duas acções da mesma página com a
+            mesma forma leem-se ambas como botões.
+
+            E não repete o título: «ver o preçário» diz o que está do
+            outro lado, «nossos serviços» dizia outra vez o que já está
+            escrito em cima.
+          */}
+          <Reveal className="mt-10 flex justify-center">
+            <Link href="/servicos" className="pilula-casa toque">
+              {dict.footer.links.services}
+              <span aria-hidden>&rarr;</span>
+            </Link>
           </Reveal>
         </div>
       </section>
