@@ -142,6 +142,8 @@ export const es: Dictionary = {
     timeSubtitle: 'Los horarios de abajo ya cuentan con la duración total de la visita.',
     noSlots: 'No hay horarios libres este día.',
     noSlotsHint: 'Prueba otro día u otra profesional.',
+    noStaff: 'No hay profesional disponible para esta elección.',
+    noStaffHint: 'Cambiar de día no ayuda — vuelve atrás y elige otra profesional u otro servicio.',
     slotsAvailable: 'horarios libres',
     morning: 'Mañana',
     afternoon: 'Tarde',

@@ -155,6 +155,14 @@ export const pt = {
     timeSubtitle: 'Os horários abaixo já contam com a duração total da visita.',
     noSlots: 'Não há horários livres neste dia.',
     noSlotsHint: 'Experimente outro dia ou outra profissional.',
+    /*
+     * A profissional escolhida não dá, ou ninguém faz este serviço.
+     * Mandar «experimente outro dia» aqui era mandar bater à mesma
+     * porta para sempre: o que muda a resposta é a escolha, não a
+     * data.
+     */
+    noStaff: 'Não há profissional disponível para esta escolha.',
+    noStaffHint: 'Mudar de dia não ajuda — volte atrás e escolha outra profissional ou outro serviço.',
     slotsAvailable: 'horários livres',
     morning: 'Manhã',
     afternoon: 'Tarde',

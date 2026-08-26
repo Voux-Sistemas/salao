@@ -160,8 +160,9 @@ export default async function ServicoPage({
         {skilled.length === 0 ? (
           <div className="px-5 py-5 sm:px-6">
             <Notice tone="warn">
-              Ninguém tem esta habilidade — e por isso este serviço não
-              aparece em lado nenhum.
+              Ninguém tem esta habilidade — e por isso este serviço está
+              fora da montra e da marcação online. Volta sozinho assim que
+              alguém o souber fazer.
             </Notice>
           </div>
         ) : (

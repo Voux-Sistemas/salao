@@ -65,6 +65,25 @@ export default async function ServicosPage() {
           from service s
           join service_category c on c.id = s.category_id and c.is_active
          where s.org_id = ${org.id} and s.is_active and s.bookable_online
+         /*
+          * E QUE ALGUÉM SAIBA FAZER.
+          *
+          * A montra é uma promessa: o que está aqui, a casa faz. Um
+          * serviço sem ninguém com a habilidade levava a cliente ao
+          * funil para lhe dizer, três ecrãs depois, que não havia
+          * horas — em nenhum dia, para sempre. Aqui a pergunta é da
+          * organização inteira, não de uma loja: basta que alguém o
+          * faça nalguma casa para valer a pena mostrá-lo.
+          */
+         and exists (
+           select 1
+             from staff_skill ss
+             join staff st on st.id = ss.staff_id
+            where ss.service_id = s.id
+              and st.is_active
+              and st.accepts_online_booking
+              and st.org_id = ${org.id}
+         )
          -- Ordenar pelo nome português mantém a mesma ordem nas três
          -- línguas, que é o que a casa reconhece ao telefone.
          order by c.sort_order, c.name, s.sort_order, s.name

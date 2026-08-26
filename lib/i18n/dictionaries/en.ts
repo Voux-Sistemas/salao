@@ -142,6 +142,8 @@ export const en: Dictionary = {
     timeSubtitle: 'The times below already account for the full length of your visit.',
     noSlots: 'No times available on this day.',
     noSlotsHint: 'Try another day or another professional.',
+    noStaff: 'No professional is available for this choice.',
+    noStaffHint: 'Changing the day will not help — go back and pick another professional or service.',
     slotsAvailable: 'times available',
     morning: 'Morning',
     afternoon: 'Afternoon',

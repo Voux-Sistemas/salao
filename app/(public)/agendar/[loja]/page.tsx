@@ -119,6 +119,35 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
         join service_category c on c.id = s.category_id and c.is_active
         cross join lateral effective_service_pricing(s.id, ${unit.id}::uuid, null::uuid) e
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
+         /*
+          * E ALGUÉM O TEM DE SABER FAZER.
+          *
+          * Faltava esta linha, e custou uma manhã de trabalho à casa.
+          * Um serviço sem ninguém com a habilidade aparecia na ementa
+          * como qualquer outro: a cliente escolhia-o, não lhe era dada
+          * profissional nenhuma para escolher (não há nenhuma), e o
+          * passo da hora respondia «sem horas disponíveis» — a mesma
+          * frase de um dia cheio. Ela mudava de dia, e de dia, e nunca
+          * nenhum ia servir. Um beco sem saída que se dizia fila.
+          *
+          * O catálogo público promete o que a casa pode cumprir. Um
+          * serviço que ninguém faz não é uma promessa, é um engano, e
+          * some daqui até alguém ganhar a habilidade — que é a mesma
+          * regra do bookable_online, aplicada ao que a equipa sabe
+          * em vez do que a gestão marcou.
+          *
+          * Não se apaga nada: a ficha do serviço continua lá dentro,
+          * com o seu aviso, à espera de quem o saiba fazer.
+          */
+         and exists (
+           select 1
+             from staff_skill ss
+             join staff st on st.id = ss.staff_id
+             join staff_unit su on su.staff_id = st.id and su.unit_id = ${unit.id}
+            where ss.service_id = s.id
+              and st.is_active
+              and st.accepts_online_booking
+         )
        -- Pelo nome português, para a ordem ser a mesma nas três línguas.
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
@@ -139,7 +168,11 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
 
   const byId = new Map(services.map((s) => [s.id, s]))
 
-  // Um serviço desactivado entretanto é apanhado já — não só no fim.
+  // Um serviço que saiu da ementa entretanto — desactivado, escondido
+  // do online, ou sem ninguém que o faça — é apanhado já, e não três
+  // ecrãs à frente com uma frase que não explica nada. O `byId` só
+  // tem os marcáveis, portanto o carrinho limpa-se sozinho e a
+  // cliente é avisada em cima.
   const cart = parseCart(query[CART_PARAM]).filter((line) => byId.has(line.serviceId))
   const dropped = parseCart(query[CART_PARAM]).length !== cart.length
 

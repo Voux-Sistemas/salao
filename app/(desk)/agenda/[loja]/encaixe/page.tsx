@@ -396,23 +396,39 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                           <X className="h-3.5 w-3.5" />
                         </Link>
                       </div>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        <StaffChip
-                          href={withCart(setStaffAt(cart, index, null))}
-                          label="Sem preferência"
-                          active={line.staffId === null}
-                        />
-                        {eligible.map((option) => (
+                      {/*
+                        NINGUÉM NESTA LOJA O FAZ.
+
+                        Sem isto a linha mostrava só «Sem preferência» e
+                        o encaixe não dava hora nenhuma — sem nunca dizer
+                        porquê. A recepção ficava a mudar de dia à espera
+                        de uma vaga que não podia existir. A habilidade
+                        dá-se na ficha da pessoa, em Equipa.
+                      */}
+                      {eligible.length === 0 ? (
+                        <p className="mt-1.5 text-[0.75rem] text-[var(--warn)]">
+                          Ninguém nesta loja faz este serviço — não vai
+                          haver horas até alguém ganhar a habilidade.
+                        </p>
+                      ) : (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
                           <StaffChip
-                            key={option.staff_id}
-                            href={withCart(
-                              setStaffAt(cart, index, option.staff_id),
-                            )}
-                            label={option.staff_name}
-                            active={line.staffId === option.staff_id}
+                            href={withCart(setStaffAt(cart, index, null))}
+                            label="Sem preferência"
+                            active={line.staffId === null}
                           />
-                        ))}
-                      </div>
+                          {eligible.map((option) => (
+                            <StaffChip
+                              key={option.staff_id}
+                              href={withCart(
+                                setStaffAt(cart, index, option.staff_id),
+                              )}
+                              label={option.staff_name}
+                              active={line.staffId === option.staff_id}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </li>
                   )
                 })}

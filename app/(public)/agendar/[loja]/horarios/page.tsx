@@ -216,9 +216,27 @@ export default async function TimesPage({ params, searchParams }: Params) {
       ) : null}
 
       {slots.length === 0 ? (
+        /*
+          Três becos diferentes, três respostas. O «no_staff» levava a
+          frase do dia cheio — «experimente outro dia» — e era o pior
+          conselho possível: quando ninguém faz o serviço, ou a
+          profissional escolhida não o faz, nenhum dia do calendário vai
+          servir. Quem seguisse o conselho batia à mesma porta até
+          desistir.
+        */
         <Empty
-          title={problem === 'closed' ? dict.unit.closedToday : dict.funnel.noSlots}
-          hint={dict.funnel.noSlotsHint}
+          title={
+            problem === 'closed'
+              ? dict.unit.closedToday
+              : problem === 'no_staff'
+                ? dict.funnel.noStaff
+                : dict.funnel.noSlots
+          }
+          hint={
+            problem === 'no_staff'
+              ? dict.funnel.noStaffHint
+              : dict.funnel.noSlotsHint
+          }
         />
       ) : (
         <div className="mt-7 space-y-9">
