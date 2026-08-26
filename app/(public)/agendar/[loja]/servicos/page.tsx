@@ -6,6 +6,7 @@ import { Check, Plus, X } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { fill, getDictionary, getLanguage } from '@/lib/i18n'
+import { staffForDay } from '@/lib/availability'
 import { formatCents } from '@/lib/money'
 import { addDays, formatDayLong, formatDuration, today, type IsoDay } from '@/lib/time'
 import {
@@ -38,6 +39,8 @@ type ServiceRow = {
   description: string | null
   duration_minutes: number
   price_cents: number
+  buffer_before_minutes: number
+  buffer_after_minutes: number
   image_url: string | null
   image_alt: string | null
 }
@@ -91,7 +94,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
   // dele na sua língua, não só a moldura à volta.
   const language = await getLanguage()
 
-  const [dict, services, staffRows] = await Promise.all([
+  const [dict, services, team] = await Promise.all([
     getDictionary(),
     sql<ServiceRow[]>`
       select c.id as category_id,
@@ -101,6 +104,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
              name_in(${language}, s.description,
                      s.description_en, s.description_es) as description,
              e.duration_minutes, e.price_cents,
+             s.buffer_before_minutes, s.buffer_after_minutes,
              s.image_url, s.image_alt
         from service s
         join service_category c on c.id = s.category_id and c.is_active
@@ -130,22 +134,20 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
        -- Pelo nome português, para a ordem ser a mesma nas três línguas.
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
-    sql<{ id: string; public_name: string }[]>`
-      select s.id, coalesce(s.public_alias, s.name) as public_name
-        from staff s
-        join staff_unit su on su.staff_id = s.id and su.unit_id = ${unit.id}
-       where s.id = ${staffId}
-         and s.org_id = ${org.id}
-         and s.is_active
-         and s.accepts_online_booking
-    `,
+    // A mesma resposta do passo anterior, fresca: quem e quanto tempo
+    // livre seguido lhe resta. E dela que sai o "ainda cabe?" de cada
+    // servico la em baixo.
+    staffForDay(unit, day, 'online'),
   ])
 
   // A profissional do endereço pode já não servir — saiu da equipa,
-  // fechou-se ao online, mudou de loja. Volta-se ao passo dela em vez
-  // de montar uma visita à volta de alguém que não existe.
-  const person = staffRows[0]
-  if (!person) redirect(funnelHref(`${here}/profissional`, { day }))
+  // fechou-se ao online, mudou de loja, ou alguém lhe levou entretanto
+  // o último bocado do dia. Volta-se ao passo dela em vez de montar uma
+  // visita à volta de alguém que não pode atender.
+  const person = team.find((p) => p.id === staffId)
+  if (!person || !person.available) {
+    redirect(funnelHref(`${here}/profissional`, { day }))
+  }
 
   const byId = new Map(services.map((s) => [s.id, s]))
 
@@ -181,6 +183,31 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
   const addLabel =
     clean.length === 0 ? dict.funnel.chooseService : dict.funnel.addService
 
+  // O QUE AINDA CABE NO DIA DELA.
+  //
+  // Foi aqui que o funil deixava a cliente cair num beco: com meia hora
+  // livre, a ementa oferecia uma coloração de duas — e o «não dá» só
+  // aparecia dois ecrãs à frente, na página das horas, já com tudo
+  // escolhido. A regra dos livros de marcações é só se oferecer o que
+  // se pode cumprir, e por isso cada serviço é medido contra o maior
+  // bocado livre seguido que lhe resta no dia: os serviços de uma
+  // visita correm seguidos, e o que conta na agenda é a duração mais as
+  // folgas de preparação, com o intervalo da casa entre serviços.
+  //
+  // A conta é necessária mas não exacta (a grelha de horários e os
+  // recursos físicos só se decidem no passo seguinte) — por isso erra
+  // sempre para o lado de oferecer, e a página das horas continua a ser
+  // quem manda.
+  const gapMin = unit.gap_between_services_minutes
+  const occupies = (s: ServiceRow) =>
+    s.duration_minutes + s.buffer_before_minutes + s.buffer_after_minutes
+  const cartOccupies =
+    clean.reduce((sum, line) => {
+      const s = byId.get(line.serviceId)
+      return sum + (s ? occupies(s) : 0)
+    }, 0) +
+    Math.max(0, clean.length - 1) * gapMin
+
   const categories = new Map<string, { name: string; services: ServiceRow[] }>()
   for (const row of services) {
     const entry = categories.get(row.category_id) ?? {
@@ -213,7 +240,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--line-soft)] pb-5">
         <p className="text-[0.9375rem] text-[var(--ink)]">
           <span className="text-[var(--ink-faint)]">{dict.funnel.withStaff} </span>
-          {person.public_name}
+          {person.publicName}
           <span className="text-[var(--ink-faint)]"> · </span>
           <span className="first-letter:uppercase">
             {formatDayLong(day, unit.timezone, language)}
@@ -283,15 +310,25 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                   )
                   const chosen = chosenAt >= 0
                   const full = clean.length >= MAX_CART_LINES
+                  // Não cabe no maior bocado livre que lhe resta: fica
+                  // cinzento com o motivo, como uma profissional de
+                  // folga. Tirar continua sempre possível.
+                  const noFit =
+                    !chosen &&
+                    cartOccupies +
+                      (clean.length > 0 ? gapMin : 0) +
+                      occupies(service) >
+                      person.longestFreeMinutes
 
                   const price = formatCents(
                     service.price_cents,
                     org.currency,
                     language,
                   )
-                  const detail =
-                    formatDuration(service.duration_minutes, language) +
-                    (service.description ? ` · ${service.description}` : '')
+                  const detail = noFit
+                    ? `${formatDuration(service.duration_minutes, language)} · ${dict.funnel.serviceNoFit}`
+                    : formatDuration(service.duration_minutes, language) +
+                      (service.description ? ` · ${service.description}` : '')
 
                   /* A linha inteira é o alvo. Antes o que se tocava era um
                      botão de 95 por 32 debaixo do nome: no polegar isso é
@@ -367,9 +404,10 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                       key={service.id}
                       className="border-b border-[var(--line-soft)] last:border-0"
                     >
-                      {full && !chosen ? (
-                        // Visita cheia: a linha fica lá para se ler, mas
-                        // deixa de prometer um toque que não faz nada.
+                      {(full || noFit) && !chosen ? (
+                        // Visita cheia, ou serviço que já não cabe: a
+                        // linha fica lá para se ler, mas deixa de
+                        // prometer um toque que não faz nada.
                         <div className={clsx(rowClass, 'opacity-40')}>{inside}</div>
                       ) : (
                         <Link

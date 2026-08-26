@@ -6,6 +6,7 @@ import {
   addDays,
   atMinutes,
   dayStart,
+  isoRange,
   today,
   weekdayOf,
   type IsoDay,
@@ -691,6 +692,12 @@ export type StaffDay = {
   reason: StaffDayProblem
   /** Minutos livres que ainda restam no dia. Zero quando não há. */
   freeMinutes: number
+  /**
+   * O maior bocado livre seguido, em minutos. É ele que diz se uma
+   * visita inteira ainda cabe: os serviços correm seguidos, e vinte
+   * minutos aqui mais vinte ali não fazem uma visita de quarenta.
+   */
+  longestFreeMinutes: number
 }
 
 /**
@@ -729,7 +736,12 @@ export async function staffForDay(
   if (team.length === 0) return []
 
   type Row = (typeof team)[number]
-  const shape = (row: Row, reason: StaffDayProblem, freeMinutes: number): StaffDay => ({
+  const shape = (
+    row: Row,
+    reason: StaffDayProblem,
+    freeMinutes: number,
+    longestFreeMinutes = 0,
+  ): StaffDay => ({
     id: row.id,
     publicName: row.public_alias ?? row.name,
     avatarUrl: row.avatar_url,
@@ -738,6 +750,7 @@ export async function staffForDay(
     available: reason === 'none',
     reason,
     freeMinutes,
+    longestFreeMinutes,
   })
 
   // Loja fechada: ninguém trabalha, e o motivo é da casa, não da pessoa.
@@ -827,8 +840,73 @@ export async function staffForDay(
     const minutes = Math.round(totalMinutes(free))
     // Menos do que a menor fatia da loja não dá para marcar nada.
     if (minutes < unit.slot_granularity_minutes) return shape(row, 'full', 0)
-    return shape(row, 'none', minutes)
+    const longest = Math.round(
+      free.reduce((top, piece) => Math.max(top, piece.end - piece.start), 0) / 60_000,
+    )
+    return shape(row, 'none', minutes, longest)
   })
+}
+
+// ---------------------------------------------------------------------
+// O pulso de vários dias, para a tira
+// ---------------------------------------------------------------------
+
+/**
+ * O que um dia tem para oferecer, visto de longe: a loja está fechada,
+ * está aberta mas ninguém tem vaga, ou há por onde escolher.
+ */
+export type DayPulse = 'closed' | 'nobody' | 'ok'
+
+/**
+ * O pulso de uma lista de dias. É isto que deixa a tira dos dias dizer
+ * a verdade — um dia sem ninguém fica apagado ANTES de a cliente lhe
+ * carregar em cima, em vez de a deixar entrar para encontrar a casa
+ * vazia. (O padrão é o dos livros de marcações: só as datas com vaga
+ * são datas.)
+ */
+export async function pulseOfDays(
+  unit: Unit,
+  days: readonly IsoDay[],
+  channel: Channel = 'online',
+  now: Date = new Date(),
+): Promise<Map<IsoDay, DayPulse>> {
+  const teams = await Promise.all(
+    days.map((day) => staffForDay(unit, day, channel, now)),
+  )
+  const out = new Map<IsoDay, DayPulse>()
+  days.forEach((day, i) => {
+    const team = teams[i] ?? []
+    out.set(
+      day,
+      team.some((p) => p.available)
+        ? 'ok'
+        : team.some((p) => p.reason !== 'closed')
+          ? 'nobody'
+          : 'closed',
+    )
+  })
+  return out
+}
+
+/**
+ * O primeiro dia, a partir de `from`, em que alguém tem vaga. É onde o
+ * funil abre por omissão: aterrar em «hoje» com o dia cheio obrigava a
+ * cliente a começar por um beco. Procura às semanas para não bombardear
+ * a base, e desiste no fim do horizonte de marcação.
+ */
+export async function firstOpenDay(
+  unit: Unit,
+  from: IsoDay,
+  lastDay: IsoDay,
+  channel: Channel = 'online',
+  now: Date = new Date(),
+): Promise<IsoDay | null> {
+  for (let cursor = from; cursor <= lastDay; cursor = addDays(cursor, 7)) {
+    const week = isoRange(cursor, 7).filter((d) => d <= lastDay)
+    const pulse = await pulseOfDays(unit, week, channel, now)
+    for (const day of week) if (pulse.get(day) === 'ok') return day
+  }
+  return null
 }
 
 /** O complemento de uma lista de intervalos, para a poder subtrair. */

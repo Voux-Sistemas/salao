@@ -30,6 +30,7 @@ export function DayStrip({
   dict,
   href,
   label,
+  disabled,
 }: {
   day: IsoDay
   firstDay: IsoDay
@@ -40,6 +41,12 @@ export function DayStrip({
   href: (day: IsoDay) => string
   /** Nome da tira para quem a ouve em vez de a ver. */
   label: string
+  /**
+   * Dias sem nada para oferecer: ficam apagados e sem ligação, como as
+   * profissionais indisponíveis. Só as datas com vaga são datas — quem
+   * não pode ser escolhido não deve ser clicável.
+   */
+  disabled?: ReadonlySet<IsoDay>
 }) {
   const strip = isoRange(day, 7).filter((d) => d <= lastDay)
   const previous = day > firstDay ? maxDay(addDays(day, -7), firstDay) : null
@@ -60,25 +67,45 @@ export function DayStrip({
               : offset === 1
                 ? dict.funnel.tomorrow
                 : null
+          const off = value !== day && (disabled?.has(value) ?? false)
+          const inside = (
+            <>
+              <span className="text-[0.5625rem] tracking-[0.14em] uppercase">
+                {name ?? formatWeekdayShort(value, timezone, language)}
+              </span>
+              <span className="tabular display text-xl leading-none">
+                {value.slice(8, 10)}
+              </span>
+            </>
+          )
+          const shape =
+            'flex h-[4.75rem] flex-col items-center justify-center gap-1 border transition-all duration-200'
           return (
             <li key={value} className={index > 3 ? 'hidden sm:block' : undefined}>
-              <Link
-                href={href(value)}
-                aria-current={value === day ? 'date' : undefined}
-                className={clsx(
-                  'flex h-[4.75rem] flex-col items-center justify-center gap-1 border transition-all duration-200',
-                  value === day
-                    ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[var(--shadow-soft)]'
-                    : 'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:-translate-y-0.5 hover:border-[var(--accent)] hover:text-[var(--accent)]',
-                )}
-              >
-                <span className="text-[0.5625rem] tracking-[0.14em] uppercase">
-                  {name ?? formatWeekdayShort(value, timezone, language)}
-                </span>
-                <span className="tabular display text-xl leading-none">
-                  {value.slice(8, 10)}
-                </span>
-              </Link>
+              {off ? (
+                <div
+                  aria-disabled
+                  className={clsx(
+                    shape,
+                    'border-[var(--line-soft)] bg-transparent text-[var(--ink-faint)] opacity-55',
+                  )}
+                >
+                  {inside}
+                </div>
+              ) : (
+                <Link
+                  href={href(value)}
+                  aria-current={value === day ? 'date' : undefined}
+                  className={clsx(
+                    shape,
+                    value === day
+                      ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[var(--shadow-soft)]'
+                      : 'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:-translate-y-0.5 hover:border-[var(--accent)] hover:text-[var(--accent)]',
+                  )}
+                >
+                  {inside}
+                </Link>
+              )}
             </li>
           )
         })}

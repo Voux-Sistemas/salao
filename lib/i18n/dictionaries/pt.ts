@@ -144,6 +144,7 @@ export const pt = {
     dayTitle: 'Que dia lhe dá jeito?',
     daySubtitle: 'Escolha o dia e depois veja quem está de serviço.',
     dayAction: 'Ver quem está',
+    dayFull: 'Este dia já está cheio. Os dias acesos na tira ainda têm vaga.',
     staffTitle: 'Com quem quer ser atendida?',
     staffSubtitle: 'Quem está de serviço neste dia aparece a cheio. Os outros ficam apagados.',
     staffOff: 'Folga',
@@ -173,6 +174,8 @@ export const pt = {
     timeSubtitle: 'Os horários abaixo já contam com a duração total da visita.',
     noSlots: 'Não há horários livres neste dia.',
     noSlotsHint: 'Experimente outro dia ou outra profissional.',
+    nearbyDays: 'Os dias mais próximos com vaga',
+    serviceNoFit: 'Já não cabe no tempo livre deste dia',
     /*
      * A profissional escolhida não dá, ou ninguém faz este serviço.
      * Mandar «experimente outro dia» aqui era mandar bater à mesma

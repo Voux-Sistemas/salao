@@ -2,13 +2,13 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getUnitBySlug } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
-import { openWeekdaysFor } from '@/lib/hours'
+import { firstOpenDay, pulseOfDays } from '@/lib/availability'
 import {
   addDays,
   daysBetween,
   formatDayLong,
+  isoRange,
   today,
-  weekdayOf,
   type IsoDay,
 } from '@/lib/time'
 import { DAY_PARAM, first, funnelHref } from '@/lib/cart'
@@ -80,29 +80,33 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
   const unit = await getUnitBySlug(loja)
   if (!unit) notFound()
 
-  const [dict, language, abertura] = await Promise.all([
-    getDictionary(),
-    getLanguage(),
-    openWeekdaysFor([unit.id]),
-  ])
+  const [dict, language] = await Promise.all([getDictionary(), getLanguage()])
 
   const firstDay = today(unit.timezone)
   const lastDay = addDays(firstDay, unit.max_lead_days)
   const asked = first(query[DAY_PARAM])
-  const day: IsoDay =
+  const askedDay: IsoDay | null =
     asked && ISO_DAY.test(asked)
       ? asked < firstDay
         ? firstDay
         : asked > lastDay
           ? lastDay
-          : asked
-      : firstDay
+          : (asked as IsoDay)
+      : null
 
-  // Um dia em que a casa não abre não tem equipa nenhuma para mostrar,
-  // e vale a pena dizê-lo aqui em vez de no passo seguinte, com o ecrã
-  // já vazio.
-  const openWeekdays = abertura.get(unit.id) ?? []
-  const closed = !openWeekdays.includes(weekdayOf(day))
+  // Sem dia pedido, o funil abre no primeiro dia em que alguém tem
+  // vaga — aterrar em «hoje» com o dia cheio era começar por um beco.
+  // Quem pede um dia concreto é respeitado, mesmo que ele esteja morto:
+  // a resposta é a explicação, com os dias vivos acesos na tira.
+  const day: IsoDay =
+    askedDay ?? (await firstOpenDay(unit, firstDay, lastDay, 'online')) ?? firstDay
+
+  // O pulso da semana visível: um dia sem ninguém fica apagado na tira
+  // ANTES de a cliente lhe carregar em cima.
+  const week = isoRange(day, 7).filter((d) => d <= lastDay)
+  const pulse = await pulseOfDays(unit, week, 'online')
+  const deadDays = new Set(week.filter((d) => pulse.get(d) !== 'ok'))
+  const state = pulse.get(day) ?? 'ok'
 
   const here = `/agendar/${unit.slug}`
   const offset = daysBetween(firstDay, day)
@@ -125,6 +129,7 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
         dict={dict}
         href={(value) => funnelHref(here, { day: value })}
         label={dict.funnel.steps.day}
+        disabled={deadDays}
       />
 
       {/* A data por extenso, em serifa: confirma em palavras o que a
@@ -141,11 +146,7 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
         ) : null}
       </div>
 
-      {closed ? (
-        <div className="mt-8">
-          <Notice tone="warn">{dict.unit.closedToday}</Notice>
-        </div>
-      ) : (
+      {state === 'ok' ? (
         <div className="mt-8">
           <ButtonLink
             href={funnelHref(`${here}/profissional`, { day })}
@@ -154,6 +155,14 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
           >
             {dict.funnel.dayAction}
           </ButtonLink>
+        </div>
+      ) : (
+        // Fechada é uma coisa, cheia é outra — e a tira acima já mostra
+        // acesos os dias que servem, portanto a saída está à vista.
+        <div className="mt-8">
+          <Notice tone="warn">
+            {state === 'closed' ? dict.unit.closedToday : dict.funnel.dayFull}
+          </Notice>
         </div>
       )}
     </FunnelShell>

@@ -8,8 +8,11 @@ import { formatCents } from '@/lib/money'
 import {
   addDays,
   formatDayLong,
+  formatDayShort,
   formatDuration,
   formatMinutes,
+  formatWeekdayShort,
+  isoRange,
   today,
   type IsoDay,
 } from '@/lib/time'
@@ -86,7 +89,43 @@ export default async function TimesPage({ params, searchParams }: Params) {
 
   const [dict, language] = await Promise.all([getDictionary(), getLanguage()])
 
-  const { slots, problem } = await availableSlots(unit, day, cart, 'online')
+  // A semana visível responde toda de uma vez: aqui já se sabe o
+  // serviço e a pessoa, por isso a pergunta de cada dia é a exacta —
+  // «esta visita cabe?» — e não o pulso grosseiro dos passos de trás.
+  // Um dia sem hora nenhuma fica apagado na tira antes do toque.
+  const week = isoRange(day, 7).filter((d) => d <= lastDay)
+  const weekSlots = await Promise.all(
+    week.map((d) => availableSlots(unit, d, cart, 'online')),
+  )
+  const byDay = new Map(week.map((d, i) => [d, weekSlots[i]!]))
+  const { slots, problem } = byDay.get(day)!
+  const deadDays = new Set(
+    week.filter((d) => (byDay.get(d)?.slots.length ?? 0) === 0),
+  )
+
+  // Quando o dia escolhido está vazio, a saída não é um conselho — é
+  // uma porta. Procuram-se os dias mais próximos onde ESTA visita com
+  // ESTA profissional ainda cabe, às semanas, e param-se três achados.
+  // Se o problema é «ninguém faz este serviço», nenhum dia vai servir,
+  // e procurar seria prometer o que não há.
+  const nearby: { day: IsoDay; count: number }[] = []
+  if (slots.length === 0 && problem !== 'no_staff') {
+    for (
+      let cursor = firstDay;
+      cursor <= lastDay && nearby.length < 3;
+      cursor = addDays(cursor, 7)
+    ) {
+      const batch = isoRange(cursor, 7).filter((d) => d <= lastDay)
+      const found = await Promise.all(
+        batch.map(async (d) => {
+          if (d === day) return null
+          const hit = byDay.get(d) ?? (await availableSlots(unit, d, cart, 'online'))
+          return hit.slots.length > 0 ? { day: d, count: hit.slots.length } : null
+        }),
+      )
+      for (const f of found) if (f && nearby.length < 3) nearby.push(f)
+    }
+  }
 
   const groups: { label: string; slots: Slot[] }[] = [
     {
@@ -177,6 +216,7 @@ export default async function TimesPage({ params, searchParams }: Params) {
           funnelHref(`${here}/horarios`, { cart, day: value, staffId })
         }
         label={dict.funnel.steps.day}
+        disabled={deadDays}
       />
 
       {/* A data por extenso, em serifa: é o cabeçalho do que vem abaixo. */}
@@ -221,24 +261,53 @@ export default async function TimesPage({ params, searchParams }: Params) {
               ? dict.funnel.noStaffHint
               : dict.funnel.noSlotsHint
           }
-          // «Volte atrás» tem agora dois sítios para onde voltar, e o
-          // botão do navegador só conhece um. As duas portas ficam aqui
-          // escritas — trocar de pessoa ou trocar de serviço — em vez de
-          // se pedir à cliente que adivinhe qual delas resolve.
+          // Um beco nunca acaba em conselho. Primeiro as portas que
+          // levam mesmo a uma hora — os dias mais próximos onde esta
+          // visita cabe, com a conta de horários à vista — e só depois
+          // as saídas de recurso: trocar de pessoa ou de serviço.
           action={
-            <div className="flex flex-wrap justify-center gap-3">
-              <ButtonLink
-                href={funnelHref(`${here}/profissional`, { day })}
-                variant="outline"
-              >
-                {dict.funnel.changeStaff}
-              </ButtonLink>
-              <ButtonLink
-                href={funnelHref(`${here}/servicos`, { day, staffId, cart })}
-                variant="outline"
-              >
-                {dict.funnel.changeServices}
-              </ButtonLink>
+            <div className="flex flex-col items-center gap-5">
+              {nearby.length > 0 ? (
+                <div className="flex flex-col items-center gap-3">
+                  <span className="eyebrow text-[var(--ink-faint)]">
+                    {dict.funnel.nearbyDays}
+                  </span>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {nearby.map((option) => (
+                      <ButtonLink
+                        key={option.day}
+                        href={funnelHref(`${here}/horarios`, {
+                          cart,
+                          day: option.day,
+                          staffId,
+                        })}
+                      >
+                        <span className="first-letter:uppercase">
+                          {formatWeekdayShort(option.day, unit.timezone, language)}{' '}
+                          {formatDayShort(option.day, unit.timezone, language)}
+                        </span>
+                        <span className="tabular opacity-70">
+                          · {option.count} {dict.funnel.slotsAvailable}
+                        </span>
+                      </ButtonLink>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <div className="flex flex-wrap justify-center gap-3">
+                <ButtonLink
+                  href={funnelHref(`${here}/profissional`, { day })}
+                  variant="outline"
+                >
+                  {dict.funnel.changeStaff}
+                </ButtonLink>
+                <ButtonLink
+                  href={funnelHref(`${here}/servicos`, { day, staffId, cart })}
+                  variant="outline"
+                >
+                  {dict.funnel.changeServices}
+                </ButtonLink>
+              </div>
             </div>
           }
         />

@@ -4,11 +4,12 @@ import { notFound, redirect } from 'next/navigation'
 import clsx from 'clsx'
 import { getUnitBySlug } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
-import { staffForDay, type StaffDay } from '@/lib/availability'
+import { pulseOfDays, staffForDay, type StaffDay } from '@/lib/availability'
 import {
   addDays,
   formatDayLong,
   formatDuration,
+  isoRange,
   today,
   type IsoDay,
 } from '@/lib/time'
@@ -74,11 +75,16 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
   }
   const day = asked as IsoDay
 
-  const [dict, language, team] = await Promise.all([
+  // A semana visível na tira: os dias sem ninguém ficam apagados lá,
+  // para a troca de dia nunca levar a um ecrã todo cinzento.
+  const week = isoRange(day, 7).filter((d) => d <= lastDay)
+  const [dict, language, team, pulse] = await Promise.all([
     getDictionary(),
     getLanguage(),
     staffForDay(unit, day, 'online'),
+    pulseOfDays(unit, week, 'online'),
   ])
+  const deadDays = new Set(week.filter((d) => pulse.get(d) !== 'ok'))
 
   const anyone = team.some((person) => person.available)
 
@@ -103,6 +109,7 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
         dict={dict}
         href={(value) => funnelHref(`${here}/profissional`, { day: value })}
         label={dict.funnel.steps.day}
+        disabled={deadDays}
       />
 
       <div className="mt-8 flex items-baseline gap-4">
