@@ -8,7 +8,7 @@ import { ButtonLink } from '@/components/ui'
 /**
  * A MOLDURA DO FUNIL.
  *
- * Os quatro passos partilham o mesmo palco: uma faixa escura em cima
+ * Os cinco passos partilham o mesmo palco: uma faixa escura em cima
  * que anuncia onde se está, o corpo em porcelana e — quando já há
  * escolhas feitas — a coluna do lado com o resumo da visita. É a
  * moldura que dá peso a passos que, por si, têm pouco conteúdo: sem
@@ -27,7 +27,7 @@ export function FunnelShell({
   aside,
   children,
 }: {
-  step: 1 | 2 | 3 | 4
+  step: 1 | 2 | 3 | 4 | 5 | 6
   dict: Dictionary
   /** Endereço de cada passo já percorrido; null desliga a ligação. */
   hrefs?: (string | null)[]

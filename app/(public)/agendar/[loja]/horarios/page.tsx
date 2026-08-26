@@ -1,27 +1,31 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import clsx from 'clsx'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { availableSlots, type Slot } from '@/lib/availability'
 import { formatCents } from '@/lib/money'
 import {
   addDays,
-  daysBetween,
   formatDayLong,
   formatDuration,
   formatMinutes,
-  formatWeekdayShort,
-  isoRange,
   today,
   type IsoDay,
 } from '@/lib/time'
-import { CART_PARAM, DAY_PARAM, first, funnelHref, parseCart } from '@/lib/cart'
+import {
+  CART_PARAM,
+  DAY_PARAM,
+  STAFF_PARAM,
+  first,
+  funnelHref,
+  parseCart,
+  parseStaff,
+} from '@/lib/cart'
 import { serviceNamesFor } from '@/lib/catalog-names'
-import { Empty, Notice } from '@/components/ui'
+import { ButtonLink, Empty, Notice } from '@/components/ui'
 import { FunnelShell, VisitSummary } from '@/components/funnel-shell'
+import { DayStrip } from '@/components/day-strip'
 import { Reveal } from '@/components/reveal'
 
 type Params = {
@@ -42,7 +46,13 @@ export async function generateMetadata(): Promise<Metadata> {
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
- * Passo 3 — escolher o dia e a hora.
+ * Passo 5 — escolher a hora.
+ *
+ * O dia e a profissional já vêm decididos de trás, e é por isso que
+ * este passo é agora o último: com o serviço escolhido sabe-se quanto
+ * tempo é preciso reservar, e todas as horas oferecidas aqui cabem
+ * mesmo. Ao contrário — a hora antes do serviço — ofereciam-se horas
+ * que a visita não chegava a caber, e a cliente descobria-o no fim.
  *
  * Os horários oferecidos são os do CONJUNTO: já contam com a duração de
  * todos os serviços, com as folgas, com o intervalo entre eles e com o
@@ -55,30 +65,28 @@ export default async function TimesPage({ params, searchParams }: Params) {
   if (!unit) notFound()
 
   const here = `/agendar/${unit.slug}`
-  const cart = parseCart(query[CART_PARAM])
+  const firstDay = today(unit.timezone)
+  const lastDay = addDays(firstDay, unit.max_lead_days)
+  const askedDay = first(query[DAY_PARAM])
+  const staffId = parseStaff(query[STAFF_PARAM])
 
-  // Cada passo revalida o anterior. Sem carrinho, volta-se atrás.
-  if (cart.length === 0) redirect(here)
+  // Cada passo revalida o anterior, e cada um manda de volta ao seu:
+  // sem dia ao princípio, sem profissional ao passo dela, sem serviço
+  // à ementa — sempre com o que já estava escolhido intacto.
+  if (!askedDay || !ISO_DAY.test(askedDay) || askedDay < firstDay || askedDay > lastDay) {
+    redirect(here)
+  }
+  const day = askedDay as IsoDay
+  if (!staffId) redirect(funnelHref(`${here}/profissional`, { day }))
+
+  // A profissional é a da visita inteira: as linhas do endereço podem
+  // vir de uma ligação antiga, e é o `?p=` que manda.
+  const cart = parseCart(query[CART_PARAM]).map((line) => ({ ...line, staffId }))
+  if (cart.length === 0) redirect(funnelHref(`${here}/servicos`, { day, staffId }))
 
   const [dict, language] = await Promise.all([getDictionary(), getLanguage()])
 
-  const firstDay = today(unit.timezone)
-  const lastDay = addDays(firstDay, unit.max_lead_days)
-  const asked = first(query[DAY_PARAM])
-  const day: IsoDay =
-    asked && ISO_DAY.test(asked)
-      ? asked < firstDay
-        ? firstDay
-        : asked > lastDay
-          ? lastDay
-          : asked
-      : firstDay
-
   const { slots, problem } = await availableSlots(unit, day, cart, 'online')
-
-  const strip = isoRange(day, 7).filter((d) => d <= lastDay)
-  const previous = day > firstDay ? maxDay(addDays(day, -7), firstDay) : null
-  const next = addDays(day, 7) <= lastDay ? addDays(day, 7) : null
 
   const groups: { label: string; slots: Slot[] }[] = [
     {
@@ -107,9 +115,16 @@ export default async function TimesPage({ params, searchParams }: Params) {
 
   return (
     <FunnelShell
-      step={3}
+      step={5}
       dict={dict}
-      hrefs={['/agendar', funnelHref(here, { cart }), null, null]}
+      hrefs={[
+        '/agendar',
+        funnelHref(here, { day }),
+        funnelHref(`${here}/profissional`, { day }),
+        funnelHref(`${here}/servicos`, { day, staffId, cart }),
+        null,
+        null,
+      ]}
       eyebrow={unit.name}
       title={dict.funnel.timeTitle}
       subtitle={dict.funnel.timeSubtitle}
@@ -143,57 +158,26 @@ export default async function TimesPage({ params, searchParams }: Params) {
         ) : null
       }
     >
-      {/* -------------------------------------------------- os dias --- */}
-      <nav className="flex items-stretch gap-2" aria-label={dict.funnel.steps.time}>
-        <StripArrow
-          href={
-            previous ? funnelHref(here + '/horarios', { cart, day: previous }) : null
-          }
-          label={dict.funnel.previousDay}
-        >
-          <ChevronLeft size={16} />
-        </StripArrow>
-
-        <ul className="grid flex-1 grid-cols-4 gap-2 sm:grid-cols-7">
-          {strip.map((value, index) => {
-            const offset = daysBetween(firstDay, value)
-            const label =
-              offset === 0
-                ? dict.funnel.today
-                : offset === 1
-                  ? dict.funnel.tomorrow
-                  : null
-            return (
-              <li key={value} className={index > 3 ? 'hidden sm:block' : undefined}>
-                <Link
-                  href={funnelHref(here + '/horarios', { cart, day: value })}
-                  aria-current={value === day ? 'date' : undefined}
-                  className={clsx(
-                    'flex h-[4.75rem] flex-col items-center justify-center gap-1 border transition-all duration-200',
-                    value === day
-                      ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[var(--shadow-soft)]'
-                      : 'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:-translate-y-0.5 hover:border-[var(--accent)] hover:text-[var(--accent)]',
-                  )}
-                >
-                  <span className="text-[0.5625rem] uppercase tracking-[0.14em]">
-                    {label ?? formatWeekdayShort(value, unit.timezone, language)}
-                  </span>
-                  <span className="tabular display text-xl leading-none">
-                    {dayNumber(value)}
-                  </span>
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-
-        <StripArrow
-          href={next ? funnelHref(here + '/horarios', { cart, day: next }) : null}
-          label={dict.funnel.nextDay}
-        >
-          <ChevronRight size={16} />
-        </StripArrow>
-      </nav>
+      {/* -------------------------------------------------- os dias ---
+          A tira fica, e continua a navegar: mudar de ideias sobre o dia
+          quando se está a olhar para as horas é o gesto mais natural do
+          funil, e mandá-la três passos atrás para isso era castigá-la
+          por mudar de ideias. Quem está de serviço volta a ser
+          verificado — a profissional escolhida pode folgar na quinta, e
+          nesse caso o que aparece em baixo é a explicação, não uma
+          grelha vazia. */}
+      <DayStrip
+        day={day}
+        firstDay={firstDay}
+        lastDay={lastDay}
+        timezone={unit.timezone}
+        language={language}
+        dict={dict}
+        href={(value) =>
+          funnelHref(`${here}/horarios`, { cart, day: value, staffId })
+        }
+        label={dict.funnel.steps.day}
+      />
 
       {/* A data por extenso, em serifa: é o cabeçalho do que vem abaixo. */}
       <div className="mt-8 flex items-baseline gap-4">
@@ -237,6 +221,26 @@ export default async function TimesPage({ params, searchParams }: Params) {
               ? dict.funnel.noStaffHint
               : dict.funnel.noSlotsHint
           }
+          // «Volte atrás» tem agora dois sítios para onde voltar, e o
+          // botão do navegador só conhece um. As duas portas ficam aqui
+          // escritas — trocar de pessoa ou trocar de serviço — em vez de
+          // se pedir à cliente que adivinhe qual delas resolve.
+          action={
+            <div className="flex flex-wrap justify-center gap-3">
+              <ButtonLink
+                href={funnelHref(`${here}/profissional`, { day })}
+                variant="outline"
+              >
+                {dict.funnel.changeStaff}
+              </ButtonLink>
+              <ButtonLink
+                href={funnelHref(`${here}/servicos`, { day, staffId, cart })}
+                variant="outline"
+              >
+                {dict.funnel.changeServices}
+              </ButtonLink>
+            </div>
+          }
         />
       ) : (
         <div className="mt-7 space-y-9">
@@ -251,9 +255,10 @@ export default async function TimesPage({ params, searchParams }: Params) {
                   {group.slots.map((slot) => (
                     <li key={slot.startsAt.toISOString()}>
                       <Link
-                        href={funnelHref(here + '/confirmar', {
+                        href={funnelHref(`${here}/confirmar`, {
                           cart,
                           day,
+                          staffId,
                           time: slot.startsAt.toISOString(),
                         })}
                         className="tabular flex h-12 items-center justify-center border border-[var(--line-soft)] bg-[var(--surface-raised)] text-sm text-[var(--ink)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] hover:shadow-[var(--shadow-soft)]"
@@ -273,41 +278,3 @@ export default async function TimesPage({ params, searchParams }: Params) {
   )
 }
 
-function StripArrow({
-  href,
-  label,
-  children,
-}: {
-  href: string | null
-  label: string
-  children: React.ReactNode
-}) {
-  const shape =
-    'flex w-10 shrink-0 items-center justify-center border transition-colors'
-  if (!href) {
-    return (
-      <span
-        aria-hidden
-        className={clsx(shape, 'border-[var(--line-soft)] text-[var(--line)]')}
-      >
-        {children}
-      </span>
-    )
-  }
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      className={clsx(
-        shape,
-        'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
-      )}
-    >
-      {children}
-    </Link>
-  )
-}
-
-const maxDay = (a: IsoDay, b: IsoDay): IsoDay => (a > b ? a : b)
-
-const dayNumber = (day: IsoDay): string => day.slice(8, 10)

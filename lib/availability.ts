@@ -666,3 +666,180 @@ export async function planAt(
   if (typeof ctx === 'string') return null
   return buildPlan(ctx, startsAt.getTime())
 }
+
+// ---------------------------------------------------------------------
+// Quem está de serviço, num dia
+// ---------------------------------------------------------------------
+
+/**
+ * Porque é que uma profissional não pode ser escolhida neste dia.
+ * `none` = pode.
+ */
+export type StaffDayProblem = 'closed' | 'off' | 'full' | 'none'
+
+export type StaffDay = {
+  id: string
+  /** Nome que a cliente vê. */
+  publicName: string
+  /** Retrato, quando existe. */
+  avatarUrl: string | null
+  /** A cor dela na agenda — serve de fundo ao monograma quando não há retrato. */
+  displayColor: string
+  sortOrder: number
+  /** Falso = fica cinzenta e não se clica. */
+  available: boolean
+  reason: StaffDayProblem
+  /** Minutos livres que ainda restam no dia. Zero quando não há. */
+  freeMinutes: number
+}
+
+/**
+ * A equipa da loja num dia, já dita como cliente a vê: quem se pode
+ * escolher e quem fica cinzento, com o motivo.
+ *
+ * Isto é o passo do funil que vem antes do serviço, por isso não sabe
+ * ainda qual é o serviço — a pergunta que responde é mais simples:
+ * «esta pessoa ainda tem algum bocado livre hoje nesta loja?». O que
+ * ela sabe ou não fazer decide-se no passo seguinte, e a hora exacta
+ * no passo a seguir a esse; os dois voltam a passar pelo motor de cima,
+ * que é quem manda de facto.
+ *
+ * Ninguém desaparece da lista: quem folga aparece à mesma, apagado,
+ * porque uma lista que encolhe faz a cliente pensar que se enganou.
+ */
+export async function staffForDay(
+  unit: Unit,
+  day: IsoDay,
+  channel: Channel = 'online',
+  now: Date = new Date(),
+): Promise<StaffDay[]> {
+  const rows = await sql<
+    (StaffRow & { avatar_url: string | null; display_color: string })[]
+  >`
+    select s.id, s.name, s.public_alias, s.sort_order, s.accepts_online_booking,
+           s.avatar_url, s.display_color
+      from staff s
+      join staff_unit su on su.staff_id = s.id and su.unit_id = ${unit.id}
+     where s.org_id = ${unit.org_id} and s.is_active
+     order by s.sort_order, s.name
+  `
+  const team = rows.filter(
+    (r) => channel !== 'online' || r.accepts_online_booking,
+  )
+  if (team.length === 0) return []
+
+  type Row = (typeof team)[number]
+  const shape = (row: Row, reason: StaffDayProblem, freeMinutes: number): StaffDay => ({
+    id: row.id,
+    publicName: row.public_alias ?? row.name,
+    avatarUrl: row.avatar_url,
+    displayColor: row.display_color,
+    sortOrder: row.sort_order,
+    available: reason === 'none',
+    reason,
+    freeMinutes,
+  })
+
+  // Loja fechada: ninguém trabalha, e o motivo é da casa, não da pessoa.
+  const opening = await openingWindows(unit.id, day)
+  if (opening.length === 0) return team.map((r) => shape(r, 'closed', 0))
+
+  const staffIds = team.map((r) => r.id)
+  const windowStart = new Date(dayStart(day, unit.timezone).getTime() - 12 * 3_600_000)
+  const windowEnd = new Date(dayStart(addDays(day, 1), unit.timezone).getTime() + 12 * 3_600_000)
+
+  const [scheduleRows, absenceRows, blockRows] = await Promise.all([
+    sql<{ staff_id: string; starts_min: number; ends_min: number }[]>`
+      select staff_id, starts_min, ends_min
+        from staff_schedule
+       where unit_id = ${unit.id}
+         and weekday = ${weekdayOf(day)}
+         and staff_id = any(${staffIds}::uuid[])
+         and valid_from <= ${day}::date
+         and (valid_to is null or valid_to >= ${day}::date)
+    `,
+    sql<{ staff_id: string; starts_at: Date; ends_at: Date }[]>`
+      select staff_id, starts_at, ends_at
+        from staff_absence
+       where staff_id = any(${staffIds}::uuid[])
+         and starts_at < ${windowEnd} and ends_at > ${windowStart}
+    `,
+    // A pessoa é uma só: um bloco na outra loja também a ocupa.
+    sql<{ staff_id: string; s: Date; e: Date }[]>`
+      select staff_id, lower(during) as s, upper(during) as e
+        from staff_block
+       where staff_id = any(${staffIds}::uuid[])
+         and during && tstzrange(${windowStart}, ${windowEnd})
+    `,
+  ])
+
+  const byStaff = <T extends { staff_id: string }>(list: T[]) => {
+    const out = new Map<string, T[]>()
+    for (const row of list) {
+      const kept = out.get(row.staff_id) ?? []
+      kept.push(row)
+      out.set(row.staff_id, kept)
+    }
+    return out
+  }
+  const schedules = byStaff(scheduleRows)
+  const absences = byStaff(absenceRows)
+  const blocks = byStaff(blockRows)
+
+  // A janela útil do dia: aberto, e ainda por vir. Uma hora que já
+  // passou não é vaga nenhuma.
+  const openWindows = merge(
+    opening.map((o) =>
+      interval(
+        atMinutes(day, o.openMin, unit.timezone).getTime(),
+        atMinutes(day, o.closeMin, unit.timezone).getTime(),
+      ),
+    ),
+  )
+  const earliest =
+    channel === 'online' ? now.getTime() + unit.min_lead_minutes * 60_000 : now.getTime()
+  const future = subtract(openWindows, [interval(0, earliest)])
+
+  return team.map((row) => {
+    const scheduled = merge(
+      (schedules.get(row.id) ?? []).map((s) =>
+        interval(
+          atMinutes(day, s.starts_min, unit.timezone).getTime(),
+          atMinutes(day, s.ends_min, unit.timezone).getTime(),
+        ),
+      ),
+    )
+    if (scheduled.length === 0) return shape(row, 'off', 0)
+
+    const working = subtract(
+      scheduled,
+      (absences.get(row.id) ?? []).map((a) =>
+        interval(a.starts_at.getTime(), a.ends_at.getTime()),
+      ),
+    )
+    if (working.length === 0) return shape(row, 'off', 0)
+
+    // Livre = escalada, dentro da abertura, ainda por vir, e sem bloco.
+    const free = subtract(
+      subtract(working, invert(future)),
+      (blocks.get(row.id) ?? []).map((b) => interval(b.s.getTime(), b.e.getTime())),
+    )
+    const minutes = Math.round(totalMinutes(free))
+    // Menos do que a menor fatia da loja não dá para marcar nada.
+    if (minutes < unit.slot_granularity_minutes) return shape(row, 'full', 0)
+    return shape(row, 'none', minutes)
+  })
+}
+
+/** O complemento de uma lista de intervalos, para a poder subtrair. */
+function invert(list: readonly Interval[]): Interval[] {
+  const merged = merge(list)
+  const out: Interval[] = []
+  let cursor = -Infinity
+  for (const piece of merged) {
+    if (cursor < piece.start) out.push(interval(cursor, piece.start))
+    cursor = piece.end
+  }
+  out.push(interval(cursor, Infinity))
+  return out
+}

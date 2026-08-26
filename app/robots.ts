@@ -30,6 +30,8 @@ export default function robots(): MetadataRoute.Robots {
         '/avisos',
         // A área da cliente e os passos pessoais do funil.
         '/conta',
+        '/agendar/*/profissional',
+        '/agendar/*/servicos',
         '/agendar/*/horarios',
         '/agendar/*/confirmar',
         '/agendar/*/pronto',

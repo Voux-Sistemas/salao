@@ -19,6 +19,17 @@ export const CART_PARAM = 'c'
 export const DAY_PARAM = 'd'
 export const TIME_PARAM = 't'
 
+/**
+ * A profissional da visita, escolhida no passo dela.
+ *
+ * Vive à parte do carrinho de propósito: é escolhida ANTES dos
+ * serviços, e um carrinho vazio não tem onde a guardar. Quando os
+ * serviços entram, cada linha leva-a também — é o `staffId` de sempre,
+ * que o motor já sabe respeitar — mas o parâmetro fica, porque é ele
+ * que sobrevive a tirar o último serviço da visita.
+ */
+export const STAFF_PARAM = 'p'
+
 export function parseCart(value: string | string[] | undefined): CartLine[] {
   const raw = Array.isArray(value) ? value[0] : value
   if (!raw) return []
@@ -70,6 +81,7 @@ export function funnelHref(
   params: {
     cart?: CartLine[]
     day?: string | null
+    staffId?: string | null
     time?: string | null
   },
 ): string {
@@ -78,6 +90,7 @@ export function funnelHref(
     search.set(CART_PARAM, cartToParam(params.cart))
   }
   if (params.day) search.set(DAY_PARAM, params.day)
+  if (params.staffId) search.set(STAFF_PARAM, params.staffId)
   if (params.time) search.set(TIME_PARAM, params.time)
   const query = search.toString()
   return query ? `${path}?${query}` : path
@@ -87,4 +100,10 @@ export function funnelHref(
 export function first(value: string | string[] | undefined): string | null {
   const raw = Array.isArray(value) ? value[0] : value
   return raw && raw.length > 0 ? raw : null
+}
+
+/** Lê a profissional do endereço. Só um UUID passa. */
+export function parseStaff(value: string | string[] | undefined): string | null {
+  const raw = first(value)
+  return raw && UUID.test(raw) ? raw : null
 }

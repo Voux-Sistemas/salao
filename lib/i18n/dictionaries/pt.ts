@@ -130,16 +130,34 @@ export const pt = {
     eyebrow: 'Marcação online',
     steps: {
       store: 'Loja',
+      day: 'Dia',
+      staff: 'Profissional',
       service: 'Serviço',
       time: 'Hora',
       confirm: 'Confirmar',
     },
     storeTitle: 'Onde quer ser atendida?',
     storeSubtitle: 'Escolha a loja para ver os horários disponíveis.',
-    /** O que fecha o cartão da loja. O nome do passo — «Serviço» — servia
-        de etiqueta ao lado da seta e lia-se como um rótulo, não como uma
-        coisa em que se carrega. */
-    storeAction: 'Ver serviços',
+    /** O que fecha o cartão da loja. Diz o que vem a seguir — o dia —
+        em vez de repetir o nome do passo. */
+    storeAction: 'Escolher o dia',
+    dayTitle: 'Que dia lhe dá jeito?',
+    daySubtitle: 'Escolha o dia e depois veja quem está de serviço.',
+    dayAction: 'Ver quem está',
+    staffTitle: 'Com quem quer ser atendida?',
+    staffSubtitle: 'Quem está de serviço neste dia aparece a cheio. Os outros ficam apagados.',
+    staffOff: 'Folga',
+    staffFull: 'Sem vagas neste dia',
+    staffClosed: 'Loja fechada',
+    staffNobody: 'Ninguém está de serviço neste dia.',
+    staffNobodyHint: 'Escolha outro dia na tira acima.',
+    staffFree: 'livres',
+    changeStaff: 'Trocar de profissional',
+    changeDay: 'Trocar de dia',
+    changeServices: 'Trocar de serviço',
+    withStaff: 'Com',
+    staffNoServices: 'Esta profissional ainda não tem serviços abertos à marcação online.',
+    staffNoServicesHint: 'Volte atrás e escolha outra profissional.',
     serviceTitle: 'O que vai fazer?',
     serviceSubtitle: 'Pode juntar mais do que um serviço na mesma visita.',
     anyProfessional: 'Sem preferência',

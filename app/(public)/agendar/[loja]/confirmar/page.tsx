@@ -13,11 +13,13 @@ import {
 } from '@/lib/time'
 import {
   CART_PARAM,
+  STAFF_PARAM,
   TIME_PARAM,
   cartToParam,
   first,
   funnelHref,
   parseCart,
+  parseStaff,
 } from '@/lib/cart'
 import { serviceNamesFor } from '@/lib/catalog-names'
 import { MapPin } from 'lucide-react'
@@ -57,21 +59,26 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
   if (!unit) notFound()
 
   const here = `/agendar/${unit.slug}`
-  const cart = parseCart(query[CART_PARAM])
+  const staffId = parseStaff(query[STAFF_PARAM])
+  // A profissional da visita manda em todas as linhas — é ela que foi
+  // escolhida, e não a que uma ligação antiga possa trazer no carrinho.
+  const cart = parseCart(query[CART_PARAM]).map((line) =>
+    staffId ? { ...line, staffId } : line,
+  )
   const time = first(query[TIME_PARAM])
 
   if (cart.length === 0) redirect(here)
 
   const startsAt = time ? new Date(time) : null
   if (!startsAt || Number.isNaN(startsAt.getTime())) {
-    redirect(funnelHref(`${here}/horarios`, { cart }))
+    redirect(funnelHref(`${here}/horarios`, { cart, staffId }))
   }
 
   const day = isoDay(startsAt, unit.timezone)
   const plan = await planAt(unit, day, cart, startsAt, 'online')
 
   // Esse horário já não é válido: volta-se aos que restam.
-  if (!plan) redirect(funnelHref(`${here}/horarios`, { cart, day }))
+  if (!plan) redirect(funnelHref(`${here}/horarios`, { cart, day, staffId }))
 
   const [dict, language] = await Promise.all([getDictionary(), getLanguage()])
   const minutes = Math.round(
@@ -87,12 +94,14 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
 
   return (
     <FunnelShell
-      step={4}
+      step={6}
       dict={dict}
       hrefs={[
         '/agendar',
-        funnelHref(here, { cart }),
-        funnelHref(`${here}/horarios`, { cart, day }),
+        funnelHref(here, { day }),
+        funnelHref(`${here}/profissional`, { day }),
+        funnelHref(`${here}/servicos`, { day, staffId, cart }),
+        funnelHref(`${here}/horarios`, { cart, day, staffId }),
         null,
       ]}
       eyebrow={unit.name}
