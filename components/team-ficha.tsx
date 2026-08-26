@@ -64,7 +64,18 @@ export type FichaMember = {
   accepts_online_booking: boolean
 }
 
-export type UnitOption = { id: string; name: string }
+export type UnitOption = {
+  id: string
+  name: string
+  /*
+   * Os dias em que a casa abre (0 = domingo), para a escala poder
+   * avisar quando um turno cai em porta fechada. Sem isto o editor
+   * aceitava um domingo numa casa que fecha ao domingo, e o turno
+   * ficava lá para sempre a não dar vaga nenhuma — foi o que
+   * aconteceu, e só se viu meses depois no panorama da semana.
+   */
+  openWeekdays: number[]
+}
 
 export type SkillGroupView = {
   category: string
@@ -194,6 +205,12 @@ export function Ficha({
     [schedule, weekUnit],
   )
   const [week, setWeek] = useState<WeekSlot[]>(base)
+  // Os dias em que ESTA casa abre — a escala mostra-se loja a loja.
+  const abertura = useMemo(
+    () => units.find((unit) => unit.id === weekUnit)?.openWeekdays ?? [],
+    [units, weekUnit],
+  )
+
   const [shown, setShown] = useState(weekUnit)
   const [from, setFrom] = useState(today)
 
@@ -564,6 +581,14 @@ export function Ficha({
               {ORDER.map((weekday) => {
                 const slot = week[weekday]
                 if (!slot) return null
+                /*
+                  Um turno em dia de porta fechada não dá vaga nenhuma —
+                  nem no funil, nem ao balcão. Vale a pena existir (a
+                  casa pode abrir só para uma noiva), mas tem de se ver
+                  que é excepção, e não passar por engano de dedo.
+                */
+                const fechado =
+                  slot.on && !abertura.includes(weekday)
                 return (
                   <div
                     key={weekday}
@@ -619,6 +644,12 @@ export function Ficha({
                         Não trabalha
                       </span>
                     )}
+                    {fechado ? (
+                      <p className="col-start-2 text-[0.75rem] text-[var(--warn)]">
+                        A casa fecha neste dia — este turno não vai dar
+                        horas a ninguém.
+                      </p>
+                    ) : null}
                   </div>
                 )
               })}

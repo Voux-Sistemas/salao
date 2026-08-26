@@ -99,6 +99,25 @@ export const allWeeklyHours = cache(async (): Promise<Map<string, Map<number, Wi
   return byUnit
 })
 
+/*
+ * OS DIAS EM QUE CADA CASA ABRE.
+ *
+ * Um dia sem linha nenhuma em `business_hours` é um dia de porta
+ * fechada — é assim que a tabela diz «não abrimos». Serve o editor da
+ * escala, para avisar quem marca um turno num domingo de porta
+ * fechada: o turno fica lá, nunca dá vaga, e ninguém dá por isso.
+ */
+export async function openWeekdaysFor(
+  unitIds: string[],
+): Promise<Map<string, number[]>> {
+  const all = await allWeeklyHours()
+  const out = new Map<string, number[]>()
+  for (const id of unitIds) {
+    out.set(id, [...(all.get(id)?.keys() ?? [])].sort((a, b) => a - b))
+  }
+  return out
+}
+
 /** O horário normal da semana, para o mostrar na página da loja. */
 export async function weeklyHours(
   unitId: string,

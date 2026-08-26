@@ -13,6 +13,7 @@ import {
   listSkillSources,
 } from '@/lib/team'
 import { formatDateTime, today } from '@/lib/time'
+import { openWeekdaysFor } from '@/lib/hours'
 import {
   AbsenceForm,
   MemberExit,
@@ -65,7 +66,14 @@ export default async function PessoaPage({
       listSkillSources(actor, member.id),
     ])
 
-  const options = units.map((unit) => ({ id: unit.id, name: unit.name }))
+  // A escala precisa de saber quando a casa abre, para avisar de um
+  // turno em dia de porta fechada.
+  const abertura = await openWeekdaysFor(units.map((unit) => unit.id))
+  const options = units.map((unit) => ({
+    id: unit.id,
+    name: unit.name,
+    openWeekdays: abertura.get(unit.id) ?? [],
+  }))
   const timezones = new Map(units.map((unit) => [unit.id, unit.timezone]))
 
   const skillCount = skills.reduce(

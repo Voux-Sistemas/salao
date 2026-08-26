@@ -4,6 +4,7 @@ import { can, requireManagement, unitsFor } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { listSkills, listSkillSources } from '@/lib/team'
 import { today } from '@/lib/time'
+import { openWeekdaysFor } from '@/lib/hours'
 import { Ficha } from '@/components/team-ficha'
 import { BackLink } from '@/components/gestao-panel'
 
@@ -24,9 +25,10 @@ export default async function NovaPessoaPage() {
   if (units.length === 0) redirect('/admin/equipe')
 
   const org = await requireOrg()
-  const [groups, sources] = await Promise.all([
+  const [groups, sources, abertura] = await Promise.all([
     listSkills(actor.orgId, null),
     listSkillSources(actor, null),
+    openWeekdaysFor(units.map((unit) => unit.id)),
   ])
 
   return (
@@ -45,7 +47,11 @@ export default async function NovaPessoaPage() {
 
       <Ficha
         member={null}
-        units={units.map((unit) => ({ id: unit.id, name: unit.name }))}
+        units={units.map((unit) => ({
+          id: unit.id,
+          name: unit.name,
+          openWeekdays: abertura.get(unit.id) ?? [],
+        }))}
         memberUnits={[]}
         roles={[{ role: 'professional', unitId: null }]}
         groups={groups}
