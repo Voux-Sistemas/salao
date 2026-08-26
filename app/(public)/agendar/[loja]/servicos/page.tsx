@@ -418,6 +418,12 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                               ? removeAt(clean, chosenAt)
                               : addLine(clean, service.id),
                           })}
+                          // Sem isto o Next saltava a página para o
+                          // topo a cada toque — o carrinho muda de
+                          // endereço, mas a cliente não está a mudar de
+                          // sítio, só a marcar um check. Ela fica onde
+                          // estava, a descer a ementa ao seu ritmo.
+                          scroll={false}
                           // O nome do serviço só existe para quem lê o
                           // ecrã; para quem o ouve, vai no rótulo.
                           aria-label={`${
@@ -472,6 +478,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                               staffId,
                               cart: removeAt(clean, index),
                             })}
+                            scroll={false}
                             aria-label={`${dict.common.remove} · ${service.name}`}
                             // Tirar um serviço da visita é a única coisa
                             // que se desfaz aqui, e era uma cruz de quinze

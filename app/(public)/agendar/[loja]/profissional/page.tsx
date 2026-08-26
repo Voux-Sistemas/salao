@@ -8,7 +8,6 @@ import { pulseOfDays, staffForDay, type StaffDay } from '@/lib/availability'
 import {
   addDays,
   formatDayLong,
-  formatDuration,
   isoRange,
   today,
   type IsoDay,
@@ -135,7 +134,6 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
               <StaffCard
                 person={person}
                 dict={dict}
-                language={language}
                 href={
                   person.available
                     ? funnelHref(`${here}/servicos`, { day, staffId: person.id })
@@ -159,12 +157,10 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
 function StaffCard({
   person,
   dict,
-  language,
   href,
 }: {
   person: StaffDay
   dict: Awaited<ReturnType<typeof getDictionary>>
-  language: string
   href: string | null
 }) {
   const reason =
@@ -211,16 +207,14 @@ function StaffCard({
         >
           {person.publicName}
         </span>
-        <span
-          className={clsx(
-            'mt-1 block text-[0.75rem]',
-            href ? 'text-[var(--ink-faint)]' : 'text-[var(--ink-faint)] italic',
-          )}
-        >
-          {href
-            ? `${formatDuration(person.freeMinutes, language)} ${dict.funnel.staffFree}`
-            : reason}
-        </span>
+        {/* Quanto tempo livre lhe resta é conta do motor, não promessa
+            à cliente — ela só vê a hora concreta no passo das horas.
+            Quem não pode atender continua a dizer porquê. */}
+        {!href ? (
+          <span className="mt-1 block text-[0.75rem] text-[var(--ink-faint)] italic">
+            {reason}
+          </span>
+        ) : null}
       </span>
     </>
   )
