@@ -12,6 +12,7 @@ import { loadQueues, type NoticeRow } from '@/lib/notices'
 import { composeMessage, loadTemplates } from '@/lib/notify'
 import { STATUS_LABEL, STATUS_TONE } from '@/lib/status'
 import { formatDayShort, formatTime, isoDay } from '@/lib/time'
+import { isSunday } from '@/lib/sunday'
 import { ROUTINES, ROUTINE_HINT, ROUTINE_LABEL, type Routine } from '@/lib/whatsapp'
 import { Info } from 'lucide-react'
 import { SendWhatsApp } from '@/components/desk-actions'
@@ -139,7 +140,7 @@ export default async function AvisosPage({
             O sistema nunca envia nada sozinho.
           </span>{' '}
           {mine
-            ? 'Prepara a mensagem e abre a conversa — quem carrega no botão é você. Estas são as clientes que marcaram consigo.'
+            ? 'Prepara a mensagem e abre a conversa — quem carrega no botão é você. Estas são as clientes que marcaram consigo, mais as de domingo, que são da casa toda.'
             : 'Prepara a mensagem e abre a conversa — quem carrega no botão é uma pessoa, e é o registo do envio que tira a linha da fila.'}
         </p>
       </div>
@@ -307,9 +308,14 @@ function NoticeLine({
   const day = isoDay(row.starts_at, timezone)
   /* Na fila da profissional o nome dela repete-se em todas as linhas e
      só rouba espaço ao serviço. Fica só quem mais lá está — uma colega
-     no mesmo atendimento é coisa que ela precisa de ver. */
+     no mesmo atendimento é coisa que ela precisa de ver.
+
+     AO DOMINGO OS NOMES FICAM TODOS. A fila de domingo é de todas, e
+     por isso traz linhas que não são dela: sem nome nenhum, ela não
+     distinguia o trabalho que é seu do que é da casa. */
+  const hide = isSunday(day) ? null : hideStaffId
   const staff = row.staff
-    .filter((person) => person.id !== hideStaffId)
+    .filter((person) => person.id !== hide)
     .map((person) => person.name)
     .sort((a, b) => a.localeCompare(b, 'pt'))
     .join(', ')

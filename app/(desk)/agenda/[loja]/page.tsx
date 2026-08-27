@@ -6,6 +6,7 @@ import { ChevronDown, Columns3, Rows3, Users } from 'lucide-react'
 import { requireActor, resolveUnit, unitsFor, can } from '@/lib/auth/actor'
 import { loadAgendaDay, type AgendaScope } from '@/lib/agenda'
 import { getAppointment } from '@/lib/booking'
+import { agendaIsPrivateOn } from '@/lib/sunday'
 import { sql } from '@/lib/db'
 import {
   addDays,
@@ -88,8 +89,19 @@ export default async function AgendaDayPage({
   */
   const scope: AgendaScope = e === 'equipa' ? 'equipa' : 'dia'
 
-  // A profissional vê só a agenda dela.
-  const onlyStaffId = actor.role === 'professional' ? actor.id : null
+  /*
+    A profissional vê só a agenda dela — EXCEPTO AO DOMINGO.
+
+    Ao domingo o trabalho não é de ninguém em particular: entra em nome
+    de quem o motor escolheu, mas quem o pega decide-se lá, entre elas.
+    Uma pessoa não pode escolher pegar aquilo que não vê, e por isso a
+    peneira cai e a grelha abre inteira para todas.
+
+    O dia que manda é o dia da grelha, não o de hoje: quem abrir o
+    domingo numa segunda-feira continua a vê-lo todo.
+  */
+  const onlyStaffId =
+    actor.role === 'professional' && agendaIsPrivateOn(day) ? actor.id : null
 
   const [full, units, colorRows] = await Promise.all([
     loadAgendaDay(unit, day, { onlyStaffId, scope }),

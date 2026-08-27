@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import clsx from 'clsx'
-import { Check, Plus, X } from 'lucide-react'
+import { Check, MessageCircle, Plus, X } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { fill, getDictionary, getLanguage } from '@/lib/i18n'
@@ -28,6 +28,8 @@ import {
   removeAt,
   MAX_CART_LINES,
 } from '@/lib/cart'
+import { categoryOpenOn, picksStaffOn } from '@/lib/sunday'
+import { waLink } from '@/lib/whatsapp'
 import { ButtonLink, Empty, Eyebrow, Notice } from '@/components/ui'
 import { FunnelShell, MobileVisitBar } from '@/components/funnel-shell'
 import { CollapseGroup } from '@/components/collapse-group'
@@ -40,6 +42,7 @@ type Params = {
 
 type ServiceRow = {
   category_id: string
+  category_slug: string
   category_name: string
   id: string
   name: string
@@ -94,7 +97,14 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
     redirect(here)
   }
   const day = askedDay as IsoDay
-  if (!staffId) redirect(funnelHref(`${here}/profissional`, { day }))
+
+  // Ao domingo não há profissional para revalidar: o passo dela não
+  // existe, e um `?p=` que venha de uma ligação antiga é ignorado —
+  // não redireccionado, porque não há para onde. Nos outros dias a
+  // regra de sempre: sem ela, volta-se ao passo dela.
+  const picksStaff = picksStaffOn(day)
+  const chosenStaff = picksStaff ? staffId : null
+  if (picksStaff && !staffId) redirect(funnelHref(`${here}/profissional`, { day }))
 
   // A língua antes da consulta: quem escolhe o serviço lê o nome
   // dele na sua língua, não só a moldura à volta.
@@ -102,8 +112,25 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
 
   const [dict, services, team] = await Promise.all([
     getDictionary(),
+    /*
+     * A EMENTA.
+     *
+     * Nos dias de semana é a DELA: só o que a profissional escolhida
+     * sabe fazer, porque oferecer o resto era prometer o que esta
+     * visita não pode cumprir.
+     *
+     * Ao domingo não há «ela», e a pergunta volta a ser a da casa —
+     * «alguém aqui faz isto?». O preço também: sem profissional, a
+     * precedência resolve-se sem ela, e o que sai é o preço da loja.
+     *
+     * Nos dois casos vem TUDO o que a casa faz, incluindo o que ao
+     * domingo é sob consulta. Separa-se cá em baixo, não aqui: quem é
+     * sob consulta continua a precisar de nome, preço e duração para
+     * se poder mostrar e para a mensagem do WhatsApp o saber nomear.
+     */
     sql<ServiceRow[]>`
       select c.id as category_id,
+             c.slug as category_slug,
              name_in(${language}, c.name, c.name_en, c.name_es) as category_name,
              s.id,
              name_in(${language}, s.name, s.name_en, s.name_es) as name,
@@ -114,28 +141,30 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
              s.image_url, s.image_alt
         from service s
         join service_category c on c.id = s.category_id and c.is_active
-        -- Preço e duração DELA: a precedência é profissional+loja →
-        -- profissional → loja → base, e é a base de dados que a resolve.
-        cross join lateral effective_service_pricing(s.id, ${unit.id}::uuid, ${staffId}::uuid) e
+        -- Preço e duração: a precedência é profissional+loja →
+        -- profissional → loja → base, e é a base de dados que a
+        -- resolve. Sem profissional (domingo) começa na loja.
+        cross join lateral effective_service_pricing(
+          s.id, ${unit.id}::uuid, ${chosenStaff}::uuid
+        ) e
        where s.org_id = ${org.id} and s.is_active and s.bookable_online
          /*
-          * E ELA TEM DE O SABER FAZER.
+          * E ALGUÉM TEM DE O SABER FAZER.
           *
-          * Antes esta linha só perguntava se ALGUÉM na loja o sabia
-          * fazer, porque a profissional ainda não estava escolhida — e
-          * a ementa era a da casa. Agora vem depois dela, e a pergunta
-          * afina-se: um serviço que ela não faz não é uma promessa que
-          * esta visita possa cumprir.
-          *
-          * A ementa continua a encolher pela mesma razão de sempre, e
-          * não se apaga nada: a ficha do serviço fica lá dentro, com o
-          * seu aviso, à espera de quem o saiba fazer.
+          * Com profissional escolhida a pergunta é sobre ela; sem ela,
+          * é sobre a loja inteira. Nos dois casos um serviço que
+          * ninguém ali faz não é uma promessa cumprível, e sai da
+          * ementa — a ficha dele fica lá dentro, com o seu aviso.
           */
          and exists (
            select 1
              from staff_skill ss
+             join staff st on st.id = ss.staff_id and st.is_active
+             join staff_unit su
+               on su.staff_id = st.id and su.unit_id = ${unit.id}
             where ss.service_id = s.id
-              and ss.staff_id = ${staffId}
+              and st.accepts_online_booking
+              and (${chosenStaff}::uuid is null or ss.staff_id = ${chosenStaff}::uuid)
          )
        -- Pelo nome português, para a ordem ser a mesma nas três línguas.
        order by c.sort_order, c.name, s.sort_order, s.name
@@ -150,12 +179,25 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
   // fechou-se ao online, mudou de loja, ou alguém lhe levou entretanto
   // o último bocado do dia. Volta-se ao passo dela em vez de montar uma
   // visita à volta de alguém que não pode atender.
-  const person = team.find((p) => p.id === staffId)
-  if (!person || !person.available) {
+  const person = chosenStaff ? team.find((p) => p.id === chosenStaff) : null
+  if (chosenStaff && (!person || !person.available)) {
     redirect(funnelHref(`${here}/profissional`, { day }))
   }
 
-  const byId = new Map(services.map((s) => [s.id, s]))
+  /*
+   * O QUE SE MARCA E O QUE É SOB CONSULTA.
+   *
+   * Ao domingo a casa só faz cabelo. O resto não se apaga da ementa:
+   * fica à vista, com o preço e a duração, e por baixo uma conversa de
+   * WhatsApp já escrita. É a regra desta casa desde o princípio — quem
+   * não pode ser servido vê porquê, e vê a saída.
+   */
+  const bookable = services.filter((s) => categoryOpenOn(day, s.category_slug))
+  const onRequest = picksStaff
+    ? []
+    : services.filter((s) => !categoryOpenOn(day, s.category_slug))
+
+  const byId = new Map(bookable.map((s) => [s.id, s]))
 
   // Um serviço que saiu da ementa entretanto — desactivado, fechado ao
   // online, ou que ela não faz — é apanhado já, e não três ecrãs à
@@ -166,10 +208,14 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
   // Toda a linha vai com ela: a visita é de uma pessoa só, escolhida
   // no passo anterior. É este `staffId` que o motor já sabia respeitar
   // quando vinha de uma etiqueta lá em baixo — só mudou quem o põe.
+  //
+  // Ao domingo vai a nulo, que é como o motor diz «escolhe tu»: ele já
+  // sabe fazê-lo — é o que faz ao balcão — e passa a distribuir por
+  // quem estiver livre à hora marcada, sem a cliente ver nome nenhum.
   const asked = parseCart(query[CART_PARAM])
   const clean = asked
     .filter((line) => byId.has(line.serviceId))
-    .map((line) => ({ ...line, staffId }))
+    .map((line) => ({ ...line, staffId: chosenStaff }))
   const dropped = asked.length !== clean.length
 
   // Os preços já vieram da consulta acima, com ela lá dentro: não é
@@ -214,8 +260,21 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
     }, 0) +
     Math.max(0, clean.length - 1) * gapMin
 
+  /*
+   * O TECTO DO DIA.
+   *
+   * É contra ele que se mede se um serviço ainda cabe. Com
+   * profissional escolhida é o maior bocado livre DELA. Ao domingo não
+   * há «ela»: o tecto é o da pessoa que tiver o maior bocado livre,
+   * porque basta uma para a visita caber — e é essa que o motor há-de
+   * escolher no passo seguinte.
+   */
+  const longestFree = person
+    ? person.longestFreeMinutes
+    : Math.max(0, ...team.map((p) => p.longestFreeMinutes))
+
   const categories = new Map<string, { name: string; services: ServiceRow[] }>()
-  for (const row of services) {
+  for (const row of bookable) {
     const entry = categories.get(row.category_id) ?? {
       name: row.category_name,
       services: [],
@@ -231,35 +290,46 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
       hrefs={[
         '/agendar',
         funnelHref(here, { day }),
-        funnelHref(`${here}/profissional`, { day }),
+        // Ao domingo o passo da profissional não existe: a migalha
+        // dele não pode ficar acesa a apontar para uma página que
+        // manda a cliente de volta para aqui.
+        picksStaff ? funnelHref(`${here}/profissional`, { day }) : null,
         null,
         null,
         null,
       ]}
       eyebrow={unit.name}
       title={dict.funnel.serviceTitle}
-      subtitle={dict.funnel.serviceSubtitle}
+      subtitle={picksStaff ? dict.funnel.serviceSubtitle : dict.funnel.sundaySubtitle}
     >
       {/* Com quem e quando — as duas escolhas já feitas, à vista e com
           saída. Sem isto a ementa encolhida não se explicava: quem
-          chegasse aqui via meia dúzia de serviços e não sabia porquê. */}
+          chegasse aqui via meia dúzia de serviços e não sabia porquê.
+          Ao domingo não há «com quem», e o que fica é o dia — mais o
+          motivo por que ninguém lhe foi perguntado. */}
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--line-soft)] pb-5">
         <p className="text-[0.9375rem] text-[var(--ink)]">
-          <span className="text-[var(--ink-faint)]">{dict.funnel.withStaff} </span>
-          {person.publicName}
-          <span className="text-[var(--ink-faint)]"> · </span>
+          {person ? (
+            <>
+              <span className="text-[var(--ink-faint)]">{dict.funnel.withStaff} </span>
+              {person.publicName}
+              <span className="text-[var(--ink-faint)]"> · </span>
+            </>
+          ) : null}
           <span className="first-letter:uppercase">
             {formatDayLong(day, unit.timezone, language)}
           </span>
         </p>
         <span className="hidden h-px flex-1 bg-[var(--line-soft)] sm:block" />
         <span className="flex flex-wrap gap-x-4 gap-y-1 text-[0.75rem]">
-          <Link
-            href={funnelHref(`${here}/profissional`, { day })}
-            className="text-[var(--ink-muted)] underline underline-offset-4 hover:text-[var(--accent)]"
-          >
-            {dict.funnel.changeStaff}
-          </Link>
+          {picksStaff ? (
+            <Link
+              href={funnelHref(`${here}/profissional`, { day })}
+              className="text-[var(--ink-muted)] underline underline-offset-4 hover:text-[var(--accent)]"
+            >
+              {dict.funnel.changeStaff}
+            </Link>
+          ) : null}
           <Link
             href={funnelHref(here, { day })}
             className="text-[var(--ink-muted)] underline underline-offset-4 hover:text-[var(--accent)]"
@@ -268,6 +338,14 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
           </Link>
         </span>
       </div>
+
+      {/* Porque é que ninguém lhe perguntou com quem. Dito uma vez, em
+          cima, antes de ela dar pela falta do passo. */}
+      {!picksStaff ? (
+        <div className="mb-8">
+          <Notice tone="neutral">{dict.funnel.sundayNoStaff}</Notice>
+        </div>
+      ) : null}
 
       {dropped ? (
         <div className="mb-8">
@@ -286,7 +364,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
       {/* Ela existe, está de serviço, e não tem uma única habilidade
           aberta ao online. É raro e é da gestão, não da cliente — mas
           sem isto ficava uma página em branco com um botão morto. */}
-      {services.length === 0 ? (
+      {bookable.length === 0 ? (
         <Empty
           title={dict.funnel.staffNoServices}
           hint={dict.funnel.staffNoServicesHint}
@@ -324,7 +402,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                     cartOccupies +
                       (clean.length > 0 ? gapMin : 0) +
                       occupies(service) >
-                      person.longestFreeMinutes
+                      longestFree
 
                   const price = formatCents(
                     service.price_cents,
@@ -419,7 +497,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                         <Link
                           href={funnelHref(`${here}/servicos`, {
                             day,
-                            staffId,
+                            staffId: chosenStaff,
                             cart: chosen
                               ? removeAt(clean, chosenAt)
                               : addLine(clean, service.id),
@@ -446,6 +524,17 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
               </CollapseGroup>
             )
           })}
+
+          {/* ------------------------------------------ sob consulta --- */}
+          {onRequest.length > 0 ? (
+            <OnRequest
+              services={onRequest}
+              unitName={unit.name}
+              phone={unit.whatsapp_phone ?? org.whatsapp_phone}
+              dayLong={formatDayLong(day, unit.timezone, language)}
+              dict={dict}
+            />
+          ) : null}
         </div>
 
         {/* -------------------------------------------------- visita --- */}
@@ -481,7 +570,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                           <Link
                             href={funnelHref(`${here}/servicos`, {
                               day,
-                              staffId,
+                              staffId: chosenStaff,
                               cart: removeAt(clean, index),
                             })}
                             scroll={false}
@@ -542,7 +631,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                 </span>
               ) : (
                 <ButtonLink
-                  href={funnelHref(`${here}/horarios`, { day, staffId, cart: clean })}
+                  href={funnelHref(`${here}/horarios`, { day, staffId: chosenStaff, cart: clean })}
                   size="lg"
                   className="w-full"
                 >
@@ -562,7 +651,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
             clean.length === 1 ? dict.common.service : dict.common.services
           } · ${formatDuration(totalMinutes, language)}`}
           total={formatCents(totalCents, org.currency, language)}
-          href={funnelHref(`${here}/horarios`, { day, staffId, cart: clean })}
+          href={funnelHref(`${here}/horarios`, { day, staffId: chosenStaff, cart: clean })}
           label={dict.common.next}
         />
       ) : null}
@@ -570,3 +659,95 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
   )
 }
 
+
+/**
+ * OS SERVIÇOS SOB CONSULTA.
+ *
+ * Ao domingo a casa faz cabelo. Mãos e pés, rosto e cera dependem de
+ * quem lá estiver, e isso não se sabe com antecedência — por isso não
+ * se marcam, mas também não se escondem: uma ementa que encolhe sem
+ * explicação faz a cliente pensar que se enganou no dia.
+ *
+ * Ficam à vista, com preço e duração, e cada um leva a sua conversa já
+ * escrita. É a mesma regra que rege o resto do funil — quem não pode
+ * ser servido vê porquê, e vê a saída.
+ *
+ * A mensagem nomeia O SERVIÇO e O DIA. Do outro lado ninguém tem de
+ * perguntar «qual?» nem «quando?», e é isso que faz a diferença entre
+ * um botão de WhatsApp e um atalho útil.
+ */
+function OnRequest({
+  services,
+  unitName,
+  phone,
+  dayLong,
+  dict,
+}: {
+  services: ServiceRow[]
+  unitName: string
+  phone: string | null
+  dayLong: string
+  dict: Awaited<ReturnType<typeof getDictionary>>
+}) {
+  return (
+    <section className="border-t border-[var(--line)] pt-10">
+      <h3 className="display text-lg text-[var(--ink)]">
+        {dict.funnel.sundayOnRequestTitle}
+      </h3>
+      <p className="mt-2 max-w-prose text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+        {dict.funnel.sundayOnRequestHint}
+      </p>
+
+      <ul className="mt-6">
+        {services.map((service) => {
+          /* Sem número da casa não há conversa para abrir. Em vez de um
+             botão que não vai a lado nenhum, o serviço fica na mesma
+             lista, dito «sob consulta» e sem atalho — que é a verdade. */
+          const href = phone
+            ? waLink(
+                phone,
+                fill(dict.funnel.sundayAskMessage, {
+                  servico: service.name,
+                  dia: dayLong,
+                  loja: unitName,
+                }),
+              )
+            : null
+
+          return (
+            <li
+              key={service.id}
+              className="flex min-h-[3.25rem] items-start gap-3 border-b border-[var(--line-soft)] py-3 last:border-0"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline gap-3">
+                  <span className="min-w-0 text-[0.9375rem] text-[var(--ink-muted)]">
+                    {service.name}
+                  </span>
+                  <span className="hidden flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)] sm:block" />
+                  <span className="ml-auto shrink-0 text-[0.6875rem] tracking-[0.08em] text-[var(--ink-faint)] uppercase sm:ml-0">
+                    {dict.funnel.sundayOnRequest}
+                  </span>
+                </span>
+                {href ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1.5 text-[0.75rem] text-[var(--ink-muted)] underline underline-offset-4 hover:text-[var(--accent)]"
+                    /* Quem ouve o ecrã tem de saber de que serviço é
+                       este botão: a lista tem muitos iguais. */
+                    aria-label={`${dict.funnel.sundayAsk} · ${service.name}`}
+                  >
+                    <MessageCircle size={13} aria-hidden />
+                    {dict.funnel.sundayAsk}
+                  </a>
+                ) : null}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}

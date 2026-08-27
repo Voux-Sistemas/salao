@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { getClientActor } from '@/lib/auth/client-actor'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
+import { picksStaffOn } from '@/lib/sunday'
 import { planAt } from '@/lib/availability'
 import { formatCents } from '@/lib/money'
 import {
@@ -59,22 +60,31 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
   if (!unit) notFound()
 
   const here = `/agendar/${unit.slug}`
-  const staffId = parseStaff(query[STAFF_PARAM])
-  // A profissional da visita manda em todas as linhas — é ela que foi
-  // escolhida, e não a que uma ligação antiga possa trazer no carrinho.
-  const cart = parseCart(query[CART_PARAM]).map((line) =>
-    staffId ? { ...line, staffId } : line,
-  )
+  const askedStaff = parseStaff(query[STAFF_PARAM])
   const time = first(query[TIME_PARAM])
+  const rawCart = parseCart(query[CART_PARAM])
 
-  if (cart.length === 0) redirect(here)
+  if (rawCart.length === 0) redirect(here)
 
   const startsAt = time ? new Date(time) : null
   if (!startsAt || Number.isNaN(startsAt.getTime())) {
-    redirect(funnelHref(`${here}/horarios`, { cart, staffId }))
+    redirect(funnelHref(`${here}/horarios`, { cart: rawCart, staffId: askedStaff }))
   }
 
+  /*
+   * Aqui o dia só se sabe depois de ler a hora — e é o dia que diz se
+   * houve profissional a escolher. Ao domingo não houve: um `?p=` que
+   * chegue por uma ligação antiga é ignorado, e a visita vai ao motor
+   * sem dono, para ele a repartir por quem estiver livre.
+   */
   const day = isoDay(startsAt, unit.timezone)
+  const picksStaff = picksStaffOn(day)
+  const staffId = picksStaff ? askedStaff : null
+
+  // A profissional da visita manda em todas as linhas — é ela que foi
+  // escolhida, e não a que uma ligação antiga possa trazer no carrinho.
+  const cart = rawCart.map((line) => ({ ...line, staffId }))
+
   const plan = await planAt(unit, day, cart, startsAt, 'online')
 
   // Esse horário já não é válido: volta-se aos que restam.
@@ -99,7 +109,7 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
       hrefs={[
         '/agendar',
         funnelHref(here, { day }),
-        funnelHref(`${here}/profissional`, { day }),
+        picksStaff ? funnelHref(`${here}/profissional`, { day }) : null,
         funnelHref(`${here}/servicos`, { day, staffId, cart }),
         funnelHref(`${here}/horarios`, { cart, day, staffId }),
         null,
@@ -124,7 +134,11 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
           }
           lines={plan.items.map((item) => ({
             label: names.get(item.serviceId) ?? item.serviceName,
-            meta: `${formatTime(item.startsAt, unit.timezone, language)} · ${dict.common.with} ${item.staffPublicName}`,
+            /* Ao domingo nao se diz «com quem»: a cliente nao
+               escolheu ninguem, e quem atende decide-se no salao. */
+            meta: picksStaff
+              ? `${formatTime(item.startsAt, unit.timezone, language)} · ${dict.common.with} ${item.staffPublicName}`
+              : formatTime(item.startsAt, unit.timezone, language),
             value: formatCents(item.priceCents, org.currency, language),
           }))}
           total={{

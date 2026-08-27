@@ -26,6 +26,7 @@ import {
   parseCart,
   parseStaff,
 } from '@/lib/cart'
+import { picksStaffOn } from '@/lib/sunday'
 import { serviceNamesFor } from '@/lib/catalog-names'
 import { ButtonLink, Empty, Notice } from '@/components/ui'
 import { FunnelShell, VisitSummary } from '@/components/funnel-shell'
@@ -80,12 +81,24 @@ export default async function TimesPage({ params, searchParams }: Params) {
     redirect(here)
   }
   const day = askedDay as IsoDay
-  if (!staffId) redirect(funnelHref(`${here}/profissional`, { day }))
+
+  // Ao domingo não se escolhe profissional — e por isso a falta dela
+  // não é um erro que mande a cliente para trás. Um `?p=` de uma
+  // ligação antiga é ignorado: a visita fica sem dono, e o motor
+  // reparte-a por quem estiver livre à hora que ela marcar.
+  const picksStaff = picksStaffOn(day)
+  const chosenStaff = picksStaff ? staffId : null
+  if (picksStaff && !staffId) redirect(funnelHref(`${here}/profissional`, { day }))
 
   // A profissional é a da visita inteira: as linhas do endereço podem
   // vir de uma ligação antiga, e é o `?p=` que manda.
-  const cart = parseCart(query[CART_PARAM]).map((line) => ({ ...line, staffId }))
-  if (cart.length === 0) redirect(funnelHref(`${here}/servicos`, { day, staffId }))
+  const cart = parseCart(query[CART_PARAM]).map((line) => ({
+    ...line,
+    staffId: chosenStaff,
+  }))
+  if (cart.length === 0) {
+    redirect(funnelHref(`${here}/servicos`, { day, staffId: chosenStaff }))
+  }
 
   const [dict, language] = await Promise.all([getDictionary(), getLanguage()])
 
@@ -159,8 +172,8 @@ export default async function TimesPage({ params, searchParams }: Params) {
       hrefs={[
         '/agendar',
         funnelHref(here, { day }),
-        funnelHref(`${here}/profissional`, { day }),
-        funnelHref(`${here}/servicos`, { day, staffId, cart }),
+        picksStaff ? funnelHref(`${here}/profissional`, { day }) : null,
+        funnelHref(`${here}/servicos`, { day, staffId: chosenStaff, cart }),
         null,
         null,
       ]}
@@ -173,7 +186,12 @@ export default async function TimesPage({ params, searchParams }: Params) {
             title={dict.funnel.yourVisit}
             lines={sample.items.map((item) => ({
               label: names.get(item.serviceId) ?? item.serviceName,
-              meta: `${item.staffPublicName} · ${formatDuration(item.durationMinutes, language)}`,
+              /* Ao domingo a cliente nao escolheu ninguem — e o nome
+                 de quem o motor arrumou por dentro nao e uma promessa
+                 que a casa queira fazer. Fica so a duracao. */
+              meta: picksStaff
+                ? `${item.staffPublicName} · ${formatDuration(item.durationMinutes, language)}`
+                : formatDuration(item.durationMinutes, language),
               value: formatCents(item.priceCents, org.currency, language),
             }))}
             total={{
@@ -212,8 +230,23 @@ export default async function TimesPage({ params, searchParams }: Params) {
         timezone={unit.timezone}
         language={language}
         dict={dict}
+        /*
+         * TROCAR DE DIA PODE ATRAVESSAR A FRONTEIRA DO DOMINGO.
+         *
+         * De um dia de semana para domingo, a profissional escolhida
+         * deixa de fazer sentido e cai. De domingo para um dia de
+         * semana, ela nunca chegou a ser escolhida — e as horas de
+         * uma visita sem dono não se sabem pedir, por isso a troca
+         * leva ao passo dela, com o carrinho intacto.
+         */
         href={(value) =>
-          funnelHref(`${here}/horarios`, { cart, day: value, staffId })
+          picksStaffOn(value) && !chosenStaff
+            ? funnelHref(`${here}/profissional`, { day: value })
+            : funnelHref(`${here}/horarios`, {
+                cart,
+                day: value,
+                staffId: picksStaffOn(value) ? chosenStaff : null,
+              })
         }
         label={dict.funnel.steps.day}
         disabled={deadDays}
@@ -279,7 +312,7 @@ export default async function TimesPage({ params, searchParams }: Params) {
                         href={funnelHref(`${here}/horarios`, {
                           cart,
                           day: option.day,
-                          staffId,
+                          staffId: chosenStaff,
                         })}
                       >
                         <span className="first-letter:uppercase">
@@ -302,7 +335,7 @@ export default async function TimesPage({ params, searchParams }: Params) {
                   {dict.funnel.changeStaff}
                 </ButtonLink>
                 <ButtonLink
-                  href={funnelHref(`${here}/servicos`, { day, staffId, cart })}
+                  href={funnelHref(`${here}/servicos`, { day, staffId: chosenStaff, cart })}
                   variant="outline"
                 >
                   {dict.funnel.changeServices}
@@ -327,7 +360,7 @@ export default async function TimesPage({ params, searchParams }: Params) {
                         href={funnelHref(`${here}/confirmar`, {
                           cart,
                           day,
-                          staffId,
+                          staffId: chosenStaff,
                           time: slot.startsAt.toISOString(),
                         })}
                         className="tabular flex h-12 items-center justify-center border border-[var(--line-soft)] bg-[var(--surface-raised)] text-sm text-[var(--ink)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] hover:shadow-[var(--shadow-soft)]"

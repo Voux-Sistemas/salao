@@ -13,6 +13,7 @@ import {
   isValidDay,
 } from '@/lib/time'
 import { DAY_PARAM, first, funnelHref } from '@/lib/cart'
+import { picksStaffOn } from '@/lib/sunday'
 import { ButtonLink, Notice } from '@/components/ui'
 import { FunnelShell } from '@/components/funnel-shell'
 import { DayStrip } from '@/components/day-strip'
@@ -148,13 +149,26 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
 
       {state === 'ok' ? (
         <div className="mt-8">
+          {/* Ao domingo o passo da profissional não existe — e por isso
+              o botão também não pode prometê-lo. Vai direito à ementa,
+              e o aviso por baixo diz porquê antes de ela dar pela
+              falta do passo. */}
           <ButtonLink
-            href={funnelHref(`${here}/profissional`, { day })}
+            href={
+              picksStaffOn(day)
+                ? funnelHref(`${here}/profissional`, { day })
+                : funnelHref(`${here}/servicos`, { day })
+            }
             size="lg"
             className="w-full sm:w-auto"
           >
-            {dict.funnel.dayAction}
+            {picksStaffOn(day) ? dict.funnel.dayAction : dict.funnel.chooseService}
           </ButtonLink>
+          {!picksStaffOn(day) ? (
+            <p className="mt-4 max-w-prose text-[0.8125rem] text-[var(--ink-muted)]">
+              {dict.funnel.sundayNoStaff}
+            </p>
+          ) : null}
         </div>
       ) : (
         // Fechada é uma coisa, cheia é outra — e a tira acima já mostra

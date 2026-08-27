@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { sql } from '@/lib/db'
-import { requireActor, canSeeUnit } from '@/lib/auth/actor'
+import { requireActor, canSeeUnit, type Actor } from '@/lib/auth/actor'
 import {
   canTransition,
   getAppointment,
@@ -10,8 +10,36 @@ import {
   type Status,
 } from '@/lib/booking'
 import { ROUTINES, type Routine } from '@/lib/whatsapp'
+import { agendaIsPrivateOn } from '@/lib/sunday'
+import { isoDay } from '@/lib/time'
 
 export type DeskState = { error: string | null; done?: string | null }
+
+/**
+ * Esta pessoa pode mexer nesta marcação?
+ *
+ * Acima da profissional ninguém é peneirado. A profissional mexe no que
+ * é dela — excepto ao domingo, em que o trabalho é da casa: entra em
+ * nome de quem o motor escolheu, mas quem o pega decide-se lá, entre
+ * elas. De nada servia mostrar-lhes o domingo inteiro na grelha e
+ * depois responder «essa marcação não existe» a quem lhe tocasse.
+ *
+ * O dia é o da marcação, lido no fuso da loja — e não o de hoje.
+ */
+function canTouch(
+  actor: Actor,
+  appointment: {
+    starts_at: Date
+    unit_timezone: string
+    items: { staff_id: string }[]
+  },
+): boolean {
+  if (actor.role !== 'professional') return true
+  if (!agendaIsPrivateOn(isoDay(appointment.starts_at, appointment.unit_timezone))) {
+    return true
+  }
+  return appointment.items.some((i) => i.staff_id === actor.id)
+}
 
 const STATUSES: Status[] = [
   'booked',
@@ -47,11 +75,8 @@ export async function transitionAction(
   if (!canSeeUnit(actor, appointment.unit_id)) {
     return { error: 'Essa marcação não existe.' }
   }
-  // A profissional só mexe no que é dela.
-  if (
-    actor.role === 'professional' &&
-    !appointment.items.some((i) => i.staff_id === actor.id)
-  ) {
+  // A profissional só mexe no que é dela — ao domingo, no que é da casa.
+  if (!canTouch(actor, appointment)) {
     return { error: 'Essa marcação não existe.' }
   }
 
@@ -108,10 +133,7 @@ export async function logNotificationAction(
   if (!canSeeUnit(actor, appointment.unit_id)) {
     return { error: 'Essa marcação não existe.' }
   }
-  if (
-    actor.role === 'professional' &&
-    !appointment.items.some((i) => i.staff_id === actor.id)
-  ) {
+  if (!canTouch(actor, appointment)) {
     return { error: 'Essa marcação não existe.' }
   }
 

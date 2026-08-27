@@ -159,6 +159,22 @@ export const pt = {
     withStaff: 'Com',
     staffNoServices: 'Esta profissional ainda não tem serviços abertos à marcação online.',
     staffNoServicesHint: 'Volte atrás e escolha outra profissional.',
+    /*
+     * O DOMINGO.
+     *
+     * A cliente não escolhe profissional e a ementa é mais curta. Não
+     * se diz «reduzido» nem «limitado»: diz-se o que HÁ, que é o que
+     * ela precisa de saber para decidir.
+     */
+    sundaySubtitle: 'Ao domingo fazemos cabelo, coloração, tratamentos capilares e barbearia.',
+    sundayNoStaff: 'Ao domingo não escolhe profissional: atende-a quem estiver livre à hora que marcar.',
+    sundayOnRequest: 'Sob consulta',
+    sundayOnRequestTitle: 'Estes, ao domingo, são sob consulta',
+    sundayOnRequestHint: 'Dependem de quem está na casa nesse dia. Pergunte-nos pelo WhatsApp e dizemos-lhe logo se há vaga.',
+    sundayAsk: 'Perguntar pelo WhatsApp',
+    /* A mensagem que ela leva já escrita. O serviço e o dia por
+       extenso, para do outro lado ninguém ter de perguntar «qual?». */
+    sundayAskMessage: 'Olá! Queria saber se é possível marcar {servico} no domingo, dia {dia}, em {loja}.',
     serviceTitle: 'O que vai fazer?',
     serviceSubtitle: 'Pode juntar mais do que um serviço na mesma visita.',
     anyProfessional: 'Sem preferência',

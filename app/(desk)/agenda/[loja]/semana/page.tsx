@@ -66,7 +66,20 @@ export default async function SemanaPage({
   const todayDay = today(unit.timezone, now)
   const day: IsoDay = d && isValidDay(d) ? d : todayDay
 
-  // A profissional vê a semana dela, tal como vê o dia dela.
+  /*
+    A profissional vê a semana dela, tal como vê o dia dela.
+
+    E ao domingo? Aqui a peneira MANTÉM-SE, ao contrário da grelha do
+    dia. Esta vista é um panorama de sete dias — serve para responder a
+    «como está a minha semana», não para pegar trabalho. Quem quiser o
+    domingo aberto carrega no cabeçalho do dia e cai na agenda desse
+    dia, que lho mostra inteiro.
+
+    A razão de fundo é que a peneira aqui é uma só, feita em SQL sobre
+    os sete dias de uma vez; parti-la por dia era reescrever três
+    consultas para ganhar um panorama que ninguém usa para decidir quem
+    pega o quê.
+  */
   const onlyStaffId = actor.role === 'professional' ? actor.id : null
 
   const week = await loadAgendaWeek(unit, day, { onlyStaffId })

@@ -47,6 +47,11 @@ export type Queues = Record<Routine, NoticeRow[]>
  *
  * Sem `staffId` vem a casa toda: é o que a dona e a gerente veem, e é
  * também a rede de segurança de quem faltou ao aviso.
+ *
+ * AO DOMINGO NÃO HÁ «DELA». O trabalho de domingo é da casa: entra em
+ * nome de quem o motor escolheu, mas quem o pega decide-se no salão.
+ * Por isso as marcações de domingo entram na fila de toda a gente,
+ * mesmo com `staffId` — a excepção está escrita no `base()`.
  */
 export type Scope = {
   staffId?: string | null
@@ -143,6 +148,21 @@ export async function loadQueue(
  * na altura — e nas outras sai a tradução da ficha, com o congelado
  * como rede quando ainda ninguém a escreveu.
  */
+/**
+ * A espinha das cinco filas — e o sítio onde a peneira de quem mora.
+ *
+ * AO DOMINGO A FILA É DE TODAS. O trabalho de domingo não é de ninguém
+ * em particular: entra em nome de quem o motor escolheu, mas quem o
+ * pega decide-se no salão, entre elas. Quem pega tem de poder avisar, e
+ * para avisar tem de ver o aviso na fila.
+ *
+ * É a mesma regra da grelha do dia — ver `agendaIsPrivateOn` em
+ * `lib/sunday.ts`. Aqui a pergunta faz-se em SQL, e não em TypeScript,
+ * porque a peneira é da consulta: `extract(dow)` conta de 0 = domingo,
+ * a mesma convenção do `weekdayOf` e do `business_hours`. E lê-se no
+ * fuso da loja — uma marcação de domingo às 23h em Lisboa já é
+ * segunda-feira em UTC.
+ */
 function base(unit: Unit, routine: Routine, staffId: string | null) {
   return sql`
     select a.id as appointment_id, a.client_id,
@@ -171,6 +191,9 @@ function base(unit: Unit, routine: Routine, staffId: string | null) {
        )
        and (
          ${staffId}::uuid is null
+         -- Ao domingo a fila é de todas: 0 = domingo, no fuso da loja.
+         -- A razão está escrita por cima da função.
+         or extract(dow from (a.starts_at at time zone ${unit.timezone})) = 0
          or exists (
            select 1 from appointment_item i
             where i.appointment_id = a.id and i.staff_id = ${staffId}

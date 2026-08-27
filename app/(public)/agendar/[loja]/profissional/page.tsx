@@ -14,6 +14,7 @@ import {
   isValidDay,
 } from '@/lib/time'
 import { DAY_PARAM, first, funnelHref } from '@/lib/cart'
+import { picksStaffOn } from '@/lib/sunday'
 import { Empty } from '@/components/ui'
 import { FunnelShell } from '@/components/funnel-shell'
 import { DayStrip } from '@/components/day-strip'
@@ -73,6 +74,14 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
     redirect(here)
   }
   const day = asked as IsoDay
+
+  // AO DOMINGO ESTE PASSO NÃO EXISTE.
+  //
+  // Não se mostra vazio nem com um aviso: manda-se para onde a visita
+  // continua. Quem chega aqui vem de uma ligação guardada, de um
+  // «voltar atrás», ou de trocar para domingo na tira acima — e em
+  // todos esses casos o que ela quer é seguir, não ler que se enganou.
+  if (!picksStaffOn(day)) redirect(funnelHref(`${here}/servicos`, { day }))
 
   // A semana visível na tira: os dias sem ninguém ficam apagados lá,
   // para a troca de dia nunca levar a um ecrã todo cinzento.
