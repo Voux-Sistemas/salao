@@ -5,9 +5,13 @@ anterior estiver fechado — assim nada se faz duas vezes.
 
 ---
 
-> **Estado.** A Fase 0 está fechada — o conteúdo real está no site e o
-> site anda. O que ela ainda não disse está suprido por palpites, todos
-> arrolados em `PENDENCIAS.md`. Segue-se a Fase 1.
+> **Estado.** As fases 0 a 4 estão feitas: o conteúdo real está no
+> site, o funil e a agenda funcionam no telemóvel, a gestão aproveita o
+> ecrã largo, e as fotos das duas lojas estão carregadas. Falta o ecrã
+> para a dona trocar essas fotos sozinha (4.3) e a Fase 5.
+>
+> O que ela ainda não disse está suprido por palpites, arrolados em
+> `PENDENCIAS.md`.
 
 ---
 
@@ -33,35 +37,35 @@ lá dentro, o que se afina fica afinado.
 O que a cliente vê. É aqui que quase todo o tráfego vai bater, e vem
 de telemóvel.
 
-- [ ] 1.1 — Auditar cada ecrã público num telemóvel real (390x844) e
+- [x] 1.1 — Auditar cada ecrã público num telemóvel real (390x844) e
       apontar tudo o que parte.
-- [ ] 1.2 — Mini-site (`/loja/[loja]`): fotos, horário, mapa, botão de
+- [x] 1.2 — Mini-site (`/loja/[loja]`): fotos, horário, mapa, botão de
       marcar sempre à mão.
-- [ ] 1.3 — Funil (`/agendar/...`): escolher serviços, profissional,
+- [x] 1.3 — Funil (`/agendar/...`): escolher serviços, profissional,
       dia e hora com o polegar. Alvos de toque grandes, sem zoom
       acidental, sem teclado a tapar o botão.
-- [ ] 1.4 — Confirmação e `/pronto`: o ecrã que ela mostra à porta.
+- [x] 1.4 — Confirmação e `/pronto`: o ecrã que ela mostra à porta.
 
 ## Fase 2 — Telemóvel: o ecrã da profissional
 
 - [x] 2.1 — Repensar a `agenda-grid` para telemóvel. Hoje é uma grelha
       de horas x colunas: não cabe. Para a profissional a coluna é uma
       só (ela própria), portanto vira lista vertical do dia.
-- [ ] 2.2 — Comanda no telemóvel: abrir, juntar serviços, receber,
+- [x] 2.2 — Comanda no telemóvel: abrir, juntar serviços, receber,
       fechar — tudo com uma mão.
-- [ ] 2.3 — Botão de WhatsApp da cliente a um toque.
+- [x] 2.3 — Botão de WhatsApp da cliente a um toque.
 
 ## Fase 3 — Computador: a gestão
 
 A dona e a gerente trabalham sentadas ao computador. Aqui a ênfase
 inverte-se: aproveitar o ecrã largo em vez de o desperdiçar.
 
-- [ ] 3.1 — Agenda de dia inteiro com todas as profissionais lado a
+- [x] 3.1 — Agenda de dia inteiro com todas as profissionais lado a
       lado, sem fazer scroll horizontal.
-- [ ] 3.2 — Painel da dona: números e gráficos a usar a largura toda.
-- [ ] 3.3 — Tabelas de gestão (serviços, equipa, clientes, comissões)
+- [x] 3.2 — Painel da dona: números e gráficos a usar a largura toda.
+- [x] 3.3 — Tabelas de gestão (serviços, equipa, clientes, comissões)
       com mais colunas visíveis de uma vez.
-- [ ] 3.4 — Caixa: fecho lado a lado com o contado.
+- [x] 3.4 — Caixa: fecho lado a lado com o contado.
 
 ## Fase 4 — Fotos: onde vivem
 
@@ -72,6 +76,6 @@ inverte-se: aproveitar o ecrã largo em vez de o desperdiçar.
 
 ## Fase 5 — Antes de abrir ao público
 
-- [ ] 5.1 — Apagar a rede de demonstração.
+- [x] 5.1 — Apagar a rede de demonstração.
 - [ ] 5.2 — Contas reais, senhas reais, `SETUP_CODE` novo.
-- [ ] 5.3 — Domínio proprio e `NEXT_PUBLIC_SITE_URL` a apontar para ele.
+- [x] 5.3 — Domínio proprio e `NEXT_PUBLIC_SITE_URL` a apontar para ele.

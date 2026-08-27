@@ -86,15 +86,3 @@ export function distributeProportionally(
 
   return floors
 }
-
-/**
- * Percentagem sobre cêntimos, arredondada ao cêntimo (meio para cima).
- * `percent` vem da regra de comissão, com duas casas decimais.
- */
-export function percentOf(cents: Cents, percent: number): Cents {
-  return Math.round((cents * percent) / 100)
-}
-
-export function sumCents(values: readonly Cents[]): Cents {
-  return values.reduce((a, b) => a + b, 0)
-}

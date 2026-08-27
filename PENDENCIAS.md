@@ -41,7 +41,7 @@ Ela nunca o disse. Está no site assim:
 Em Valongo o horário foi desenhado para cobrir a escala das quatro. Na
 Maia ela deu as horas (09:00–20:00) mas **não os dias**.
 
-### A4 · Que serviços faz a Filipa
+### A4 · Que serviços faz a Profissional 4
 
 Não foi dito. Dei-lhe **rosto e cera** — se não fosse, ninguém em
 Valongo fazia esses serviços e o funil não os oferecia. Se ela na
@@ -53,7 +53,7 @@ verdade faz cabelo, a estética de Valongo fica sem ninguém.
 inventados (`+351930000001` a `…04`); só o da dona é verdadeiro. Cada
 uma precisa do seu número real, senão não tem conta.
 
-### A6 · Os domingos alternados da Adyr
+### A6 · Os domingos alternados da Profissional 2
 
 A mensagem diz "alguns domingos alternados", sem dizer quais. Não estão
 na escala. Ou se define a regra (um sim um não? de quinze em quinze?)
@@ -61,7 +61,7 @@ ou ela abre-os à mão na gestão, um a um.
 
 Fica também por decidir de quem é a linha solta *"Os Domingos e das
 9:00h até as 21:00h"*: horário da loja ao domingo, ou os domingos da
-Adyr?
+Profissional 2?
 
 ### A7 · Comissões
 
@@ -165,7 +165,7 @@ O que se fechou para isto poder ser usado a sério, e não só visto.
   `/pronto` e a área da cliente — todas por
   `coalesce(public_alias, name)`. O `public_alias` começou por ser
   `Profissional 1..5` e isso foi apagado: uma cliente que marca quer
-  ler *Ariadna*, não um número. Quem quiser um nome de montra
+  ler *Profissional 1*, não um número. Quem quiser um nome de montra
   diferente do nome interno escreve-o na ficha, em Gestão › Equipa.
 - Movimento de teste: seis semanas de histórico fechado, o dia de hoje
   a meio, três semanas de marcações futuras, caixa aberto nas duas

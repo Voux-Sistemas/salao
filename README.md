@@ -36,8 +36,10 @@ porta própria, com código, e vê só o que é dela.
 2. **Project Settings › Database › Connection string › URI** e copia a
    ligação do *pooler* em modo transacção (porta `6543`).
 3. Põe essa ligação no `.env` como `DATABASE_URL` e corre as migrações.
-   São oito ficheiros numerados em `supabase/migrations/`, do
-   `…20260820120000_core.sql` ao `…20260822120000_rate_limit.sql`:
+   São os ficheiros numerados de `supabase/migrations/`, aplicados pela
+   ordem do nome. Não se conta aqui quantos são: o número muda a cada
+   alteração ao esquema e um número escrito à mão fica errado no dia
+   seguinte — o `db:status` diz sempre a verdade.
 
    ```bash
    npm run db:status    # o que falta aplicar

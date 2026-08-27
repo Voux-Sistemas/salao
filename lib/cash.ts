@@ -79,20 +79,6 @@ export async function openSession(unitId: string): Promise<CashSession | null> {
   return rows[0] ?? null
 }
 
-export async function getSession(
-  unitId: string,
-  sessionId: string,
-): Promise<CashSession | null> {
-  const rows = await sql<CashSession[]>`
-    select ${sessionColumns()}
-      from cash_session cs
-      left join staff o on o.id = cs.opened_by_staff_id
-      left join staff c on c.id = cs.closed_by_staff_id
-     where cs.id = ${sessionId} and cs.unit_id = ${unitId}
-  `
-  return rows[0] ?? null
-}
-
 export async function recentSessions(
   unitId: string,
   limit = 14,

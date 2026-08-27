@@ -115,27 +115,6 @@ export async function removeRule(orgId: string, id: string): Promise<void> {
 // Pagar
 // ---------------------------------------------------------------------
 
-export type PendingStaff = {
-  staff_id: string
-  name: string
-  entries: number
-  total_cents: number
-  oldest_at: Date
-}
-
-export async function pendingByStaff(orgId: string): Promise<PendingStaff[]> {
-  return sql<PendingStaff[]>`
-    select e.staff_id, s.name, count(*)::int as entries,
-           sum(e.amount_cents)::int as total_cents,
-           min(e.generated_at) as oldest_at
-      from commission_entry e
-      join staff s on s.id = e.staff_id
-     where e.org_id = ${orgId} and e.status = 'pending'
-     group by e.staff_id, s.name
-     order by sum(e.amount_cents) desc
-  `
-}
-
 export type PendingEntry = {
   id: string
   generated_at: Date

@@ -11,17 +11,11 @@
  * Gera <pasta>/state-dona.json, state-gerente.json, state-marta.json,
  * state-cliente.json.
  */
-import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { createHash, randomBytes } from 'node:crypto'
-import postgres from 'postgres'
+import { ligar, loadEnv } from './_ligar.mjs'
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-for (const line of existsSync(join(root, '.env')) ? readFileSync(join(root, '.env'), 'utf8').split(/\r?\n/) : []) {
-  const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line)
-  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '')
-}
+loadEnv()
 
 const out = process.argv[2]
 if (!out) {
@@ -30,7 +24,10 @@ if (!out) {
 }
 mkdirSync(out, { recursive: true })
 
-const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false })
+// Pelo `_ligar` e nao a mao: e ele que liga cifrado. Isto escreve
+// sessoes na base — sem TLS iam por ai fora em texto simples, e uma
+// sessao lida do fio e uma sessao roubada.
+const sql = ligar()
 const sha256 = (t) => createHash('sha256').update(t).digest('hex')
 
 async function mint(subjectType, subjectId, file) {

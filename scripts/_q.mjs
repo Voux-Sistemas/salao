@@ -1,8 +1,14 @@
-import { readFileSync } from 'node:fs'
-import postgres from 'postgres'
-const env = readFileSync(new URL('../.env', import.meta.url), 'utf8')
-const url = /DATABASE_URL="([^"]+)"/.exec(env)[1]
-const sql = postgres(url, { prepare: false })
+/**
+ * Identificadores reais para apontar o navegador a páginas concretas.
+ *
+ * Liga pelo `_ligar` e não à mão: nomes de clientes não viajam em texto
+ * simples, e o `.env` pode não ter as aspas que a leitura anterior
+ * exigia — bastava tirá-las para isto rebentar.
+ */
+import { ligar, loadEnv } from './_ligar.mjs'
+
+loadEnv()
+const sql = ligar()
 
 const staff = await sql`select id, name from staff order by name limit 1`
 const client = await sql`select id, name from client order by created_at limit 1`

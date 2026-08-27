@@ -34,7 +34,7 @@ dia** de cada loja.
 
 ---
 
-## Serviços — 58 no total
+## Serviços — 67 no total, em 7 categorias
 
 ### Cabelo — preço e tempo por comprimento
 

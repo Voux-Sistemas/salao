@@ -24,8 +24,8 @@ npm run dev                   # http://localhost:3000
 `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
 
 **Entrar** em `/entrar`. O `seed-real.mjs` dá a toda a gente a mesma
-palavra-passe de arranque, `nohora2026` — **serve só para a base que
-está na sua máquina**. Em produção essa senha já não abre nada: foi
+palavra-passe de arranque — está escrita nesse guião, e **serve só para
+a base que está na sua máquina**. Em produção essa senha já não abre nada: foi
 apagada pelo `scripts/arrancar.mjs`, e cada pessoa tem a sua.
 
 
@@ -34,7 +34,7 @@ usar. Na base local, depois do `seed-real.mjs`:
 
 | Entrada | Quem | Vê |
 |---|---|---|
-| `admin` | Nohora Ramirez | tudo, nas duas lojas |
+| `admin` | a dona | tudo, nas duas lojas |
 | `prof` | Profissional 1 | só a agenda dele |
 | `gerente` | Gerente de Teste | a loja de Valongo |
 
@@ -124,7 +124,7 @@ o movimento não. Existe para os relatórios não estarem vazios. Apaga-se
 com `MOVIMENTO = false` no topo do `seed-real.mjs`.
 
 **3. Dos 67 serviços, 46 têm um tempo que eu inventei.** O horário das
-lojas, as habilidades da Filipa e as comissões também. Parecem dados,
+lojas, as habilidades da Profissional 4 e as comissões também. Parecem dados,
 são suposições — estão todas em [PENDENCIAS.md](PENDENCIAS.md), cada
 uma com a pergunta que a fecha. Não as trate como verdade.
 

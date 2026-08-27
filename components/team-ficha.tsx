@@ -33,7 +33,7 @@ import type { Level, SkillSource } from '@/lib/team'
  */
 
 // A semana começa à segunda; domingo (0) fica para o fim, como no resto
-// da casa (ver `hours-table`).
+// da casa.
 const ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 const LEVEL_NAME: Record<Level, string> = {

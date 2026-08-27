@@ -162,13 +162,3 @@ export function nationalDigitsBefore(value: string, caret: number): number {
   if (!code) return digitsBefore
   return Math.max(0, digitsBefore - code.length)
 }
-
-/** Está inteiro? Serve para acender o campo quando o número fecha. */
-export function phoneLooksComplete(masked: string): boolean {
-  const digits = masked.replace(/\D/g, '')
-  if (digits.length < 8) return false
-  const code = DIAL_CODES.find((c) => digits.startsWith(c))
-  if (!code) return digits.length >= 9
-  const full = NATIONAL_LENGTH[code]
-  return full ? digits.length - code.length === full : digits.length - code.length >= 8
-}

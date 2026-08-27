@@ -23,13 +23,14 @@ npm run dev          # http://localhost:3000
 Se o site abrir com erro, é quase sempre a base a não estar de pé.
 `npm run estado` diz numa página o que lá está dentro.
 
-**Contas locais** — a palavra-passe é `nohora2026` para toda a gente.
-Só vale nesta máquina; em produção estas senhas já não abrem nada.
+**Contas locais** — a palavra-passe é a mesma para toda a gente e está
+escrita no `scripts/seed-real.mjs`, que é quem a põe lá. Só vale nesta
+máquina; em produção estas senhas já não abrem nada.
 
 | Quem | Telefone | Vê |
 |---|---|---|
-| Nohora Ramirez | `+351934730344` | tudo, nas duas lojas |
-| Ariadna | `+351930000001` | só a agenda dela |
+| a dona | `+351934730344` | tudo, nas duas lojas |
+| Profissional 1 | `+351930000001` | só a agenda dela |
 
 **Uma armadilha:** com sessão aberta, `/` deixa de ser a montra e passa
 a ser o **Hoje** da equipa. Para ver o site como uma cliente o vê, use
@@ -112,7 +113,7 @@ só, que é uma das coisas que sei que estão por afinar.
 
 ## Parte 2 · O balcão
 
-Entre como **Nohora Ramirez**, em `/entrar`.
+Entre como **a dona**, em `/entrar`.
 
 ### 11. Hoje — `/`
 
@@ -246,7 +247,7 @@ A parte que ninguém vê e que magoa se estiver mal.
 
 ### 25. Entrar como profissional — `+351930000001`
 
-Saia, e entre como **Ariadna**.
+Saia, e entre como **Profissional 1**.
 
 Ela tem de ver **só a agenda dela**. Não pode haver Caixa, nem
 Clientes, nem Gestão, nem Avisos no menu. Experimente também escrever

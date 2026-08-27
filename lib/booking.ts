@@ -46,15 +46,6 @@ export type Status =
   | 'cancelled_by_salon'
   | 'no_show'
 
-/** Estados que ainda ocupam a agenda. */
-export const LIVE_STATUSES: Status[] = [
-  'booked',
-  'confirmed',
-  'checked_in',
-  'in_service',
-  'completed',
-]
-
 export const CANCELLED_STATUSES: Status[] = [
   'cancelled_by_client',
   'cancelled_by_salon',

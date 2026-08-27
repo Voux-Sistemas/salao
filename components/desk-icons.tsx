@@ -105,22 +105,6 @@ export function IconSignOut({ className }: { className?: string }) {
   )
 }
 
-export function IconChevronLeft({ className }: { className?: string }) {
-  return (
-    <Glyph className={className}>
-      <path d="M14.5 6.5L9 12l5.5 5.5" />
-    </Glyph>
-  )
-}
-
-export function IconChevronRight({ className }: { className?: string }) {
-  return (
-    <Glyph className={className}>
-      <path d="M9.5 6.5L15 12l-5.5 5.5" />
-    </Glyph>
-  )
-}
-
 export function IconClose({ className }: { className?: string }) {
   return (
     <Glyph className={className}>

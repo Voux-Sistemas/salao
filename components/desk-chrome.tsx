@@ -124,7 +124,7 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
  * que marcaram com ela. Sem caixa, sem clientes, sem gestão — e é este
  * par que a barra do telemóvel mostra inteiro.
  */
-export function navFor(actor: Actor): NavItem[] {
+function navFor(actor: Actor): NavItem[] {
   if (actor.role === 'professional') {
     return [
       { href: '/agenda', label: 'A minha agenda', short: 'Agenda', icon: 'agenda' },

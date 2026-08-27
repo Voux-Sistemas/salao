@@ -71,10 +71,6 @@ export function setStaffAt(
   return cart.map((line, i) => (i === index ? { ...line, staffId } : line))
 }
 
-export function hasService(cart: CartLine[], serviceId: string): boolean {
-  return cart.some((line) => line.serviceId === serviceId)
-}
-
 /** Monta um endereço do funil mantendo o que já foi escolhido. */
 export function funnelHref(
   path: string,
