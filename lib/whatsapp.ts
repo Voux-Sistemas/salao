@@ -70,11 +70,12 @@ export function renderTemplate(
  * é como o WhatsApp faz negrito, e é a única marca de formatação que
  * usamos.
  *
- * A segunda foi o que NÃO se põe aqui: nada de emojis nem de símbolos
- * bonitos. Os acentos, o «ç» e o «¡» viajam bem — foram medidos, ida e
- * volta, nos três idiomas. Um emoji depende da letra que o telemóvel de
- * quem recebe tiver instalada, e num telefone antigo sai um quadrado.
- * Para uma mensagem que a casa manda a uma cliente, não vale o risco.
+ * A segunda foi o que se põe e o que não se põe. Os acentos, o «ç» e o
+ * «¡» viajam bem — foram medidos, ida e volta, nos três idiomas. O
+ * emoji é outra história: depende da letra que o telemóvel de quem
+ * recebe tiver instalada, e num telefone muito antigo sai um quadrado.
+ * A casa quis os emojis na mensagem de confirmação e sabe do risco; nas
+ * outras rotinas não os há, e não é por descuido.
  *
  * As linhas escrevem-se em lista porque assim vê-se o desenho da
  * mensagem ao ler o código — uma linha vazia é uma linha vazia.
@@ -82,30 +83,26 @@ export function renderTemplate(
 const linhas = (...partes: string[]) => partes.join('\n')
 
 export const DEFAULT_TEMPLATES: Record<Routine, Record<Language, string>> = {
+  /*
+   * O nome da loja é {loja} e não «Valongo»: a casa tem duas, e uma
+   * cliente da Maia a receber uma confirmação de Valongo é pior do que
+   * não receber nada.
+   */
   confirm: {
     pt: linhas(
-      'Olá {cliente}, a sua marcação no {loja} ficou registada.',
+      'Olá, {cliente}! 😊 A sua marcação no salão de *{loja}* foi registada com sucesso. ✨',
       '',
-      '*{dia}, às {hora}*',
-      '{servicos}',
-      '',
-      'Até já!',
+      'Agradecemos a sua preferência e esperamos por si! 💖',
     ),
     en: linhas(
-      'Hello {cliente}, your appointment at {loja} is booked.',
+      'Hello, {cliente}! 😊 Your appointment at our *{loja}* salon has been booked. ✨',
       '',
-      '*{dia}, at {hora}*',
-      '{servicos}',
-      '',
-      'See you soon!',
+      'Thank you for choosing us — we look forward to seeing you! 💖',
     ),
     es: linhas(
-      '¡Hola {cliente}! Su cita en {loja} ha quedado reservada.',
+      '¡Hola, {cliente}! 😊 Su cita en el salón de *{loja}* ha quedado reservada. ✨',
       '',
-      '*{dia}, a las {hora}*',
-      '{servicos}',
-      '',
-      '¡Hasta pronto!',
+      '¡Gracias por su preferencia, la esperamos! 💖',
     ),
   },
   reminder_eve: {

@@ -84,10 +84,16 @@ function firstName(name: string): string {
  * resultado: cola-se a pontuação à palavra anterior e comem-se os
  * espaços a dobrar. Assim também aguenta um modelo que a casa venha a
  * escrever à mão com um marcador que fica por preencher.
+ *
+ * Colar não chega quando a pontuação era só para separar o nome do
+ * resto: «Olá, {cliente}!» sem nome dava «Olá,!» — a vírgula ficou a
+ * segurar o vazio. Uma pontuação encostada a outra é sinal de que o que
+ * estava no meio desapareceu, e sai.
  */
 function arrumar(text: string): string {
   return text
     .replace(/[ \t]+([,.!?;:])/g, '$1')
+    .replace(/([,;:])(?=[.!?,;:])/g, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/^[ \t]+|[ \t]+$/gm, '')
 }
