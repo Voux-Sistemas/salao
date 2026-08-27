@@ -1,6 +1,6 @@
 import 'server-only'
 import { cache } from 'react'
-import { sql } from '@/lib/db'
+import { sql, type Sql } from '@/lib/db'
 import type { Unit } from '@/lib/org'
 import {
   addDays,
@@ -39,8 +39,10 @@ export type Window = { openMin: number; closeMin: number }
 export async function openingWindows(
   unitId: string,
   day: IsoDay,
+  /* Dentro de uma transação, a pergunta tem de ser feita por ela. */
+  db: Sql = sql,
 ): Promise<Window[]> {
-  const rows = await sql<
+  const rows = await db<
     {
       is_closed: boolean
       opens_min: number | null

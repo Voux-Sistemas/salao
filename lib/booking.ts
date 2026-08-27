@@ -13,10 +13,22 @@ import type { Language } from '@/lib/i18n/config'
  *
  *   · O plano NUNCA vem do navegador. O cliente manda o instante; o
  *     servidor replaneia quem faz o quê e em que recurso.
- *   · A trava definitiva é da base de dados. Entre "consultei e estava
- *     livre" e "gravei" há uma janela, e com concorrência ela é
- *     apanhada: as restrições de exclusão levantam 23P01 e nós
- *     respondemos "esse horário acabou de ser preenchido".
+ *   · Entre "consultei e estava livre" e "gravei" há uma janela, e com
+ *     concorrência ela é apanhada. A trava era da base de dados: uma
+ *     restrição de exclusão em `staff_block` levantava 23P01 e nós
+ *     respondíamos "esse horário acabou de ser preenchido".
+ *
+ *     ESSA RESTRIÇÃO JÁ NÃO EXISTE, e não pode voltar: é ela que teria
+ *     de recusar o encaixe que a casa faz de propósito — a raiz de uma
+ *     coloração repousa e nesse intervalo cabe um corte. A base não
+ *     sabe distinguir a sobreposição escolhida da acidental.
+ *
+ *     Quem sabe é o motor. Por isso a trava mudou de sítio sem mudar de
+ *     natureza: `pg_advisory_xact_lock` põe em fila quem escreve para a
+ *     mesma profissional no mesmo dia, e o plano é REFEITO já dentro da
+ *     transação, com a fila garantida. Quem chega depois vê o que o
+ *     primeiro gravou. Continua a ser uma trava de verdade — só que
+ *     agora entende a diferença entre encaixar e atropelar.
  *
  * E o invariante que atravessa tudo: horário ocupado é bloco existente.
  * Cancelar apaga os blocos — não há bloco cancelado para filtrar.
@@ -160,7 +172,31 @@ export async function createAppointment(
     }
 
     try {
-      const appointmentId = await sql.begin(async (tx) => {
+      const written = await sql.begin(async (tx) => {
+        // Primeiro a fila, depois a verdade. Enquanto este cadeado for
+        // nosso, mais ninguém escreve para estas profissionais neste
+        // dia — e o que se ler a seguir é o estado final, não uma
+        // fotografia a envelhecer.
+        await lockStaffDay(
+          tx,
+          plan.items.map((item) => item.staffId),
+          input.day,
+        )
+
+        // O plano de fora foi feito antes da fila e pode ter ficado
+        // velho: entre lê-lo e chegar aqui, a hora pode ter sido
+        // vendida. Refaz-se com a fila garantida, e é ESTE que se grava.
+        const fresh = await planAt(
+          input.unit,
+          input.day,
+          input.cart,
+          input.startsAt,
+          input.channel,
+          now,
+          { db: tx },
+        )
+        if (!fresh) return null
+
         const rows = await tx<{ id: string }[]>`
           insert into appointment (
             org_id, unit_id, client_id, status, source,
@@ -169,7 +205,7 @@ export async function createAppointment(
           ) values (
             ${input.unit.org_id}, ${input.unit.id}, ${input.clientId},
             'confirmed', ${input.source},
-            ${plan.startsAt}, ${plan.endsAt},
+            ${fresh.startsAt}, ${fresh.endsAt},
             ${input.clientNote ?? null}, ${input.internalNote ?? null},
             ${input.language}, ${input.createdByStaffId ?? null}
           )
@@ -178,7 +214,7 @@ export async function createAppointment(
         const appointment = rows[0]
         if (!appointment) throw new Error('insert falhou')
 
-        await writePlan(tx, appointment.id, input.unit.id, plan)
+        await writePlan(tx, appointment.id, input.unit.id, fresh)
 
         await tx`
           insert into appointment_status_event
@@ -187,12 +223,19 @@ export async function createAppointment(
                   ${input.createdByStaffId ?? null}, ${input.byClient ?? false})
         `
 
-        return appointment.id
+        return { id: appointment.id, plan: fresh }
       })
 
-      return { ok: true, appointmentId, plan }
+      // Perdeu a corrida. Na primeira volta ainda vale a pena tentar
+      // outra vez — um carrinho "sem preferência" pode cair noutra
+      // profissional. Na segunda, é mesmo não.
+      if (!written) continue
+
+      return { ok: true, appointmentId: written.id, plan: written.plan }
     } catch (error) {
-      // 23P01: outra pessoa gravou primeiro. Volta a planear.
+      /* A restrição de exclusão da `staff_block` já não existe, mas a da
+         `resource_block` sim: o lavatório não se parte ao meio. Este
+         `catch` continua a ser o que apanha a disputa por um recurso. */
       if (isOverlapError(error)) continue
       throw error
     }
@@ -202,6 +245,67 @@ export async function createAppointment(
 }
 
 type Tx = postgres.TransactionSql<Record<string, never>>
+
+/**
+ * A hora foi vendida enquanto esperávamos pelo cadeado.
+ *
+ * Numa remarcação isto tem de ser um erro e não um `return`: a esta
+ * altura a marcação antiga já foi cancelada e desbloqueada dentro da
+ * transação, e sair em silêncio deixava a cliente sem a antiga e sem a
+ * nova. Lançar desfaz tudo — ela volta a ter a hora que tinha.
+ */
+class SlotTaken extends Error {
+  constructor() {
+    super('slot_taken')
+    this.name = 'SlotTaken'
+  }
+}
+
+/**
+ * A FILA À PORTA DA ESCRITA.
+ *
+ * `pg_advisory_xact_lock` é um cadeado com um número à escolha, que se
+ * larga sozinho quando a transação acaba — sirva ela ou rebente. O
+ * número é o par (profissional, dia), reduzido a inteiro: duas escritas
+ * para a mesma profissional no mesmo dia esperam uma pela outra; para
+ * profissionais diferentes, ou dias diferentes, não se cruzam.
+ *
+ * Ordenado, e sempre pela mesma ordem. Uma visita com duas
+ * profissionais pede dois cadeados, e se cada transação os pedisse pela
+ * ordem que lhe desse jeito, duas visitas cruzadas ficavam à espera uma
+ * da outra para sempre. Por ordem crescente, isso não acontece.
+ */
+async function lockStaffDay(
+  tx: Tx,
+  staffIds: string[],
+  day: IsoDay,
+): Promise<void> {
+  const keys = [...new Set(staffIds)]
+    .map((staffId) => hashKey(`${staffId}:${day}`))
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+
+  for (const key of keys) {
+    // Vai como texto e a base converte: um inteiro de 64 bits não cabe
+    // no `number` do JavaScript sem perder os últimos dígitos, e é
+    // precisamente neles que duas chaves parecidas se distinguem.
+    await tx`select pg_advisory_xact_lock(${key.toString()}::bigint)`
+  }
+}
+
+/**
+ * Texto para um inteiro de 64 bits, que é o que o cadeado aceita.
+ * Colisões são inofensivas: duas chaves diferentes com o mesmo número
+ * só fazem esperar quem podia ter passado — nunca deixam passar quem
+ * devia esperar.
+ */
+function hashKey(text: string): bigint {
+  let hash = 0xcbf29ce484222325n
+  for (let i = 0; i < text.length; i++) {
+    hash ^= BigInt(text.charCodeAt(i))
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n)
+  }
+  return BigInt.asIntN(64, hash)
+}
 
 /**
  * Escreve os itens e os blocos de ocupação. O bloco inclui as folgas: a
@@ -420,11 +524,20 @@ export async function rescheduleAppointment(input: {
       client_note: string | null
       internal_note: string | null
       closed_at: Date | null
+      /* Quem atendia antes. Entra na fila junto com quem vai atender:
+         remarcar mexe nas duas agendas, não só na de destino. */
+      staff_ids: string[]
     }[]
   >`
-    select id, status, client_id, language, client_note, internal_note, closed_at
-      from appointment
-     where id = ${input.appointmentId}
+    select a.id, a.status, a.client_id, a.language,
+           a.client_note, a.internal_note, a.closed_at,
+           coalesce(
+             (select array_agg(distinct i.staff_id)
+                from appointment_item i where i.appointment_id = a.id),
+             '{}'
+           ) as staff_ids
+      from appointment a
+     where a.id = ${input.appointmentId}
   `
   const previous = previousRows[0]
   if (!previous) return { ok: false, reason: 'not_found' }
@@ -448,13 +561,22 @@ export async function rescheduleAppointment(input: {
 
     try {
       const created = await sql.begin(async (tx) => {
+        // A fila, como na criação: primeiro as profissionais do plano
+        // que se quer gravar, depois as da marcação antiga — que também
+        // se mexe, ao libertar-lhe os blocos.
+        await lockStaffDay(
+          tx,
+          [...plan.items.map((item) => item.staffId), ...previous.staff_ids],
+          input.day,
+        )
+
         // A antiga sai da agenda primeiro: os seus blocos libertam o
         // horário que a nova vai ocupar.
         const locked = await tx<{ status: Status }[]>`
           select status from appointment where id = ${previous.id} for update
         `
         const current = locked[0]
-        if (!current || isTerminal(current.status)) return null
+        if (!current || isTerminal(current.status)) return 'gone' as const
 
         await freeBlocks(tx, previous.id)
         await tx`
@@ -469,6 +591,21 @@ export async function rescheduleAppointment(input: {
                   ${input.reason ?? 'Remarcada'})
         `
 
+        // Refeito com o cadeado na mão E com os blocos da antiga já
+        // libertados — é por isso que este replaneamento vem depois do
+        // `freeBlocks` e não antes: a hora que a marcação nova quer
+        // pode ser a que a antiga estava a ocupar.
+        const fresh = await planAt(
+          input.unit,
+          input.day,
+          input.cart,
+          input.startsAt,
+          input.channel,
+          now,
+          { excludeAppointmentId: previous.id, db: tx },
+        )
+        if (!fresh) throw new SlotTaken()
+
         const rows = await tx<{ id: string }[]>`
           insert into appointment (
             org_id, unit_id, client_id, status, source,
@@ -476,8 +613,8 @@ export async function rescheduleAppointment(input: {
             rescheduled_from_id, created_by_staff_id
           ) values (
             ${input.unit.org_id}, ${input.unit.id}, ${previous.client_id},
-            'booked', ${input.source},
-            ${plan.startsAt}, ${plan.endsAt},
+            'confirmed', ${input.source},
+            ${fresh.startsAt}, ${fresh.endsAt},
             ${previous.client_note}, ${previous.internal_note},
             ${previous.language}, ${previous.id}, ${input.byStaffId ?? null}
           )
@@ -486,22 +623,26 @@ export async function rescheduleAppointment(input: {
         const appointment = rows[0]
         if (!appointment) throw new Error('insert falhou')
 
-        await writePlan(tx, appointment.id, input.unit.id, plan)
+        await writePlan(tx, appointment.id, input.unit.id, fresh)
 
         await tx`
           insert into appointment_status_event
                  (appointment_id, from_status, to_status, by_staff_id, by_client, reason)
-          values (${appointment.id}, null, 'booked',
+          values (${appointment.id}, null, 'confirmed',
                   ${input.byStaffId ?? null}, ${input.byClient ?? false},
                   ${'Remarcação de ' + previous.id})
         `
 
-        return appointment.id
+        return { id: appointment.id, plan: fresh }
       })
 
-      if (!created) return { ok: false, reason: 'not_allowed' }
-      return { ok: true, appointmentId: created, plan }
+      if (created === 'gone') return { ok: false, reason: 'not_allowed' }
+      return { ok: true, appointmentId: created.id, plan: created.plan }
     } catch (error) {
+      /* Perdeu a hora com o cadeado na mão. A transação inteira desfez-se
+         — a marcação antiga voltou intacta à agenda, com os seus blocos
+         — e vale a pena uma segunda volta. */
+      if (error instanceof SlotTaken) continue
       if (isOverlapError(error)) continue
       throw error
     }

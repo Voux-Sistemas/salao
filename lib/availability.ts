@@ -1,5 +1,5 @@
 import 'server-only'
-import { sql } from '@/lib/db'
+import { sql, type Sql } from '@/lib/db'
 import type { Unit } from '@/lib/org'
 import { openingWindows } from '@/lib/hours'
 import {
@@ -143,7 +143,17 @@ export type DayProblem = 'closed' | 'no_staff' | 'too_far' | 'none'
  * ocupação — senão a própria marcação impede-se a si mesma de mudar de
  * hora. É a única razão para esta opção existir.
  */
-export type PlanOptions = { excludeAppointmentId?: string | null }
+export type PlanOptions = {
+  excludeAppointmentId?: string | null
+  /*
+   * A ligação por onde se lê. Por omissão é a global, e é o que toda a
+   * gente quer. Quem está DENTRO de uma transação — o caminho de
+   * escrita, depois de tomar o cadeado — tem de passar a sua, senão lê
+   * por fora do cadeado e volta a ver a fotografia velha que a trava
+   * existe para evitar.
+   */
+  db?: Sql
+}
 
 export async function loadDayContext(
   unit: Unit,
@@ -154,6 +164,7 @@ export async function loadDayContext(
   options: PlanOptions = {},
 ): Promise<DayContext | DayProblem> {
   const excludeId = options.excludeAppointmentId ?? null
+  const db = options.db ?? sql
   if (cart.length === 0) return 'none'
 
   // Antecedência máxima: não se marca para daqui a um ano.
@@ -164,12 +175,12 @@ export async function loadDayContext(
 
   // --- horário de funcionamento -------------------------------------
   // Feriados e horários especiais sobrepõem-se ao horário normal.
-  const opening = await openingWindows(unit.id, day)
+  const opening = await openingWindows(unit.id, day, db)
   if (opening.length === 0) return 'closed'
 
   // --- serviços do carrinho ------------------------------------------
   const serviceIds = [...new Set(cart.map((l) => l.serviceId))]
-  const serviceRows = await sql<ServiceRow[]>`
+  const serviceRows = await db<ServiceRow[]>`
     select id, name, duration_minutes, base_price_cents,
            buffer_before_minutes, buffer_after_minutes,
            bookable_online, is_active
@@ -188,7 +199,7 @@ export async function loadDayContext(
 
   // --- profissionais elegíveis ---------------------------------------
   // Quem não tem a habilidade nunca aparece como opção nesse serviço.
-  const skillRows = await sql<
+  const skillRows = await db<
     (StaffRow & { service_id: string })[]
   >`
     select ss.service_id, s.id, s.name, s.public_alias, s.sort_order,
@@ -243,7 +254,7 @@ export async function loadDayContext(
   const [scheduleRows, absenceRows, blockRows, pricingRows, requirementRows, resourceRows, resourceBlockRows] =
     await Promise.all([
       // A escala tem vigência: só conta a que vigora neste dia.
-      sql<{ staff_id: string; starts_min: number; ends_min: number }[]>`
+      db<{ staff_id: string; starts_min: number; ends_min: number }[]>`
         select staff_id, starts_min, ends_min
           from staff_schedule
          where unit_id = ${unit.id}
@@ -252,14 +263,14 @@ export async function loadDayContext(
            and valid_from <= ${day}::date
            and (valid_to is null or valid_to >= ${day}::date)
       `,
-      sql<{ staff_id: string; starts_at: Date; ends_at: Date }[]>`
+      db<{ staff_id: string; starts_at: Date; ends_at: Date }[]>`
         select staff_id, starts_at, ends_at
           from staff_absence
          where staff_id = any(${staffIds}::uuid[])
            and starts_at < ${windowEnd} and ends_at > ${windowStart}
       `,
       // A pessoa é uma só: um bloco na outra loja também a ocupa.
-      sql<{ staff_id: string; s: Date; e: Date }[]>`
+      db<{ staff_id: string; s: Date; e: Date }[]>`
         select sb.staff_id, lower(sb.during) as s, upper(sb.during) as e
           from staff_block sb
           join appointment_item ai on ai.id = sb.appointment_item_id
@@ -269,7 +280,7 @@ export async function loadDayContext(
       `,
       // Preço e duração efectivos para cada par (serviço, profissional),
       // pela função de precedência que vive na base de dados.
-      sql<
+      db<
         { service_id: string; staff_id: string; price_cents: number; duration_minutes: number }[]
       >`
         with pairs as (
@@ -281,18 +292,18 @@ export async function loadDayContext(
           from pairs p
          cross join lateral effective_service_pricing(p.service_id, ${unit.id}, p.staff_id) e
       `,
-      sql<{ service_id: string; resource_type_id: string; quantity: number }[]>`
+      db<{ service_id: string; resource_type_id: string; quantity: number }[]>`
         select service_id, resource_type_id, quantity
           from service_resource_requirement
          where service_id = any(${serviceIds}::uuid[])
       `,
-      sql<{ id: string; resource_type_id: string }[]>`
+      db<{ id: string; resource_type_id: string }[]>`
         select id, resource_type_id
           from resource
          where unit_id = ${unit.id} and is_active
          order by sort_order, name
       `,
-      sql<{ resource_id: string; s: Date; e: Date }[]>`
+      db<{ resource_id: string; s: Date; e: Date }[]>`
         select rb.resource_id, lower(rb.during) as s, upper(rb.during) as e
           from resource_block rb
           join resource r on r.id = rb.resource_id
@@ -368,7 +379,7 @@ export async function loadDayContext(
   // Estratégia de "sem preferência": ordena as candidatas uma vez, aqui,
   // para que o plano seja determinístico — o mesmo instante replaneado
   // no servidor dá exactamente o mesmo resultado.
-  const load = await staffLoad(unit, day, staffIds, busy)
+  const load = await staffLoad(unit, day, staffIds, busy, db)
   const candidates = new Map<string, string[]>()
   for (const [serviceId, ids] of candidatesByService) {
     candidates.set(serviceId, orderCandidates(unit, ids, staff, load))
@@ -398,13 +409,15 @@ async function staffLoad(
   day: IsoDay,
   staffIds: string[],
   busy: Map<string, Interval[]>,
+  /* A mesma ligação de quem chama: dentro da transação, é a dela. */
+  db: Sql,
 ): Promise<Map<string, number>> {
   const load = new Map<string, number>()
 
   if (unit.assignment_strategy === 'least_busy_week') {
     const from = dayStart(addDays(day, -weekdayOf(day)), unit.timezone)
     const to = new Date(from.getTime() + 7 * 86_400_000)
-    const rows = await sql<{ staff_id: string; minutes: number }[]>`
+    const rows = await db<{ staff_id: string; minutes: number }[]>`
       select staff_id,
              (sum(extract(epoch from (upper(during) - lower(during)))) / 60)::int as minutes
         from staff_block

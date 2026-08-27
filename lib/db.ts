@@ -89,6 +89,20 @@ export const sql: Client = new Proxy(function noop() {} as unknown as Client, {
   },
 })
 
+/**
+ * QUEM FAZ A PERGUNTA.
+ *
+ * Quase todas as leituras usam o `sql` de cima e não pensam nisto. Mas
+ * uma leitura feita DENTRO de uma transação tem de ser feita pela mão
+ * dessa transação, senão sai por outra ligação e não vê — nem espera
+ * por — o que lá dentro está a acontecer. É o que separa uma trava a
+ * sério de uma trava que parece.
+ *
+ * Daí este tipo: as funções que tanto servem um caso como o outro
+ * recebem-no e usam o que lhes derem.
+ */
+export type Sql = Client | postgres.TransactionSql<Record<string, never>>
+
 /** Erro de sobreposição levantado pelas restrições de exclusão. */
 export const EXCLUSION_VIOLATION = '23P01'
 export const UNIQUE_VIOLATION = '23505'
