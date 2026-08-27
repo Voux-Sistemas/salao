@@ -3,7 +3,7 @@ import Form from 'next/form'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
 import { ArrowLeft, ChevronDown, X } from 'lucide-react'
-import { requireManagement, resolveUnit } from '@/lib/auth/actor'
+import { ownStaffId, requireBooking, resolveUnit } from '@/lib/auth/actor'
 import {
   buildPlan,
   loadDayContext,
@@ -111,11 +111,12 @@ type Params = {
  * espera que se escolham os serviços.
  */
 export default async function EncaixePage({ params, searchParams }: Params) {
-  const actor = await requireManagement()
+  const actor = await requireBooking()
   const { loja } = await params
   const query = await searchParams
 
   const unit = await resolveUnit(actor, loja)
+  const ownStaff = ownStaffId(actor)
   const tz = unit.timezone
   const now = new Date()
 
@@ -135,12 +136,16 @@ export default async function EncaixePage({ params, searchParams }: Params) {
        order by c.sort_order, c.name, s.sort_order, s.name
     `,
     // Sem filtro de marcação online: ao balcão marca-se com quem faz.
+    //
+    // A profissional marca para ela própria e mais ninguém: o encaixe
+    // abriu-se a quem atende, não a agenda das colegas.
     sql<SkillRow[]>`
       select ss.service_id, s.id as staff_id, s.name as staff_name
         from staff_skill ss
         join staff s on s.id = ss.staff_id
         join staff_unit su on su.staff_id = s.id and su.unit_id = ${unit.id}
        where s.org_id = ${actor.orgId} and s.is_active
+         and (${ownStaff}::uuid is null or s.id = ${ownStaff}::uuid)
        order by s.sort_order, s.name
     `,
   ])

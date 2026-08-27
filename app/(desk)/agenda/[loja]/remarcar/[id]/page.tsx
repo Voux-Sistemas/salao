@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
 import { ArrowLeft, MoveRight } from 'lucide-react'
-import { requireManagement, resolveUnit } from '@/lib/auth/actor'
+import { ownStaffId, requireBooking, resolveUnit } from '@/lib/auth/actor'
 import {
   buildPlan,
   loadDayContext,
@@ -70,7 +70,7 @@ type Params = {
  * impedia-se a si mesma de mudar de hora.
  */
 export default async function RemarcarPage({ params, searchParams }: Params) {
-  const actor = await requireManagement()
+  const actor = await requireBooking()
   const { loja, id } = await params
   const query = await searchParams
 
@@ -79,10 +79,14 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
   const unit = await resolveUnit(actor, loja)
   const appointment = await getAppointment(id)
 
+  const ownStaff = ownStaffId(actor)
   if (
     !appointment ||
     appointment.org_id !== actor.orgId ||
-    appointment.unit_id !== unit.id
+    appointment.unit_id !== unit.id ||
+    // A profissional remarca o que é dela. O que não é responde o
+    // mesmo que o que não existe.
+    (ownStaff && !appointment.items.some((item) => item.staff_id === ownStaff))
   ) {
     notFound()
   }
@@ -105,6 +109,8 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
      where s.org_id = ${actor.orgId}
        and s.is_active
        and ss.service_id = any(${appointment.items.map((i) => i.service_id)}::uuid[])
+       -- A profissional remarca para ela; não passa a cliente a uma colega.
+       and (${ownStaff}::uuid is null or s.id = ${ownStaff}::uuid)
      order by s.sort_order, s.name
   `
 

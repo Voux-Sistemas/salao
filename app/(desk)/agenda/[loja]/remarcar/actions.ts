@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { canSeeUnit, requireManagement } from '@/lib/auth/actor'
+import { canSeeUnit, ownStaffId, requireBooking } from '@/lib/auth/actor'
 import { getAppointment, rescheduleAppointment } from '@/lib/booking'
 import { parseCart } from '@/lib/cart'
 import { getUnitBySlug } from '@/lib/org'
@@ -20,7 +20,7 @@ export async function remarcarAction(
   _previous: RemarcarState,
   form: FormData,
 ): Promise<RemarcarState> {
-  const actor = await requireManagement()
+  const actor = await requireBooking()
 
   const slug = String(form.get('unit') ?? '')
   const appointmentId = String(form.get('appointment') ?? '')
@@ -39,6 +39,16 @@ export async function remarcarAction(
     appointment.org_id !== actor.orgId ||
     appointment.unit_id !== unit.id
   ) {
+    return { error: 'Essa marcação não existe.' }
+  }
+
+  /*
+    A profissional remarca o que é dela. Uma marcação de uma colega
+    responde o mesmo que uma marcação que não existe: não se confirma a
+    existência do que a pessoa não pode mexer.
+  */
+  const ownStaff = ownStaffId(actor)
+  if (ownStaff && !appointment.items.some((item) => item.staff_id === ownStaff)) {
     return { error: 'Essa marcação não existe.' }
   }
 

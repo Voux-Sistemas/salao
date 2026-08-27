@@ -468,12 +468,23 @@ export function buildPlan(ctx: DayContext, startMs: number): Plan | null {
     ),
   )
 
-  // Antecedência mínima. A recepção pode ignorá-la — é isso que é um
-  // encaixe.
-  if (ctx.channel === 'online') {
-    const earliest = ctx.now.getTime() + ctx.unit.min_lead_minutes * 60_000
-    if (startMs < earliest) return null
-  }
+  /*
+    O QUE NÃO SE MARCA É O PASSADO.
+
+    Havia aqui uma antecedência mínima — duas horas — e era ela que
+    fazia perder vagas: às 17h58, com a cadeira livre às 18h, o sistema
+    dizia que não. Numa casa cheia, a vaga que aparece agora vende-se
+    agora ou não se vende.
+
+    A `min_lead_minutes` continua a ser respeitada, para a casa que a
+    quiser pôr de volta; o que muda é que já não é o piso. O piso é o
+    relógio, e vale nos dois canais: nem ao balcão se marca para trás.
+  */
+  const earliest =
+    ctx.channel === 'online'
+      ? ctx.now.getTime() + ctx.unit.min_lead_minutes * 60_000
+      : ctx.now.getTime()
+  if (startMs < earliest) return null
 
   const items: PlannedItem[] = []
   // Ocupação acumulada DENTRO deste plano (a mesma profissional não pode
@@ -565,7 +576,33 @@ function assign(
       startMs - service.buffer_before_minutes * 60_000,
       endMs + service.buffer_after_minutes * 60_000,
     )
-    if (overlapsAny(block, ctx.busy.get(staffId) ?? [])) continue
+
+    /*
+      DUAS CLIENTES AO MESMO TEMPO — MAS SÓ POR DECISÃO DE QUEM VÊ A SALA.
+
+      Nesta casa a profissional desdobra-se: a raiz de uma coloração
+      repousa quarenta minutos, e nesse intervalo cabe um corte inteiro.
+      A base de dados já não o proíbe.
+
+      Mas quem marca pelo SITE não está a ver a sala. Se o site também
+      ignorasse a ocupação, a mesma hora seria vendida a quantas
+      clientes lá batessem, e a agenda enchia-se sozinha durante a
+      noite. Por isso a regra parte-se em duas: ao balcão a sobreposição
+      é uma escolha de quem está lá; no site continua a valer o livro.
+    */
+    if (
+      ctx.channel === 'online' &&
+      overlapsAny(block, ctx.busy.get(staffId) ?? [])
+    ) {
+      continue
+    }
+
+    /*
+      Dentro do MESMO plano ninguém se sobrepõe a si próprio, venha de
+      onde vier: uma visita é uma pessoa a ser atendida em sequência, e
+      dois serviços à mesma hora para a mesma cliente não é um encaixe,
+      é um erro de contas.
+    */
     if (overlapsAny(block, plannedStaff.get(staffId) ?? [])) continue
 
     // Recursos físicos: pessoa e equipamento reservam-se juntos.
@@ -622,18 +659,61 @@ function pickResources(
 // ---------------------------------------------------------------------
 
 export function slotsFrom(ctx: DayContext): Slot[] {
-  const step = ctx.unit.slot_granularity_minutes
-  const slots: Slot[] = []
+  /*
+    A GRELHA NÃO É A MESMA DOS DOIS LADOS DO BALCÃO.
 
-  for (const window of ctx.opening) {
-    for (let m = window.openMin; m < window.closeMin; m += step) {
-      const startsAt = atMinutes(ctx.day, m, ctx.unit.timezone)
-      const plan = buildPlan(ctx, startsAt.getTime())
-      if (plan) slots.push({ startsAt, minutesOfDay: m, plan })
-    }
+    No site, a grelha da loja — de quinze em quinze — é o que mantém a
+    página legível: de cinco em cinco eram cento e trinta botões por
+    dia, vinte e sete filas a percorrer no telemóvel para escolher uma
+    hora. A cliente não quer precisão ao minuto; quer ver as horas.
+
+    Ao balcão é ao contrário. Quem está a encaixar tem a sala à frente,
+    sabe que a cadeira vaga às 17h50, e a grelha larga escondia-lhe
+    exactamente a vaga que estava a tentar vender. Aqui é de cinco em
+    cinco — e a hora à mão, que já existia, continua a poder ser
+    qualquer uma.
+  */
+  const step =
+    ctx.channel === 'online'
+      ? ctx.unit.slot_granularity_minutes
+      : Math.min(5, ctx.unit.slot_granularity_minutes)
+  const slots: Slot[] = []
+  const seen = new Set<number>()
+
+  const offer = (m: number) => {
+    if (m < 0 || seen.has(m)) return
+    const startsAt = atMinutes(ctx.day, m, ctx.unit.timezone)
+    const plan = buildPlan(ctx, startsAt.getTime())
+    if (!plan) return
+    seen.add(m)
+    slots.push({ startsAt, minutesOfDay: m, plan })
   }
 
-  return slots
+  for (const window of ctx.opening) {
+    /*
+      E AO BALCÃO, A GRELHA MAIS O AGORA.
+
+      Uma grelha sozinha arredonda a vaga para cima: às 17h58, com a
+      cadeira livre, o primeiro horário oferecido é o das 18h, e os dois
+      minutos do meio não existem para ninguém. Quem está ao balcão a
+      olhar para a cadeira quer poder começar agora.
+
+      É a única hora fora da grelha, e só existe deste lado: no site,
+      um 17h58 no meio dos quartos de hora certos lê-se como defeito.
+    */
+    if (ctx.channel !== 'online') {
+      const nowMin = Math.ceil(
+        (ctx.now.getTime() - dayStart(ctx.day, ctx.unit.timezone).getTime()) /
+          60_000,
+      )
+      if (nowMin > window.openMin && nowMin < window.closeMin) offer(nowMin)
+    }
+
+    for (let m = window.openMin; m < window.closeMin; m += step) offer(m)
+  }
+
+  // O `agora` entrou fora de ordem; a lista vai para o ecrã como se lê.
+  return slots.sort((a, b) => a.minutesOfDay - b.minutesOfDay)
 }
 
 /** Atalho: contexto + horários, numa chamada. */

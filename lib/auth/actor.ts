@@ -146,6 +146,20 @@ export async function requireManagement(): Promise<Actor> {
   return actor
 }
 
+/**
+ * MARCAR NÃO É GERIR.
+ *
+ * O encaixe e a remarcação viviam atrás do portão da gestão, e por isso
+ * a profissional não lhes chegava — via a agenda dela e não lhe podia
+ * tocar. Mas escrever uma marcação é o trabalho dela: é ela que tem a
+ * cliente à frente, e é a ela que a cliente pergunta se dá para
+ * amanhã. O painel, a caixa e a ficha das clientes continuam onde
+ * estavam; o que abre é o livro de marcações.
+ */
+export async function requireBooking(): Promise<Actor> {
+  return requireActor()
+}
+
 /** Catálogo, unidades e comissões são escopo rede — só a dona. */
 export async function requireOrgScope(): Promise<Actor> {
   const actor = await requireManagement()
@@ -182,6 +196,17 @@ export function canSeeUnit(actor: Actor, unitId: string): boolean {
  * também podem enviar. `null` quer dizer "sem filtro".
  */
 export function noticesStaffId(actor: Actor): string | null {
+  return actor.role === 'professional' ? actor.id : null
+}
+
+/**
+ * A quem é que esta pessoa se pode limitar a marcar.
+ *
+ * A profissional marca para ela própria; quem está acima marca para
+ * quem quiser. `null` quer dizer "sem limite" — a mesma convenção do
+ * `noticesStaffId`, e pela mesma razão: é um filtro, não uma proibição.
+ */
+export function ownStaffId(actor: Actor): string | null {
   return actor.role === 'professional' ? actor.id : null
 }
 
@@ -238,7 +263,12 @@ export const can = {
      ela. Fica de quem monta o sistema, não de quem o usa. */
   createUnits: (a: Actor) => a.role === 'master',
   manageCommissions: (a: Actor) => a.orgScope && a.role !== 'manager',
-  overrideLeadRules: (a: Actor) => a.role !== 'professional',
+  /* ENCAIXAR É TRABALHO DE QUEM ESTÁ AO BALCÃO, e ao balcão está quem
+     atende. A profissional é quem tem a cliente à frente a perguntar
+     «e amanhã, dá?» — mandá-la chamar a dona para isso era pôr um
+     degrau no meio de uma conversa de dez segundos. Quem vê a pessoa
+     decide a hora dela. */
+  overrideLeadRules: (_a: Actor) => true,
   /* Só o master mexe noutro master — a dona não promove ninguém acima
      dela própria, nem se despromove por engano. */
   manageMasters: (a: Actor) => a.role === 'master',

@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { canSeeUnit, requireManagement } from '@/lib/auth/actor'
+import { canSeeUnit, ownStaffId, requireBooking } from '@/lib/auth/actor'
 import { createAppointment, findOrCreateClient, type Source } from '@/lib/booking'
 import { parseCart } from '@/lib/cart'
 import { sql } from '@/lib/db'
@@ -29,7 +29,7 @@ export async function encaixeAction(
   _previous: EncaixeState,
   form: FormData,
 ): Promise<EncaixeState> {
-  const actor = await requireManagement()
+  const actor = await requireBooking()
 
   const slug = String(form.get('unit') ?? '')
   const unit = await getUnitBySlug(slug)
@@ -39,6 +39,21 @@ export async function encaixeAction(
 
   const cart = parseCart(String(form.get('cart') ?? ''))
   if (cart.length === 0) return { error: 'Escolha pelo menos um serviço.' }
+
+  /*
+    A PROFISSIONAL MARCA PARA ELA. O passo de cima já só lhe mostra o
+    nome dela, mas o carrinho viaja na barra de endereços e um endereço
+    escreve-se à mão. Quem manda é esta linha, não o que veio no
+    formulário: sem dono, a linha fica com ela; com o nome de outra, a
+    marcação não se faz.
+  */
+  const ownStaff = ownStaffId(actor)
+  if (ownStaff) {
+    if (cart.some((line) => line.staffId && line.staffId !== ownStaff)) {
+      return { error: 'Só pode marcar para si.' }
+    }
+    for (const line of cart) line.staffId = ownStaff
+  }
 
   const startsAt = new Date(String(form.get('time') ?? ''))
   if (Number.isNaN(startsAt.getTime())) {

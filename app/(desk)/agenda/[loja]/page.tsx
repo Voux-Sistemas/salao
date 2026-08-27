@@ -156,8 +156,11 @@ export default async function AgendaDayPage({
   /*
     O ENCAIXE JÁ COM A HORA NA MÃO. É isto que faz dos buracos da
     grelha portas: meia hora livre leva direita ao encaixe com o dia e
-    a hora postos. Só para quem pode marcar — a profissional vê a
-    agenda dela, não a escreve.
+    a hora postos.
+
+    A profissional passa por aqui como as outras: é ela que tem a
+    cliente à frente a perguntar se dá, e o encaixe que ela abre é para
+    a agenda dela — o passo seguinte só lhe mostra o nome dela.
   */
   const encaixeHref = can.overrideLeadRules(actor)
     ? (hm: string) => `${here}/encaixe?d=${day}&hm=${hm}`

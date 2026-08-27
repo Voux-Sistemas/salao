@@ -124,6 +124,19 @@ export type BookingResult =
   | { ok: true; appointmentId: string; plan: Plan }
   | { ok: false; reason: 'slot_taken' | 'unavailable' }
 
+/**
+ * Marca. E a marcação nasce CONFIRMADA.
+ *
+ * Havia aqui um degrau a mais: a marcação entrava «pedida» e alguém, do
+ * lado da gestão, tinha de a confirmar à mão. Numa casa em que ninguém
+ * recusa uma cliente que marcou, esse degrau não decidia nada — só
+ * atrasava, e criava um estado em que a cliente já tinha recebido a
+ * mensagem mas a agenda ainda não tratava a hora como vendida.
+ *
+ * O estado `booked` continua a existir para as marcações antigas que o
+ * têm, e a transição para `confirmed` continua permitida. O que muda é
+ * o ponto de partida.
+ */
 export async function createAppointment(
   input: BookingInput,
 ): Promise<BookingResult> {
@@ -155,7 +168,7 @@ export async function createAppointment(
             created_by_staff_id
           ) values (
             ${input.unit.org_id}, ${input.unit.id}, ${input.clientId},
-            'booked', ${input.source},
+            'confirmed', ${input.source},
             ${plan.startsAt}, ${plan.endsAt},
             ${input.clientNote ?? null}, ${input.internalNote ?? null},
             ${input.language}, ${input.createdByStaffId ?? null}
@@ -170,7 +183,7 @@ export async function createAppointment(
         await tx`
           insert into appointment_status_event
                  (appointment_id, from_status, to_status, by_staff_id, by_client)
-          values (${appointment.id}, null, 'booked',
+          values (${appointment.id}, null, 'confirmed',
                   ${input.createdByStaffId ?? null}, ${input.byClient ?? false})
         `
 
