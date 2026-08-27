@@ -29,9 +29,35 @@ const localeOf = (language: string) => LOCALE_BY_LANGUAGE[language] ?? 'pt-PT'
 // Calendário <-> instante
 // ---------------------------------------------------------------------
 
+/**
+ * UM DIA DE CALENDÁRIO É MAIS DO QUE DEZ CARACTERES COM DOIS TRAÇOS.
+ *
+ * A forma certa não faz a data existir. «2026-09-99» tem a forma toda e
+ * não é dia nenhum; «2026-09-31» também, e setembro tem trinta. Sem uma
+ * verificação a sério esses dois seguiam funil abaixo — o primeiro
+ * rebentava na base de dados, com o ecrã vermelho à frente da cliente, e
+ * o segundo era pior: resolvia-se em silêncio para o dia seguinte, e ela
+ * via na tira um dia diferente daquele que tinha pedido.
+ *
+ * A prova é reconstruir. Se o dia existe, escrevê-lo de novo a partir
+ * dos números dá o mesmo texto; se não existe, o calendário corrigiu-o
+ * e os textos deixam de bater certo.
+ */
+export function isValidDay(day: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day)
+  if (!match) return false
+  const [, y, m, d] = match
+  const date = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)))
+  return (
+    date.getUTCFullYear() === Number(y) &&
+    date.getUTCMonth() === Number(m) - 1 &&
+    date.getUTCDate() === Number(d)
+  )
+}
+
 function parts(day: IsoDay): [number, number, number] {
-  const [y, m, d] = day.split('-').map(Number)
-  if (!y || !m || !d) throw new Error(`Data inválida: ${day}`)
+  if (!isValidDay(day)) throw new Error(`Data inválida: ${day}`)
+  const [y, m, d] = day.split('-').map(Number) as [number, number, number]
   return [y, m, d]
 }
 

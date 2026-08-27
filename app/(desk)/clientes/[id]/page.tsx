@@ -32,10 +32,10 @@ import {
   Divider,
   Empty,
 } from '@/components/ui'
+import { isUuid } from '@/lib/id'
 
 export const metadata: Metadata = { title: 'Ficha da cliente' }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** "Ana Sofia Marques" -> "AM", para o monograma do avatar. */
 function initialsOf(name: string): string {
@@ -59,7 +59,7 @@ export default async function ClientePage({
 }) {
   const actor = await requireManagement()
   const { id } = await params
-  if (!UUID.test(id)) notFound()
+  if (!isUuid(id)) notFound()
 
   const client = await getClient(actor.orgId, id)
   if (!client) notFound()

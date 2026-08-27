@@ -10,6 +10,7 @@ import {
   isoRange,
   today,
   type IsoDay,
+  isValidDay,
 } from '@/lib/time'
 import { DAY_PARAM, first, funnelHref } from '@/lib/cart'
 import { ButtonLink, Notice } from '@/components/ui'
@@ -58,7 +59,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   }
 }
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
  * Passo 2 — escolher o dia.
@@ -86,7 +86,7 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
   const lastDay = addDays(firstDay, unit.max_lead_days)
   const asked = first(query[DAY_PARAM])
   const askedDay: IsoDay | null =
-    asked && ISO_DAY.test(asked)
+    asked && isValidDay(asked)
       ? asked < firstDay
         ? firstDay
         : asked > lastDay

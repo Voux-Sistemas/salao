@@ -17,12 +17,12 @@ import {
   formatWeekdayShort,
   today,
   type IsoDay,
+  isValidDay,
 } from '@/lib/time'
 import { Empty } from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Semana' }
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 
 /*
   A LARGURA DA COLUNA DOS NOMES, UMA VEZ SÓ.
@@ -64,7 +64,7 @@ export default async function SemanaPage({
 
   const now = new Date()
   const todayDay = today(unit.timezone, now)
-  const day: IsoDay = d && DAY_RE.test(d) ? d : todayDay
+  const day: IsoDay = d && isValidDay(d) ? d : todayDay
 
   // A profissional vê a semana dela, tal como vê o dia dela.
   const onlyStaffId = actor.role === 'professional' ? actor.id : null

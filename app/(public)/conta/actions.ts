@@ -16,6 +16,7 @@ import { getClientActor } from '@/lib/auth/client-actor'
 import { createSession, destroySession } from '@/lib/auth/session'
 import { findByPhone } from '@/lib/clients'
 import { env, normalisePhone } from '@/lib/env'
+import { isUuid } from '@/lib/id'
 import { dictionaryFor, getDictionary } from '@/lib/i18n'
 import { isLanguage, LANGUAGE_COOKIE } from '@/lib/i18n/config'
 import { getOrg } from '@/lib/org'
@@ -146,8 +147,12 @@ export async function cancelAction(
   const client = await getClientActor()
   if (!client) redirect('/conta/entrar')
 
+  // O identificador vem de um campo escondido do formulario: qualquer
+  // pessoa lhe pode mexer. Sem esta verificacao o Postgres levanta erro
+  // em vez de dizer «nao encontrei», e ela via o ecra vermelho onde
+  // devia ver o aviso que o codigo ja tem escrito.
   const appointmentId = String(form.get('appointment') ?? '')
-  if (!appointmentId) return { error: dict.errors.generic, done: null }
+  if (!isUuid(appointmentId)) return { error: dict.errors.generic, done: null }
 
   const result = await cancelBooking(client.id, appointmentId)
   if (!result.ok) {

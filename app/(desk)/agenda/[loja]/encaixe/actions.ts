@@ -9,11 +9,10 @@ import { normalisePhone } from '@/lib/env'
 import { getUnitBySlug } from '@/lib/org'
 import { isoDay } from '@/lib/time'
 import type { Language } from '@/lib/i18n/config'
+import { isUuid } from '@/lib/id'
 
 export type EncaixeState = { error: string | null }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const SOURCES: Source[] = ['counter', 'phone', 'whatsapp', 'walk_in']
 
@@ -68,7 +67,7 @@ export async function encaixeAction(
   let clientId: string
   let language: Language = 'pt'
 
-  if (UUID_RE.test(existingId)) {
+  if (isUuid(existingId)) {
     const rows = await sql<{ id: string; language: Language }[]>`
       select id, language from client
        where id = ${existingId} and org_id = ${actor.orgId}

@@ -22,11 +22,10 @@ import {
 } from '@/components/comanda-forms'
 import { Badge, Card, Empty } from '@/components/ui'
 import { formatPhone } from '@/lib/text'
+import { isUuid } from '@/lib/id'
 
 export const metadata: Metadata = { title: 'Comanda' }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type CommissionRow = {
   id: string
@@ -50,7 +49,7 @@ export default async function ComandaPage({
   const actor = await requireManagement()
   const { loja, id } = await params
 
-  if (!UUID_RE.test(id)) notFound()
+  if (!isUuid(id)) notFound()
 
   const unit = await resolveUnit(actor, loja)
   const appointment = await getAppointment(id)

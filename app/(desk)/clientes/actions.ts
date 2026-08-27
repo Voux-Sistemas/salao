@@ -17,10 +17,10 @@ import {
 import { readClients } from '@/lib/csv'
 import { normalisePhone } from '@/lib/env'
 import { isLanguage } from '@/lib/i18n/config'
+import { isUuid } from '@/lib/id'
 
 export type ClientState = { error: string | null; done?: string | null }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function text(form: FormData, key: string): string {
   return String(form.get(key) ?? '').trim()
@@ -32,7 +32,7 @@ function optional(form: FormData, key: string): string | null {
 
 function uuidOrNull(form: FormData, key: string): string | null {
   const value = text(form, key)
-  return UUID.test(value) ? value : null
+  return isUuid(value) ? value : null
 }
 
 function readInput(form: FormData): ClientInput | string {

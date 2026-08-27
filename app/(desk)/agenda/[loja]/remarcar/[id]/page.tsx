@@ -40,17 +40,16 @@ import {
   parseMinutes,
   today,
   type IsoDay,
+  isValidDay,
 } from '@/lib/time'
 import { Badge, Card, Input, Notice, buttonClass } from '@/components/ui'
 import { DeskDayStrip } from '@/components/desk-day-strip'
 import { RemarcarForm } from '@/components/remarcar-form'
 import { ScrollHere } from '@/components/scroll-here'
+import { isUuid } from '@/lib/id'
 
 export const metadata: Metadata = { title: 'Remarcar' }
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const HAND_PARAM = 'hm'
 
@@ -74,7 +73,7 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
   const { loja, id } = await params
   const query = await searchParams
 
-  if (!UUID_RE.test(id)) notFound()
+  if (!isUuid(id)) notFound()
 
   const unit = await resolveUnit(actor, loja)
   const appointment = await getAppointment(id)
@@ -97,7 +96,7 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
 
   const askedDay = first(query[DAY_PARAM])
   const day: IsoDay =
-    askedDay && DAY_RE.test(askedDay) ? askedDay : maxDay(originalDay, today(tz, now))
+    askedDay && isValidDay(askedDay) ? askedDay : maxDay(originalDay, today(tz, now))
 
   // Quem pode fazer cada um destes serviços nesta loja. Ao balcão não há
   // filtro de marcação online.

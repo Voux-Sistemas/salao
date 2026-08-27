@@ -10,6 +10,7 @@ import { ButtonLink, Eyebrow } from '@/components/ui'
 import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
 import { formatPhone } from '@/lib/text'
 import { serviceNamesFor } from '@/lib/catalog-names'
+import { isUuid } from '@/lib/id'
 
 type Params = { params: Promise<{ loja: string; id: string }> }
 
@@ -23,7 +24,6 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
  * O recibo. É a última tela do funil e leva o caminho para a área de
@@ -35,7 +35,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
  */
 export default async function DonePage({ params }: Params) {
   const { loja, id } = await params
-  if (!UUID.test(id)) notFound()
+  if (!isUuid(id)) notFound()
 
   const [org, appointment, unit] = await Promise.all([
     requireOrg(),

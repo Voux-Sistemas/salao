@@ -1,4 +1,5 @@
 import { getUploadedImage } from '@/lib/imagens'
+import { isUuid } from '@/lib/id'
 
 /**
  * A FOTOGRAFIA CARREGADA, SERVIDA DE VOLTA.
@@ -13,7 +14,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  if (!/^[0-9a-f-]{36}$/i.test(id)) {
+  // Trinta e seis caracteres de «hex ou traco» nao e um UUID: trinta e
+  // seis tracos passavam, e a base levantava erro onde esta rota ja
+  // sabia responder 404.
+  if (!isUuid(id)) {
     return new Response('Não há nada aqui.', { status: 404 })
   }
 

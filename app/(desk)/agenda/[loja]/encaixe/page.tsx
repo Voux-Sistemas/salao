@@ -39,6 +39,7 @@ import {
   parseMinutes,
   today,
   type IsoDay,
+  isValidDay,
 } from '@/lib/time'
 import { Monogram } from '@/components/brand'
 import { Card, Empty, Input, Notice, buttonClass } from '@/components/ui'
@@ -52,12 +53,10 @@ import {
 import { EncaixeForm } from '@/components/encaixe-form'
 import { ScrollHere } from '@/components/scroll-here'
 import { formatPhone } from '@/lib/text'
+import { isUuid } from '@/lib/id'
 
 export const metadata: Metadata = { title: 'Encaixe' }
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const CLIENT_PARAM = 'cli'
 const HAND_PARAM = 'hm'
@@ -122,7 +121,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
 
   const askedDay = first(query[DAY_PARAM])
   const day: IsoDay =
-    askedDay && DAY_RE.test(askedDay) ? askedDay : today(tz, now)
+    askedDay && isValidDay(askedDay) ? askedDay : today(tz, now)
 
   const [services, skills] = await Promise.all([
     sql<ServiceRow[]>`
@@ -170,13 +169,13 @@ export default async function EncaixePage({ params, searchParams }: Params) {
 
   // --- a cliente ----------------------------------------------------
   const clientId = first(query[CLIENT_PARAM])
-  const hasClient = Boolean(clientId && UUID_RE.test(clientId))
+  const hasClient = Boolean(clientId && isUuid(clientId))
   const doneId = first(query[DONE_PARAM])
   const [client, done, allClients] = await Promise.all([
     hasClient ? getClient(actor.orgId, clientId!) : null,
     // Vai na mesma leva: entre esta página e a base há um oceano, e um
     // recibo não vale uma viagem só para ele.
-    doneId && UUID_RE.test(doneId) ? getJustBooked(actor.orgId, doneId) : null,
+    doneId && isUuid(doneId) ? getJustBooked(actor.orgId, doneId) : null,
     // As fichas vêm todas com a página, como o catálogo: a procura
     // passa a correr no navegador, a cada letra, sem ir ao servidor.
     hasClient ? [] : loadClients(actor.orgId),

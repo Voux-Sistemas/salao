@@ -17,10 +17,10 @@ import { requireOrg } from '@/lib/org'
 import { formatDateTime, formatDayShort, isoDay } from '@/lib/time'
 import { PayForm, RemoveRule, RuleForm } from '@/components/commission-forms'
 import { Badge, Card, Empty, Notice } from '@/components/ui'
+import { isUuid } from '@/lib/id'
 
 export const metadata: Metadata = { title: 'Comissões' }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** "40.00" -> "40" · "37.50" -> "37,5" */
 function percentText(value: string): string {
@@ -44,7 +44,7 @@ export default async function ComissoesPage({
 }) {
   const actor = await requireOrgScope()
   const { s } = await searchParams
-  const chosen = s && UUID.test(s) ? s : null
+  const chosen = s && isUuid(s) ? s : null
 
   const [org, pending, rules, options, payouts] = await Promise.all([
     requireOrg(),
@@ -77,6 +77,16 @@ export default async function ComissoesPage({
             </p>
           ) : null}
         </div>
+
+        {/* O endereço diz que há uma profissional aberta, mas ela já não
+            está na lista — foi paga entretanto, talvez noutro separador.
+            Sem uma palavra, ficava um F5 que não abre nada e nenhuma
+            explicação para isso. */}
+        {chosen && !open && pending.length > 0 ? (
+          <Notice tone="warn">
+            Essa profissional já não tem nada por pagar.
+          </Notice>
+        ) : null}
 
         {pending.length === 0 ? (
           <Card className="px-4">

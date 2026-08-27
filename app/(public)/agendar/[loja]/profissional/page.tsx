@@ -11,6 +11,7 @@ import {
   isoRange,
   today,
   type IsoDay,
+  isValidDay,
 } from '@/lib/time'
 import { DAY_PARAM, first, funnelHref } from '@/lib/cart'
 import { Empty } from '@/components/ui'
@@ -35,7 +36,6 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
  * Passo 3 — escolher a profissional.
@@ -69,7 +69,7 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
   const asked = first(query[DAY_PARAM])
 
   // Cada passo revalida o anterior. Sem dia, volta-se atrás.
-  if (!asked || !ISO_DAY.test(asked) || asked < firstDay || asked > lastDay) {
+  if (!asked || !isValidDay(asked) || asked < firstDay || asked > lastDay) {
     redirect(here)
   }
   const day = asked as IsoDay

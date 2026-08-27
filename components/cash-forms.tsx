@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import {
   closeCashAction,
@@ -81,6 +81,28 @@ export function MovementForm({
   )
   const withdrawal = kind === 'withdrawal'
 
+  /*
+   * O formulário limpa-se depois de gravar.
+   *
+   * Sem isto ficavam os 50,00 e o motivo escritos nos campos, por baixo
+   * de um aviso verde que podia ser de há cinco minutos. A gerente
+   * lança a sangria, atende uma cliente, volta, vê tudo preenchido e
+   * carrega outra vez — e a gaveta passa a ter menos 50 € do que devia.
+   * Só aparece no fecho, quando já ninguém sabe porquê.
+   *
+   * O campo vazio é a única maneira de dizer «isto já foi».
+   *
+   * O efeito depende do `state` inteiro e não do texto do `done`: o
+   * texto é sempre «Sangria registada.», e duas sangrias seguidas não o
+   * mudariam — o React não veria diferença e a segunda não limpava
+   * nada. Já o objecto que o `useActionState` devolve é novo a cada
+   * gravação, e é isso que aqui serve de sinal.
+   */
+  const form = useRef<HTMLFormElement>(null)
+  useEffect(() => {
+    if (state.done) form.current?.reset()
+  }, [state])
+
   return (
     <div>
       <p className="eyebrow">{withdrawal ? 'Sangria' : 'Reforço'}</p>
@@ -89,7 +111,7 @@ export function MovementForm({
           ? 'Dinheiro que sai da gaveta — depósito, troco, despesa.'
           : 'Dinheiro que entra à mão — o troco que faltava.'}
       </p>
-      <form action={action} className="space-y-3">
+      <form ref={form} action={action} className="space-y-3">
         <input type="hidden" name="unit" value={unitSlug} />
         <input type="hidden" name="kind" value={kind} />
         <Result state={state} />

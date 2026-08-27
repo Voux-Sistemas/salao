@@ -1027,6 +1027,31 @@ html.js .so-sem-js {
   scrollbar-color: var(--ink-faint) transparent;
 }
 
+/*
+ * A ESPERA TEM DE SE VER.
+ *
+ * As páginas do funil fazem contas pesadas antes do primeiro pixel:
+ * varrem o horizonte da loja à procura do primeiro dia com vaga. Até
+ * aqui não havia sinal nenhum de que alguma coisa estava a acontecer —
+ * o ecrã anterior ficava quieto, e num telemóvel em 4G isso não se lê
+ * como «está a carregar», lê-se como «avariou». E ela toca outra vez,
+ * ou fecha.
+ *
+ * O desenho é o da página que vem a seguir, em cinzento: a tira dos
+ * dias e os cartões, no mesmo sítio onde vão nascer. Assim o ecrã não
+ * salta quando o conteúdo chega.
+ */
+@keyframes respirar {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.28; }
+}
+
+.a-carregar {
+  background: var(--line-soft);
+  border-radius: 0.5rem;
+  animation: respirar 1.6s ease-in-out infinite;
+}
+
 /* Esconder a barra onde ela só estorva (fitas horizontais de passos). */
 .no-scrollbar {
   scrollbar-width: none;

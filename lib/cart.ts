@@ -1,4 +1,5 @@
 import type { CartLine } from '@/lib/availability'
+import { isUuid } from '@/lib/id'
 
 /**
  * O carrinho do funil vive na barra de endereço, não em sessão.
@@ -10,7 +11,6 @@ import type { CartLine } from '@/lib/availability'
  * é opcional (vazio = sem preferência).
  */
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Uma visita não é uma lista de compras. Seis serviços já é generoso. */
 export const MAX_CART_LINES = 6
@@ -38,10 +38,10 @@ export function parseCart(value: string | string[] | undefined): CartLine[] {
   for (const entry of raw.split(',')) {
     if (!entry) continue
     const [serviceId = '', staffId = ''] = entry.split('~')
-    if (!UUID.test(serviceId)) continue
+    if (!isUuid(serviceId)) continue
     lines.push({
       serviceId,
-      staffId: UUID.test(staffId) ? staffId : null,
+      staffId: isUuid(staffId) ? staffId : null,
     })
     if (lines.length >= MAX_CART_LINES) break
   }
@@ -105,5 +105,5 @@ export function first(value: string | string[] | undefined): string | null {
 /** Lê a profissional do endereço. Só um UUID passa. */
 export function parseStaff(value: string | string[] | undefined): string | null {
   const raw = first(value)
-  return raw && UUID.test(raw) ? raw : null
+  return raw && isUuid(raw) ? raw : null
 }

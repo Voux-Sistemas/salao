@@ -15,6 +15,7 @@ import {
   isoRange,
   today,
   type IsoDay,
+  isValidDay,
 } from '@/lib/time'
 import {
   CART_PARAM,
@@ -46,7 +47,6 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
  * Passo 5 — escolher a hora.
@@ -76,7 +76,7 @@ export default async function TimesPage({ params, searchParams }: Params) {
   // Cada passo revalida o anterior, e cada um manda de volta ao seu:
   // sem dia ao princípio, sem profissional ao passo dela, sem serviço
   // à ementa — sempre com o que já estava escolhido intacto.
-  if (!askedDay || !ISO_DAY.test(askedDay) || askedDay < firstDay || askedDay > lastDay) {
+  if (!askedDay || !isValidDay(askedDay) || askedDay < firstDay || askedDay > lastDay) {
     redirect(here)
   }
   const day = askedDay as IsoDay

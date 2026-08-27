@@ -14,6 +14,7 @@ import {
   isoRange,
   today,
   type IsoDay,
+  isValidDay,
 } from '@/lib/time'
 import {
   AgendaGrid,
@@ -27,12 +28,10 @@ import { DeskDayStrip } from '@/components/desk-day-strip'
 import { UnitSwitcher } from '@/components/unit-switcher'
 import { ButtonLink, buttonClass } from '@/components/ui'
 import { shortName } from '@/lib/text'
+import { isUuid } from '@/lib/id'
 
 export const metadata: Metadata = { title: 'Agenda' }
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
  * A GRELHA DO DIA. A loja vive na barra de endereços; o dia, a
@@ -74,7 +73,7 @@ export default async function AgendaDayPage({
   const unit = await resolveUnit(actor, loja)
 
   const now = new Date()
-  const day: IsoDay = d && DAY_RE.test(d) ? d : today(unit.timezone, now)
+  const day: IsoDay = d && isValidDay(d) ? d : today(unit.timezone, now)
   /** A vista: lista por omissão, grelha para quem a pedir. */
   const view: 'grelha' | 'lista' = v === 'grelha' ? 'grelha' : 'lista'
 
@@ -125,7 +124,7 @@ export default async function AgendaDayPage({
       }
     : full
 
-  const selectedId = m && UUID_RE.test(m) ? m : null
+  const selectedId = m && isUuid(m) ? m : null
   const selected = selectedId ? await getAppointment(selectedId) : null
 
   // Marcação de outra loja (ou de outra rede) não se abre aqui.

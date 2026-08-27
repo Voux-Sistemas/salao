@@ -8,7 +8,14 @@ import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { fill, getDictionary, getLanguage } from '@/lib/i18n'
 import { staffForDay } from '@/lib/availability'
 import { formatCents } from '@/lib/money'
-import { addDays, formatDayLong, formatDuration, today, type IsoDay } from '@/lib/time'
+import {
+  addDays,
+  formatDayLong,
+  formatDuration,
+  isValidDay,
+  today,
+  type IsoDay,
+} from '@/lib/time'
 import {
   CART_PARAM,
   DAY_PARAM,
@@ -45,7 +52,6 @@ type ServiceRow = {
   image_alt: string | null
 }
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 export async function generateMetadata(): Promise<Metadata> {
   const dict = await getDictionary()
@@ -84,7 +90,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
 
   // Cada passo revalida o anterior. Sem dia, volta-se ao princípio;
   // sem profissional, ao passo dela — com o dia intacto.
-  if (!askedDay || !ISO_DAY.test(askedDay) || askedDay < firstDay || askedDay > lastDay) {
+  if (!askedDay || !isValidDay(askedDay) || askedDay < firstDay || askedDay > lastDay) {
     redirect(here)
   }
   const day = askedDay as IsoDay

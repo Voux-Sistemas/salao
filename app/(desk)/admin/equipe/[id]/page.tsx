@@ -24,10 +24,10 @@ import { Ficha } from '@/components/team-ficha'
 import { BackLink } from '@/components/gestao-panel'
 import { Badge, Divider } from '@/components/ui'
 import { formatPhone } from '@/lib/text'
+import { isUuid } from '@/lib/id'
 
 export const metadata: Metadata = { title: 'Ficha' }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
  * UMA PESSOA POR DENTRO — TRÊS CARTÕES.
@@ -47,7 +47,7 @@ export default async function PessoaPage({
 }) {
   const actor = await requireManagement()
   const { id } = await params
-  if (!UUID.test(id)) notFound()
+  if (!isUuid(id)) notFound()
 
   const member = await getMember(actor, id)
   if (!member) notFound()
