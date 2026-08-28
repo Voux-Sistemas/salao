@@ -9,6 +9,21 @@ import { weekdayOf, type IsoDay } from '@/lib/time'
  * setas de semana em semana, tudo por ligações: o retrocesso do
  * navegador continua a funcionar.
  *
+ * SEM CAIXAS: SÓ O DIA ABERTO É QUE SE PINTA.
+ *
+ * Cada dia foi uma caixa branca com contorno, e enquanto o cabeçalho da
+ * agenda era uma faixa branca isso não se via — caixa branca sobre
+ * branco é só um fio. Quando o cabeçalho passou para o creme, as sete
+ * células viraram sete objectos destacados em fila, que é o desenho de
+ * uma grelha de formulário e não de uma semana. E dentro de uma coluna
+ * de 68rem cada uma ficou com 143px para uma palavra de nove pontos:
+ * uma caixa que é quase toda ar.
+ *
+ * Agora não há caixa nenhuma. Ficam sete rótulos sobre o papel, e uma
+ * só pastilha pintada — a do dia que se está a ver. Deixa de importar
+ * que as células sejam largas, porque já não há contorno a denunciar o
+ * vazio, e a área de toque continua a ser a célula inteira.
+ *
  * AS SETAS SÃO OPCIONAIS. Onde o título é um calendário — a agenda do
  * dia — elas não acrescentam nada: o ⌄ da data salta para qualquer dia
  * do ano, e tocar num dia da ponta já recentra a fita, porque ela anda
@@ -61,13 +76,11 @@ export function DeskDayStrip({
                 scroll={false}
                 aria-current={current ? 'date' : undefined}
                 className={clsx(
-                  'flex flex-col items-center justify-center gap-0.5 border transition-colors',
+                  'flex flex-col items-center justify-center gap-0.5 rounded-[var(--radius-sm)] transition-colors',
                   dense ? 'h-10' : 'h-12',
                   current
-                    ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
-                    : // O fundo próprio é para a fita poder assentar
-                      // sobre o creme da página, e não só sobre branco.
-                      'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+                    ? 'bg-[var(--accent)] text-[color-mix(in_srgb,var(--accent-ink)_72%,transparent)]'
+                    : 'text-[var(--ink-faint)] hover:bg-[color-mix(in_srgb,var(--ink)_5%,transparent)]',
                 )}
               >
                 <span
@@ -80,10 +93,16 @@ export function DeskDayStrip({
                 >
                   {weekdayLetterings(value, timezone)}
                 </span>
+                {/* O número é o que se procura; o dia da semana é a
+                    legenda dele. Sem caixa a separá-los, a diferença
+                    tem de estar no peso da tinta. */}
                 <span
                   className={clsx(
                     'tabular leading-none',
-                    dense ? 'text-[0.75rem]' : 'text-[0.8125rem]',
+                    dense ? 'text-[0.8125rem]' : 'text-[0.875rem]',
+                    current
+                      ? 'text-[var(--accent-ink)]'
+                      : 'text-[var(--ink-muted)]',
                   )}
                 >
                   {value.slice(8, 10)}
@@ -123,13 +142,13 @@ function StripArrow({
   label: string
   children: React.ReactNode
 }) {
-  const shape = 'flex w-8 shrink-0 items-center justify-center border'
+  // Sem contorno, como as células: uma seta com caixa ao lado de sete
+  // dias sem caixa lia-se como a única coisa carregável da fita.
+  const shape =
+    'flex w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)]'
   if (!href) {
     return (
-      <span
-        aria-hidden
-        className={clsx(shape, 'border-[var(--line-soft)] text-[var(--line)]')}
-      >
+      <span aria-hidden className={clsx(shape, 'text-[var(--line)]')}>
         {children}
       </span>
     )
@@ -141,7 +160,7 @@ function StripArrow({
       aria-label={label}
       className={clsx(
         shape,
-        'border-[var(--line-soft)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]',
+        'text-[var(--ink-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] hover:text-[var(--ink)]',
       )}
     >
       {children}
