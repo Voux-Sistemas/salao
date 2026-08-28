@@ -1130,8 +1130,28 @@ export function AgendaList({
                   <span className="min-w-0 flex-1 truncate sm:flex-initial">
                     {card.services}
                   </span>
+                  {/*
+                    NO TELEMÓVEL O NOME VAI DENTRO DE UMA CAIXINHA.
+
+                    Encostado à direita, ficava com o mesmo peso e a
+                    mesma tinta do serviço que tem ao lado: «Sobrancelha»
+                    e «Filipa R.» liam-se como uma frase só. A caixa
+                    separa-os em duas coisas, que é o trabalho todo que
+                    ela tem para fazer.
+
+                    E é um cinzento de papel, igual em todas as linhas.
+                    Pintá-la com a cor de cada pessoa lê-se mais depressa
+                    — e enche o ecrã de seis pastilhas coloridas num
+                    sítio onde a cor já tem ofício: o âmbar do que está
+                    por fechar, o azul do que está por vir. A cor da
+                    pessoa fica onde sempre esteve, no ponto.
+
+                    No ecrã largo a caixa desaparece: lá o nome anda
+                    atrás do serviço, na mesma frase, e há largura para
+                    os dois.
+                  */}
                   {mostrarQuem ? (
-                    <span className="inline-flex shrink-0 items-center gap-1.5 text-[var(--ink-faint)]">
+                    <span className="inline-flex h-5 shrink-0 items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--surface-2)_70%,var(--surface-raised))] px-2 text-[0.6875rem] font-semibold text-[var(--ink-muted)] sm:h-auto sm:bg-transparent sm:px-0 sm:text-[0.75rem] sm:font-normal sm:text-[var(--ink-faint)]">
                       <span
                         aria-hidden
                         className="block h-1.5 w-1.5 rounded-full"
