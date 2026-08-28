@@ -10,10 +10,14 @@ import {
   formatDayLong,
   formatDuration,
   formatTime,
+  isValidDay,
+  isValidInstant,
   isoDay,
+  today,
 } from '@/lib/time'
 import {
   CART_PARAM,
+  DAY_PARAM,
   STAFF_PARAM,
   TIME_PARAM,
   cartToParam,
@@ -67,8 +71,22 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
   if (rawCart.length === 0) redirect(here)
 
   const startsAt = time ? new Date(time) : null
-  if (!startsAt || Number.isNaN(startsAt.getTime())) {
-    redirect(funnelHref(`${here}/horarios`, { cart: rawCart, staffId: askedStaff }))
+  // «Inválido» inclui os anos expandidos que o new Date aceita mas o
+  // calendário da casa recusa — ver isValidInstant em lib/time.ts.
+  if (!startsAt || !isValidInstant(startsAt)) {
+    // E volta-se COM O DIA: sem ele, a página das horas mandava para o
+    // selector de dias e o carrinho perdia-se pelo caminho. O `?d=` do
+    // endereço serve; um endereço sem ele recomeça em hoje.
+    const askedDay = first(query[DAY_PARAM])
+    const fallbackDay =
+      askedDay && isValidDay(askedDay) ? askedDay : today(unit.timezone)
+    redirect(
+      funnelHref(`${here}/horarios`, {
+        cart: rawCart,
+        staffId: askedStaff,
+        day: fallbackDay,
+      }),
+    )
   }
 
   /*

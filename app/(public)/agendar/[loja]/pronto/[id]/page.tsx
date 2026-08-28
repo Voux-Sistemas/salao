@@ -11,6 +11,7 @@ import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
 import { formatPhone } from '@/lib/text'
 import { serviceNamesFor } from '@/lib/catalog-names'
 import { preencherSaudacao } from '@/lib/notify'
+import { picksStaffOn } from '@/lib/sunday'
 import { isUuid } from '@/lib/id'
 
 type Params = { params: Promise<{ loja: string; id: string }> }
@@ -169,8 +170,15 @@ export default async function DonePage({ params }: Params) {
                     </div>
                     <p className="tabular mt-0.5 text-[0.75rem] text-[var(--ink-faint)]">
                       {formatTime(item.starts_at, timezone, language)}
-                      {' · '}
-                      {dict.common.with} {item.staff_public_name}
+                      {/* Ao domingo nao se diz «com quem»: a cliente nao
+                          escolheu ninguem, e o nome que o motor arrumou
+                          por dentro nao e uma promessa. */}
+                      {picksStaffOn(day) ? (
+                        <>
+                          {' · '}
+                          {dict.common.with} {item.staff_public_name}
+                        </>
+                      ) : null}
                     </p>
                   </li>
                 ))}

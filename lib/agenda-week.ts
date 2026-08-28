@@ -3,7 +3,16 @@ import { sql } from '@/lib/db'
 import type { Unit } from '@/lib/org'
 import { openingWindowsRange } from '@/lib/hours'
 import { merge, type Interval } from '@/lib/intervals'
-import { addDays, dayStart, isoRange, weekdayOf, type IsoDay } from '@/lib/time'
+import {
+  addDays,
+  dayStart,
+  daysBetween,
+  isoDay,
+  isoRange,
+  minutesOfDay,
+  weekdayOf,
+  type IsoDay,
+} from '@/lib/time'
 
 /**
  * O PANORAMA DA SEMANA — a casa vista de longe, mas com as horas.
@@ -192,9 +201,11 @@ export async function loadAgendaWeek(
 
   const daZona = new Set(staffRows.map((s) => s.id))
 
-  /** Minutos desde a meia-noite local DESTE dia, como em lib/agenda. */
+  /** Minutos de RELÓGIO local deste dia, como em lib/agenda — não
+      milissegundos decorridos, que nas mudanças de hora andam 60 min
+      ao lado da régua. */
   const localMinutes = (instant: Date, day: IsoDay): number =>
-    Math.round((instant.getTime() - dayStart(day, tz).getTime()) / 60_000)
+    minutesOfDay(instant, tz) + 1440 * daysBetween(day, isoDay(instant, tz))
 
   const porDia = new Map<
     IsoDay,

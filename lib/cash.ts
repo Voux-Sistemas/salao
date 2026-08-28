@@ -150,17 +150,35 @@ export async function openCash(input: {
     }
   }
 
-  const rows = await sql<{ id: string }[]>`
-    insert into cash_session
-      (unit_id, business_date, opening_cents, opened_by_staff_id)
-    values
-      (${input.unitId}, ${input.businessDate}::date, ${input.openingCents},
-       ${input.byStaffId})
-    returning id
-  `
-  const session = rows[0]
-  if (!session) return { ok: false, reason: 'not_found' }
-  return { ok: true, sessionId: session.id }
+  /*
+   * O SELECT lá de cima e este INSERT não são um gesto só: um duplo
+   * toque no botão de abrir passa duas vezes pela verificação e a
+   * segunda escrita bate no índice único. Esse embate é a resposta
+   * certa — só que dita por palavras, não com um ecrã rebentado.
+   */
+  try {
+    const rows = await sql<{ id: string }[]>`
+      insert into cash_session
+        (unit_id, business_date, opening_cents, opened_by_staff_id)
+      values
+        (${input.unitId}, ${input.businessDate}::date, ${input.openingCents},
+         ${input.byStaffId})
+      returning id
+    `
+    const session = rows[0]
+    if (!session) return { ok: false, reason: 'not_found' }
+    return { ok: true, sessionId: session.id }
+  } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      String((error as { code: unknown }).code) === '23505'
+    ) {
+      return { ok: false, reason: 'already_open' }
+    }
+    throw error
+  }
 }
 
 /**

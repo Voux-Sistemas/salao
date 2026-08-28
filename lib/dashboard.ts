@@ -5,6 +5,7 @@ import {
   addDays,
   dayEnd,
   dayStart,
+  isValidDay,
   isoRange,
   today,
   type IsoDay,
@@ -215,11 +216,15 @@ export async function monthKpis(
   const curTo = dayEnd(now, timezone)
 
   // O mesmo dia do mês anterior (fim exclusivo). Se o dia não existir
-  // lá (31 num mês de 30), a data transborda e o tecto corta ao mês.
-  const prevCutRaw = dayEnd(
-    `${previousStart.slice(0, 7)}-${now.slice(8, 10)}`,
-    timezone,
-  )
+  // lá (31 num mês de 30, 29 a 31 em fevereiro), o período homólogo é
+  // o mês anterior INTEIRO. E tem de se perguntar ANTES de construir a
+  // data: o calendário desta casa recusa dias inexistentes com um erro
+  // — não os transborda — e era esse erro que deitava o painel abaixo
+  // a 31 de março.
+  const prevSameDay = `${previousStart.slice(0, 7)}-${now.slice(8, 10)}`
+  const prevCutRaw = isValidDay(prevSameDay)
+    ? dayEnd(prevSameDay, timezone)
+    : curFrom
   const prevTo = prevCutRaw < curFrom ? prevCutRaw : curFrom
 
   const [payRows, apptRows] = await Promise.all([

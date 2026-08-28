@@ -13,7 +13,7 @@ import {
   type IsoDay,
   isValidDay,
 } from '@/lib/time'
-import { DAY_PARAM, first, funnelHref } from '@/lib/cart'
+import { CART_PARAM, DAY_PARAM, first, funnelHref, parseCart } from '@/lib/cart'
 import { picksStaffOn } from '@/lib/sunday'
 import { Empty } from '@/components/ui'
 import { FunnelShell } from '@/components/funnel-shell'
@@ -75,13 +75,18 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
   }
   const day = asked as IsoDay
 
+  // Um carrinho que já vinha montado — de trocar de dia na página das
+  // horas, por exemplo — atravessa este passo intacto: entra no
+  // endereço, sai em todas as portas.
+  const cart = parseCart(query[CART_PARAM])
+
   // AO DOMINGO ESTE PASSO NÃO EXISTE.
   //
   // Não se mostra vazio nem com um aviso: manda-se para onde a visita
   // continua. Quem chega aqui vem de uma ligação guardada, de um
   // «voltar atrás», ou de trocar para domingo na tira acima — e em
   // todos esses casos o que ela quer é seguir, não ler que se enganou.
-  if (!picksStaffOn(day)) redirect(funnelHref(`${here}/servicos`, { day }))
+  if (!picksStaffOn(day)) redirect(funnelHref(`${here}/servicos`, { day, cart }))
 
   // A semana visível na tira: os dias sem ninguém ficam apagados lá,
   // para a troca de dia nunca levar a um ecrã todo cinzento.
@@ -115,7 +120,7 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
         timezone={unit.timezone}
         language={language}
         dict={dict}
-        href={(value) => funnelHref(`${here}/profissional`, { day: value })}
+        href={(value) => funnelHref(`${here}/profissional`, { day: value, cart })}
         label={dict.funnel.steps.day}
         disabled={deadDays}
       />
@@ -145,7 +150,11 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
                 dict={dict}
                 href={
                   person.available
-                    ? funnelHref(`${here}/servicos`, { day, staffId: person.id })
+                    ? funnelHref(`${here}/servicos`, {
+                        day,
+                        staffId: person.id,
+                        cart,
+                      })
                     : null
                 }
               />

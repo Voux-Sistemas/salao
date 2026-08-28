@@ -172,6 +172,7 @@ export async function createAppointment(
           tx,
           plan.items.map((item) => item.staffId),
           input.day,
+          input.clientId,
         )
 
         /*
@@ -322,10 +323,23 @@ async function lockStaffDay(
   tx: Tx,
   staffIds: string[],
   day: IsoDay,
+  /*
+   * A CLIENTE TAMBÉM ENTRA NA FILA. A trava de gémeas só vê a gravação
+   * rival se as duas passarem pelo mesmo cadeado — e dois envios
+   * repetidos podem planear profissionais DIFERENTES (a carga mudou
+   * entre um plano e o outro), com cadeados que não se cruzam. O par
+   * (cliente, dia) é o que os dois têm sempre em comum: com ele na
+   * fila, a segunda gravação da mesma cliente espera pela primeira e a
+   * trava de gémeas apanha-a. Entra ordenado com os outros, pela mesma
+   * ordem total — o que continua a impedir o abraço mortal.
+   */
+  clientId?: string,
 ): Promise<void> {
-  const keys = [...new Set(staffIds)]
-    .map((staffId) => hashKey(`${staffId}:${day}`))
-    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+  const keys = [...new Set(staffIds)].map((staffId) =>
+    hashKey(`${staffId}:${day}`),
+  )
+  if (clientId) keys.push(hashKey(`cliente:${clientId}:${day}`))
+  keys.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 
   for (const key of keys) {
     // Vai como texto e a base converte: um inteiro de 64 bits não cabe
@@ -611,15 +625,23 @@ export async function rescheduleAppointment(input: {
           tx,
           [...plan.items.map((item) => item.staffId), ...previous.staff_ids],
           input.day,
+          previous.client_id,
         )
 
         // A antiga sai da agenda primeiro: os seus blocos libertam o
-        // horário que a nova vai ocupar.
-        const locked = await tx<{ status: Status }[]>`
-          select status from appointment where id = ${previous.id} for update
+        // horário que a nova vai ocupar. O `closed_at` volta a ser
+        // lido AQUI, com a linha presa: a leitura lá de cima é de
+        // antes da fila, e entre uma e outra a comanda pode ter sido
+        // fechada — cancelar uma comanda fechada e paga desarrumava a
+        // caixa e as comissões já lançadas.
+        const locked = await tx<{ status: Status; closed_at: Date | null }[]>`
+          select status, closed_at from appointment
+           where id = ${previous.id} for update
         `
         const current = locked[0]
-        if (!current || isTerminal(current.status)) return 'gone' as const
+        if (!current || current.closed_at || isTerminal(current.status)) {
+          return 'gone' as const
+        }
 
         await freeBlocks(tx, previous.id)
         await tx`
@@ -649,6 +671,22 @@ export async function rescheduleAppointment(input: {
         )
         if (!fresh) throw new SlotTaken()
 
+        /*
+         * A mesma guarda da criação: o cadeado foi tomado para as
+         * profissionais do plano de fora (mais as da antiga). Se o
+         * replaneamento escolheu alguém fora dessa fila, gravar era
+         * escrever sem cadeado. Aqui tem de ser um lançamento e não um
+         * `return` — a antiga já foi cancelada dentro da transação, e
+         * o `SlotTaken` desfaz tudo antes de tentar outra volta.
+         */
+        const trancadas = new Set([
+          ...plan.items.map((item) => item.staffId),
+          ...previous.staff_ids,
+        ])
+        if (!fresh.items.every((item) => trancadas.has(item.staffId))) {
+          throw new SlotTaken()
+        }
+
         const rows = await tx<{ id: string }[]>`
           insert into appointment (
             org_id, unit_id, client_id, status, source,
@@ -667,6 +705,20 @@ export async function rescheduleAppointment(input: {
         if (!appointment) throw new Error('insert falhou')
 
         await writePlan(tx, appointment.id, input.unit.id, fresh)
+
+        /*
+         * O DINHEIRO MUDA-SE COM A CLIENTE. Um sinal pago ao balcão
+         * fica agarrado à marcação — e uma marcação cancelada nunca
+         * fecha comanda, por isso um pagamento deixado na antiga não
+         * entrava na caixa nem gerava comissão, e a nova nascia «por
+         * pagar» como se o dinheiro não existisse. Os pagamentos
+         * seguem para a marcação nova; o registo de onde e quando
+         * entraram (unit_id, received_at) fica como estava.
+         */
+        await tx`
+          update payment set appointment_id = ${appointment.id}
+           where appointment_id = ${previous.id}
+        `
 
         await tx`
           insert into appointment_status_event

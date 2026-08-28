@@ -89,10 +89,16 @@ function columns(language: Language) {
        join service sv on sv.id = i.service_id
       where i.appointment_id = a.id) as services,
     -- Alcunha, nunca o nome verdadeiro: isto é a área da cliente.
+    -- E ao domingo, nem a alcunha: a cliente não escolheu ninguém, e o
+    -- nome que o motor arrumou por dentro não é uma promessa (o mesmo
+    -- juízo do picksStaffOn em lib/sunday.ts, no fuso da loja).
+    case when extract(dow from a.starts_at at time zone u.timezone) = 0
+         then null
+         else
     (select string_agg(distinct coalesce(s.public_alias, s.name), ', '
                        order by coalesce(s.public_alias, s.name))
        from appointment_item i join staff s on s.id = i.staff_id
-      where i.appointment_id = a.id) as staff_names,
+      where i.appointment_id = a.id) end as staff_names,
     coalesce((select sum(i.price_cents) from appointment_item i
                where i.appointment_id = a.id), 0)::int as total_cents
   `
@@ -241,8 +247,11 @@ export async function pendingCodes(orgId: string): Promise<PendingCode[]> {
       join client c
         on c.org_id = ${orgId}
        and c.is_active
-       and regexp_replace(c.phone, '\D', '', 'g')
-         = regexp_replace(o.target, '\D', '', 'g')
+       -- Barra dobrada: no template literal do JS, '\D' cozinha-se em
+       -- 'D' e o SQL passava a tirar a letra D em vez dos não-dígitos —
+       -- e um telefone com espaços nunca mais casava com o pedido.
+       and regexp_replace(c.phone, '\\D', '', 'g')
+         = regexp_replace(o.target, '\\D', '', 'g')
      where o.purpose = 'client_login'
        and o.consumed_at is null
        and o.expires_at > now()

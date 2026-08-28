@@ -55,6 +55,19 @@ export function isValidDay(day: string): boolean {
   )
 }
 
+/**
+ * Um instante vindo DE FORA (um `?t=` no endereço, um campo de form)
+ * só serve se cair num ano a quatro algarismos. O `new Date` do
+ * JavaScript aceita anos expandidos ('+123456-…', anos negativos) —
+ * datas válidas para ele, mas que o `isoDay` transforma num dia que o
+ * `isValidDay` recusa com um erro, e o erro num endereço público é um
+ * ecrã rebentado. A pergunta certa não é «é NaN?», é esta.
+ */
+export function isValidInstant(date: Date): boolean {
+  const year = date.getUTCFullYear()
+  return !Number.isNaN(year) && year >= 1000 && year <= 9999
+}
+
 function parts(day: IsoDay): [number, number, number] {
   if (!isValidDay(day)) throw new Error(`Data inválida: ${day}`)
   const [y, m, d] = day.split('-').map(Number) as [number, number, number]

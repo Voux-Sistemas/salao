@@ -248,37 +248,86 @@ export type SaveResult =
   | { ok: true; clientId: string }
   | { ok: false; reason: 'duplicate_phone' | 'not_found' }
 
+/*
+ * A verificação de duplicado e a escrita não são um gesto só: duas
+ * recepcionistas a gravar a mesma cliente nova passam ambas pela
+ * verificação, e a segunda escrita bate no unique(org_id, phone). Esse
+ * embate é a resposta certa — dita por palavras, não com um ecrã
+ * rebentado.
+ */
+function isUniqueClash(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    String((error as { code: unknown }).code) === '23505'
+  )
+}
+
+/*
+ * O formulário só oferece as lojas e as profissionais da casa, mas um
+ * formulário forja-se: uma preferência com um uuid de fora da rede não
+ * se grava — trata-se como o que é, uma escolha que não existe.
+ */
+async function vetPreferences(
+  orgId: string,
+  input: ClientInput,
+): Promise<ClientInput> {
+  let preferredUnitId = input.preferredUnitId
+  let preferredStaffId = input.preferredStaffId
+  if (preferredUnitId) {
+    const rows = await sql`
+      select 1 from unit where id = ${preferredUnitId} and org_id = ${orgId}
+    `
+    if (rows.length === 0) preferredUnitId = null
+  }
+  if (preferredStaffId) {
+    const rows = await sql`
+      select 1 from staff where id = ${preferredStaffId} and org_id = ${orgId}
+    `
+    if (rows.length === 0) preferredStaffId = null
+  }
+  return { ...input, preferredUnitId, preferredStaffId }
+}
+
 /** Criar. O telefone é a identidade — se já existir, não se cria outra. */
 export async function createClient(
   orgId: string,
-  input: ClientInput,
+  rawInput: ClientInput,
 ): Promise<SaveResult> {
+  const input = await vetPreferences(orgId, rawInput)
   const clash = await findByPhone(orgId, input.phone)
   if (clash) return { ok: false, reason: 'duplicate_phone' }
 
-  const rows = await sql<{ id: string }[]>`
-    insert into client
-      (org_id, name, phone, email, language, birthdate,
-       preferred_unit_id, preferred_staff_id,
-       drink_preference, allergies, service_notes, tags)
-    values
-      (${orgId}, ${input.name}, ${input.phone}, ${input.email},
-       ${input.language}, ${input.birthdate}::date,
-       ${input.preferredUnitId}, ${input.preferredStaffId},
-       ${input.drinkPreference}, ${input.allergies}, ${input.serviceNotes},
-       ${input.tags})
-    returning id
-  `
-  const row = rows[0]
-  if (!row) return { ok: false, reason: 'not_found' }
-  return { ok: true, clientId: row.id }
+  try {
+    const rows = await sql<{ id: string }[]>`
+      insert into client
+        (org_id, name, phone, email, language, birthdate,
+         preferred_unit_id, preferred_staff_id,
+         drink_preference, allergies, service_notes, tags)
+      values
+        (${orgId}, ${input.name}, ${input.phone}, ${input.email},
+         ${input.language}, ${input.birthdate}::date,
+         ${input.preferredUnitId}, ${input.preferredStaffId},
+         ${input.drinkPreference}, ${input.allergies}, ${input.serviceNotes},
+         ${input.tags})
+      returning id
+    `
+    const row = rows[0]
+    if (!row) return { ok: false, reason: 'not_found' }
+    return { ok: true, clientId: row.id }
+  } catch (error) {
+    if (isUniqueClash(error)) return { ok: false, reason: 'duplicate_phone' }
+    throw error
+  }
 }
 
 export async function updateClient(
   orgId: string,
   clientId: string,
-  input: ClientInput,
+  rawInput: ClientInput,
 ): Promise<SaveResult> {
+  const input = await vetPreferences(orgId, rawInput)
   const clash = await sql<{ id: string }[]>`
     select id from client
      where org_id = ${orgId}
@@ -288,25 +337,30 @@ export async function updateClient(
   `
   if (clash[0]) return { ok: false, reason: 'duplicate_phone' }
 
-  const rows = await sql<{ id: string }[]>`
-    update client
-       set name = ${input.name},
-           phone = ${input.phone},
-           email = ${input.email},
-           language = ${input.language},
-           birthdate = ${input.birthdate}::date,
-           preferred_unit_id = ${input.preferredUnitId},
-           preferred_staff_id = ${input.preferredStaffId},
-           drink_preference = ${input.drinkPreference},
-           allergies = ${input.allergies},
-           service_notes = ${input.serviceNotes},
-           tags = ${input.tags}
-     where id = ${clientId} and org_id = ${orgId}
-     returning id
-  `
-  const row = rows[0]
-  if (!row) return { ok: false, reason: 'not_found' }
-  return { ok: true, clientId: row.id }
+  try {
+    const rows = await sql<{ id: string }[]>`
+      update client
+         set name = ${input.name},
+             phone = ${input.phone},
+             email = ${input.email},
+             language = ${input.language},
+             birthdate = ${input.birthdate}::date,
+             preferred_unit_id = ${input.preferredUnitId},
+             preferred_staff_id = ${input.preferredStaffId},
+             drink_preference = ${input.drinkPreference},
+             allergies = ${input.allergies},
+             service_notes = ${input.serviceNotes},
+             tags = ${input.tags}
+       where id = ${clientId} and org_id = ${orgId}
+       returning id
+    `
+    const row = rows[0]
+    if (!row) return { ok: false, reason: 'not_found' }
+    return { ok: true, clientId: row.id }
+  } catch (error) {
+    if (isUniqueClash(error)) return { ok: false, reason: 'duplicate_phone' }
+    throw error
+  }
 }
 
 export async function addNote(input: {

@@ -108,7 +108,14 @@ export async function DayPanel({
   const dayOfMonth = Number(day.slice(8, 10))
   const previousMonthStart = previousMonth(monthStart)
   // Compara-se período com período: do dia 1 até ao mesmo dia do mês.
+  // Com o tecto no fim do mês anterior: a 30 de março, «o mesmo dia» de
+  // fevereiro transbordava para 2 de março e os primeiros dias do mês
+  // corrente contavam nas duas somas ao mesmo tempo.
   const previousSameDay = addDays(previousMonthStart, dayOfMonth - 1)
+  const previousCutRaw = dayEnd(previousSameDay, tz)
+  const currentMonthFrom = dayStart(monthStart, tz)
+  const previousCut =
+    previousCutRaw < currentMonthFrom ? previousCutRaw : currentMonthFrom
 
   const ids = units.map((u) => u.id)
 
@@ -175,7 +182,7 @@ export async function DayPanel({
           ), 0)::int as current_cents,
           coalesce(sum(amount_cents) filter (
             where received_at >= ${dayStart(previousMonthStart, tz)}
-              and received_at < ${dayEnd(previousSameDay, tz)}
+              and received_at < ${previousCut}
           ), 0)::int as previous_cents
         from payment
         where unit_id = any(${ids}::uuid[])

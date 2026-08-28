@@ -7,7 +7,7 @@ import { normalisePhone } from '@/lib/env'
 import { parseCart } from '@/lib/cart'
 import { createAppointment, findOrCreateClient } from '@/lib/booking'
 import { LIMITS, allowed, callerIp } from '@/lib/auth/throttle'
-import { isoDay } from '@/lib/time'
+import { isValidInstant, isoDay } from '@/lib/time'
 
 export type BookState = { error: string | null }
 
@@ -38,7 +38,9 @@ export async function bookAction(
   }
 
   const startsAt = new Date(time)
-  if (Number.isNaN(startsAt.getTime()) || cart.length === 0) {
+  // «Inválido» inclui os anos expandidos que o new Date aceita mas o
+  // calendário da casa recusa — ver isValidInstant em lib/time.ts.
+  if (!isValidInstant(startsAt) || cart.length === 0) {
     return { error: dict.errors.slotInvalid }
   }
 

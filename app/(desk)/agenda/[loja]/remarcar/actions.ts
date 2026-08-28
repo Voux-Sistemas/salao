@@ -5,7 +5,7 @@ import { canSeeUnit, ownStaffId, requireBooking } from '@/lib/auth/actor'
 import { getAppointment, rescheduleAppointment } from '@/lib/booking'
 import { parseCart } from '@/lib/cart'
 import { getUnitBySlug } from '@/lib/org'
-import { isoDay } from '@/lib/time'
+import { isValidInstant, isoDay } from '@/lib/time'
 
 export type RemarcarState = { error: string | null }
 
@@ -53,6 +53,20 @@ export async function remarcarAction(
   }
 
   const cart = parseCart(String(form.get('cart') ?? ''))
+
+  /*
+    E REMARCA PARA ELA. A página só lhe mostra o nome dela, mas o
+    carrinho vem do formulário e um formulário forja-se — a mesma trava
+    do encaixe vale aqui: com o nome de uma colega, a remarcação não se
+    faz; sem dono, a linha fica com ela.
+  */
+  if (ownStaff) {
+    if (cart.some((line) => line.staffId && line.staffId !== ownStaff)) {
+      return { error: 'Só pode remarcar para si.' }
+    }
+    for (const line of cart) line.staffId = ownStaff
+  }
+
   const original = appointment.items.map((item) => item.service_id)
   const sameServices =
     cart.length === original.length &&
@@ -62,7 +76,7 @@ export async function remarcarAction(
   }
 
   const startsAt = new Date(String(form.get('time') ?? ''))
-  if (Number.isNaN(startsAt.getTime())) return { error: 'Escolha a hora.' }
+  if (!isValidInstant(startsAt)) return { error: 'Escolha a hora.' }
 
   const result = await rescheduleAppointment({
     appointmentId: appointment.id,

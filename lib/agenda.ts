@@ -6,6 +6,9 @@ import { merge, type Interval } from '@/lib/intervals'
 import {
   addDays,
   dayStart,
+  daysBetween,
+  isoDay,
+  minutesOfDay,
   weekdayOf,
   type IsoDay,
 } from '@/lib/time'
@@ -329,8 +332,13 @@ export async function loadAgendaDay(
  * um bloco que atravessa a meia-noite sem o partir.
  */
 function localMinutes(instant: Date, day: IsoDay, timezone: string): number {
-  const base = dayStart(day, timezone).getTime()
-  return Math.round((instant.getTime() - base) / 60_000)
+  // Relógio de parede, não milissegundos decorridos: as escalas, as
+  // faixas de abertura e a régua das horas estão todas em minutos de
+  // relógio, e nos dias de mudança de hora — que caem sempre ao domingo,
+  // dia em que esta casa abre — as duas contagens divergem 60 minutos e
+  // os blocos desenhavam-se uma linha acima ou abaixo do sítio.
+  const wall = minutesOfDay(instant, timezone)
+  return wall + 1440 * daysBetween(day, isoDay(instant, timezone))
 }
 
 function extent(

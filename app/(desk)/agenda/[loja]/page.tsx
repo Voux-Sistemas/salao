@@ -7,12 +7,13 @@ import { requireActor, resolveUnit, unitsFor, can } from '@/lib/auth/actor'
 import { loadAgendaDay, type AgendaScope } from '@/lib/agenda'
 import { getAppointment } from '@/lib/booking'
 import { agendaIsPrivateOn } from '@/lib/sunday'
+import { isoDay } from '@/lib/time'
 import { sql } from '@/lib/db'
 import {
   addDays,
-  dayStart,
   formatDayLong,
   isoRange,
+  minutesOfDay,
   today,
   type IsoDay,
   isValidDay,
@@ -141,10 +142,17 @@ export default async function AgendaDayPage({
 
   // Marcação de outra loja (ou de outra rede) não se abre aqui.
   if (selected && selected.unit_id !== unit.id) notFound()
+  /*
+   * A peneira do painel olha para o dia DA MARCAÇÃO, não para o `?d=`
+   * da grelha: são coisas independentes, e um `?d=domingo` com um
+   * `?m=` de terça-feira abria a marcação de uma colega pela porta do
+   * dia aberto. A mesma pergunta que as actions fazem (`canTouch`).
+   */
   if (
     selected &&
-    onlyStaffId &&
-    !selected.items.some((i) => i.staff_id === onlyStaffId)
+    actor.role === 'professional' &&
+    agendaIsPrivateOn(isoDay(selected.starts_at, unit.timezone)) &&
+    !selected.items.some((i) => i.staff_id === actor.id)
   ) {
     notFound()
   }
@@ -179,9 +187,9 @@ export default async function AgendaDayPage({
 
   const todayDay = today(unit.timezone, now)
   const isToday = day === todayDay
-  const nowMin = isToday
-    ? Math.round((now.getTime() - dayStart(day, unit.timezone).getTime()) / 60_000)
-    : null
+  // Relógio de parede, como a régua da grelha — a diferença em
+  // milissegundos anda 60 min ao lado nos domingos de mudança de hora.
+  const nowMin = isToday ? minutesOfDay(now, unit.timezone) : null
 
   const appointmentCount = new Set(agenda.blocks.map((b) => b.appointmentId)).size
   /*

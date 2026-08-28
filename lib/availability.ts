@@ -2,11 +2,13 @@ import 'server-only'
 import { sql, type Sql } from '@/lib/db'
 import type { Unit } from '@/lib/org'
 import { openingWindows } from '@/lib/hours'
+import { categoryOpenOn, picksStaffOn } from '@/lib/sunday'
 import {
   addDays,
   atMinutes,
   dayStart,
   isoRange,
+  minutesOfDay,
   today,
   weekdayOf,
   type IsoDay,
@@ -100,6 +102,7 @@ type ServiceRow = {
   buffer_after_minutes: number
   bookable_online: boolean
   is_active: boolean
+  category_slug: string
 }
 
 type StaffRow = {
@@ -181,20 +184,29 @@ export async function loadDayContext(
   // --- serviços do carrinho ------------------------------------------
   const serviceIds = [...new Set(cart.map((l) => l.serviceId))]
   const serviceRows = await db<ServiceRow[]>`
-    select id, name, duration_minutes, base_price_cents,
-           buffer_before_minutes, buffer_after_minutes,
-           bookable_online, is_active
-      from service
-     where id = any(${serviceIds}::uuid[]) and org_id = ${unit.org_id}
+    select s.id, s.name, s.duration_minutes, s.base_price_cents,
+           s.buffer_before_minutes, s.buffer_after_minutes,
+           s.bookable_online, s.is_active,
+           c.slug as category_slug
+      from service s
+      join service_category c on c.id = s.category_id
+     where s.id = any(${serviceIds}::uuid[]) and s.org_id = ${unit.org_id}
   `
   const services = new Map(serviceRows.map((s) => [s.id, s]))
 
   // Um serviço desativado (ou fechado ao online) é apanhado aqui, não
-  // só no fim do funil.
+  // só no fim do funil. E ao domingo a ementa encolhe: uma categoria
+  // fora da lista é «sob consulta» — o ecrã dos serviços já não a
+  // oferece, mas o carrinho viaja no endereço e a tira dos dias troca
+  // de dia com ele; é AQUI, no motor, que a promessa se cumpre para
+  // horários, confirmação e gravação de uma vez só.
   for (const id of serviceIds) {
     const service = services.get(id)
     if (!service || !service.is_active) return 'none'
-    if (channel === 'online' && !service.bookable_online) return 'none'
+    if (channel === 'online') {
+      if (!service.bookable_online) return 'none'
+      if (!categoryOpenOn(day, service.category_slug)) return 'none'
+    }
   }
 
   // --- profissionais elegíveis ---------------------------------------
@@ -228,9 +240,14 @@ export async function loadDayContext(
     candidatesByService.set(row.service_id, list)
   }
 
-  // Uma escolha explícita restringe a lista a essa pessoa.
+  // Uma escolha explícita restringe a lista a essa pessoa. Ao domingo
+  // não houve escolha nenhuma — um `?p=` que uma ligação antiga traga
+  // até cá é arrumação de outro dia, e o motor ignora-o para repartir
+  // a visita por quem estiver de escala. Só no online: ao balcão quem
+  // escreve é da casa, e essa escolha é deliberada.
+  const explicitStaffCounts = channel !== 'online' || picksStaffOn(day)
   for (const line of cart) {
-    if (!line.staffId) continue
+    if (!line.staffId || !explicitStaffCounts) continue
     const list = candidatesByService.get(line.serviceId) ?? []
     candidatesByService.set(
       line.serviceId,
@@ -415,8 +432,12 @@ async function staffLoad(
   const load = new Map<string, number>()
 
   if (unit.assignment_strategy === 'least_busy_week') {
-    const from = dayStart(addDays(day, -weekdayOf(day)), unit.timezone)
-    const to = new Date(from.getTime() + 7 * 86_400_000)
+    // O fim da semana é a meia-noite de domingo seguinte NO FUSO DA
+    // LOJA, não «168 horas depois»: nas semanas de mudança de hora as
+    // duas contas divergem uma hora, e a mudança cai sempre ao domingo.
+    const weekStart = addDays(day, -weekdayOf(day))
+    const from = dayStart(weekStart, unit.timezone)
+    const to = dayStart(addDays(weekStart, 7), unit.timezone)
     const rows = await db<{ staff_id: string; minutes: number }[]>`
       select staff_id,
              (sum(extract(epoch from (upper(during) - lower(during)))) / 60)::int as minutes
@@ -755,11 +776,17 @@ export function slotsFrom(ctx: DayContext): Slot[] {
       É a única hora fora da grelha, e só existe deste lado: no site,
       um 17h58 no meio dos quartos de hora certos lê-se como defeito.
     */
-    if (ctx.channel !== 'online') {
-      const nowMin = Math.ceil(
-        (ctx.now.getTime() - dayStart(ctx.day, ctx.unit.timezone).getTime()) /
-          60_000,
-      )
+    if (
+      ctx.channel !== 'online' &&
+      today(ctx.unit.timezone, ctx.now) === ctx.day
+    ) {
+      // Minutos de RELÓGIO DE PAREDE, como as janelas — não milissegundos
+      // decorridos desde a meia-noite, que nos domingos de mudança de
+      // hora andam uma hora ao lado do relógio.
+      const passou =
+        ctx.now.getUTCSeconds() > 0 || ctx.now.getUTCMilliseconds() > 0
+      const nowMin =
+        minutesOfDay(ctx.now, ctx.unit.timezone) + (passou ? 1 : 0)
       if (nowMin > window.openMin && nowMin < window.closeMin) offer(nowMin)
     }
 

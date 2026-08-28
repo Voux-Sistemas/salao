@@ -88,11 +88,16 @@ export default async function TimesPage({ params, searchParams }: Params) {
   // reparte-a por quem estiver livre à hora que ela marcar.
   const picksStaff = picksStaffOn(day)
   const chosenStaff = picksStaff ? staffId : null
-  if (picksStaff && !staffId) redirect(funnelHref(`${here}/profissional`, { day }))
+  const rawCart = parseCart(query[CART_PARAM])
+  if (picksStaff && !staffId) {
+    // Com o carrinho: quem cá chega sem dona vem quase sempre de trocar
+    // de domingo para um dia de semana, e a visita montada vai com ela.
+    redirect(funnelHref(`${here}/profissional`, { day, cart: rawCart }))
+  }
 
   // A profissional é a da visita inteira: as linhas do endereço podem
   // vir de uma ligação antiga, e é o `?p=` que manda.
-  const cart = parseCart(query[CART_PARAM]).map((line) => ({
+  const cart = rawCart.map((line) => ({
     ...line,
     staffId: chosenStaff,
   }))
@@ -112,6 +117,15 @@ export default async function TimesPage({ params, searchParams }: Params) {
   )
   const byDay = new Map(week.map((d, i) => [d, weekSlots[i]!]))
   const { slots, problem } = byDay.get(day)!
+
+  // «none» é um carrinho que já não se pede assim: um serviço
+  // desactivado, fechado ao online, ou de uma categoria que neste dia
+  // é «sob consulta». Nenhum dia do calendário vai servir — dizer «dia
+  // cheio» e varrer o horizonte à procura era prometer o que não há.
+  // Volta-se à ementa desse dia, sem o carrinho estragado.
+  if (problem === 'none') {
+    redirect(funnelHref(`${here}/servicos`, { day, staffId: chosenStaff }))
+  }
   const deadDays = new Set(
     week.filter((d) => (byDay.get(d)?.slots.length ?? 0) === 0),
   )
@@ -241,7 +255,7 @@ export default async function TimesPage({ params, searchParams }: Params) {
          */
         href={(value) =>
           picksStaffOn(value) && !chosenStaff
-            ? funnelHref(`${here}/profissional`, { day: value })
+            ? funnelHref(`${here}/profissional`, { day: value, cart })
             : funnelHref(`${here}/horarios`, {
                 cart,
                 day: value,

@@ -172,13 +172,13 @@ export default async function EncaixePage({ params, searchParams }: Params) {
   const hasClient = Boolean(clientId && isUuid(clientId))
   const doneId = first(query[DONE_PARAM])
   const [client, done, allClients] = await Promise.all([
-    hasClient ? getClient(actor.orgId, clientId!) : null,
+    hasClient ? getClient(actor.orgId, clientId!, ownStaff) : null,
     // Vai na mesma leva: entre esta página e a base há um oceano, e um
     // recibo não vale uma viagem só para ele.
     doneId && isUuid(doneId) ? getJustBooked(actor.orgId, doneId) : null,
     // As fichas vêm todas com a página, como o catálogo: a procura
     // passa a correr no navegador, a cada letra, sem ir ao servidor.
-    hasClient ? [] : loadClients(actor.orgId),
+    hasClient ? [] : loadClients(actor.orgId, ownStaff),
   ])
 
   // --- horas --------------------------------------------------------
@@ -791,6 +791,7 @@ function StaffChip({
 async function getClient(
   orgId: string,
   id: string,
+  ownStaff: string | null,
 ): Promise<ClientRow | null> {
   const rows = await sql<ClientRow[]>`
     select c.id, c.name, c.phone,
@@ -798,6 +799,11 @@ async function getClient(
              where a.client_id = c.id and a.status = 'completed')::int as visits
       from client c
      where c.id = ${id} and c.org_id = ${orgId}
+       and (${ownStaff}::uuid is null or exists (
+             select 1 from appointment a
+               join appointment_item i on i.appointment_id = a.id
+              where a.client_id = c.id and i.staff_id = ${ownStaff}::uuid
+           ))
   `
   return rows[0] ?? null
 }
@@ -809,13 +815,28 @@ async function getClient(
  * encontrar tudo o que veio — só as fichas mais antigas e paradas é que
  * teriam de nascer pelo formulário.
  */
-async function loadClients(orgId: string): Promise<ClientRow[]> {
+async function loadClients(
+  orgId: string,
+  ownStaff: string | null,
+): Promise<ClientRow[]> {
+  /*
+   * A PROFISSIONAL VÊ AS CLIENTES DELA, não o ficheiro da casa.
+   * As fichas são da gerência: quem atende recebe aqui só quem já lhe
+   * passou pelas mãos — nome e telefone de quinhentas desconhecidas não
+   * têm que descer para o navegador de ninguém. Uma cliente nova
+   * continua a poder nascer pelo formulário ao lado.
+   */
   return sql<ClientRow[]>`
     select c.id, c.name, c.phone,
            (select count(*) from appointment a
              where a.client_id = c.id and a.status = 'completed')::int as visits
       from client c
      where c.org_id = ${orgId} and c.is_active
+       and (${ownStaff}::uuid is null or exists (
+             select 1 from appointment a
+               join appointment_item i on i.appointment_id = a.id
+              where a.client_id = c.id and i.staff_id = ${ownStaff}::uuid
+           ))
      order by coalesce((select max(a.starts_at) from appointment a
                          where a.client_id = c.id), c.created_at) desc,
               c.name
