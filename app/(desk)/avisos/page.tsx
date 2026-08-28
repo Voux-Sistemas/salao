@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { noticesStaffId, requireActor, unitsFor } from '@/lib/auth/actor'
 import { loadQueue } from '@/lib/notices'
+import { listUnitCovers } from '@/lib/org'
 import { Empty } from '@/components/ui'
 import { StoreChooser } from '@/components/store-chooser'
 
@@ -32,6 +33,9 @@ export default async function AvisosChooser() {
     units.map((unit) => loadQueue(unit, 'reminder_eve', { staffId })),
   )
 
+  // A capa de cada casa numa consulta só, e não uma por ficha.
+  const covers = await listUnitCovers()
+
   return (
     <StoreChooser
       title="Avisos"
@@ -55,6 +59,7 @@ export default async function AvisosChooser() {
             pending > 0
               ? `${pending} lembrete${pending === 1 ? '' : 's'} da véspera para amanhã.`
               : 'Sem lembretes da véspera pendentes.',
+          photo: covers.get(unit.id) ?? null,
         }
       })}
     />

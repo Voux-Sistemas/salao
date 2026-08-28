@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { requireManagement, unitsFor } from '@/lib/auth/actor'
 import { expectedCents, loadMovements, openSession } from '@/lib/cash'
 import { formatCents } from '@/lib/money'
+import { listUnitCovers } from '@/lib/org'
 import { Empty } from '@/components/ui'
 import { StoreChooser } from '@/components/store-chooser'
 
@@ -36,6 +37,9 @@ export default async function CaixaChooser() {
     }),
   )
 
+  // A capa de cada casa numa consulta só, e não uma por ficha.
+  const covers = await listUnitCovers()
+
   return (
     <StoreChooser
       title="Caixa"
@@ -49,6 +53,7 @@ export default async function CaixaChooser() {
         line: open
           ? `Na gaveta, esperado ${formatCents(cents)}`
           : 'Por abrir hoje.',
+        photo: covers.get(unit.id) ?? null,
       }))}
     />
   )

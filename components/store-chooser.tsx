@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { ChevronRight, Store } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui'
+import { Photo, PhotoFallback } from '@/components/photo'
 import { sameWord } from '@/lib/text'
 
 /**
@@ -17,9 +18,25 @@ import { sameWord } from '@/lib/text'
  * esquerda, sem esperar por nada. Agora é isso: um cabeçalho curto e
  * duas fichas com o que interessa saber antes de entrar.
  *
- * Nada de avatar com a inicial: «Chiado» e «Cascais» dão o mesmo C e o
- * avatar não distinguia nada. O quadrado à esquerda é só o glifo de
- * loja, igual nas duas — serve de âncora para o olho, não de código.
+ * A FOTOGRAFIA DA CASA É QUE DISTINGUE AS DUAS.
+ *
+ * Aqui esteve um quadrado de 36px com o glifo de loja — igual nas duas
+ * fichas, portanto não distinguia nada; e antes dele um avatar com a
+ * inicial, que dava o mesmo C a «Chiado» e a «Cascais». A foto da casa
+ * resolve o que nenhum dos dois resolvia: reconhece-se a sala antes de
+ * se ler o nome.
+ *
+ * Mas só resolve com TAMANHO. Numa miniatura de 44px uma sala lê-se
+ * como uma mancha castanha ao lado de uma mancha branca — paga-se a
+ * fotografia e não se vê a casa. Por isso a foto é uma banda inteira em
+ * cima da ficha, e o nome fica por baixo, em tinta escura sobre branco:
+ * uma fotografia escura, tremida ou tirada à pressa ao balcão estraga a
+ * imagem, mas nunca estraga o cartão. E as fotografias de uma loja
+ * mudam — com as obras, com a época, com quem as tira.
+ *
+ * O fio de ouro entre a foto e o nome é o mesmo que está debaixo do
+ * título da página: é a assinatura da casa, e é o que impede a banda de
+ * parecer um banner colado.
  */
 
 export type ChooserStore = {
@@ -34,6 +51,8 @@ export type ChooserStore = {
   } | null
   /** Uma frase sobre o que lá espera: o esperado na gaveta, a fila. */
   line?: string | null
+  /** A capa da casa — a primeira foto de `unit_photo`. Pode não haver. */
+  photo?: { url: string; alt?: string | null } | null
 }
 
 export function StoreChooser({
@@ -66,16 +85,43 @@ export function StoreChooser({
           <Link
             key={store.href}
             href={store.href}
-            className="group flex flex-col rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] px-5 py-5 shadow-[0_1px_2px_rgba(15,21,32,0.04)] transition-colors hover:border-[color-mix(in_srgb,var(--accent)_35%,transparent)]"
+            className="group flex flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_1px_2px_rgba(15,21,32,0.04)] transition-colors hover:border-[color-mix(in_srgb,var(--accent)_35%,transparent)]"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
+            {/* A BANDA DA CASA. Altura fixa, e não proporção: as duas
+                fichas ficam à mesma altura venha a fotografia deitada ou
+                ao alto, e a linha do nome cai sempre no mesmo sítio. */}
+            <span className="relative block h-[9.5rem] shrink-0 bg-[var(--surface-2)]">
+              {store.photo ? (
+                /* `eager`: são duas ou três fotografias, todas acima da
+                   dobra, e são o ecrã inteiro — entrarem tarde era vê-las
+                   aparecer depois de a mão já ir a caminho do cartão. */
+                <Photo
+                  src={store.photo.url}
+                  alt={store.photo.alt ?? store.name}
+                  eager
+                />
+              ) : (
+                /* A casa sem fotografia não fica com um buraco cinzento:
+                   fica com o monograma sobre papel. O `--gold` local é
+                   porque o desenho do fundo é feito com essa variável, e
+                   no balcão ela é o violeta da segunda série — aqui quem
+                   assina é o ouro da casa. */
                 <span
-                  aria-hidden
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[color-mix(in_srgb,var(--accent)_11%,transparent)] text-[var(--accent)]"
+                  className="block h-full w-full"
+                  style={{ ['--gold' as string]: 'var(--house, var(--accent))' }}
                 >
-                  <Store size={17} strokeWidth={2} />
+                  <PhotoFallback seed={store.name} />
                 </span>
+              )}
+              <span
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-0.5"
+                style={{ background: 'var(--house, var(--accent))' }}
+              />
+            </span>
+
+            <div className="flex flex-1 flex-col px-5 py-4">
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="display truncate text-lg leading-tight text-[var(--ink)]">
                     {store.name}
@@ -89,32 +135,32 @@ export function StoreChooser({
                     </p>
                   ) : null}
                 </div>
+                {store.badge ? (
+                  <span className="shrink-0">
+                    <Badge tone={store.badge.tone ?? 'neutral'}>
+                      {store.badge.label}
+                    </Badge>
+                  </span>
+                ) : null}
               </div>
-              {store.badge ? (
-                <span className="shrink-0">
-                  <Badge tone={store.badge.tone ?? 'neutral'}>
-                    {store.badge.label}
-                  </Badge>
-                </span>
+
+              {store.line ? (
+                <p className="mt-2.5 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+                  {store.line}
+                </p>
               ) : null}
+
+              {/* `mt-auto` para o rodapé das duas fichas ficar à mesma
+                  altura, tenha uma delas uma linha a mais ou a menos. */}
+              <span className="mt-auto inline-flex items-center gap-1 self-start pt-3 text-[0.8125rem] font-semibold text-[var(--accent)]">
+                {cta}
+                <ChevronRight
+                  size={15}
+                  strokeWidth={2.25}
+                  className="transition-transform group-hover:translate-x-0.5"
+                />
+              </span>
             </div>
-
-            {store.line ? (
-              <p className="mt-3.5 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-                {store.line}
-              </p>
-            ) : null}
-
-            {/* `mt-auto` para o rodapé das duas fichas ficar à mesma
-                altura, tenha uma delas uma linha a mais ou a menos. */}
-            <span className="mt-auto inline-flex items-center gap-1 self-start pt-4 text-[0.8125rem] font-semibold text-[var(--accent)]">
-              {cta}
-              <ChevronRight
-                size={15}
-                strokeWidth={2.25}
-                className="transition-transform group-hover:translate-x-0.5"
-              />
-            </span>
           </Link>
         ))}
       </div>

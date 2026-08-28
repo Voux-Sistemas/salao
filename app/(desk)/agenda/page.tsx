@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { requireActor, unitsFor } from '@/lib/auth/actor'
+import { listUnitCovers } from '@/lib/org'
 import { Empty } from '@/components/ui'
 import { StoreChooser } from '@/components/store-chooser'
 
@@ -28,6 +29,9 @@ export default async function AgendaChooser() {
     )
   }
 
+  // A capa de cada casa numa consulta só, e não uma por ficha.
+  const covers = await listUnitCovers()
+
   return (
     <StoreChooser
       title="Agenda"
@@ -37,6 +41,7 @@ export default async function AgendaChooser() {
         href: `/agenda/${unit.slug}`,
         name: unit.name,
         meta: unit.city ?? unit.address_line ?? unit.timezone,
+        photo: covers.get(unit.id) ?? null,
       }))}
     />
   )
