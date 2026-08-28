@@ -402,7 +402,17 @@ export default async function AgendaDayPage({
         <ChevronDown aria-hidden className="h-3 w-3 shrink-0" />
       </summary>
 
-      <div className="absolute top-full right-0 z-30 mt-1.5 min-w-[11rem] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] py-1 shadow-[var(--shadow-soft)]">
+      {/*
+        O PAINEL ABRE PARA O LADO ONDE HÁ ECRÃ.
+
+        Abria alinhado à direita, e estava certo enquanto o «Todas ⌄»
+        vivia no canto direito da linha dos números. Quando ele desceu
+        para a ponta ESQUERDA da fila dos comandos, alinhar pela direita
+        passou a mandar o painel para fora do ecrã: 176px a crescer para
+        a esquerda a partir de um chip que começa aos 14. Ancora-se à
+        esquerda, que é onde ele agora está.
+      */}
+      <div className="absolute top-full left-0 z-30 mt-1.5 min-w-[11rem] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] py-1 shadow-[var(--shadow-soft)]">
         <FiltroItem href={withDay(day, null)} active={picked === null}>
           Todas
         </FiltroItem>
