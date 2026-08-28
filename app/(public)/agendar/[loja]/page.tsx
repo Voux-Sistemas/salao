@@ -116,6 +116,9 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
     <FunnelShell
       step={2}
       dict={dict}
+      // O dia em foco na tira manda no rasto: quem está a olhar para um
+      // domingo já vê cinco passos, e não seis com um deles a mentir.
+      picksStaff={picksStaffOn(day)}
       hrefs={['/agendar', null, null, null, null, null]}
       eyebrow={unit.name}
       title={dict.funnel.dayTitle}

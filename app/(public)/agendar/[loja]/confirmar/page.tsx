@@ -123,6 +123,7 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
   return (
     <FunnelShell
       step={6}
+      picksStaff={picksStaff}
       dict={dict}
       hrefs={[
         '/agendar',

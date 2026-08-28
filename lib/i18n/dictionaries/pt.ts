@@ -177,9 +177,6 @@ export const pt = {
     sundayAskMessage: 'Olá! Queria saber se é possível marcar {servico} no domingo, dia {dia}, em {loja}.',
     serviceTitle: 'O que vai fazer?',
     serviceSubtitle: 'Pode juntar mais do que um serviço na mesma visita.',
-    anyProfessional: 'Sem preferência',
-    anyProfessionalHint: 'Escolhemos quem estiver disponível.',
-    chooseProfessional: 'Escolher profissional',
     selected: 'Selecionado',
     yourVisit: 'A sua visita',
     emptyCart: 'Ainda não escolheu nenhum serviço.',
@@ -200,6 +197,15 @@ export const pt = {
      */
     noStaff: 'Não há profissional disponível para esta escolha.',
     noStaffHint: 'Mudar de dia não ajuda — volte atrás e escolha outra profissional ou outro serviço.',
+    /*
+     * As mesmas duas paredes, ditas a quem marca ao domingo. Nesse dia
+     * ela não escolheu ninguém e não tem a quem trocar: mandá-la
+     * «escolher outra profissional» era apontar-lhe um passo que o
+     * domingo não tem. O que lhe resta é o serviço, ou outro dia.
+     */
+    sundayNoStaffTitle: 'Este serviço não tem quem o faça ao domingo.',
+    sundayNoStaffHint: 'Ao domingo atende quem estiver de escala. Experimente outro serviço, ou um dia de semana.',
+    sundayNoSlotsHint: 'Experimente outro dia.',
     slotsAvailable: 'horários livres',
     morning: 'Manhã',
     afternoon: 'Tarde',

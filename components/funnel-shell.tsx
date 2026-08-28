@@ -21,6 +21,7 @@ export function FunnelShell({
   step,
   dict,
   hrefs,
+  picksStaff,
   eyebrow,
   title,
   subtitle,
@@ -31,6 +32,8 @@ export function FunnelShell({
   dict: Dictionary
   /** Endereço de cada passo já percorrido; null desliga a ligação. */
   hrefs?: (string | null)[]
+  /** Ao domingo é falso: o rasto de migalhas fica com cinco passos. */
+  picksStaff?: boolean
   /** Sobrepõe a etiqueta pequena por cima do título. */
   eyebrow?: string
   title: string
@@ -62,7 +65,12 @@ export function FunnelShell({
             </p>
           ) : null}
           <div className="mt-7 border-t border-[var(--line-soft)] pt-5">
-            <FunnelSteps current={step} dict={dict} hrefs={hrefs} />
+            <FunnelSteps
+              current={step}
+              dict={dict}
+              hrefs={hrefs}
+              picksStaff={picksStaff}
+            />
           </div>
         </div>
       </header>

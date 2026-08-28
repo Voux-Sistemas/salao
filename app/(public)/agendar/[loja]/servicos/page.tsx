@@ -286,6 +286,7 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
   return (
     <FunnelShell
       step={4}
+      picksStaff={picksStaff}
       dict={dict}
       hrefs={[
         '/agendar',

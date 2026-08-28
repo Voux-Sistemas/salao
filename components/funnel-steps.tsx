@@ -12,16 +12,25 @@ import type { Dictionary } from '@/lib/i18n'
  * terça não é escolha nenhuma. O serviço vem antes da hora porque é ele
  * que diz quanto tempo é preciso reservar: ao contrário, ofereciam-se
  * horas que depois não cabiam.
+ *
+ * AO DOMINGO SÃO CINCO. Não é o passo da profissional apagado: é o
+ * passo fora da fila, e os que vêm atrás a recuar um número. Um «3 ·
+ * Profissional» a cinzento anunciava uma escolha que nesse dia não
+ * existe — e quem lê um rasto de migalhas lê para saber o que falta,
+ * não para descobrir o que não há.
  */
 export function FunnelSteps({
   current,
   dict,
   hrefs,
+  picksStaff = true,
 }: {
   current: 1 | 2 | 3 | 4 | 5 | 6
   dict: Dictionary
   /** Endereço de cada passo já percorrido; null desliga a ligação. */
   hrefs?: (string | null)[]
+  /** Ao domingo é falso: o passo da profissional sai da fila. */
+  picksStaff?: boolean
 }) {
   const labels = [
     dict.funnel.steps.store,
@@ -32,10 +41,23 @@ export function FunnelSteps({
     dict.funnel.steps.confirm,
   ]
 
+  /*
+   * A numeração das páginas nunca muda — `step={5}` são as horas em
+   * qualquer dia da semana, e é essa conta que diz o que já foi feito.
+   * O que muda é só o que se DESENHA: tira-se o índice 2 e conta-se de
+   * novo para o ecrã. Por isso guarda-se o índice original ao lado do
+   * número mostrado: um compara-se com o `current`, o outro lê-se.
+   */
+  const shown = labels
+    .map((label, index) => ({ label, index }))
+    .filter((entry) => picksStaff || entry.index !== 2)
+
   return (
     <ol className="flex items-center gap-2 text-[0.6875rem] tracking-[0.14em] uppercase">
-      {labels.map((label, index) => {
+      {shown.map((entry, position) => {
+        const { label, index } = entry
         const step = index + 1
+        const number = position + 1
         const done = step < current
         const href = done ? (hrefs?.[index] ?? null) : null
         const content = (
@@ -49,7 +71,7 @@ export function FunnelSteps({
                   : 'text-[var(--ink-faint)]',
             )}
           >
-            <span className="tabular">{step}</span>
+            <span className="tabular">{number}</span>
             <span className="hidden sm:inline"> · {label}</span>
           </span>
         )
@@ -71,8 +93,9 @@ export function FunnelSteps({
             )}
             {/* Seis algarismos e cinco traços não cabem na largura de um
                 telemóvel: o traço só aparece onde o rótulo também
-                aparece, e em baixo fica a fila de números. */}
-            {step < labels.length ? (
+                aparece, e em baixo fica a fila de números. O último
+                nunca leva traço — e ao domingo o último é o quinto. */}
+            {number < shown.length ? (
               <span aria-hidden className="hidden text-[var(--line)] sm:inline">
                 —
               </span>

@@ -182,6 +182,7 @@ export default async function TimesPage({ params, searchParams }: Params) {
   return (
     <FunnelShell
       step={5}
+      picksStaff={picksStaff}
       dict={dict}
       hrefs={[
         '/agendar',
@@ -300,13 +301,22 @@ export default async function TimesPage({ params, searchParams }: Params) {
             problem === 'closed'
               ? dict.unit.closedToday
               : problem === 'no_staff'
-                ? dict.funnel.noStaff
+                ? picksStaff
+                  ? dict.funnel.noStaff
+                  : dict.funnel.sundayNoStaffTitle
                 : dict.funnel.noSlots
           }
+          // Ao domingo a palavra «profissional» não entra: ela não
+          // escolheu ninguém, e um conselho para trocar de pessoa
+          // manda-a a um passo que nesse dia não existe.
           hint={
             problem === 'no_staff'
-              ? dict.funnel.noStaffHint
-              : dict.funnel.noSlotsHint
+              ? picksStaff
+                ? dict.funnel.noStaffHint
+                : dict.funnel.sundayNoStaffHint
+              : picksStaff
+                ? dict.funnel.noSlotsHint
+                : dict.funnel.sundayNoSlotsHint
           }
           // Um beco nunca acaba em conselho. Primeiro as portas que
           // levam mesmo a uma hora — os dias mais próximos onde esta
@@ -342,12 +352,19 @@ export default async function TimesPage({ params, searchParams }: Params) {
                 </div>
               ) : null}
               <div className="flex flex-wrap justify-center gap-3">
-                <ButtonLink
-                  href={funnelHref(`${here}/profissional`, { day })}
-                  variant="outline"
-                >
-                  {dict.funnel.changeStaff}
-                </ButtonLink>
+                {/* Ao domingo não há para onde trocar: o passo não
+                    existe, e um botão que leva a um ecrã que
+                    reencaminha de volta é uma porta pintada na
+                    parede. O carrinho vai junto — sem ele, quem
+                    trocasse de pessoa perdia a visita montada. */}
+                {picksStaff ? (
+                  <ButtonLink
+                    href={funnelHref(`${here}/profissional`, { day, cart })}
+                    variant="outline"
+                  >
+                    {dict.funnel.changeStaff}
+                  </ButtonLink>
+                ) : null}
                 <ButtonLink
                   href={funnelHref(`${here}/servicos`, { day, staffId: chosenStaff, cart })}
                   variant="outline"
