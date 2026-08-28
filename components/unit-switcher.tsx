@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import clsx from 'clsx'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Store } from 'lucide-react'
 import type { Unit } from '@/lib/org'
 
 /**
@@ -35,10 +35,62 @@ export function UnitSwitcher({
   showAll?: boolean
   /** o que vem a seguir à loja, por exemplo `/encaixe`. */
   suffix?: string
-  /** `inline` é o nome com um ⌄, para viver dentro de uma linha de texto. */
-  variant?: 'segmented' | 'inline'
+  /**
+   * `inline` é o nome com um ⌄, para viver dentro de uma linha de texto;
+   * `chip` é a pastilha, para viver numa fila de filtros.
+   */
+  variant?: 'segmented' | 'inline' | 'chip'
 }) {
   if (units.length < 2) return null
+
+  /*
+    A PASTILHA DA CASA — a forma do telemóvel.
+
+    Lá a linha dos números saiu, e com ela saiu o sítio onde a casa
+    vivia. Passa a ser uma pastilha ao pé da das profissionais: as duas
+    fazem a mesma pergunta — o que se vê — e a mesma pergunta deve ter
+    a mesma forma.
+
+    A PASTILHA DIZ O NOME DA CASA, E NÃO «LOJAS». Com a linha dos
+    números fora, este é o único sítio do ecrã onde a palavra «Valongo»
+    aparece — e num sistema com duas casas, saber em qual se está antes
+    de fechar uma comanda não é enfeite. A palavra «lojas» fica onde
+    ela é uma legenda e não uma resposta: no cimo do menu que se abre.
+  */
+  if (variant === 'chip') {
+    const atual = units.find((unit) => unit.slug === current)
+    return (
+      <details key={current ?? 'todas'} className="relative">
+        <summary className="inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface-raised)] px-3 text-[0.75rem] font-semibold whitespace-nowrap text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)] [&::-webkit-details-marker]:hidden">
+          <Store
+            aria-hidden
+            className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)]"
+          />
+          {atual?.name ?? allLabel}
+          <ChevronDown aria-hidden className="h-3 w-3 shrink-0" />
+        </summary>
+        <div className="absolute top-full left-0 z-30 mt-1.5 min-w-[10rem] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] pb-1 shadow-[var(--shadow-soft)]">
+          <p className="px-3.5 pt-2 pb-1 text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
+            Lojas
+          </p>
+          {showAll ? (
+            <InlineItem href={base} active={current === null}>
+              {allLabel}
+            </InlineItem>
+          ) : null}
+          {units.map((unit) => (
+            <InlineItem
+              key={unit.id}
+              href={`${base}/${unit.slug}${suffix}`}
+              active={current === unit.slug}
+            >
+              {unit.name}
+            </InlineItem>
+          ))}
+        </div>
+      </details>
+    )
+  }
 
   if (variant === 'inline') {
     const atual = units.find((unit) => unit.slug === current)

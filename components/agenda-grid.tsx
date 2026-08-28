@@ -1058,11 +1058,21 @@ export function AgendaList({
                 style={{ background: TONE_BAR[tone] }}
               />
 
-              {/* A hora encolheu de 22px para 16. Era o tamanho de um
-                  título numa lista onde todas as linhas têm um — e o
-                  que se procura aqui é o nome, não o número. */}
+              {/*
+                A hora encolheu de 22px para 16. Era o tamanho de um
+                título numa lista onde todas as linhas têm um — e o que
+                se procura aqui é o nome, não o número.
+
+                UMA COISA ESCURA POR LINHA, E É O NOME DA CLIENTE.
+                A hora estava em tinta cheia, o nome também, e o preço
+                ainda mais pesado do que os dois — três coisas a gritar
+                na mesma linha. Num dia que ainda não começou nenhuma
+                delas está apagada, e o ecrã inteiro fica em maiúsculas.
+                A hora guarda o peso, que é o que a faz encontrar ao
+                correr o dedo, e desce para a tinta média.
+              */}
               <span className="w-[3.25rem] shrink-0">
-                <span className="tabular block text-[1rem] font-bold leading-none tracking-[-0.02em] text-[var(--ink)]">
+                <span className="tabular block text-[1rem] font-bold leading-none tracking-[-0.02em] text-[var(--ink-muted)]">
                   {formatMinutes(card.startMin)}
                 </span>
                 <span className="tabular mt-1 block text-[0.6875rem] leading-none text-[var(--ink-faint)]">
@@ -1100,7 +1110,9 @@ export function AgendaList({
                       className="h-3.5 w-3.5 shrink-0 text-[var(--ok)]"
                     />
                   ) : null}
-                  <span className="tabular shrink-0 text-[0.8125rem] font-bold text-[var(--ink)]">
+                  {/* O preço desce as duas coisas, peso e tinta: lê-se
+                      quando se vai fechar a comanda, não antes. */}
+                  <span className="tabular shrink-0 text-[0.8125rem] font-semibold text-[var(--ink-muted)]">
                     {formatCents(card.priceCents)}
                   </span>
                 </span>

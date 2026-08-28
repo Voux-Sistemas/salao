@@ -526,13 +526,19 @@ export default async function AgendaDayPage({
           Agora é o ⌄ do nome da casa, dentro da linha que já dizia
           quantas marcações ela tem — e o canto fica para quem trabalha.
 
-          NO TELEMÓVEL ESTA LINHA É SÓ DELA. Chegou a ter três
-          inquilinos — os números, o filtro e o interruptor — e o que
-          cedia era o texto: «10 por fechar» morria em «10…», que é
-          justamente a única coisa ali que pede uma acção. Os comandos
-          desceram para uma fila própria, em baixo.
+          E NO TELEMÓVEL ELA JÁ NÃO EXISTE.
+
+          Chegou a ter três inquilinos — os números, o filtro e o
+          interruptor — e o que cedia era sempre o texto. Os comandos
+          desceram para uma fila própria; a linha ficou só com os
+          números; e os números, num ecrã de 390, eram a coisa que se
+          lia menos vezes de todas as que lá estavam. Saiu inteira, e a
+          casa foi com ela para a pastilha lá de baixo.
+
+          No monitor fica: lá há largura para os números e para tudo o
+          resto, e é onde se olha para o dia com tempo.
         */}
-        <div className="flex items-center gap-3 px-4 pt-1 pb-0.5 sm:px-6 sm:pt-0">
+        <div className="hidden items-center gap-3 px-4 pt-1 pb-0.5 sm:flex sm:px-6 sm:pt-0">
           <div className="flex min-w-0 flex-1 items-center gap-1 text-[0.6875rem] text-[var(--ink-faint)]">
             {units.length > 1 ? (
               <UnitSwitcher
@@ -603,8 +609,21 @@ export default async function AgendaDayPage({
           texto de quem o alojava. Juntos numa fila própria têm as duas
           pontas ocupadas — quem se vê à esquerda, como se vê à direita
           — e nenhuma das outras filas tem de ceder nada.
+
+          `flex-wrap` porque num dia que não é hoje entra mais um botão,
+          o «Hoje», e cinco comandos não cabem em 358px. Passar para a
+          linha de baixo é feio uma vez por semana; cortado ao meio na
+          margem seria feio sempre.
         */}
-        <div className="flex items-center gap-2 px-4 pb-2.5 sm:hidden">
+        <div className="flex flex-wrap items-center gap-2 px-4 pb-2.5 sm:hidden">
+          {/* A casa, no sítio onde a linha dos números a deixou. */}
+          <UnitSwitcher
+            units={units}
+            current={unit.slug}
+            base="/agenda"
+            showAll={false}
+            variant="chip"
+          />
           {filtroDeBolso}
           <span className="flex-grow" />
           {interruptorVista}
