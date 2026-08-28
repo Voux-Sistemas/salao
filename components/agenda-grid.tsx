@@ -1028,10 +1028,8 @@ export function AgendaList({
                 selectedId === card.appointmentId ? 'true' : undefined
               }
               className={clsx(
-                // Um pouco mais de ar no telemóvel, onde a lista é o
-                // ecrã inteiro; no monitor ela é uma folha com margem à
-                // volta e não precisa de o pedir por dentro.
-                'flex items-stretch gap-3 py-3 pr-4 transition-colors active:bg-[var(--surface-2)] sm:py-2.5',
+                // O mesmo ar nos dois: a linha é a mesma linha.
+                'flex items-stretch gap-3 py-3 pr-4 transition-colors active:bg-[var(--surface-2)]',
                 // O que já acabou apaga-se um pouco: a lista do dia é
                 // sobretudo uma lista do que falta.
                 passou && !falhou && 'opacity-65',
@@ -1126,7 +1124,7 @@ export function AgendaList({
                   — e a linha ganha-se inteira.
                 */}
                 {/*
-                  NO TELEMÓVEL A PROFISSIONAL ENCOSTA À DIREITA.
+                  A PROFISSIONAL ENCOSTA À DIREITA, NOS DOIS ECRÃS.
 
                   Colada ao serviço, era ela que empurrava o nome para
                   as reticências — «Corte senhora (s/ brushing) + Br…» —
@@ -1134,16 +1132,22 @@ export function AgendaList({
                   preço em cima e nada por baixo. Encostada, o serviço
                   fica com a linha inteira e a direita ganha uma pilha
                   que se lê de uma vez: o que se paga em cima, quem o
-                  faz em baixo. No monitor há largura de sobra e ela
-                  volta a andar atrás do serviço, onde se lê como parte
-                  da mesma frase.
+                  faz em baixo.
+
+                  Chegou a andar atrás do serviço no monitor, com o
+                  argumento de que lá havia largura para a frase toda.
+                  Havia — e era esse o problema: como os serviços têm
+                  comprimentos diferentes, o nome mudava de sítio em
+                  cada linha e nada se lia em coluna. Encostada, ela cai
+                  sempre no mesmo sítio, e as quatro pessoas do dia
+                  lêem-se de cima a baixo.
                 */}
                 <span className="mt-0.5 flex items-center gap-1.5 text-[0.75rem] leading-snug text-[var(--ink-muted)]">
-                  <span className="min-w-0 flex-1 truncate sm:flex-initial">
+                  <span className="min-w-0 flex-1 truncate">
                     {card.services}
                   </span>
                   {/*
-                    NO TELEMÓVEL O NOME VAI DENTRO DE UMA CAIXINHA.
+                    O NOME VAI DENTRO DE UMA CAIXINHA.
 
                     Encostado à direita, ficava com o mesmo peso e a
                     mesma tinta do serviço que tem ao lado: «Sobrancelha»
@@ -1158,12 +1162,12 @@ export function AgendaList({
                     por fechar, o azul do que está por vir. A cor da
                     pessoa fica onde sempre esteve, no ponto.
 
-                    No ecrã largo a caixa desaparece: lá o nome anda
-                    atrás do serviço, na mesma frase, e há largura para
-                    os dois.
+                    A caixa é igual nos dois ecrãs. Um desenho que muda
+                    de forma com a largura é dois desenhos para manter, e
+                    ninguém que use os dois reconhece o segundo.
                   */}
                   {mostrarQuem ? (
-                    <span className="inline-flex h-5 shrink-0 items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--surface-2)_70%,var(--surface-raised))] px-2 text-[0.6875rem] font-semibold text-[var(--ink-muted)] sm:h-auto sm:bg-transparent sm:px-0 sm:text-[0.75rem] sm:font-normal sm:text-[var(--ink-faint)]">
+                    <span className="inline-flex h-5 shrink-0 items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--surface-2)_70%,var(--surface-raised))] px-2 text-[0.6875rem] font-semibold text-[var(--ink-muted)]">
                       <span
                         aria-hidden
                         className="block h-1.5 w-1.5 rounded-full"
