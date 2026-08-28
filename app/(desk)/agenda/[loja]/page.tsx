@@ -516,11 +516,13 @@ export default async function AgendaDayPage({
           Agora é o ⌄ do nome da casa, dentro da linha que já dizia
           quantas marcações ela tem — e o canto fica para quem trabalha.
 
-          Esta linha estava vazia do meio para a direita. É lá que o
-          interruptor lista/grelha e o filtro das profissionais se
-          encostam no telemóvel, em vez de cada um pedir fila sua.
+          NO TELEMÓVEL ESTA LINHA É SÓ DELA. Chegou a ter três
+          inquilinos — os números, o filtro e o interruptor — e o que
+          cedia era o texto: «10 por fechar» morria em «10…», que é
+          justamente a única coisa ali que pede uma acção. Os comandos
+          desceram para uma fila própria, em baixo.
         */}
-        <div className="flex items-center gap-3 px-4 pb-0.5 sm:px-6">
+        <div className="flex items-center gap-3 px-4 pt-1 pb-0.5 sm:px-6 sm:pt-0">
           <div className="flex min-w-0 flex-1 items-center gap-1 text-[0.6875rem] text-[var(--ink-faint)]">
             {units.length > 1 ? (
               <UnitSwitcher
@@ -553,11 +555,6 @@ export default async function AgendaDayPage({
                 : ''}
             </span>
           </div>
-
-          <div className="flex shrink-0 items-center gap-1.5 sm:hidden">
-            {filtroDeBolso}
-            {interruptorVista}
-          </div>
         </div>
 
         {/* os dias --------------------------------------------------- */}
@@ -566,8 +563,12 @@ export default async function AgendaDayPage({
           estivesse à mão: o ⌄ da data salta para qualquer dia do ano, e
           tocar num dia da ponta já recentra a fita, porque ela anda com
           o dia aberto e não com a semana do calendário. As duas gastavam
-          64px de largura que no telemóvel fazem falta às sete células —
-          e é lá que o «Semana» se senta agora.
+          64px de largura que no telemóvel fazem falta às sete células.
+
+          E O «SEMANA» TAMBÉM SAIU DAQUI. Sentado no fim da fita, comia
+          74px aos sete dias: as células ficavam com 40px, que num
+          telemóvel é um alvo apertado. Desceu para a fila dos comandos,
+          e os dias passaram a ter a largura toda — 48px cada.
         */}
         <div className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5">
           <div className="min-w-0 flex-1">
@@ -580,11 +581,25 @@ export default async function AgendaDayPage({
               hrefFor={(value) => withDay(value)}
             />
           </div>
+        </div>
 
-          <span className="flex shrink-0 items-center gap-1.5 sm:hidden">
-            {portaDaSemana}
-            {voltarAHoje}
-          </span>
+        {/* os comandos, só no telemóvel ------------------------------ */}
+        {/*
+          CADA FILA FAZ UMA COISA SÓ.
+
+          No ecrã largo estes três vivem no canto de cima, ao lado do
+          «Encaixe», e esta fila não existe. No telemóvel não cabem lá,
+          e espalhados pelas outras filas era cada um a roubar espaço ao
+          texto de quem o alojava. Juntos numa fila própria têm as duas
+          pontas ocupadas — quem se vê à esquerda, como se vê à direita
+          — e nenhuma das outras filas tem de ceder nada.
+        */}
+        <div className="flex items-center gap-2 px-4 pb-2.5 sm:hidden">
+          {filtroDeBolso}
+          <span className="flex-grow" />
+          {interruptorVista}
+          {portaDaSemana}
+          {voltarAHoje}
         </div>
 
 
@@ -708,7 +723,17 @@ export default async function AgendaDayPage({
       </div>
 
       {/* a grelha e o painel ----------------------------------------- */}
-      <div className="relative flex min-h-0 flex-1">
+      {/*
+        UM DEDO DE CREME ENTRE OS COMANDOS E O DIA.
+
+        No monitor isto já acontece: o cabeçalho está sobre creme e a
+        lista é uma folha branca, e vê-se onde acaba um e começa o
+        outro. No telemóvel era tudo branco de cima a baixo — os
+        comandos e as clientes na mesma mancha, sem nada a separá-las.
+        Dez píxeis de chão chegam para separar o que se toca do que se
+        lê, e não custam meia linha de lista.
+      */}
+      <div className="relative mt-2.5 flex min-h-0 flex-1 sm:mt-0">
         {/*
           ESTE ESBATIDO ESTAVA A PINTAR A COR ERRADA, E LIA-SE COMO UM
           DEFEITO.

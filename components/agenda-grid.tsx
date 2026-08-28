@@ -1028,7 +1028,10 @@ export function AgendaList({
                 selectedId === card.appointmentId ? 'true' : undefined
               }
               className={clsx(
-                'flex items-stretch gap-3 py-2.5 pr-4 transition-colors active:bg-[var(--surface-2)]',
+                // Um pouco mais de ar no telemóvel, onde a lista é o
+                // ecrã inteiro; no monitor ela é uma folha com margem à
+                // volta e não precisa de o pedir por dentro.
+                'flex items-stretch gap-3 py-3 pr-4 transition-colors active:bg-[var(--surface-2)] sm:py-2.5',
                 // O que já acabou apaga-se um pouco: a lista do dia é
                 // sobretudo uma lista do que falta.
                 passou && !falhou && 'opacity-65',
@@ -1110,8 +1113,23 @@ export function AgendaList({
                   fim do serviço — a mesma cor dos blocos dela na grelha
                   — e a linha ganha-se inteira.
                 */}
+                {/*
+                  NO TELEMÓVEL A PROFISSIONAL ENCOSTA À DIREITA.
+
+                  Colada ao serviço, era ela que empurrava o nome para
+                  as reticências — «Corte senhora (s/ brushing) + Br…» —
+                  e a margem direita da linha ficava com a pastilha e o
+                  preço em cima e nada por baixo. Encostada, o serviço
+                  fica com a linha inteira e a direita ganha uma pilha
+                  que se lê de uma vez: o que se paga em cima, quem o
+                  faz em baixo. No monitor há largura de sobra e ela
+                  volta a andar atrás do serviço, onde se lê como parte
+                  da mesma frase.
+                */}
                 <span className="mt-0.5 flex items-center gap-1.5 text-[0.75rem] leading-snug text-[var(--ink-muted)]">
-                  <span className="min-w-0 truncate">{card.services}</span>
+                  <span className="min-w-0 flex-1 truncate sm:flex-initial">
+                    {card.services}
+                  </span>
                   {mostrarQuem ? (
                     <span className="inline-flex shrink-0 items-center gap-1.5 text-[var(--ink-faint)]">
                       <span
