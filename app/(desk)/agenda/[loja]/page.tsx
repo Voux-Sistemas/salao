@@ -240,23 +240,181 @@ export default async function AgendaDayPage({
       : null
   const focusMin = nowMin ?? firstBlockMin
 
+  /*
+    OS COMANDOS MUDAM DE SÍTIO CONFORME O ECRÃ, MAS SÃO OS MESMOS.
+
+    Escritos aqui uma vez e colocados duas — no ecrã largo cabem todos
+    na linha do título, no telemóvel espalham-se pelas linhas que já
+    existem. É o CSS que escolhe qual das duas cópias se vê; escrever
+    dois desenhos diferentes era duas coisas para manter.
+  */
+
+  /*
+    LISTA OU GRELHA, POR ESTA ORDEM. A lista mostra o dia como texto —
+    quem vem, o que faz, quanto é; a grelha mostra-o como espaço — onde
+    está cheio, onde há buracos. São perguntas diferentes, e a primeira
+    é a que se faz mais vezes, por isso é a que abre e a que fica à
+    esquerda: a ordem dos botões conta a mesma história que a omissão.
+    A escolha fica no endereço, como tudo o resto.
+  */
+  const interruptorVista = (
+    <div
+      role="group"
+      aria-label="Como ver o dia"
+      className="flex h-8 items-center overflow-hidden rounded-[var(--radius)] border border-[var(--line)]"
+    >
+      <Link
+        href={withDay(day, picked, 'lista')}
+        scroll={false}
+        title="Lista do dia"
+        aria-current={view === 'lista' ? 'true' : undefined}
+        className={clsx(
+          'flex h-full w-9 items-center justify-center transition-colors',
+          view === 'lista'
+            ? 'bg-[var(--surface-2)] text-[var(--ink)]'
+            : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
+        )}
+      >
+        <Rows3 aria-hidden className="h-4 w-4" />
+      </Link>
+      <Link
+        href={withDay(day, picked, 'grelha')}
+        scroll={false}
+        title="Grelha do dia"
+        aria-current={view === 'grelha' ? 'true' : undefined}
+        className={clsx(
+          'flex h-full w-9 items-center justify-center border-l border-[var(--line-soft)] transition-colors',
+          view === 'grelha'
+            ? 'bg-[var(--surface-2)] text-[var(--ink)]'
+            : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
+        )}
+      >
+        <Columns3 aria-hidden className="h-4 w-4" />
+      </Link>
+    </div>
+  )
+
+  /*
+    A PORTA PARA A SEMANA.
+
+    É da mesma família da vista — outra maneira de olhar para a mesma
+    agenda — mas não entra no interruptor lista/grelha: esses dois
+    desenham O DIA, e a semana é outra pergunta, com endereço próprio.
+    Leva o dia aberto consigo, para abrir na semana a que ele pertence.
+    No telemóvel senta-se no lugar que as setas ‹ › deixaram vago.
+  */
+  const portaDaSemana = (
+    <Link
+      href={`${here}/semana?d=${day}`}
+      title="Panorama da semana"
+      className={buttonClass('quiet', 'sm')}
+    >
+      Semana
+    </Link>
+  )
+
+  const voltarAHoje = !isToday ? (
+    <Link
+      href={withDay(todayDay)}
+      scroll={false}
+      className={buttonClass('quiet', 'sm')}
+    >
+      Hoje
+    </Link>
+  ) : null
+
+  const temFiltro =
+    !onlyStaffId && (full.columns.length > 1 || scope === 'equipa')
+
+  /*
+    O FILTRO DE BOLSO — a fita das profissionais fechada num botão.
+
+    No ecrã largo a fita fica: com quatro pessoas ao balcão é o filtro
+    que mais vale a pena, e é ela que diz de relance quem está hoje na
+    casa. No telemóvel gastava uma fila inteira, e o «Equipa» flutuava
+    por cima do último nome e cortava-o ao meio. Aqui fecha-se num
+    «Todas ⌄», e a primeira cliente sobe meia marcação.
+
+    `<details>` e não um menu de cliente: abre-se poucas vezes e não
+    vale JavaScript. A `key` fecha-o ao escolher — sem ela o React
+    reaproveita o elemento e o `open` do DOM ficava aberto.
+  */
+  const filtroDeBolso = temFiltro ? (
+    <details key={picked ?? 'todas'} className="relative">
+      <summary
+        className={clsx(
+          'inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-full border px-3 text-[0.75rem] font-semibold transition-colors [&::-webkit-details-marker]:hidden',
+          picked
+            ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_11%,transparent)] text-[var(--accent)]'
+            : 'border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)]',
+        )}
+      >
+        {picked && pickedName ? (
+          <span
+            aria-hidden
+            className="block h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ background: colors[picked] ?? 'var(--gold)' }}
+          />
+        ) : null}
+        {picked && pickedName ? shortName(pickedName) : 'Todas'}
+        <ChevronDown aria-hidden className="h-3 w-3 shrink-0" />
+      </summary>
+
+      <div className="absolute top-full right-0 z-30 mt-1.5 min-w-[11rem] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] py-1 shadow-[var(--shadow-soft)]">
+        <FiltroItem href={withDay(day, null)} active={picked === null}>
+          Todas
+        </FiltroItem>
+        {full.columns.map((column) => (
+          <FiltroItem
+            key={column.staffId}
+            href={withDay(day, column.staffId)}
+            active={picked === column.staffId}
+            color={colors[column.staffId]}
+            muted={column.offDuty}
+          >
+            {shortName(column.name)}
+          </FiltroItem>
+        ))}
+        {/* O «Equipa» vive aqui dentro: é do mesmo assunto — quem se vê
+            — e cá fora não tinha onde se sentar sem roubar espaço. */}
+        <span
+          aria-hidden
+          className="my-1 block h-px bg-[var(--line-soft)]"
+        />
+        <FiltroItem
+          href={withDay(day, picked, view, scope === 'equipa' ? 'dia' : 'equipa')}
+          active={scope === 'equipa'}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Users aria-hidden className="h-3.5 w-3.5" />
+            {scope === 'equipa' ? 'Só quem trabalha' : 'Equipa toda'}
+          </span>
+        </FiltroItem>
+      </div>
+    </details>
+  ) : null
+
   return (
     <div className="flex h-[calc(100dvh-8rem)] flex-col lg:h-[calc(100dvh-3.5rem)]">
       {/* a fita do dia ------------------------------------------------ */}
       <div className="shrink-0 border-b border-[var(--line-soft)] bg-[var(--surface-raised)]">
         {/* que dia é, onde, e o que se pode fazer -------------------- */}
         {/*
-          No telemóvel a data fica com a linha toda para ela (basis-full):
-          a partilhar a linha com o selector de loja e o Encaixe, ficava
-          «Segunda-fei…», que é pior do que não estar lá. No monitor há
-          espaço de sobra e voltam todos à mesma linha.
+          A DATA VOLTOU A CABER NA MESMA LINHA DO «ENCAIXE».
+
+          Esteve com a linha toda para ela (`basis-full`), e tinha de
+          estar: a partilhá-la com o selector de loja E o Encaixe, no
+          telemóvel ficava «Segunda-fei…», que é pior do que não estar
+          lá. Agora o selector desceu para a linha de baixo, e sobra o
+          suficiente — com o `truncate` de guarda para os dias de nome
+          comprido.
 
           O TÍTULO É O CALENDÁRIO: tocar na data abre o selector nativo.
           A linha que existia só para «saltar para um dia» — campo, «Ir»,
           rótulo — foi-se, e com ela um dedo de altura do ecrã pequeno.
         */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-2.5 sm:flex-nowrap sm:px-6 sm:pt-3">
-          <div className="min-w-0 flex-1 basis-full leading-tight sm:basis-auto">
+        <div className="flex items-center gap-3 px-4 pt-2.5 sm:px-6 sm:pt-3">
+          <div className="min-w-0 flex-1 leading-tight">
             <DayJump
               day={day}
               hrefTemplate={withDay('{d}')}
@@ -272,8 +430,56 @@ export default async function AgendaDayPage({
                 />
               </h1>
             </DayJump>
-            <p className="truncate text-[0.6875rem] text-[var(--ink-faint)]">
-              {unit.name} ·{' '}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {/* No ecrã largo há espaço para as três; no telemóvel só o
+                Encaixe fica aqui, e as outras duas descem. */}
+            <span className="hidden items-center gap-1.5 sm:flex">
+              {interruptorVista}
+              {portaDaSemana}
+              {voltarAHoje}
+            </span>
+            {encaixeHref ? (
+              <ButtonLink href={`${here}/encaixe?d=${day}`} size="sm">
+                Encaixe
+              </ButtonLink>
+            ) : null}
+          </div>
+        </div>
+
+        {/* a casa, os números, e — no telemóvel — como ver ----------- */}
+        {/*
+          A LOJA DESCEU DO CANTO PARA ESTA LINHA.
+
+          Era um segmentado Valongo|Maia encostado ao «Encaixe»: um
+          bloco permanente, do tamanho de um botão, para uma escolha que
+          se faz de manhã e não se volta a tocar. Ao lado do «Encaixe»,
+          que se carrega dez vezes por dia, competia em peso com ele.
+          Agora é o ⌄ do nome da casa, dentro da linha que já dizia
+          quantas marcações ela tem — e o canto fica para quem trabalha.
+
+          Esta linha estava vazia do meio para a direita. É lá que o
+          interruptor lista/grelha e o filtro das profissionais se
+          encostam no telemóvel, em vez de cada um pedir fila sua.
+        */}
+        <div className="flex items-center gap-3 px-4 pb-0.5 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-1 text-[0.6875rem] text-[var(--ink-faint)]">
+            {units.length > 1 ? (
+              <UnitSwitcher
+                units={units}
+                current={unit.slug}
+                base="/agenda"
+                showAll={false}
+                variant="inline"
+              />
+            ) : (
+              <span className="font-semibold text-[var(--ink-muted)]">
+                {unit.name}
+              </span>
+            )}
+            <span className="truncate">
+              ·{' '}
               {appointmentCount === 1
                 ? '1 marcação'
                 : `${appointmentCount} marcações`}
@@ -287,27 +493,26 @@ export default async function AgendaDayPage({
               {!onlyStaffId && !pickedName && offCount > 0
                 ? ` · ${offCount} de folga`
                 : ''}
-            </p>
+            </span>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <UnitSwitcher
-              units={units}
-              current={unit.slug}
-              base="/agenda"
-              showAll={false}
-            />
-            {encaixeHref ? (
-              <ButtonLink href={`${here}/encaixe?d=${day}`} size="sm">
-                Encaixe
-              </ButtonLink>
-            ) : null}
+          <div className="flex shrink-0 items-center gap-1.5 sm:hidden">
+            {filtroDeBolso}
+            {interruptorVista}
           </div>
         </div>
 
-        {/* a semana, a vista, e a volta a hoje ----------------------- */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:px-6 sm:py-2.5">
-          <div className="min-w-[15rem] flex-1">
+        {/* os dias --------------------------------------------------- */}
+        {/*
+          AS SETAS ‹ › SAÍRAM. Não levavam a lado nenhum que já não
+          estivesse à mão: o ⌄ da data salta para qualquer dia do ano, e
+          tocar num dia da ponta já recentra a fita, porque ela anda com
+          o dia aberto e não com a semana do calendário. As duas gastavam
+          64px de largura que no telemóvel fazem falta às sete células —
+          e é lá que o «Semana» se senta agora.
+        */}
+        <div className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5">
+          <div className="min-w-0 flex-1">
             <DeskDayStrip
               dense
               days={stripDays}
@@ -315,88 +520,21 @@ export default async function AgendaDayPage({
               today={todayDay}
               timezone={unit.timezone}
               hrefFor={(value) => withDay(value)}
-              prevHref={withDay(addDays(day, -7))}
-              nextHref={withDay(addDays(day, 7))}
             />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/*
-              LISTA OU GRELHA, POR ESTA ORDEM. A lista mostra o dia
-              como texto — quem vem, o que faz, quanto é; a grelha
-              mostra-o como espaço — onde está cheio, onde há buracos.
-              São perguntas diferentes, e a primeira é a que se faz mais
-              vezes, por isso é a que abre e a que fica à esquerda: a
-              ordem dos botões conta a mesma história que a omissão.
-              A escolha fica no endereço, como tudo o resto.
-            */}
-            <div
-              role="group"
-              aria-label="Como ver o dia"
-              className="flex h-8 items-center overflow-hidden rounded-[var(--radius)] border border-[var(--line)]"
-            >
-              <Link
-                href={withDay(day, picked, 'lista')}
-                scroll={false}
-                title="Lista do dia"
-                aria-current={view === 'lista' ? 'true' : undefined}
-                className={clsx(
-                  'flex h-full w-9 items-center justify-center transition-colors',
-                  view === 'lista'
-                    ? 'bg-[var(--surface-2)] text-[var(--ink)]'
-                    : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
-                )}
-              >
-                <Rows3 aria-hidden className="h-4 w-4" />
-              </Link>
-              <Link
-                href={withDay(day, picked, 'grelha')}
-                scroll={false}
-                title="Grelha do dia"
-                aria-current={view === 'grelha' ? 'true' : undefined}
-                className={clsx(
-                  'flex h-full w-9 items-center justify-center border-l border-[var(--line-soft)] transition-colors',
-                  view === 'grelha'
-                    ? 'bg-[var(--surface-2)] text-[var(--ink)]'
-                    : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
-                )}
-              >
-                <Columns3 aria-hidden className="h-4 w-4" />
-              </Link>
-            </div>
-
-            {/*
-              A PORTA PARA A SEMANA.
-
-              Fica ao lado da vista porque é da mesma família — é outra
-              maneira de olhar para a mesma agenda — mas não entra no
-              interruptor lista/grelha: esses dois desenham O DIA, e a
-              semana é outra pergunta, com endereço próprio. Leva o dia
-              aberto consigo, para abrir na semana a que ele pertence.
-            */}
-            <Link
-              href={`${here}/semana?d=${day}`}
-              title="Panorama da semana"
-              className={buttonClass('quiet', 'sm')}
-            >
-              Semana
-            </Link>
-
-            {!isToday ? (
-              <Link
-                href={withDay(todayDay)}
-                scroll={false}
-                className={buttonClass('quiet', 'sm')}
-              >
-                Hoje
-              </Link>
-            ) : null}
-          </div>
+          <span className="flex shrink-0 items-center gap-1.5 sm:hidden">
+            {portaDaSemana}
+            {voltarAHoje}
+          </span>
         </div>
 
+
         {/* uma profissional de cada vez ------------------------------ */}
-        {!onlyStaffId && (full.columns.length > 1 || scope === 'equipa') ? (
-          <div className="flex items-center gap-1 border-t border-[var(--line-soft)] pr-3 sm:gap-1.5 sm:pr-5">
+        {/* Só no ecrã largo: no telemóvel esta fila fechou-se no
+            «Todas ⌄» da linha dos números. */}
+        {temFiltro ? (
+          <div className="hidden items-center gap-1 border-t border-[var(--line-soft)] pr-3 sm:flex sm:gap-1.5 sm:pr-5">
             <div className="relative min-w-0 flex-1">
               <nav
                 aria-label="Ver uma profissional"
@@ -526,14 +664,28 @@ export default async function AgendaDayPage({
             />
           ) : null}
           {view === 'lista' ? (
-            <AgendaList
-              agenda={agenda}
-              colors={colors}
-              selectedId={selectedId}
-              hrefFor={hrefFor}
-              encaixeHref={encaixeHref}
-              nowMin={nowMin}
-            />
+            /*
+              A LISTA DEIXA DE ATRAVESSAR O MONITOR.
+
+              Num ecrã de 1900px o nome da cliente ficava a mil e
+              quinhentos pixéis do preço, e o olho fazia a travessia em
+              cada linha — a linha que se estava a ler perdia-se pelo
+              caminho. Uma coluna de 68rem lê-se como uma folha. No
+              telemóvel isto não faz nada: lá a largura já é o ecrã.
+
+              A grelha continua a ocupar tudo: ela é uma medida, e uma
+              medida encurtada mente.
+            */
+            <div className="mx-auto w-full max-w-[68rem]">
+              <AgendaList
+                agenda={agenda}
+                colors={colors}
+                selectedId={selectedId}
+                hrefFor={hrefFor}
+                encaixeHref={encaixeHref}
+                nowMin={nowMin}
+              />
+            </div>
           ) : (
             <AgendaGrid
               agenda={agenda}
@@ -591,6 +743,48 @@ async function hasConfirm(appointmentId: string): Promise<boolean> {
  * ver o dia vazio de alguém é uma resposta legítima — mas não se
  * confunde com quem está a trabalhar.
  */
+/**
+ * Uma linha do filtro de bolso. O ponto de cor é o mesmo dos chips e
+ * dos blocos da grelha — quem está de folga fica desmaiado, como lá.
+ */
+function FiltroItem({
+  href,
+  active,
+  color,
+  muted,
+  children,
+}: {
+  href: string
+  active: boolean
+  color?: string
+  muted?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      aria-current={active ? 'true' : undefined}
+      className={clsx(
+        'flex items-center gap-2 px-3.5 py-2 text-[0.8125rem] whitespace-nowrap transition-colors',
+        active
+          ? 'font-semibold text-[var(--ink)]'
+          : 'text-[var(--ink-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]',
+        muted && 'opacity-60',
+      )}
+    >
+      {color ? (
+        <span
+          aria-hidden
+          className="block h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ background: color }}
+        />
+      ) : null}
+      {children}
+    </Link>
+  )
+}
+
 function StaffChip({
   href,
   active,

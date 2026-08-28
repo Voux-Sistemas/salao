@@ -9,6 +9,14 @@ import { weekdayOf, type IsoDay } from '@/lib/time'
  * setas de semana em semana, tudo por ligações: o retrocesso do
  * navegador continua a funcionar.
  *
+ * AS SETAS SÃO OPCIONAIS. Onde o título é um calendário — a agenda do
+ * dia — elas não acrescentam nada: o ⌄ da data salta para qualquer dia
+ * do ano, e tocar num dia da ponta já recentra a fita, porque ela anda
+ * com o dia aberto e não com a semana do calendário. Omitir as duas
+ * devolve 64px de largura às sete células, que no telemóvel é a
+ * diferença entre um dia legível e um dia apertado. `null` continua a
+ * desenhar a seta apagada, para quem tem um limite a mostrar.
+ *
  * Componente de servidor puro: recebe os endereços já feitos.
  */
 export function DeskDayStrip({
@@ -26,16 +34,19 @@ export function DeskDayStrip({
   today: IsoDay
   timezone: string
   hrefFor: (day: IsoDay) => string
-  prevHref: string | null
-  nextHref: string | null
+  /** Omitir esconde a seta; `null` desenha-a apagada. */
+  prevHref?: string | null
+  nextHref?: string | null
   /** Densidade de barra lateral: células mais baixas, letra mais miúda. */
   dense?: boolean
 }) {
   return (
     <nav className="flex items-stretch gap-1.5" aria-label="Escolher o dia">
-      <StripArrow href={prevHref} label="Semana anterior">
-        <ChevronLeft className="h-3.5 w-3.5" />
-      </StripArrow>
+      {prevHref !== undefined ? (
+        <StripArrow href={prevHref} label="Semana anterior">
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </StripArrow>
+      ) : null}
 
       <ul
         className="grid flex-1 gap-1"
@@ -92,9 +103,11 @@ export function DeskDayStrip({
         })}
       </ul>
 
-      <StripArrow href={nextHref} label="Semana seguinte">
-        <ChevronRight className="h-3.5 w-3.5" />
-      </StripArrow>
+      {nextHref !== undefined ? (
+        <StripArrow href={nextHref} label="Semana seguinte">
+          <ChevronRight className="h-3.5 w-3.5" />
+        </StripArrow>
+      ) : null}
     </nav>
   )
 }

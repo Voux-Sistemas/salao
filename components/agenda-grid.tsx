@@ -880,20 +880,34 @@ export function AgendaList({
 
   /*
     A LISTA DIZIA SÓ O QUE ESTÁ MARCADO — E O NEGÓCIO VIVE DO RESTO.
-    Com uma profissional no ecrã, os buracos da escala dela entram na
-    lista como linhas próprias: hora, um tracejado, e quanto tempo é.
-    Com várias profissionais os buracos sobrepõem-se uns aos outros e
-    uma lista única mentiria — aí quem quer ver buracos tem a grelha.
+
+    COM VÁRIAS PROFISSIONAIS OS BURACOS DEIXARAM DE SE ESCONDER.
+
+    Estavam escondidos, e com razão: os buracos de cada uma sobrepõem-se
+    e dizer «livre» quando uma delas está ocupada seria mentira. Mas a
+    conta pode ser outra — só é buraco quando NINGUÉM tem nada — e essa
+    não mente a ninguém. É «casa livre», e é a coisa mais cara que este
+    ecrã tem para dizer: numa sexta-feira com catorze marcações, três
+    horas de tarde sem ninguém não apareciam em lado nenhum.
+
+    Quem quer saber quem em particular está livre continua a ter a
+    grelha, que responde por pessoa e não pela casa.
   */
-  const gaps =
-    trabalham.length === 1
-      ? freeWindows(
-          trabalham[0]!,
-          agenda.blocks,
-          agenda.fromMin,
-          agenda.toMin,
-        ).filter((gap) => gap.end - gap.start >= 15)
-      : []
+  const disponivel = merge(
+    trabalham.flatMap((column) => subtract(column.schedule, column.absences)),
+  )
+  const ocupado = merge(
+    agenda.blocks
+      .filter((b) => b.status !== 'no_show' && !b.status.startsWith('cancel'))
+      .map((b) => ({ start: b.blockStartMin, end: b.blockEndMin })),
+  )
+  const gaps = subtract(disponivel, ocupado)
+    .flatMap((window) => {
+      const start = Math.max(window.start, agenda.fromMin)
+      const end = Math.min(window.end, agenda.toMin)
+      return end > start ? [{ start, end }] : []
+    })
+    .filter((gap) => gap.end - gap.start >= 15)
 
   if (cards.length === 0) {
     return <Empty title="Dia livre" hint="Não há nenhuma marcação neste dia." />
@@ -942,6 +956,30 @@ export function AgendaList({
           card.status === 'no_show' || card.status.startsWith('cancel')
         const passou = nowMin !== null && card.endMin <= nowMin
 
+        /*
+          O ESTADO NORMAL CALA-SE.
+
+          «Confirmada» em versalete tinha fila própria e repetia-se em
+          catorze linhas seguidas: uma palavra que está sempre lá deixa
+          de se ler, e continuava a pagar-se em altura. Agora só fala o
+          que pede mão.
+
+          · concluída — um visto verde ao pé do preço, sem palavra.
+          · já passou e não foi concluída — «fechar», que é a comanda
+            por fechar, e é a única coisa que alguém tem de ir fazer.
+          · confirmada e ainda por vir — silêncio.
+          · tudo o resto (chegou, em atendimento, faltou, cancelada) diz
+            o seu nome, porque é excepção.
+        */
+        const concluida = card.status === 'completed'
+        const etiqueta = concluida
+          ? null
+          : passou && !falhou
+            ? { texto: 'fechar', tom: 'warn' as Tone }
+            : card.status === 'confirmed'
+              ? null
+              : { texto: STATUS_LABEL[card.status], tom: tone }
+
         return (
           <li
             key={card.appointmentId}
@@ -955,7 +993,7 @@ export function AgendaList({
                 selectedId === card.appointmentId ? 'true' : undefined
               }
               className={clsx(
-                'flex items-stretch gap-3 py-3.5 pr-4 transition-colors active:bg-[var(--surface-2)]',
+                'flex items-stretch gap-3 py-2.5 pr-4 transition-colors active:bg-[var(--surface-2)]',
                 // O que já acabou apaga-se um pouco: a lista do dia é
                 // sobretudo uma lista do que falta.
                 passou && !falhou && 'opacity-65',
@@ -972,11 +1010,14 @@ export function AgendaList({
                   : 'border-l-4 border-transparent pl-3',
               )}
             >
-              <span className="w-[3.75rem] shrink-0 pt-0.5 text-right">
-                <span className="tabular block text-[1.375rem] font-semibold leading-none tracking-[-0.01em] text-[var(--ink)]">
+              {/* A hora encolheu de 22px para 16. Era o tamanho de um
+                  título numa lista onde todas as linhas têm um — e o
+                  que se procura aqui é o nome, não o número. */}
+              <span className="w-[3.25rem] shrink-0 text-right">
+                <span className="tabular block text-[1rem] font-bold leading-none tracking-[-0.02em] text-[var(--ink)]">
                   {formatMinutes(card.startMin)}
                 </span>
-                <span className="tabular mt-1 block text-[0.625rem] text-[var(--ink-faint)]">
+                <span className="tabular mt-1 block text-[0.6875rem] leading-none text-[var(--ink-faint)]">
                   {formatMinutes(card.endMin)}
                 </span>
               </span>
@@ -998,26 +1039,43 @@ export function AgendaList({
                   >
                     {card.clientName}
                   </span>
-                  <span className="tabular shrink-0 text-[0.75rem] text-[var(--ink-faint)]">
+                  {etiqueta ? (
+                    <span
+                      className={clsx(
+                        'shrink-0 rounded-full px-2 py-0.5 text-[0.625rem] font-bold',
+                        TONE_INK[etiqueta.tom],
+                      )}
+                      style={{
+                        background:
+                          'color-mix(in srgb, currentColor 12%, transparent)',
+                      }}
+                    >
+                      {etiqueta.texto}
+                    </span>
+                  ) : null}
+                  {concluida ? (
+                    <IconCheck
+                      aria-label="Concluída"
+                      className="h-3.5 w-3.5 shrink-0 text-[var(--ok)]"
+                    />
+                  ) : null}
+                  <span className="tabular shrink-0 text-[0.8125rem] font-bold text-[var(--ink)]">
                     {formatCents(card.priceCents)}
                   </span>
                 </span>
 
-                <span className="mt-0.5 block line-clamp-2 text-[0.8125rem] leading-snug text-[var(--ink-muted)]">
-                  {card.services}
-                </span>
+                {/*
+                  O SERVIÇO E QUEM O FAZ SÃO A MESMA LINHA.
 
-                <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                  <span
-                    className={clsx(
-                      'text-[0.5625rem] font-semibold uppercase tracking-[0.11em]',
-                      TONE_INK[tone],
-                    )}
-                  >
-                    {STATUS_LABEL[card.status]}
-                  </span>
+                  A profissional tinha fila própria por baixo, e era o
+                  terceiro andar de cada cartão. Aqui é o ponto de cor no
+                  fim do serviço — a mesma cor dos blocos dela na grelha
+                  — e a linha ganha-se inteira.
+                */}
+                <span className="mt-0.5 flex items-center gap-1.5 text-[0.75rem] leading-snug text-[var(--ink-muted)]">
+                  <span className="min-w-0 truncate">{card.services}</span>
                   {mostrarQuem ? (
-                    <span className="inline-flex items-center gap-1.5 text-[0.6875rem] text-[var(--ink-faint)]">
+                    <span className="inline-flex shrink-0 items-center gap-1.5 text-[var(--ink-faint)]">
                       <span
                         aria-hidden
                         className="block h-1.5 w-1.5 rounded-full"
@@ -1028,14 +1086,14 @@ export function AgendaList({
                       {shortName(nomes.get(card.staffId) ?? '')}
                     </span>
                   ) : null}
+                  {/* A confirmação enviada fica, mas sem a palavra: o
+                      visto e o `title` bastam para quem anda a decidir
+                      a quem telefonar. */}
                   {card.confirmSent ? (
-                    <span
-                      title="Confirmação enviada"
-                      className="inline-flex items-center gap-1 text-[0.625rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]"
-                    >
-                      <IconCheck className="h-3 w-3" />
-                      enviada
-                    </span>
+                    <IconCheck
+                      aria-label="Confirmação enviada"
+                      className="h-3 w-3 shrink-0 text-[var(--ink-faint)]"
+                    />
                   ) : null}
                 </span>
               </span>
@@ -1089,8 +1147,12 @@ function GapRow({
         aria-hidden
         className="h-px flex-1 border-t border-dashed border-[var(--line)]"
       />
+      {/* «CASA LIVRE», E NÃO «LIVRE». Com quatro pessoas ao balcão,
+          «livre» seria uma promessa sobre cada uma delas; a conta que
+          está por trás é outra — ninguém tem nada — e a palavra passa a
+          dizer isso. */}
       <span className="tabular shrink-0 text-[0.6875rem]">
-        {dur(endMin - startMin)} livre
+        casa livre {dur(endMin - startMin)}
       </span>
     </>
   )
