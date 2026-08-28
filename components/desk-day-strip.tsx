@@ -65,7 +65,9 @@ export function DeskDayStrip({
                   dense ? 'h-10' : 'h-12',
                   current
                     ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
-                    : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+                    : // O fundo próprio é para a fita poder assentar
+                      // sobre o creme da página, e não só sobre branco.
+                      'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
                 )}
               >
                 <span

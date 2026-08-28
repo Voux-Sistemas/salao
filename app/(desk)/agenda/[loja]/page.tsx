@@ -21,6 +21,8 @@ import {
 import {
   AgendaGrid,
   AgendaList,
+  casaLivre,
+  duracao,
   larguraMinimaDaGrelha,
 } from '@/components/agenda-grid'
 import { AgendaFocus } from '@/components/agenda-focus'
@@ -217,6 +219,46 @@ export default async function AgendaDayPage({
     : null
 
   /*
+    «2 POR FECHAR» E «CASA LIVRE 3 H 40», EM VEZ DE «4 PROFISSIONAIS».
+
+    Quantas pessoas estão ao balcão já se vê na fita de baixo, nome por
+    nome — dizê-lo outra vez em número era a mesma informação a pagar
+    duas vezes. No lugar entram as duas coisas que este subtítulo pode
+    dizer e mais nenhum sítio diz: o que ficou por fechar, que é
+    trabalho de alguém, e quanto tempo a casa tem por vender, que é a
+    conta que decide se vale a pena ir buscar clientes.
+
+    O fim de cada marcação é o do seu bloco mais tardio: uma marcação de
+    dois serviços encadeados só acabou quando o segundo acabou.
+  */
+  const fimDaMarcacao = new Map<string, number>()
+  const estadoDaMarcacao = new Map<string, string>()
+  for (const block of agenda.blocks) {
+    fimDaMarcacao.set(
+      block.appointmentId,
+      Math.max(fimDaMarcacao.get(block.appointmentId) ?? 0, block.endMin),
+    )
+    estadoDaMarcacao.set(block.appointmentId, block.status)
+  }
+  const porFechar =
+    nowMin === null
+      ? 0
+      : [...fimDaMarcacao].filter(([id, fim]) => {
+          const estado = estadoDaMarcacao.get(id) ?? ''
+          return (
+            fim <= nowMin &&
+            estado !== 'completed' &&
+            estado !== 'no_show' &&
+            !estado.startsWith('cancel')
+          )
+        }).length
+
+  const livreMin = casaLivre(agenda).reduce(
+    (total, janela) => total + (janela.end - janela.start),
+    0,
+  )
+
+  /*
     A FITA ANDA COM O DIA, EM VEZ DE FICAR PRESA À SEMANA DO CALENDÁRIO.
 
     Sete dias com o dia aberto ao meio: ontem e amanhã estão sempre à
@@ -261,7 +303,7 @@ export default async function AgendaDayPage({
     <div
       role="group"
       aria-label="Como ver o dia"
-      className="flex h-8 items-center overflow-hidden rounded-[var(--radius)] border border-[var(--line)]"
+      className="flex h-8 items-center overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)]"
     >
       <Link
         href={withDay(day, picked, 'lista')}
@@ -397,7 +439,22 @@ export default async function AgendaDayPage({
   return (
     <div className="flex h-[calc(100dvh-8rem)] flex-col lg:h-[calc(100dvh-3.5rem)]">
       {/* a fita do dia ------------------------------------------------ */}
-      <div className="shrink-0 border-b border-[var(--line-soft)] bg-[var(--surface-raised)]">
+      {/*
+        NO MONITOR O CABEÇALHO ESTÁ NA MESMA COLUNA DA LISTA.
+
+        Ficou uma versão em que só a lista foi apertada para 68rem e o
+        cabeçalho continuou a atravessar o ecrã: a coluna branca começava
+        190px à direita de onde começava o título, encostada a nada, e
+        lia-se como um defeito e não como uma decisão. Ou entram os dois
+        na mesma coluna, ou nenhum entra.
+
+        E a barra branca por baixo do cabeçalho sai com eles: no monitor
+        o papel é a lista, e o cabeçalho fica sobre a mesa. No telemóvel
+        continua a ser uma faixa branca colada ao topo, porque lá a
+        largura já é a do ecrã e não há coluna nenhuma para alinhar.
+      */}
+      <div className="shrink-0 border-b border-[var(--line-soft)] bg-[var(--surface-raised)] sm:border-b-0 sm:bg-transparent">
+        <div className="mx-auto w-full max-w-[68rem]">
         {/* que dia é, onde, e o que se pode fazer -------------------- */}
         {/*
           A DATA VOLTOU A CABER NA MESMA LINHA DO «ENCAIXE».
@@ -483,13 +540,14 @@ export default async function AgendaDayPage({
               {appointmentCount === 1
                 ? '1 marcação'
                 : `${appointmentCount} marcações`}
-              {onlyStaffId
-                ? ''
-                : pickedName
-                  ? ` · ${shortName(pickedName)}`
-                  : staffCount === 1
-                    ? ' · 1 profissional'
-                    : ` · ${staffCount} profissionais`}
+              {!onlyStaffId && pickedName ? ` · ${shortName(pickedName)}` : ''}
+              {porFechar > 0 ? (
+                <span className="font-semibold text-[var(--warn)]">
+                  {' '}
+                  · {porFechar} por fechar
+                </span>
+              ) : null}
+              {livreMin > 0 ? ` · casa livre ${duracao(livreMin)}` : ''}
               {!onlyStaffId && !pickedName && offCount > 0
                 ? ` · ${offCount} de folga`
                 : ''}
@@ -534,7 +592,7 @@ export default async function AgendaDayPage({
         {/* Só no ecrã largo: no telemóvel esta fila fechou-se no
             «Todas ⌄» da linha dos números. */}
         {temFiltro ? (
-          <div className="hidden items-center gap-1 border-t border-[var(--line-soft)] pr-3 sm:flex sm:gap-1.5 sm:pr-5">
+          <div className="hidden items-center gap-1 pr-3 sm:flex sm:gap-1.5 sm:pr-5">
             <div className="relative min-w-0 flex-1">
               <nav
                 aria-label="Ver uma profissional"
@@ -614,6 +672,7 @@ export default async function AgendaDayPage({
             </Link>
           </div>
         ) : null}
+        </div>
       </div>
 
       {/* a grelha e o painel ----------------------------------------- */}
@@ -676,15 +735,20 @@ export default async function AgendaDayPage({
               A grelha continua a ocupar tudo: ela é uma medida, e uma
               medida encurtada mente.
             */
-            <div className="mx-auto w-full max-w-[68rem]">
-              <AgendaList
-                agenda={agenda}
-                colors={colors}
-                selectedId={selectedId}
-                hrefFor={hrefFor}
-                encaixeHref={encaixeHref}
-                nowMin={nowMin}
-              />
+            <div className="mx-auto w-full max-w-[68rem] sm:px-6 sm:pb-6">
+              {/* No monitor a lista é uma folha pousada na mesa; no
+                  telemóvel encosta às duas margens, porque lá o ecrã
+                  inteiro já é a folha. */}
+              <div className="sm:overflow-hidden sm:rounded-[var(--radius)] sm:border sm:border-[var(--line-soft)] sm:shadow-[0_1px_2px_rgba(46,38,28,0.05)]">
+                <AgendaList
+                  agenda={agenda}
+                  colors={colors}
+                  selectedId={selectedId}
+                  hrefFor={hrefFor}
+                  encaixeHref={encaixeHref}
+                  nowMin={nowMin}
+                />
+              </div>
             </div>
           ) : (
             <AgendaGrid
@@ -809,7 +873,9 @@ function StaffChip({
           ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)]'
           : muted
             ? 'border-dashed border-[var(--line-soft)] text-[var(--ink-faint)] opacity-70 hover:opacity-100'
-            : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]',
+            : // Fundo próprio, para o chip assentar tanto na faixa
+              // branca do telemóvel como no creme do monitor.
+              'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]',
       )}
     >
       {color ? (

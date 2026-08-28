@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import clsx from 'clsx'
+import { Plus } from 'lucide-react'
 import type { AgendaBlock, AgendaDay } from '@/lib/agenda'
 import type { Status } from '@/lib/booking'
 import { merge, subtract, type Interval } from '@/lib/intervals'
@@ -100,6 +101,49 @@ const COL_SO_PX = 80
 export function larguraMinimaDaGrelha(working: number, off: number) {
   const col = off > 0 && working > 0 ? COL_MIN_PX : COL_SO_PX
   return RAIL_PX + working * col + off * OFF_PX
+}
+
+/**
+ * AS HORAS EM QUE A CASA NÃO TEM NINGUÉM.
+ *
+ * Os buracos de cada profissional sobrepõem-se uns aos outros, e dizer
+ * «livre» quando uma delas está ocupada seria mentira. A conta que não
+ * mente a ninguém é outra: dentro do que está escalado (menos as
+ * ausências), o tempo em que NINGUÉM tem nada marcado. É «casa livre»,
+ * e é a coisa mais cara que a agenda tem para dizer — numa sexta com
+ * catorze marcações, três horas de tarde sem ninguém não apareciam em
+ * lado nenhum.
+ *
+ * Vive aqui, e não dentro da lista, porque o cabeçalho da página diz o
+ * total no subtítulo e a lista desenha cada uma: são a mesma conta, e
+ * duas contas parecidas acabam sempre por divergir.
+ *
+ * Menos de um quarto de hora não é buraco: é o intervalo entre duas
+ * clientes, e anunciá-lo era encher a lista de linhas que ninguém pode
+ * vender.
+ *
+ * Quem quer saber quem EM PARTICULAR está livre tem a grelha, que
+ * responde por pessoa e não pela casa.
+ */
+export function casaLivre(agenda: AgendaDay): Interval[] {
+  const trabalham = agenda.columns.filter((c) => !c.offDuty)
+
+  const disponivel = merge(
+    trabalham.flatMap((column) => subtract(column.schedule, column.absences)),
+  )
+  const ocupado = merge(
+    agenda.blocks
+      .filter((b) => b.status !== 'no_show' && !b.status.startsWith('cancel'))
+      .map((b) => ({ start: b.blockStartMin, end: b.blockEndMin })),
+  )
+
+  return subtract(disponivel, ocupado)
+    .flatMap((window) => {
+      const start = Math.max(window.start, agenda.fromMin)
+      const end = Math.min(window.end, agenda.toMin)
+      return end > start ? [{ start, end }] : []
+    })
+    .filter((gap) => gap.end - gap.start >= 15)
 }
 /**
  * A COLUNA DE QUEM HOJE NÃO VEM.
@@ -878,36 +922,7 @@ export function AgendaList({
   const mostrarQuem = trabalham.length > 1
   const nomes = new Map(agenda.columns.map((c) => [c.staffId, c.name]))
 
-  /*
-    A LISTA DIZIA SÓ O QUE ESTÁ MARCADO — E O NEGÓCIO VIVE DO RESTO.
-
-    COM VÁRIAS PROFISSIONAIS OS BURACOS DEIXARAM DE SE ESCONDER.
-
-    Estavam escondidos, e com razão: os buracos de cada uma sobrepõem-se
-    e dizer «livre» quando uma delas está ocupada seria mentira. Mas a
-    conta pode ser outra — só é buraco quando NINGUÉM tem nada — e essa
-    não mente a ninguém. É «casa livre», e é a coisa mais cara que este
-    ecrã tem para dizer: numa sexta-feira com catorze marcações, três
-    horas de tarde sem ninguém não apareciam em lado nenhum.
-
-    Quem quer saber quem em particular está livre continua a ter a
-    grelha, que responde por pessoa e não pela casa.
-  */
-  const disponivel = merge(
-    trabalham.flatMap((column) => subtract(column.schedule, column.absences)),
-  )
-  const ocupado = merge(
-    agenda.blocks
-      .filter((b) => b.status !== 'no_show' && !b.status.startsWith('cancel'))
-      .map((b) => ({ start: b.blockStartMin, end: b.blockEndMin })),
-  )
-  const gaps = subtract(disponivel, ocupado)
-    .flatMap((window) => {
-      const start = Math.max(window.start, agenda.fromMin)
-      const end = Math.min(window.end, agenda.toMin)
-      return end > start ? [{ start, end }] : []
-    })
-    .filter((gap) => gap.end - gap.start >= 15)
+  const gaps = casaLivre(agenda)
 
   if (cards.length === 0) {
     return <Empty title="Dia livre" hint="Não há nenhuma marcação neste dia." />
@@ -926,9 +941,28 @@ export function AgendaList({
     })),
   ].sort((a, b) => a.startMin - b.startMin)
 
-  // O fio de «agora» entra entre o que já passou e o que vem a seguir.
-  const nowIndex =
-    nowMin === null ? -1 : rows.findIndex((r) => r.startMin >= nowMin)
+  /*
+    O AGORA CAI QUASE SEMPRE DENTRO DE UM VAZIO — E ENTÃO SÃO A MESMA
+    LINHA.
+
+    Duas marcas encostadas, o fio do relógio e o buraco, diziam a mesma
+    coisa duas vezes. Juntas dizem a única que interessa: quanto tempo
+    há por vender daqui até à próxima cliente. Quando o agora cai mesmo
+    entre duas marcações coladas, o fio volta a aparecer sozinho.
+  */
+  const idxAgoraNoVazio =
+    nowMin === null
+      ? -1
+      : rows.findIndex(
+          (r) => r.kind === 'gap' && r.startMin <= nowMin && nowMin < r.endMin,
+        )
+  const idxAgora =
+    nowMin === null || idxAgoraNoVazio !== -1
+      ? -1
+      : rows.findIndex((r) => r.startMin >= nowMin)
+  /** Já passou tudo: não caiu num vazio nem antes de uma marcação. */
+  const agoraNoFim =
+    nowMin !== null && idxAgoraNoVazio === -1 && idxAgora === -1
 
   return (
     <ol className="bg-[var(--surface-raised)]">
@@ -937,14 +971,15 @@ export function AgendaList({
           return (
             <li
               key={`livre-${row.startMin}`}
-              className="border-b border-[var(--line-soft)]"
+              className="border-b border-[var(--line-soft)] last:border-b-0"
             >
-              {index === nowIndex ? <NowRule nowMin={nowMin!} /> : null}
+              {index === idxAgora ? <NowRule nowMin={nowMin!} /> : null}
               <GapRow
                 startMin={row.startMin}
                 endMin={row.endMin}
                 encaixeHref={encaixeHref}
                 nowMin={nowMin}
+                agora={index === idxAgoraNoVazio ? nowMin : null}
               />
             </li>
           )
@@ -983,9 +1018,9 @@ export function AgendaList({
         return (
           <li
             key={card.appointmentId}
-            className="border-b border-[var(--line-soft)]"
+            className="border-b border-[var(--line-soft)] last:border-b-0"
           >
-            {index === nowIndex ? <NowRule nowMin={nowMin!} /> : null}
+            {index === idxAgora ? <NowRule nowMin={nowMin!} /> : null}
             <Link
               href={hrefFor(card.appointmentId)}
               scroll={false}
@@ -1010,10 +1045,20 @@ export function AgendaList({
                   : 'border-l-4 border-transparent pl-3',
               )}
             >
+              {/* O fio do estado abre a linha, à esquerda de tudo: é a
+                  primeira coisa que o olho apanha ao descer a lista, e
+                  responde antes de se ler — o que já foi está apagado, o
+                  que vem a seguir está aceso. */}
+              <span
+                aria-hidden
+                className="w-[3px] shrink-0 rounded-full"
+                style={{ background: TONE_BAR[tone] }}
+              />
+
               {/* A hora encolheu de 22px para 16. Era o tamanho de um
                   título numa lista onde todas as linhas têm um — e o
                   que se procura aqui é o nome, não o número. */}
-              <span className="w-[3.25rem] shrink-0 text-right">
+              <span className="w-[3.25rem] shrink-0">
                 <span className="tabular block text-[1rem] font-bold leading-none tracking-[-0.02em] text-[var(--ink)]">
                   {formatMinutes(card.startMin)}
                 </span>
@@ -1021,13 +1066,6 @@ export function AgendaList({
                   {formatMinutes(card.endMin)}
                 </span>
               </span>
-
-              {/* o fio do estado, a toda a altura do cartão */}
-              <span
-                aria-hidden
-                className="w-[3px] shrink-0 rounded-full"
-                style={{ background: TONE_BAR[tone] }}
-              />
 
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2">
@@ -1101,9 +1139,9 @@ export function AgendaList({
           </li>
         )
       })}
-      {nowIndex === -1 && nowMin !== null ? (
+      {agoraNoFim ? (
         <li>
-          <NowRule nowMin={nowMin} />
+          <NowRule nowMin={nowMin!} />
           {/* Já passou tudo: vale a pena dizê-lo, em vez de deixar o
               ecrã a acabar num fio solto. */}
           <p className="px-4 pb-8 pt-5 text-center text-[0.8125rem] text-[var(--ink-faint)]">
@@ -1127,65 +1165,113 @@ function GapRow({
   endMin,
   encaixeHref,
   nowMin,
+  agora,
 }: {
   startMin: number
   endMin: number
   encaixeHref: ((hm: string) => string) | null
   nowMin: number | null
+  /** Minutos do relógio, quando o agora cai DENTRO deste vazio. */
+  agora: number | null
 }) {
   const handMin =
     nowMin !== null && nowMin > startMin
       ? Math.ceil(nowMin / 30) * 30
       : startMin
-  const aproveitavel = handMin + 15 <= endMin
-  const corpo = (
+  const aproveitavel = encaixeHref !== null && handMin + 15 <= endMin
+  /*
+    O QUE SE DIZ É O QUE AINDA SE PODE VENDER. Um vazio que já começou
+    não tem para vender o que tinha às nove da manhã: quando o agora
+    está lá dentro, a conta parte do relógio e não do princípio dele.
+  */
+  const restante = agora !== null ? endMin - agora : endMin - startMin
+
+  const dizer = (
     <>
-      <span className="tabular w-[3.75rem] shrink-0 text-right text-[0.75rem] font-medium">
-        {formatMinutes(startMin)}
-      </span>
-      <span
-        aria-hidden
-        className="h-px flex-1 border-t border-dashed border-[var(--line)]"
-      />
+      {agora !== null ? (
+        <>
+          <span className="tabular font-bold text-[var(--ink)]">
+            agora {formatMinutes(agora)}
+          </span>
+          <span aria-hidden className="opacity-40">
+            ·
+          </span>
+        </>
+      ) : null}
       {/* «CASA LIVRE», E NÃO «LIVRE». Com quatro pessoas ao balcão,
           «livre» seria uma promessa sobre cada uma delas; a conta que
           está por trás é outra — ninguém tem nada — e a palavra passa a
           dizer isso. */}
-      <span className="tabular shrink-0 text-[0.6875rem]">
-        casa livre {dur(endMin - startMin)}
-      </span>
+      <span className="tabular">casa livre {duracao(restante)}</span>
     </>
   )
 
-  if (!encaixeHref || !aproveitavel) {
-    return (
-      <div className="flex items-center gap-3 px-4 py-2 text-[var(--ink-faint)] opacity-80">
-        {corpo}
-      </div>
-    )
-  }
-
-  return (
+  /*
+    O VAZIO É UMA PORTA, E É POR ISSO QUE ELE ESTÁ AQUI: meia hora sem
+    ninguém leva direita ao encaixe, com o dia e a hora já na mão. Um
+    vazio que já não dá para nada — um quarto de hora por vender, ou uma
+    agenda que esta pessoa não pode marcar — fica só facto, em cinzento,
+    e não finge ser botão.
+  */
+  const centro = aproveitavel ? (
     <Link
-      href={encaixeHref(formatMinutes(handMin))}
+      href={encaixeHref!(formatMinutes(handMin))}
       scroll={false}
-      className="flex items-center gap-3 px-4 py-2 text-[var(--ink-faint)] transition-colors active:bg-[var(--surface-2)]"
+      className={clsx(
+        'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-[0.6875rem] font-semibold transition-colors',
+        agora !== null
+          ? 'text-[var(--warn)]'
+          : 'text-[var(--ink-faint)] hover:text-[var(--accent)]',
+      )}
+      style={
+        agora !== null
+          ? { background: 'color-mix(in srgb, var(--warn) 11%, transparent)' }
+          : undefined
+      }
     >
-      {corpo}
-      <span className="shrink-0 text-[0.6875rem] font-semibold text-[var(--accent)]">
-        + Encaixe
-      </span>
+      <Plus aria-hidden className="h-3 w-3 shrink-0" />
+      {dizer}
     </Link>
+  ) : (
+    <span className="inline-flex shrink-0 items-center gap-1.5 px-3 py-1 text-[0.6875rem] text-[var(--ink-faint)]">
+      {dizer}
+    </span>
+  )
+
+  /*
+    A ETIQUETA AO MEIO, COM UM FIO DE CADA LADO. Encostada à direita
+    como esteve, lia-se como o fim de uma linha; ao meio lê-se como o
+    que é — uma pausa entre duas marcações.
+  */
+  return (
+    <div className="flex items-center gap-2 px-4 py-1.5">
+      {agora !== null ? (
+        <span
+          aria-hidden
+          className="block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ink)]"
+        />
+      ) : null}
+      <span aria-hidden className={fioDoVazio(agora)} />
+      {centro}
+      <span aria-hidden className={fioDoVazio(agora)} />
+    </div>
   )
 }
 
-/** "2h05" / "45m" — a duração no corpo mais curto que ela tem. */
-function dur(minutes: number): string {
+/** O fio de cada lado do vazio: âmbar quando leva o agora, senão fino. */
+function fioDoVazio(agora: number | null): string {
+  return agora !== null
+    ? 'h-px flex-1 bg-[color-mix(in_srgb,var(--warn)_30%,transparent)]'
+    : 'h-px flex-1 bg-[var(--line-soft)]'
+}
+
+/** "2 h 05" / "45 min" — a duração como se diz ao balcão. */
+export function duracao(minutes: number): string {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
-  if (h === 0) return `${m}m`
-  if (m === 0) return `${h}h`
-  return `${h}h${String(m).padStart(2, '0')}`
+  if (h === 0) return `${m} min`
+  if (m === 0) return `${h} h`
+  return `${h} h ${String(m).padStart(2, '0')}`
 }
 
 function NowRule({ nowMin }: { nowMin: number }) {
