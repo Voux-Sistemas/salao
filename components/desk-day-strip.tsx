@@ -9,21 +9,6 @@ import { weekdayOf, type IsoDay } from '@/lib/time'
  * setas de semana em semana, tudo por ligações: o retrocesso do
  * navegador continua a funcionar.
  *
- * SEM CAIXAS: SÓ O DIA ABERTO É QUE SE PINTA.
- *
- * Cada dia foi uma caixa branca com contorno, e enquanto o cabeçalho da
- * agenda era uma faixa branca isso não se via — caixa branca sobre
- * branco é só um fio. Quando o cabeçalho passou para o creme, as sete
- * células viraram sete objectos destacados em fila, que é o desenho de
- * uma grelha de formulário e não de uma semana. E dentro de uma coluna
- * de 68rem cada uma ficou com 143px para uma palavra de nove pontos:
- * uma caixa que é quase toda ar.
- *
- * Agora não há caixa nenhuma. Ficam sete rótulos sobre o papel, e uma
- * só pastilha pintada — a do dia que se está a ver. Deixa de importar
- * que as células sejam largas, porque já não há contorno a denunciar o
- * vazio, e a área de toque continua a ser a célula inteira.
- *
  * AS SETAS SÃO OPCIONAIS. Onde o título é um calendário — a agenda do
  * dia — elas não acrescentam nada: o ⌄ da data salta para qualquer dia
  * do ano, e tocar num dia da ponta já recentra a fita, porque ela anda
@@ -63,8 +48,22 @@ export function DeskDayStrip({
         </StripArrow>
       ) : null}
 
+      {/*
+        A FITA TEM UMA LARGURA, NÃO A LARGURA DO ECRÃ.
+
+        Esticada, sete dias dividiam entre si os 1040px da coluna: cada
+        um ficava uma caixa de 143px com uma palavra de nove pontos lá
+        dentro, e uma caixa que é quase toda ar lê-se como um formulário
+        antigo. Sete dias não são mais informação por serem mais largos.
+
+        O `max-w` é o travão, e não uma largura fixa: no telemóvel nunca
+        chega a apanhar — lá as células andam pelos 38px e é a esticar
+        que elas ficam bem — e num monitor pára-as nos 74px, que é o que
+        «Ter 25» precisa e mais nada. Uma fita que não chega à margem
+        não está inacabada: é o tamanho dela.
+      */}
       <ul
-        className="grid flex-1 gap-1"
+        className="grid flex-1 gap-1 sm:max-w-[33.875rem]"
         style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
       >
         {days.map((value) => {
@@ -76,11 +75,15 @@ export function DeskDayStrip({
                 scroll={false}
                 aria-current={current ? 'date' : undefined}
                 className={clsx(
-                  'flex flex-col items-center justify-center gap-0.5 rounded-[var(--radius-sm)] transition-colors',
+                  // O canto da casa: a caixa do dia é a mesma família do
+                  // cartão e do botão, e de canto vivo destoava dos dois.
+                  'flex flex-col items-center justify-center gap-0.5 rounded-[var(--radius-sm)] border transition-colors',
                   dense ? 'h-10' : 'h-12',
                   current
-                    ? 'bg-[var(--accent)] text-[color-mix(in_srgb,var(--accent-ink)_72%,transparent)]'
-                    : 'text-[var(--ink-faint)] hover:bg-[color-mix(in_srgb,var(--ink)_5%,transparent)]',
+                    ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
+                    : // O fundo próprio é para a fita poder assentar
+                      // sobre o creme da página, e não só sobre branco.
+                      'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
                 )}
               >
                 <span
@@ -93,16 +96,10 @@ export function DeskDayStrip({
                 >
                   {weekdayLetterings(value, timezone)}
                 </span>
-                {/* O número é o que se procura; o dia da semana é a
-                    legenda dele. Sem caixa a separá-los, a diferença
-                    tem de estar no peso da tinta. */}
                 <span
                   className={clsx(
                     'tabular leading-none',
-                    dense ? 'text-[0.8125rem]' : 'text-[0.875rem]',
-                    current
-                      ? 'text-[var(--accent-ink)]'
-                      : 'text-[var(--ink-muted)]',
+                    dense ? 'text-[0.75rem]' : 'text-[0.8125rem]',
                   )}
                 >
                   {value.slice(8, 10)}
@@ -142,13 +139,14 @@ function StripArrow({
   label: string
   children: React.ReactNode
 }) {
-  // Sem contorno, como as células: uma seta com caixa ao lado de sete
-  // dias sem caixa lia-se como a única coisa carregável da fita.
   const shape =
-    'flex w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)]'
+    'flex w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border'
   if (!href) {
     return (
-      <span aria-hidden className={clsx(shape, 'text-[var(--line)]')}>
+      <span
+        aria-hidden
+        className={clsx(shape, 'border-[var(--line-soft)] text-[var(--line)]')}
+      >
         {children}
       </span>
     )
@@ -160,7 +158,7 @@ function StripArrow({
       aria-label={label}
       className={clsx(
         shape,
-        'text-[var(--ink-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] hover:text-[var(--ink)]',
+        'border-[var(--line-soft)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]',
       )}
     >
       {children}
