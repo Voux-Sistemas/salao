@@ -593,7 +593,21 @@ export default async function AgendaDayPage({
             «Todas ⌄» da linha dos números. */}
         {temFiltro ? (
           <div className="hidden items-center gap-1 pr-3 sm:flex sm:gap-1.5 sm:pr-5">
-            <div className="relative min-w-0 flex-1">
+            {/*
+              A FITA DEIXA DE ESTICAR ATÉ À MARGEM.
+
+              Tinha `flex-1`, e por isso ocupava tudo o que sobrava: as
+              pastilhas ficavam à esquerda, o «Equipa» encostado à
+              direita, e um vazio de meio ecrã entre os dois. Esse vazio
+              é que fazia a fita dos dias — que é curta de propósito —
+              parecer a única coisa curta da página.
+
+              Sem ele a fita mede o que as pastilhas medem, e o «Equipa»
+              passa a ser o fim da fila. Continua a poder encolher
+              (`min-w-0`) e a deslizar por dentro quando a equipa é
+              grande de mais para caber.
+            */}
+            <div className="relative min-w-0 max-w-full">
               <nav
                 aria-label="Ver uma profissional"
                 className="no-scrollbar flex items-center gap-1.5 overflow-x-auto py-1.5 pl-4 pr-6 sm:py-2 sm:pl-6"
@@ -620,12 +634,27 @@ export default async function AgendaDayPage({
                 Este esbatido diz o contrário: não está partido, há mais
                 para o lado. Não apanha toques, para não roubar o último
                 chip a quem lhe quer tocar.
+
+                A COR É A DO CHÃO, E O CHÃO MUDOU. Pintava-se com
+                `--surface-raised` porque o cabeçalho era uma faixa
+                branca; quando ele passou a creme, este esbatido ficou a
+                pintar branco sobre creme — uma mancha clara antes do
+                «Equipa», que se lia como um rasgo no ecrã e não como
+                uma fita que continua.
               */}
               <span
                 aria-hidden
-                className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[var(--surface-raised)] to-transparent"
+                className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[var(--surface-raised)] to-transparent sm:from-[var(--surface)]"
               />
             </div>
+
+            {/* O fio entre as pessoas e o âmbito: são a mesma pergunta
+                — quem se vê — mas uma escolhe uma, a outra escolhe o
+                conjunto. */}
+            <span
+              aria-hidden
+              className="mx-1 block h-4 w-px shrink-0 bg-[var(--line-soft)]"
+            />
             {/*
               O INTERRUPTOR DA CASA INTEIRA.
 
@@ -661,7 +690,10 @@ export default async function AgendaDayPage({
                   : 'Mostrar a equipa toda, incluindo folgas'
               }
               className={clsx(
-                'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[0.6875rem] font-semibold tracking-[0.01em] shadow-[0_1px_2px_rgba(28,24,21,0.06)] transition-colors',
+                // A mesma altura e o mesmo corpo das pastilhas das
+                // pessoas: agora estão lado a lado na mesma fila, e dois
+                // tamanhos de pastilha encostados lêem-se como um erro.
+                'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.75rem] font-semibold tracking-[0.01em] transition-colors',
                 scope === 'equipa'
                   ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
                   : 'border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:text-[var(--ink)]',
@@ -711,9 +743,20 @@ export default async function AgendaDayPage({
             className="pointer-events-none absolute inset-y-0 right-0 z-20 bg-gradient-to-l from-[var(--surface-raised)] to-transparent lg:hidden"
           />
         ) : null}
+        {/*
+          A BARRA DE DESLOCAMENTO ESTAVA A DESALINHAR A FOLHA.
+
+          O cabeçalho vive fora deste rolo e a lista dentro dele, e por
+          isso a folha acabava uns nove píxeis antes dos botões de cima:
+          a barra come esse bocado só a quem está lá dentro. `stable
+          both-edges` reserva-o dos DOIS lados — a coluna continua ao
+          meio, e o meio passa a ser o mesmo do cabeçalho, que é o que
+          faz as duas margens coincidirem. Onde o navegador não conhece
+          a regra (Safari antigo), fica como estava.
+        */}
         <div
           data-rolo-agenda
-          className="min-w-0 flex-1 overflow-auto overscroll-contain"
+          className="min-w-0 flex-1 overflow-auto overscroll-contain [scrollbar-gutter:stable_both-edges]"
         >
           {focusMin !== null ? (
             <AgendaFocus
