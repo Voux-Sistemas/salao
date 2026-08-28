@@ -217,7 +217,8 @@ export const pt = {
     notePlaceholder: 'Alergias, preferências, o que quiser dizer-nos.',
     submit: 'Confirmar marcação',
     doneTitle: 'Está marcado.',
-    doneSubtitle: 'Vai receber a confirmação pelo WhatsApp.',
+    doneSubtitle:
+      'Olá, {cliente}! 😊 A sua marcação no salão de {loja} foi registada com sucesso. ✨\n\nAgradecemos a sua preferência e esperamos por si! 💖',
     whenLabel: 'Quando',
     whereLabel: 'Onde',
     whatLabel: 'O quê',

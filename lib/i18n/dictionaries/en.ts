@@ -190,7 +190,8 @@ export const en: Dictionary = {
     notePlaceholder: 'Allergies, preferences, anything at all.',
     submit: 'Confirm booking',
     doneTitle: 'You are booked.',
-    doneSubtitle: 'You will get the confirmation on WhatsApp.',
+    doneSubtitle:
+      'Hello, {cliente}! 😊 Your appointment at our {loja} salon has been booked. ✨\n\nThank you for choosing us — we look forward to seeing you! 💖',
     whenLabel: 'When',
     whereLabel: 'Where',
     whatLabel: 'What',

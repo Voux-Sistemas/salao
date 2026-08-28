@@ -190,7 +190,8 @@ export const es: Dictionary = {
     notePlaceholder: 'Alergias, preferencias, lo que quieras contarnos.',
     submit: 'Confirmar reserva',
     doneTitle: 'Está reservado.',
-    doneSubtitle: 'Recibirás la confirmación por WhatsApp.',
+    doneSubtitle:
+      '¡Hola, {cliente}! 😊 Su cita en el salón de {loja} ha quedado reservada. ✨\n\n¡Gracias por su preferencia, la esperamos! 💖',
     whenLabel: 'Cuándo',
     whereLabel: 'Dónde',
     whatLabel: 'Qué',

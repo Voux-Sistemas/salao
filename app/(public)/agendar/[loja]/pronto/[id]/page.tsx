@@ -10,6 +10,7 @@ import { ButtonLink, Eyebrow } from '@/components/ui'
 import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
 import { formatPhone } from '@/lib/text'
 import { serviceNamesFor } from '@/lib/catalog-names'
+import { preencherSaudacao } from '@/lib/notify'
 import { isUuid } from '@/lib/id'
 
 type Params = { params: Promise<{ loja: string; id: string }> }
@@ -86,8 +87,15 @@ export default async function DonePage({ params }: Params) {
           <h1 className="display display-italic animate-rise delay-3 mt-7 text-[2.1rem] leading-[1.1] sm:text-[2.75rem]">
             {dict.funnel.doneTitle}
           </h1>
-          <p className="animate-fade delay-4 mt-4 text-[0.9375rem] text-[var(--ink-muted)]">
-            {dict.funnel.doneSubtitle}
+          {/* A mensagem de boas-vindas é da casa e fala com a cliente
+              pelo nome — os {marcadores} enchem-se aqui, não no modelo.
+              O `pre-line` respeita a linha vazia entre as duas frases. */}
+          <p className="animate-fade delay-4 mt-4 whitespace-pre-line text-[0.9375rem] text-[var(--ink-muted)]">
+            {preencherSaudacao(
+              dict.funnel.doneSubtitle,
+              appointment.client_name,
+              appointment.unit_name,
+            )}
           </p>
           <div className="animate-fade delay-5 mt-8 flex justify-center text-[var(--gold)] opacity-60">
             <Ornament />

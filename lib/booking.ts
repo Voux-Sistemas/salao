@@ -174,6 +174,45 @@ export async function createAppointment(
           input.day,
         )
 
+        /*
+         * O DUPLO CLIQUE MORRE AQUI, e não podia morrer noutro sítio.
+         *
+         * O botão desliga-se enquanto grava, mas isso não chega: o
+         * clique antes de a página acordar, e a resposta que se perde
+         * na rede e faz repetir o envio, chegam ambos ao servidor como
+         * duas gravações legítimas. E a base não as recusa — a
+         * restrição de exclusão da `staff_block` já não existe, e num
+         * carrinho «sem preferência» o segundo replaneamento escolhe
+         * OUTRA profissional, pelo que nem haveria sobreposição para
+         * recusar. Era assim que os encaixes andavam a sair em dobro.
+         *
+         * A pergunta faz-se atrás do cadeado, onde as duas gravações
+         * passam uma de cada vez: a mesma cliente, na mesma loja, à
+         * mesma hora, com os mesmos serviços, gravada há segundos?
+         * Então ESTA é a mesma marcação — devolve-se a que já existe
+         * e quem repetiu o clique cai no mesmo ecrã de confirmação.
+         *
+         * A janela é curta de propósito: noventa segundos apanham o
+         * clique repetido sem impedir a casa de marcar de propósito
+         * duas visitas iguais (mãe e filha na mesma ficha) — basta
+         * que não seja no mesmo minuto e meio.
+         */
+        const gemea = await tx<{ id: string }[]>`
+          select a.id
+            from appointment a
+           where a.unit_id = ${input.unit.id}
+             and a.client_id = ${input.clientId}
+             and a.starts_at = ${input.startsAt}
+             and a.status in ('booked', 'confirmed')
+             and a.created_at > now() - interval '90 seconds'
+             and (select string_agg(i.service_id::text, ',' order by i.service_id::text)
+                    from appointment_item i
+                   where i.appointment_id = a.id)
+                 = ${[...input.cart.map((line) => line.serviceId)].sort().join(',')}
+           limit 1
+        `
+        if (gemea[0]) return { id: gemea[0].id, plan }
+
         // O plano de fora foi feito antes da fila e pode ter ficado
         // velho: entre lê-lo e chegar aqui, a hora pode ter sido
         // vendida. Refaz-se com a fila garantida, e é ESTE que se grava.
@@ -187,6 +226,19 @@ export async function createAppointment(
           { db: tx },
         )
         if (!fresh) return null
+
+        /*
+         * O cadeado foi tomado para as profissionais do plano de FORA.
+         * Se o replaneamento escolheu alguém fora dessa fila — a carga
+         * mudou entre o plano e o cadeado — gravá-lo era escrever sem
+         * cadeado, e é precisamente a escrita sem fila que deixa duas
+         * marcações caírem na mesma cadeira. Sai-se sem gravar; a
+         * volta seguinte replaneia cá fora e tranca as certas.
+         */
+        const trancadas = new Set(plan.items.map((item) => item.staffId))
+        if (!fresh.items.every((item) => trancadas.has(item.staffId))) {
+          return null
+        }
 
         const rows = await tx<{ id: string }[]>`
           insert into appointment (

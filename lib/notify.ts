@@ -77,6 +77,25 @@ function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name
 }
 
+/**
+ * O ecrã de confirmação fala como as mensagens: mesmos {marcadores},
+ * mesma arrumação quando a ficha não tem nome («Olá, !» vira «Olá!»).
+ * É por aqui que o `doneSubtitle` dos dicionários ganha o nome da
+ * cliente e o da loja.
+ */
+export function preencherSaudacao(
+  body: string,
+  clientName: string,
+  unitName: string,
+): string {
+  return arrumar(
+    renderTemplate(body, {
+      cliente: firstName(clientName),
+      loja: unitName,
+    }),
+  )
+}
+
 /*
  * Uma ficha pode não ter nome — nasce no balcão com o telefone e mais
  * nada — e então o `{cliente}` rende vazio e a mensagem começava por

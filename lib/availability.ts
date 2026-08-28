@@ -437,6 +437,47 @@ async function staffLoad(
     )
     load.set(id, totalMinutes(inDay))
   }
+
+  /*
+   * O EMPATE DO DIA VAZIO DECIDE-SE PELA SEMANA QUE PASSOU.
+   *
+   * Só com a carga do dia, um dia vazio é um empate a zeros — e o
+   * desempate caía no `sort_order`, que é fixo. Resultado: a primeira
+   * marcação «sem preferência» de QUALQUER dia vazio ia sempre à mesma
+   * profissional (a de número mais baixo com vaga), marcação atrás de
+   * marcação, dia atrás de dia. Não era o motor a preferi-la — era o
+   * empate a repetir-se.
+   *
+   * Agora o dia continua a mandar (quem tem menos trabalho HOJE vai à
+   * frente), mas o empate resolve-se por quem trabalhou menos nos sete
+   * dias ANTERIORES — o dia de hoje fica de fora, que já conta na frente.
+   * Assim a primeira marcação do dia roda entre elas em vez de cair
+   * sempre na mesma.
+   *
+   * As duas medidas cabem num número só: minutos do dia à frente, os da
+   * semana atrás. Uma semana tem 10 080 minutos, por isso multiplicar o
+   * dia por 100 000 garante que a história nunca passa por cima do dia.
+   * E continua determinístico — mesmo instante, mesmo estado da base,
+   * mesma escolha — que é o que deixa o replaneamento dentro da
+   * transação bater certo com o plano de fora.
+   */
+  if (unit.assignment_strategy === 'balance_load') {
+    const from = dayStart(addDays(day, -7), unit.timezone)
+    const to = dayStart(day, unit.timezone)
+    const rows = await db<{ staff_id: string; minutes: number }[]>`
+      select staff_id,
+             (sum(extract(epoch from (upper(during) - lower(during)))) / 60)::int as minutes
+        from staff_block
+       where staff_id = any(${staffIds}::uuid[])
+         and during && tstzrange(${from}, ${to})
+       group by staff_id
+    `
+    const historia = new Map(rows.map((row) => [row.staff_id, row.minutes]))
+    for (const id of staffIds) {
+      load.set(id, (load.get(id) ?? 0) * 100_000 + (historia.get(id) ?? 0))
+    }
+  }
+
   return load
 }
 
