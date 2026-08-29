@@ -109,15 +109,16 @@ export function MonthCalendar({
   const podeAvancar = mesSeguinte <= lastDay
 
   /*
-    TUDO NO MESMO EIXO.
+    A LARGURA É SUA, O EIXO É DA PÁGINA.
 
-    Estava encostado à esquerda, e a página ficava com um lado cheio e
-    outro vazio. Ao centro, o olho desce a direito — do mês ao dia, e do
-    dia ao passo seguinte — e a mesma peça serve o telemóvel sem ter de
-    desfazer colunas nenhumas.
+    A grelha tem tecto — não cresce com o ecrã, cresce até caber e pára —
+    mas não se centra a si própria: quem decide onde ela assenta é a
+    página que a usa. Centrada aqui dentro, ficava num eixo diferente do
+    título e do rasto dos passos, e o ecrã lia-se com duas margens a
+    mandar ao mesmo tempo.
   */
   return (
-    <div className="mx-auto max-w-[21.5rem] lg:max-w-[26.5rem]">
+    <div className="max-w-[21.5rem] lg:max-w-[26.5rem]">
       {/*
         O mês entre dois fios que se desvanecem do ouro para nada — a
         mesma peça dos títulos de secção da casa — com as setas nas
@@ -228,12 +229,20 @@ export function MonthCalendar({
                 {numero}
               </span>
 
-              {escolhido ? null : (
-                <span
-                  aria-hidden
-                  className="absolute bottom-[0.45rem] block h-[3px] w-[3px] rounded-full bg-[var(--accent)] lg:bottom-[0.6rem] lg:h-[3.5px] lg:w-[3.5px]"
-                />
-              )}
+              {/*
+                E OS PONTOS SAEM.
+
+                Um ponto por baixo de cada dia livre parecia boa ideia
+                enquanto os dias livres eram poucos. Num mês em que a
+                casa abre todos os dias são trinta pontos: deixam de
+                dizer «tem vaga» e passam a ser sarampo — e a marca que
+                está em toda a gente não distingue ninguém.
+
+                A diferença de tinta já dizia tudo sozinha: o que se
+                pode marcar está em tinta cheia, o que não se pode está
+                a um quinto. A linha em itálico por baixo explica-o por
+                palavras, para quem não o leia à primeira.
+              */}
             </Link>
           )
         })}

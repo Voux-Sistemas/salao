@@ -226,7 +226,21 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
         Ao centro uma da outra, o fio que as separa fica com peso igual
         dos dois lados, e a decisão fica à altura do meio do mês.
       */}
-      <div className="mx-auto max-w-[21.5rem] lg:flex lg:w-max lg:max-w-none lg:items-center lg:gap-14">
+      {/*
+        UM EIXO SÓ NA PÁGINA.
+
+        O título e o rasto dos passos vivem no eixo esquerdo da faixa
+        escura; o calendário estava centrado na página. Dois eixos
+        diferentes no mesmo ecrã, e o olho não sabe onde pousar — «uma
+        coisa de um lado, outra para outro».
+
+        Encostado à esquerda, o mês nasce debaixo da primeira letra de
+        «Que dia lhe dá jeito?», e a página inteira passa a ter uma só
+        margem a mandar. É também o alinhamento dos outros passos do
+        funil: a lista dos serviços e a das profissionais começam todas
+        na mesma linha.
+      */}
+      <div className="max-w-[21.5rem] lg:flex lg:w-max lg:max-w-none lg:items-center lg:gap-14">
       <MonthCalendar
         month={mes}
         day={day}
