@@ -450,6 +450,54 @@ export function nextStatuses(from: Status): Status[] {
   return NEXT[from]
 }
 
+/**
+ * APAGAR UMA MARCAÇÃO — DE VEZ.
+ *
+ * Não é o mesmo que desmarcar. Desmarcar é um facto do salão e fica na
+ * história da cliente; apagar é dizer que aquilo nunca devia ter
+ * existido — uma linha de teste, um engano de dedo — e não deixa rasto
+ * nenhum. Se deixasse, não estava apagada.
+ *
+ * O QUE VAI ATRÁS, POR CASCATA DA BASE: os serviços da marcação, os
+ * blocos que prendiam as horas das profissionais, os blocos de recurso,
+ * o registo das mensagens enviadas e as linhas de comissão.
+ *
+ * E É POR ISSO QUE O DINHEIRO TRAVA. A tabela «payment» também está
+ * ligada com «on delete cascade»: apagar uma marcação paga apagaria os
+ * pagamentos dela em silêncio — e o movimento de caixa, esse, sobrevive
+ * com a ligação a nulo, portanto o dinheiro ficava na caixa sem se
+ * saber de onde veio. A verificação corre DENTRO da transação, com a
+ * linha travada, para que ninguém consiga cobrar entre a pergunta e a
+ * resposta.
+ */
+export type DeleteResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' | 'has_money' }
+
+export async function deleteAppointment(input: {
+  appointmentId: string
+  orgId: string
+}): Promise<DeleteResult> {
+  return sql.begin(async (tx) => {
+    const rows = await tx<{ closed_at: Date | null; pagos: number }[]>`
+      select a.closed_at,
+             (select count(*)::int from payment p
+               where p.appointment_id = a.id) as pagos
+        from appointment a
+       where a.id = ${input.appointmentId} and a.org_id = ${input.orgId}
+         for update
+    `
+    const found = rows[0]
+    if (!found) return { ok: false, reason: 'not_found' } as const
+    if (found.closed_at !== null || found.pagos > 0) {
+      return { ok: false, reason: 'has_money' } as const
+    }
+
+    await tx`delete from appointment where id = ${input.appointmentId}`
+    return { ok: true } as const
+  })
+}
+
 export type TransitionResult =
   | { ok: true; from: Status }
   | { ok: false; reason: 'not_found' | 'not_allowed' | 'closed' }
@@ -787,6 +835,8 @@ export type AppointmentRow = {
   discount_reason: string | null
   closed_at: Date | null
   total_cents: number
+  /** O que já foi recebido por esta marcação. Zero quando não há nada. */
+  paid_cents: number
   rescheduled_from_id: string | null
 }
 
@@ -804,7 +854,11 @@ export async function getAppointment(
            coalesce((
              select sum(i.price_cents) from appointment_item i
               where i.appointment_id = a.id
-           ), 0)::int as total_cents
+           ), 0)::int as total_cents,
+           coalesce((
+             select sum(p.amount_cents) from payment p
+              where p.appointment_id = a.id
+           ), 0)::int as paid_cents
       from appointment a
       join unit u on u.id = a.unit_id
       join client c on c.id = a.client_id

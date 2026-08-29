@@ -94,8 +94,21 @@ export async function AppointmentPanel({
     can.seeCash(actor) &&
     appointment.status === 'completed' &&
     !appointment.closed_at
-  /** Quem vê dinheiro fecha a marcação e cobra no mesmo gesto. */
-  const cobra = can.seeCash(actor) && !appointment.closed_at
+  /*
+    APAGAR — SÓ A DONA, E SÓ ENQUANTO NÃO HOUVER DINHEIRO.
+
+    Desmarcar é trabalho de balcão e fica na história da cliente; apagar
+    é dizer que aquilo nunca devia ter existido. Com um pagamento pelo
+    meio deixa de ser uma opção: os pagamentos vão atrás por cascata da
+    base, e o movimento de caixa fica sem dono.
+
+    Isto decide o que se DESENHA. Quem manda a sério é a acção do
+    servidor, que volta a verificar tudo com a linha travada.
+  */
+  const dono = actor.role === 'master'
+  const temDinheiro =
+    appointment.closed_at !== null || appointment.paid_cents > 0
+  const podeApagar = dono && !temDinheiro
 
   /*
     EM CURSO — QUEM O DIZ É O RELÓGIO.
@@ -303,7 +316,13 @@ export async function AppointmentPanel({
         />
 
         {motivos.length > 0 ? (
-          <CancelAction appointmentId={appointment.id} options={motivos} />
+          <CancelAction
+            appointmentId={appointment.id}
+            options={motivos}
+            itens={appointment.items.length}
+            podeApagar={podeApagar}
+            avisoDinheiro={dono && temDinheiro}
+          />
         ) : null}
 
         {!podeConcluir && !closeTab && motivos.length === 0 ? (

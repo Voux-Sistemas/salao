@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import clsx from 'clsx'
 import {
+  deleteAppointmentAction,
   logNotificationAction,
   transitionAction,
   type DeskState,
@@ -127,15 +128,67 @@ export function StatusAction({
 export function CancelAction({
   appointmentId,
   options,
+  itens,
+  podeApagar = false,
+  avisoDinheiro = false,
 }: {
   appointmentId: string
   options: { to: Status; label: string }[]
+  /** Quantos serviços vão atrás, para a confirmação os poder contar. */
+  itens: number
+  /** A dona, e sem dinheiro pelo meio. */
+  podeApagar?: boolean
+  /** A dona, mas já com dinheiro: em vez da linha, a razão. */
+  avisoDinheiro?: boolean
 }) {
   const [state, action] = useActionState<DeskState, FormData>(
     transitionAction,
     EMPTY,
   )
-  const [aberto, setAberto] = useState(false)
+  const [apagar, apagarAction] = useActionState<DeskState, FormData>(
+    deleteAppointmentAction,
+    EMPTY,
+  )
+  const [passo, setPasso] = useState<'fechado' | 'pergunta' | 'apagar'>(
+    'fechado',
+  )
+  const aberto = passo !== 'fechado'
+
+  /*
+    O SEGUNDO TOQUE DIZ O QUE SE PERDE — não «tem a certeza?».
+
+    Uma pergunta de sim ou não não informa ninguém: quem carregou já
+    decidiu, e volta a carregar. O que trava um engano é ler o que vai
+    desaparecer, com os números desta marcação e não de uma qualquer.
+  */
+  if (passo === 'apagar') {
+    return (
+      <div className="space-y-2">
+        {apagar.error ? <Notice tone="bad">{apagar.error}</Notice> : null}
+        <div className="overflow-hidden rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--bad)_50%,transparent)]">
+          <p className="px-3.5 py-3 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+            Apaga a marcação, {itens === 1 ? 'o serviço' : 'os ' + itens + ' serviços'},
+            as horas que ocupava e o registo das mensagens enviadas.{' '}
+            <strong className="font-semibold text-[var(--bad)]">
+              Não fica rasto nenhum
+            </strong>
+            , nem na ficha da cliente.
+          </p>
+          <form action={apagarAction}>
+            <input type="hidden" name="appointment" value={appointmentId} />
+            <ApagarSubmit />
+          </form>
+          <button
+            type="button"
+            onClick={() => setPasso('pergunta')}
+            className={clsx(MENU_LINHA, 'justify-center text-[0.75rem]')}
+          >
+            Voltar atrás
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (!aberto) {
     return (
@@ -152,7 +205,7 @@ export function CancelAction({
           type="button"
           variant="danger"
           size="md"
-          onClick={() => setAberto(true)}
+          onClick={() => setPasso('pergunta')}
           className="w-full"
         >
           Cancelar
@@ -175,15 +228,64 @@ export function CancelAction({
             <MenuSubmit label={option.label} />
           </form>
         ))}
+
+        {/*
+          APAGAR VIVE AQUI, DEPOIS DE UM FIO.
+
+          É onde se vem quando uma marcação não se fez, e por isso é onde
+          se vem quando ela nunca devia ter existido. O fio separa duas
+          famílias: as três de cima são factos do salão, esta é um erro
+          do sistema.
+        */}
+        {podeApagar ? (
+          <>
+            <span
+              aria-hidden
+              className="block h-px bg-[color-mix(in_srgb,var(--bad)_28%,transparent)]"
+            />
+            <button
+              type="button"
+              onClick={() => setPasso('apagar')}
+              className={clsx(MENU_LINHA, 'font-semibold text-[var(--bad)]')}
+            >
+              Foi engano — apagar
+            </button>
+          </>
+        ) : null}
+
+        {/* A razão em vez do silêncio: quem a procura tem de saber
+            porque é que não está lá. */}
+        {avisoDinheiro ? (
+          <p className="border-t border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-3.5 py-2.5 text-[0.75rem] leading-relaxed text-[var(--warn)]">
+            Esta já tem dinheiro registado. Não se apaga — desmarca-se.
+          </p>
+        ) : null}
+
         <button
           type="button"
-          onClick={() => setAberto(false)}
+          onClick={() => setPasso('fechado')}
           className={clsx(MENU_LINHA, 'justify-center text-[0.75rem]')}
         >
           Deixar como está
         </button>
       </div>
     </div>
+  )
+}
+
+function ApagarSubmit() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className={clsx(
+        MENU_LINHA,
+        'justify-center bg-[var(--bad)] font-semibold text-white hover:bg-[color-mix(in_srgb,var(--bad)_86%,black)] hover:text-white',
+      )}
+    >
+      Apagar
+    </button>
   )
 }
 

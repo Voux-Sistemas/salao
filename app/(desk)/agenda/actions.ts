@@ -1,10 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
 import { requireActor, canSeeUnit, type Actor } from '@/lib/auth/actor'
 import {
   canTransition,
+  deleteAppointment,
   getAppointment,
   transitionAppointment,
   type Status,
@@ -115,6 +117,64 @@ export async function transitionAction(
     balcão nem sempre se cobra na hora. A comanda tem porta própria.
   */
   return { error: null, done: 'Feito.' }
+}
+
+/**
+ * APAGAR UMA MARCAÇÃO — DE VEZ, E COM TRÊS COLEIRAS.
+ *
+ * 1. SÓ A DONA. Desmarcar é trabalho de balcão; apagar é mexer no que
+ *    aconteceu, e isso é de quem responde pela casa. O portão está aqui
+ *    e não só no desenho: quem souber o endereço do formulário continua
+ *    a bater contra ele.
+ *
+ * 2. SÓ SEM DINHEIRO. A verificação vive no «deleteAppointment», dentro
+ *    da transação e com a linha travada — aqui não se adivinha nada.
+ *
+ * 3. E A MARCAÇÃO TEM DE SER DESTA CASA E DESTA PESSOA, como em
+ *    qualquer outra acção deste ficheiro.
+ *
+ * No fim NÃO SE VOLTA À MESMA PÁGINA: o painel abre-se por «?m=id», e
+ * um id que já não existe abriria um painel vazio. Manda-se para o dia
+ * da marcação, sem painel nenhum.
+ */
+export async function deleteAppointmentAction(
+  _previous: DeskState,
+  form: FormData,
+): Promise<DeskState> {
+  const actor = await requireActor()
+  const appointmentId = String(form.get('appointment') ?? '')
+
+  const appointment = await getAppointment(appointmentId)
+  if (!appointment || appointment.org_id !== actor.orgId) {
+    return { error: 'Essa marcação não existe.' }
+  }
+  if (!canSeeUnit(actor, appointment.unit_id)) {
+    return { error: 'Essa marcação não existe.' }
+  }
+  if (actor.role !== 'master') {
+    return { error: 'Só a dona pode apagar uma marcação.' }
+  }
+
+  const result = await deleteAppointment({
+    appointmentId,
+    orgId: actor.orgId,
+  })
+
+  if (!result.ok) {
+    return {
+      error:
+        result.reason === 'has_money'
+          ? 'Esta marcação já tem dinheiro registado. Não se apaga — desmarca-se.'
+          : 'Essa marcação não existe.',
+    }
+  }
+
+  revalidatePath(`/agenda/${appointment.unit_slug}`)
+  revalidatePath(`/avisos/${appointment.unit_slug}`)
+  revalidatePath('/')
+  redirect(
+    `/agenda/${appointment.unit_slug}?d=${isoDay(appointment.starts_at, appointment.unit_timezone)}`,
+  )
 }
 
 /**
