@@ -166,7 +166,19 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
         No telemóvel volta a empilhar-se, ao eixo, que é a única coisa
         que lá cabe.
       */}
-      <div className="mx-auto max-w-[21.5rem] lg:flex lg:w-max lg:max-w-none lg:items-start lg:gap-12">
+      {/*
+        O PAR ALINHA-SE PELO MEIO, E NÃO PELO TOPO.
+
+        A grelha tem seis linhas de altura; a coluna do lado tem três
+        linhas de texto. Encostadas ao topo, ficava um bloco alto de um
+        lado e três linhas soltas do outro, com meio metro de nada por
+        baixo delas — e o ecrã lia-se como duas coisas atiradas para os
+        cantos em vez de um par.
+
+        Ao centro uma da outra, o fio que as separa fica com peso igual
+        dos dois lados, e a decisão fica à altura do meio do mês.
+      */}
+      <div className="mx-auto max-w-[21.5rem] lg:flex lg:w-max lg:max-w-none lg:items-center lg:gap-14">
       <MonthCalendar
         month={mes}
         day={day}
@@ -207,7 +219,7 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
         className="hidden w-px self-stretch bg-[linear-gradient(180deg,transparent,color-mix(in_srgb,var(--ink)_15%,transparent)_16%,color-mix(in_srgb,var(--ink)_15%,transparent)_84%,transparent)] lg:block"
       />
 
-      <div className="mt-7 lg:mt-1 lg:w-[17rem] lg:shrink-0">
+      <div className="mt-7 lg:mt-0 lg:w-[18rem] lg:shrink-0">
         <div className="flex items-center gap-3.5 lg:flex-col lg:items-start lg:gap-2">
           <span
             aria-hidden

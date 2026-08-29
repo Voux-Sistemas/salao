@@ -117,13 +117,13 @@ export function MonthCalendar({
     desfazer colunas nenhumas.
   */
   return (
-    <div className="mx-auto max-w-[21.5rem] lg:max-w-[24rem]">
+    <div className="mx-auto max-w-[21.5rem] lg:max-w-[26.5rem]">
       {/*
         O mês entre dois fios que se desvanecem do ouro para nada — a
         mesma peça dos títulos de secção da casa — com as setas nas
         pontas. Sem caixa, sem fundo: é um cabeçalho, não um controlo.
       */}
-      <div className="mb-5 flex items-center gap-3.5">
+      <div className="mb-5 flex items-center gap-3.5 lg:mb-7">
         <Seta
           href={podeRecuar ? monthHref(mesAnterior) : null}
           label={labels.previous}
@@ -134,7 +134,7 @@ export function MonthCalendar({
           aria-hidden
           className="h-px flex-1 bg-[linear-gradient(270deg,color-mix(in_srgb,var(--accent)_32%,transparent),transparent)]"
         />
-        <p className="display shrink-0 text-[1.1875rem] whitespace-nowrap text-[var(--ink)] first-letter:uppercase lg:text-[1.3125rem]">
+        <p className="display shrink-0 text-[1.1875rem] whitespace-nowrap text-[var(--ink)] first-letter:uppercase lg:text-[1.4375rem]">
           {formatMonthYear(primeiro, timezone, language)}
         </p>
         <span
@@ -231,7 +231,7 @@ export function MonthCalendar({
               {escolhido ? null : (
                 <span
                   aria-hidden
-                  className="absolute bottom-[0.45rem] block h-[3px] w-[3px] rounded-full bg-[var(--accent)]"
+                  className="absolute bottom-[0.45rem] block h-[3px] w-[3px] rounded-full bg-[var(--accent)] lg:bottom-[0.6rem] lg:h-[3.5px] lg:w-[3.5px]"
                 />
               )}
             </Link>
