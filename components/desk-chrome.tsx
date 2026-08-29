@@ -189,7 +189,12 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
         // separada por um fio quase invisível: não se via onde a página
         // acabava e onde começava o menu da casa. No bege afundado —
         // o mesmo do controlo de separadores — lê-se como chão.
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-2)] shadow-[0_-8px_24px_-18px_rgba(15,21,32,0.28)] lg:hidden"
+        // E A COR DESCE PARA ALÉM DELA, pela mesma razão que sobe no
+        // cabeçalho: ao rolar, o Safari do iPhone muda a altura do ecrã
+        // útil antes de reposicionar o que está preso, e por baixo desta
+        // barra fica descoberta uma tira onde se vê a lista. Dez
+        // centímetros da cor da casa, fora do ecrã, tapam-na.
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-2)] shadow-[0_-8px_24px_-18px_rgba(15,21,32,0.28)] after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-[var(--surface-2)] after:content-[''] lg:hidden"
       >
         <DeskNav items={mobileNavFor(actor, avisos)} variant="bottom" />
       </nav>
