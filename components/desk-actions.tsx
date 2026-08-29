@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import clsx from 'clsx'
 import {
@@ -18,16 +18,15 @@ const EMPTY: DeskState = { error: null, done: null }
 type Variant = 'primary' | 'outline' | 'quiet' | 'danger'
 
 /**
- * UMA LINHA DA LISTA DO RESTO.
+ * UMA LINHA DENTRO DE UMA CAIXA.
  *
- * O que não é o passo do dia — remarcar, abrir a comanda, dar por
- * faltada, cancelar — vive numa lista sem cor, em baixo. É a mesma
- * moldura para uma ligação e para um botão de formulário, e por isso a
- * classe sai daqui: quem monta a lista é o painel, e as duas coisas têm
- * de ficar iguais.
+ * A pergunta do cancelamento e as duas portas discretas do painel — a
+ * comanda e a remarcação — usam a mesma moldura, e é por isso que a
+ * classe sai daqui: umas são botões de formulário e outras são
+ * ligações, e têm de ficar iguais.
  */
 export const MENU_LINHA =
-  'flex w-full items-center gap-2.5 border-t border-[var(--line-soft)] px-3.5 py-2.5 text-left text-[0.8125rem] text-[var(--ink-muted)] transition-colors first:border-t-0 hover:bg-[var(--surface-2)] hover:text-[var(--ink)] disabled:opacity-50'
+  'flex w-full items-center gap-2.5 border-t border-[var(--line-soft)] px-3.5 py-2.5 text-left text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)] disabled:opacity-50'
 
 function Submit({
   label,
@@ -67,9 +66,6 @@ function Submit({
  *
  * Agora quem arruma é o painel, que sabe o que é o passo do dia e o que
  * é o resto. Aqui fica só a peça: um formulário e um botão.
- *
- * `charge` manda o servidor abrir a comanda a seguir. Não viaja
- * nenhuma morada — só um sim, e a morada monta-se lá.
  */
 export function StatusAction({
   appointmentId,
@@ -77,7 +73,6 @@ export function StatusAction({
   label,
   variant = 'outline',
   size = 'sm',
-  charge = false,
   full = false,
   icon,
   className,
@@ -87,7 +82,6 @@ export function StatusAction({
   label: string
   variant?: Variant
   size?: 'sm' | 'md'
-  charge?: boolean
   full?: boolean
   icon?: React.ReactNode
   className?: string
@@ -101,7 +95,6 @@ export function StatusAction({
     <form action={action} className={clsx('space-y-2', className)}>
       <input type="hidden" name="appointment" value={appointmentId} />
       <input type="hidden" name="to" value={to} />
-      {charge ? <input type="hidden" name="charge" value="1" /> : null}
       {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
       <Submit
         label={label}
@@ -115,16 +108,23 @@ export function StatusAction({
 }
 
 /**
- * O QUE CORRE MAL, NUMA LISTA SEM COR.
+ * CANCELAR — UM BOTÃO, E DEPOIS A PERGUNTA.
  *
- * Eram três botões vermelhos do tamanho dos outros, e o vermelho era um
- * terço do painel — num ecrã onde cancelar uma marcação é o que se faz
- * uma vez por semana. Descem para linhas de uma lista: continuam à mão,
- * deixam de gritar.
+ * Foram três botões vermelhos do tamanho dos outros, e o vermelho era um
+ * terço do painel. Depois foram três linhas cinzentas de um menu, e aí
+ * cancelar uma marcação passou a custar exactamente o mesmo que abrir
+ * uma comanda: um toque, sem aviso, sem volta.
  *
- * Partilham um estado de erro, porque só se carrega numa de cada vez.
+ * Agora é UM botão, discreto, ao lado dos outros dois. Carregar nele não
+ * cancela nada: abre a pergunta. Só o segundo toque envia — e é lá, na
+ * pergunta, que se diz QUAL das três coisas aconteceu, porque a cliente
+ * ter desmarcado, a casa ter desmarcado e a cliente não ter aparecido
+ * são três factos diferentes e a estatística do ano vive deles.
+ *
+ * Sem caixas de diálogo, sem nada a saltar por cima do ecrã: a pergunta
+ * nasce onde estava o botão, e «deixar como está» fecha-a.
  */
-export function ProblemButtons({
+export function CancelAction({
   appointmentId,
   options,
 }: {
@@ -135,29 +135,59 @@ export function ProblemButtons({
     transitionAction,
     EMPTY,
   )
+  const [aberto, setAberto] = useState(false)
+
+  if (!aberto) {
+    return (
+      <div className="space-y-2">
+        {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="md"
+          onClick={() => setAberto(true)}
+          className="w-full border-[color-mix(in_srgb,var(--bad)_35%,transparent)] text-[var(--bad)] hover:border-[var(--bad)]"
+        >
+          Cancelar
+        </Button>
+      </div>
+    )
+  }
 
   return (
-    <>
-      {state.error ? (
-        <div className="border-t border-[var(--line-soft)] px-3.5 py-2.5">
-          <Notice tone="bad">{state.error}</Notice>
-        </div>
-      ) : null}
-      {options.map((option) => (
-        <form key={option.to} action={action}>
-          <input type="hidden" name="appointment" value={appointmentId} />
-          <input type="hidden" name="to" value={option.to} />
-          <MenuSubmit label={option.label} />
-        </form>
-      ))}
-    </>
+    <div className="space-y-2">
+      {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
+      <div className="overflow-hidden rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--bad)_35%,transparent)]">
+        <p className="px-3.5 py-2.5 text-[0.75rem] font-semibold text-[var(--bad)]">
+          O que aconteceu?
+        </p>
+        {options.map((option) => (
+          <form key={option.to} action={action}>
+            <input type="hidden" name="appointment" value={appointmentId} />
+            <input type="hidden" name="to" value={option.to} />
+            <MenuSubmit label={option.label} />
+          </form>
+        ))}
+        <button
+          type="button"
+          onClick={() => setAberto(false)}
+          className={clsx(MENU_LINHA, 'justify-center text-[0.75rem]')}
+        >
+          Deixar como está
+        </button>
+      </div>
+    </div>
   )
 }
 
 function MenuSubmit({ label }: { label: string }) {
   const { pending } = useFormStatus()
   return (
-    <button type="submit" disabled={pending} className={MENU_LINHA}>
+    <button
+      type="submit"
+      disabled={pending}
+      className={clsx(MENU_LINHA, 'font-semibold text-[var(--bad)]')}
+    >
       {label}
     </button>
   )

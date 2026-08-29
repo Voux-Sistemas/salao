@@ -6,12 +6,11 @@ import {
   type AppointmentItemRow,
   type AppointmentRow,
 } from '@/lib/booking'
-import { SOURCE_LABEL, STATUS_ACTION, STATUS_LABEL } from '@/lib/status'
+import { MOTIVO_LABEL, SOURCE_LABEL, STATUS_LABEL } from '@/lib/status'
 import { composeMessage, loadTemplates } from '@/lib/notify'
 import { Badge, ButtonLink } from '@/components/ui'
 import {
-  MENU_LINHA,
-  ProblemButtons,
+  CancelAction,
   SendWhatsApp,
   StatusAction,
 } from '@/components/desk-actions'
@@ -78,12 +77,14 @@ export async function AppointmentPanel({
     existir na base e no modelo: o que sai daqui é a OFERTA deles, e as
     marcações antigas que lá estão continuam a ler-se.
   */
-  const options = nextStatuses(appointment.status)
-    .filter((to) => to !== 'checked_in' && to !== 'in_service')
-    .map((to) => ({ to, label: STATUS_ACTION[to] }))
+  const options = nextStatuses(appointment.status).filter(
+    (to) => to !== 'checked_in' && to !== 'in_service',
+  )
 
-  const podeConcluir = options.some((o) => o.to === 'completed')
-  const problemas = options.filter((o) => o.to !== 'completed')
+  const podeConcluir = options.includes('completed')
+  const motivos = options
+    .filter((to) => MOTIVO_LABEL[to])
+    .map((to) => ({ to, label: MOTIVO_LABEL[to]! }))
 
   const total = appointment.total_cents - appointment.discount_cents
   const whenDay = capitalise(
@@ -238,7 +239,20 @@ export async function AppointmentPanel({
         ) : null}
       </div>
 
-      <footer className="space-y-3 border-t border-[var(--line-soft)] px-5 py-4">
+      {/*
+        TRÊS BOTÕES, E MAIS NADA.
+
+        Chegou a ter nove saídas à vista, depois um menu de cinco linhas
+        sempre aberto. Num painel que já tem cabeçalho, data, serviços e
+        total, o rodapé não pode ser a maior coisa lá dentro — e de tudo
+        o que lá estava, o que se faz num dia normal são três coisas:
+        dar por concluída, avisar a cliente, e desmarcar.
+
+        A comanda e a remarcação ficam por baixo, em texto: são portas
+        que têm de existir — é daqui que se chega às duas — mas não são
+        o trabalho do dia.
+      */}
+      <footer className="space-y-2.5 border-t border-[var(--line-soft)] px-5 py-4">
         {/* Já concluída e por cobrar: o que falta é o dinheiro. */}
         {closeTab ? (
           <ButtonLink
@@ -250,82 +264,55 @@ export async function AppointmentPanel({
         ) : null}
 
         {podeConcluir ? (
-          <>
-            <StatusAction
-              appointmentId={appointment.id}
-              to="completed"
-              label={cobra ? 'Concluir e cobrar' : 'Concluir'}
-              variant="primary"
-              size="md"
-              charge={cobra}
-              full
-            />
-            <div className="flex gap-2">
-              {cobra ? (
-                <StatusAction
-                  appointmentId={appointment.id}
-                  to="completed"
-                  label="Concluir sem cobrar"
-                  className="flex-1"
-                  full
-                />
-              ) : null}
-              <SendWhatsApp
-                appointmentId={appointment.id}
-                routine="confirm"
-                href={message.href}
-                message={message.text}
-                label="Confirmação"
-                done={confirmSent}
-                className={cobra ? 'flex-1' : 'w-full'}
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            {!closeTab && problemas.length === 0 ? (
-              <p className="text-[0.75rem] text-[var(--ink-faint)]">
-                Esta marcação já não muda de estado.
-              </p>
+          <StatusAction
+            appointmentId={appointment.id}
+            to="completed"
+            label="Concluir"
+            variant="primary"
+            size="md"
+            full
+          />
+        ) : null}
+
+        <SendWhatsApp
+          appointmentId={appointment.id}
+          routine="confirm"
+          href={message.href}
+          message={message.text}
+          label="Enviar confirmação"
+          size="md"
+          done={confirmSent}
+          className="w-full"
+        />
+
+        {motivos.length > 0 ? (
+          <CancelAction appointmentId={appointment.id} options={motivos} />
+        ) : null}
+
+        {!podeConcluir && !closeTab && motivos.length === 0 ? (
+          <p className="text-[0.75rem] text-[var(--ink-faint)]">
+            Esta marcação já não muda de estado.
+          </p>
+        ) : null}
+
+        {can.seeCash(actor) ? (
+          <p className="flex items-center gap-4 pt-1 text-[0.75rem] text-[var(--ink-muted)]">
+            {!closeTab ? (
+              <Link
+                href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
+                className="underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
+              >
+                Comanda
+              </Link>
             ) : null}
-            <SendWhatsApp
-              appointmentId={appointment.id}
-              routine="confirm"
-              href={message.href}
-              message={message.text}
-              label="Enviar confirmação"
-              done={confirmSent}
-              className="w-full"
-            />
-          </>
-        )}
-
-        {/*
-          O RESTO, NUMA LISTA SEM COR.
-
-          A comanda, a remarcação e o que corre mal descem para linhas de
-          uma lista. Continuam todas à mão — deixam de disputar o ecrã
-          com a única coisa que se faz todos os dias.
-        */}
-        <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)]">
-          {can.seeCash(actor) && !closeTab ? (
-            <Link
-              href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
-              className={MENU_LINHA}
-            >
-              Comanda
-            </Link>
-          ) : null}
-          {can.seeCash(actor) ? (
             <Link
               href={`/agenda/${appointment.unit_slug}/remarcar/${appointment.id}`}
-              className={MENU_LINHA}
+              className="underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
             >
               Remarcar
             </Link>
-          ) : null}
-          <ProblemButtons appointmentId={appointment.id} options={problemas} />
-        </div>
+          </p>
+        ) : null}
       </footer>
     </div>
   )

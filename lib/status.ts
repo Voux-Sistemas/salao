@@ -18,25 +18,17 @@ export const STATUS_LABEL: Record<Status, string> = {
 }
 
 /**
- * O verbo do botão que leva a marcação a esse estado.
+ * AS TRÊS MANEIRAS DE UMA MARCAÇÃO NÃO SE FAZER.
  *
- * «Check-in» e «Iniciar» continuam aqui porque os estados continuam a
- * existir — o que deixou de existir foi o botão que os oferecia. Ver o
- * painel da marcação: o relógio sabe que uma marcação das 13:00, às
- * 13:05, está a decorrer, e ninguém tem de lho vir dizer.
- *
- * Numa lista sem cor, «Falta» lia-se como um substantivo — o que falta
- * fazer — e «Cancelar» sozinho não dizia quem cancelou. Ambos passam a
- * dizer o que são.
+ * Vivem dentro da pergunta «o que aconteceu?», e por isso não são
+ * verbos de botão: são respostas. A cliente ter desmarcado, a casa ter
+ * desmarcado e a cliente não ter aparecido são três factos diferentes,
+ * e a estatística do ano vive dessa diferença — é para isso que se
+ * pergunta em vez de haver um «cancelar» só.
  */
-export const STATUS_ACTION: Record<Status, string> = {
-  booked: 'Repor',
-  confirmed: 'Confirmar',
-  checked_in: 'Check-in',
-  in_service: 'Iniciar',
-  completed: 'Concluir',
-  cancelled_by_client: 'Cancelar (cliente)',
-  cancelled_by_salon: 'Cancelar (salão)',
+export const MOTIVO_LABEL: Partial<Record<Status, string>> = {
+  cancelled_by_client: 'A cliente desmarcou',
+  cancelled_by_salon: 'O salão desmarcou',
   no_show: 'Não apareceu',
 }
 
