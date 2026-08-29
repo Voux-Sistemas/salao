@@ -151,19 +151,22 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
       subtitle={dict.funnel.daySubtitle}
     >
       {/*
-        TUDO NO MESMO EIXO.
+        NO MONITOR, DUAS COLUNAS — MAS CENTRADAS COMO UM PAR.
 
-        Tentei o calendário à esquerda e a decisão à direita, e ficou
-        pior: a página passou a ter um lado cheio e outro vazio, com o
-        botão a boiar numa coluna de trinta centímetros que só tinha uma
-        linha de texto.
+        À primeira pus o calendário à esquerda e a decisão numa coluna de
+        largura livre à direita, e ficou pior do que empilhado: a coluna
+        da direita esticava-se até à margem da página, e o botão ficava a
+        boiar em trinta centímetros de nada.
 
-        Ao centro, o olho desce a direito — do mês ao dia, e do dia ao
-        passo seguinte — e o botão fica com a largura exacta da grelha,
-        por baixo dela. É também a única arrumação que serve o telemóvel
-        sem ter de se desfazer: ao eixo não há colunas para desmontar.
+        O erro não era serem duas colunas — era deixá-las crescer. Aqui o
+        par tem a largura das duas peças (`w-max`) e é o PAR que se
+        centra na página: a grelha, um fio, e ao lado dele a data e o
+        botão, à mesma altura dos olhos.
+
+        No telemóvel volta a empilhar-se, ao eixo, que é a única coisa
+        que lá cabe.
       */}
-      <div className="mx-auto max-w-[21.5rem]">
+      <div className="mx-auto max-w-[21.5rem] lg:flex lg:w-max lg:max-w-none lg:items-start lg:gap-12">
       <MonthCalendar
         month={mes}
         day={day}
@@ -182,21 +185,32 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
         }}
       />
 
-      {/* A data por extenso, em serifa, entre dois fios: confirma em
-          palavras o que a grelha por cima diz em números — e o nome do
-          dia da semana é o que a grelha nunca chega a dizer. */}
-      <div className="mt-7 flex items-center gap-3.5">
-        <span aria-hidden className="h-px flex-1 bg-[var(--line-soft)]" />
-        <h2 className="display shrink-0 text-lg text-[var(--ink)] first-letter:uppercase">
-          {formatDayLong(day, unit.timezone, language)}
-        </h2>
-        {offset === 0 ? (
-          <span className="shrink-0 text-[0.625rem] tracking-[0.14em] text-[var(--ink-faint)] uppercase">
-            {dict.funnel.today}
-          </span>
-        ) : null}
-        <span aria-hidden className="h-px flex-1 bg-[var(--line-soft)]" />
-      </div>
+      {/*
+        A SEGUNDA PARTE: o que se escolheu, e o que se faz com isso.
+
+        No telemóvel fica por baixo da grelha, ao eixo, entre dois fios.
+        No monitor passa para o lado, encostada a um fio vertical — e
+        ganha uma largura sua, para não se esticar até à margem.
+      */}
+      <div className="mt-7 lg:mt-1 lg:w-[16.5rem] lg:shrink-0 lg:border-l lg:border-[var(--line-soft)] lg:pl-12">
+        <div className="flex items-center gap-3.5 lg:flex-col lg:items-start lg:gap-2">
+          <span
+            aria-hidden
+            className="h-px flex-1 bg-[var(--line-soft)] lg:hidden"
+          />
+          <h2 className="display shrink-0 text-lg text-[var(--ink)] first-letter:uppercase lg:text-2xl lg:leading-tight lg:whitespace-normal">
+            {formatDayLong(day, unit.timezone, language)}
+          </h2>
+          {offset === 0 ? (
+            <span className="shrink-0 text-[0.625rem] tracking-[0.14em] text-[var(--ink-faint)] uppercase">
+              {dict.funnel.today}
+            </span>
+          ) : null}
+          <span
+            aria-hidden
+            className="h-px flex-1 bg-[var(--line-soft)] lg:hidden"
+          />
+        </div>
 
       {state === 'ok' ? (
         <div className="mt-5">
@@ -231,6 +245,7 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
           </Notice>
         </div>
       )}
+      </div>
       </div>
     </FunnelShell>
   )
