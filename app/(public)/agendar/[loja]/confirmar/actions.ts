@@ -32,8 +32,21 @@ export async function bookAction(
 
   if (!name) return { error: dict.errors.nameRequired }
 
-  const phone = normalisePhone(phoneRaw)
-  if (phone.replace(/\D/g, '').length < 9) {
+  /*
+    O TELEMÓVEL É OPCIONAL — MAS SE VIER, TEM DE PRESTAR.
+
+    Nem toda a gente quer deixar o número para marcar um brushing, e a
+    casa prefere a marcação sem número à marcação que não se fez. O que
+    não se aceita é um número a meio: um «912» escrito à pressa é pior
+    do que campo nenhum, porque a casa fica a julgar que pode avisar.
+
+    Em branco vale NULO até à base: é assim que a ficha fica «sem
+    contacto», em vez de ficar com uma identidade vazia que colidia com
+    a seguinte.
+  */
+  const escrito = phoneRaw.trim()
+  const phone = escrito ? normalisePhone(escrito) : null
+  if (phone !== null && phone.replace(/\D/g, '').length < 9) {
     return { error: dict.errors.phoneInvalid }
   }
 

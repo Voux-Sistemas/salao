@@ -186,6 +186,8 @@ export const en: Dictionary = {
     nameLabel: 'Name',
     phoneLabel: 'Mobile',
     phoneHint: 'With country code, for example +351 912 345 678',
+    phoneOptionalWarning:
+      'Without a phone number we cannot confirm your booking or let you know if anything changes.',
     noteLabel: 'Anything you would like us to know?',
     notePlaceholder: 'Allergies, preferences, anything at all.',
     submit: 'Confirm booking',

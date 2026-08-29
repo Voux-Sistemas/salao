@@ -62,7 +62,7 @@ export async function AppointmentPanel({
     'confirm',
     {
       clientName: appointment.client_name,
-      clientPhone: appointment.client_phone,
+      clientPhone: appointment.client_phone ?? '',
       language: appointment.language,
       unitName: appointment.unit_name,
       startsAt: appointment.starts_at,
@@ -167,15 +167,31 @@ export async function AppointmentPanel({
         >
           {appointment.client_name}
         </Link>
-        <a
-          href={`https://wa.me/${appointment.client_phone.replace(/\D/g, '')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Abrir conversa no WhatsApp"
-          className="tabular text-[0.75rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
-        >
-          {formatPhone(appointment.client_phone)}
-        </a>
+        {/*
+          SEM NÚMERO, O LUGAR DO NÚMERO NÃO FICA EM BRANCO.
+
+          O telemóvel passou a ser opcional na marcação. Uma ficha sem
+          ele não é um campo por preencher: é uma cliente que a casa não
+          consegue contactar — nem para confirmar, nem para avisar de um
+          atraso. Quem está ao balcão tem de o saber sem ir procurar, e
+          por isso a linha do telefone passa a dizê-lo com todas as
+          letras, na cor de aviso.
+        */}
+        {appointment.client_phone ? (
+          <a
+            href={`https://wa.me/${appointment.client_phone.replace(/\D/g, '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Abrir conversa no WhatsApp"
+            className="tabular text-[0.75rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
+          >
+            {formatPhone(appointment.client_phone)}
+          </a>
+        ) : (
+          <p className="text-[0.75rem] font-semibold text-[var(--warn)]">
+            Sem contacto — marcou sem deixar telefone
+          </p>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {aDecorrer ? (

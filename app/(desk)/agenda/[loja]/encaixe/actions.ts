@@ -78,12 +78,26 @@ export async function encaixeAction(
     language = found.language
   } else {
     const name = String(form.get('name') ?? '').trim()
-    const phone = normalisePhone(String(form.get('phone') ?? ''))
     if (!name) return { error: 'Falta o nome da cliente.' }
-    if (phone.replace(/\D/g, '').length < 9) {
+
+    /*
+      TAMBÉM AQUI O TELEFONE É OPCIONAL.
+
+      Ao balcão o caso é ainda mais claro do que no site: entra alguém à
+      porta a perguntar se dá agora, e ninguém lhe nega a cadeira por
+      não querer dar o número. O que não se aceita é um número a meio —
+      pior do que campo nenhum, porque a casa fica a julgar que pode
+      avisar.
+
+      Sem número não há reconhecimento: nasce uma ficha nova de cada
+      vez. Está dito no findOrCreateClient, e é o preço da porta aberta.
+    */
+    const escrito = String(form.get('phone') ?? '').trim()
+    const phone = escrito ? normalisePhone(escrito) : null
+    if (phone !== null && phone.replace(/\D/g, '').length < 9) {
       return { error: 'Telefone inválido.' }
     }
-    // O telefone é a identidade: se já cá anda, é a mesma ficha.
+    // Com telefone, ele é a identidade: se já cá anda, é a mesma ficha.
     clientId = await findOrCreateClient(actor.orgId, {
       phone,
       name,

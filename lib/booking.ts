@@ -73,17 +73,38 @@ export function isTerminal(status: Status): boolean {
 /**
  * O telefone é único na rede: a mesma cliente nas duas lojas é o mesmo
  * registo, e o histórico atravessa as lojas.
+ *
+ * SEM TELEFONE NÃO HÁ RECONHECIMENTO, e por isso nasce sempre uma ficha
+ * nova. Não é um descuido: é a consequência inevitável de deixar marcar
+ * sem número — não há nada por onde agarrar a pessoa que veio o mês
+ * passado. Quem escrever o número mais tarde, ao balcão, passa a ter
+ * uma ficha reconhecível daí para a frente; as antigas ficam onde
+ * estão, e juntam-se à mão se alguém quiser.
  */
 export async function findOrCreateClient(
   orgId: string,
   input: {
-    phone: string
+    phone: string | null
     name: string
     language?: Language
     email?: string | null
     preferredUnitId?: string | null
   },
 ): Promise<string> {
+  if (!input.phone) {
+    const novas = await sql<{ id: string }[]>`
+      insert into client (org_id, phone, name, email, language, preferred_unit_id)
+      values (
+        ${orgId}, null, ${input.name}, ${input.email ?? null},
+        ${input.language ?? 'pt'}, ${input.preferredUnitId ?? null}
+      )
+      returning id
+    `
+    const nova = novas[0]
+    if (!nova) throw new Error('Não foi possível criar a ficha da cliente.')
+    return nova.id
+  }
+
   const rows = await sql<{ id: string }[]>`
     insert into client (org_id, phone, name, email, language, preferred_unit_id)
     values (
@@ -823,7 +844,7 @@ export type AppointmentRow = {
   unit_timezone: string
   client_id: string
   client_name: string
-  client_phone: string
+  client_phone: string | null
   status: Status
   source: Source
   starts_at: Date

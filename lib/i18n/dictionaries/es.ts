@@ -186,6 +186,8 @@ export const es: Dictionary = {
     nameLabel: 'Nombre',
     phoneLabel: 'Móvil',
     phoneHint: 'Con prefijo, por ejemplo +34 612 345 678',
+    phoneOptionalWarning:
+      'Sin teléfono no podemos confirmarle la cita ni avisarle si surge algún imprevisto.',
     noteLabel: '¿Quieres dejarnos alguna nota?',
     notePlaceholder: 'Alergias, preferencias, lo que quieras contarnos.',
     submit: 'Confirmar reserva',

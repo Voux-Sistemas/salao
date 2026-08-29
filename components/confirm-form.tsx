@@ -10,6 +10,7 @@ export type ConfirmLabels = {
   name: string
   phone: string
   phoneHint: string
+  phoneWarning: string
   note: string
   notePlaceholder: string
   optional: string
@@ -58,13 +59,27 @@ export function ConfirmForm({
         />
       </Field>
 
-      <Field label={labels.phone} htmlFor="phone" hint={labels.phoneHint}>
-        <PhoneInput
-          id="phone"
-          name="phone"
-          required
-          defaultValue={defaultPhone}
-        />
+      {/*
+        O TELEMÓVEL DEIXA DE SER OBRIGATÓRIO.
+
+        Nem toda a gente quer dar o número para marcar um brushing, e a
+        casa prefere a marcação sem número à marcação que não se fez.
+
+        Mas o campo não fica só com um «(opcional)» ao lado: por baixo
+        vai a frase que diz o que se perde — é por ali que a casa
+        confirma e avisa se houver imprevisto. Quem escolher não deixar
+        o número escolhe com a conta feita, que é diferente de escolher
+        por distracção.
+      */}
+      <Field
+        label={`${labels.phone} (${labels.optional})`}
+        htmlFor="phone"
+        hint={labels.phoneHint}
+      >
+        <PhoneInput id="phone" name="phone" defaultValue={defaultPhone} />
+        <p className="mt-1.5 text-[0.75rem] leading-relaxed text-[var(--warn)]">
+          {labels.phoneWarning}
+        </p>
       </Field>
 
       <Field label={labels.note} htmlFor="note" hint={labels.optional}>

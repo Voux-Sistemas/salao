@@ -55,7 +55,8 @@ export type AgendaBlock = {
   priceCents: number
   clientId: string
   clientName: string
-  clientPhone: string
+  /** Nulo quando a cliente marcou sem deixar número. */
+  clientPhone: string | null
   status: Status
   source: Source
   closedAt: Date | null
@@ -109,7 +110,7 @@ type BlockRow = {
   item_count: number
   client_id: string
   client_name: string
-  client_phone: string
+  client_phone: string | null
   status: Status
   source: Source
   closed_at: Date | null

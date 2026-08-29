@@ -870,6 +870,8 @@ type DayCard = {
   startMin: number
   endMin: number
   clientName: string
+  /** Nulo quando marcou sem deixar número. Ver `semContacto` na linha. */
+  clientPhone: string | null
   services: string
   priceCents: number
   status: Status
@@ -1088,6 +1090,21 @@ export function AgendaList({
                   >
                     {card.clientName}
                   </span>
+                  {/*
+                    SEM CONTACTO — E ISTO TEM DE SE VER NA LINHA.
+
+                    O telemóvel passou a ser opcional na marcação. Quem
+                    marcou sem o deixar não pode ser avisada de nada: nem
+                    de um atraso, nem de uma profissional que adoeceu.
+                    Quem está ao balcão a remendar o dia precisa de saber
+                    isso ANTES de pegar no telefone — não depois de abrir
+                    a ficha e encontrar o campo vazio.
+                  */}
+                  {card.clientPhone === null ? (
+                    <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--warn)_14%,transparent)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--warn)]">
+                      sem contacto
+                    </span>
+                  ) : null}
                   {etiqueta ? (
                     <span
                       className={clsx(
@@ -1353,6 +1370,7 @@ function toCards(blocks: AgendaBlock[]): DayCard[] {
         startMin: block.startMin,
         endMin: block.endMin,
         clientName: block.clientName,
+        clientPhone: block.clientPhone,
         services: block.serviceName,
         priceCents: block.priceCents,
         status: block.status,

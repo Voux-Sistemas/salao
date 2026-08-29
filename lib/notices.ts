@@ -75,7 +75,10 @@ export async function countNotices(input: {
              (now() at time zone u.timezone)::date as hoje
         from appointment a
         join unit u on u.id = a.unit_id
+        join client c on c.id = a.client_id
        where a.org_id = ${orgId}
+         -- Sem número não há aviso: ver a mesma condição no base().
+         and c.phone is not null
          and (${unitIds}::uuid[] is null
               or a.unit_id = any(${unitIds}::uuid[]))
          and (
@@ -282,6 +285,17 @@ function base(unit: Unit, routine: Routine, staffId: string | null) {
       from appointment a
       join client c on c.id = a.client_id
      where a.unit_id = ${unit.id}
+       /*
+         SEM NÚMERO NÃO HÁ AVISO — E UMA FILA COM LINHAS QUE NÃO SE
+         PODEM DESPACHAR NÃO É UMA FILA, É UMA LISTA DE CULPAS.
+
+         O telemóvel passou a ser opcional na marcação. Uma cliente que
+         não o deixou não pode ser confirmada nem lembrada: o botão
+         verde não tem para onde ir. Sai da fila, e a marcação dela
+         leva na agenda a pastilha «sem contacto» — que é onde a
+         informação serve para alguma coisa.
+       */
+       and c.phone is not null
        and not exists (
          select 1 from notification_log n
           where n.appointment_id = a.id and n.routine = ${routine}

@@ -84,13 +84,16 @@ export function EncaixeForm({
           <Field label="Nome" htmlFor="encaixe-name">
             <Input id="encaixe-name" name="name" autoComplete="off" required />
           </Field>
-          <Field label="Telefone" htmlFor="encaixe-phone">
-            <PhoneInput
-              id="encaixe-phone"
-              name="phone"
-              autoComplete="off"
-              required
-            />
+          {/* Opcional aqui pela mesma razão do site: entra alguém à
+              porta a perguntar se dá agora, e ninguém lhe nega a cadeira
+              por não querer dar o número. Sem ele, a ficha nasce «sem
+              contacto» — e a marcação diz isso na agenda. */}
+          <Field
+            label="Telefone (opcional)"
+            htmlFor="encaixe-phone"
+            hint="Sem ele, não há como confirmar nem avisar."
+          >
+            <PhoneInput id="encaixe-phone" name="phone" autoComplete="off" />
           </Field>
         </div>
       )}
