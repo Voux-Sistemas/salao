@@ -47,6 +47,11 @@ export type NavItem = {
  * Agora o item aceso é um bloco com fundo próprio: reconhece-se pela
  * mancha, antes de se ler seja o que for.
  *
+ * NA BARRA DO TELEMÓVEL essa mancha é ouro cheio, e as portas fechadas
+ * estão no cinzento de leitura, não no de legenda. A coluna do monitor
+ * fica no azul: lá não há cinco azuis a competir com ela, e o item
+ * aceso já tinha fundo próprio.
+ *
  * A comparação é pelo primeiro segmento: `/agenda/chiado/...` continua
  * a ser Agenda.
  */
@@ -141,17 +146,39 @@ export function DeskNav({
                 aria-current={active ? 'page' : undefined}
                 className={clsx(
                   'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pb-2 pt-2.5 transition-colors',
-                  active ? 'text-[var(--accent)]' : 'text-[var(--ink-faint)]',
+                  active
+                    ? 'text-[var(--house-deep)]'
+                    : 'text-[var(--ink-muted)]',
                 )}
               >
-                {/* A pastilha por trás do ícone é o que diz onde se está.
-                    Ocupa altura fixa esteja acesa ou não, para os rótulos
-                    de todas as portas ficarem na mesma linha. */}
+                {/*
+                  A PASTILHA É OURO CHEIO, NÃO É UM TOM POR CIMA DO FUNDO.
+
+                  Era uma água de azul a treze por cento: em traço fino,
+                  num ecrã que já tem cinco azuis — o botão do encaixe, o
+                  dia aceso, a linha do agora, os traços das marcações,
+                  as horas —, a barra ficava a ser o sexto, e o mais
+                  fraco dos seis. Não se apagava por ser clara; apagava-se
+                  por ser mais um.
+
+                  O que salta à vista é a MANCHA, não o tom: uma pastilha
+                  cheia com o glifo em branco vê-se do outro lado do
+                  salão. E vai no ouro do logótipo, que neste ecrã só
+                  aparece no monograma e em pontos de cinco píxeis — é a
+                  única mancha quente da página, e por isso não compete
+                  com nenhum azul: não é mais um, é outra coisa.
+
+                  O azul fica onde tem trabalho — «carregar aqui». Onde
+                  se está não é uma acção, é um estado.
+
+                  Ocupa altura fixa esteja acesa ou não, para os rótulos
+                  de todas as portas ficarem na mesma linha.
+                */}
                 <span
                   className={clsx(
                     'flex h-7 w-14 items-center justify-center rounded-full transition-colors',
                     active
-                      ? 'bg-[color-mix(in_srgb,var(--accent)_13%,transparent)]'
+                      ? 'bg-[var(--house)] text-white shadow-[0_4px_10px_-4px_color-mix(in_srgb,var(--house)_70%,transparent)]'
                       : 'bg-transparent',
                   )}
                 >
@@ -160,7 +187,7 @@ export function DeskNav({
                 <span
                   className={clsx(
                     'max-w-full truncate px-1 text-[0.625rem]',
-                    active ? 'font-semibold' : 'font-medium',
+                    active ? 'font-bold' : 'font-semibold',
                   )}
                 >
                   {item.short ?? item.label}

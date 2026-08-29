@@ -159,6 +159,12 @@
   /* O ouro da casa. Não tem trabalho nenhum: existe para o balcão
      assinar-se com a mesma tinta do logótipo. Nunca em dados. */
   --house: #A9884C;
+  /* O MESMO OURO, COM MENOS LUZ — para texto pequeno.
+     O ouro do logótipo sobre o bege afundado dá 2,6 para 1 de
+     contraste: chega para um monograma de vinte píxeis, não chega para
+     um rótulo de dez. Este dá 5,5 para 1. Não é outra cor da casa: é a
+     mesma, escrita onde a outra não se leria. */
+  --house-deep: #6E5729;
   --line: rgba(28, 24, 21, 0.13);
   --line-soft: rgba(28, 24, 21, 0.065);
   --shadow-warm: 0 18px 40px -24px rgba(46, 38, 28, 0.38);

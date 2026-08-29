@@ -109,7 +109,13 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
         // Sem altura: quem a define é o DeskNav, que a soma à folga do
         // indicador do iPhone. Com `h-[4.5rem]` aqui, essa folga era
         // descontada aos ícones em vez de acrescentada por baixo.
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_-8px_24px_-18px_rgba(15,21,32,0.28)] lg:hidden"
+        // O BEGE AFUNDADO, E NÃO O BRANCO DOS CARTÕES.
+        //
+        // A barra era do mesmo branco da lista que passa por cima dela,
+        // separada por um fio quase invisível: não se via onde a página
+        // acabava e onde começava o menu da casa. No bege afundado —
+        // o mesmo do controlo de separadores — lê-se como chão.
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-2)] shadow-[0_-8px_24px_-18px_rgba(15,21,32,0.28)] lg:hidden"
       >
         <DeskNav items={mobileNavFor(actor)} variant="bottom" />
       </nav>
