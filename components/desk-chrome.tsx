@@ -102,22 +102,25 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
 
       <div className="flex min-h-dvh flex-col lg:pl-[4.5rem]">
         {/* A fita de cima: o dia, a casa, a pessoa. ------------------ */}
-        {/* Vidro fosco em vez de branco chapado: a lista passa por
-            baixo e vê-se que passa. Numa agenda que se rola o dia
-            inteiro, saber que ainda há conteúdo acima vale mais do que
-            a barra ser opaca.
+        {/*
+            CHAPADA, E NÃO VIDRO FOSCO.
 
-            E O VIDRO É BEGE, COMO A BARRA DE BAIXO. Uma página fica
-            bem segura quando as duas pontas são da mesma cor: as duas
-            dizem «isto é a casa», e o que está entre elas é o trabalho.
-            Enquanto esta foi quase branca, era mais um cartão da lista
-            — e a de baixo, essa, já parecia o chão.
+            Foi vidro durante muito tempo, e por uma razão que eu defendi
+            mais do que uma vez: a lista passava por baixo e via-se que
+            passava, o que numa agenda que se rola o dia inteiro diz que
+            ainda há conteúdo acima. Num ecrã de telemóvel, onde a barra
+            de deslocamento quase não existe, isso vale alguma coisa.
 
-            O que se trocou foi o TOM, não o material: o `color-mix` e o
-            desfoque são os mesmos, e a lista continua a ver-se a passar
-            por baixo. A percentagem sobe de 78 para 86, que é o que o
-            bege precisa para pesar o mesmo que o branco pesava. */}
-        <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--surface-2)_86%,transparent)] backdrop-blur-md">
+            Vale menos do que a dúvida que criou. Quem usa isto todos os
+            dias tropeçou nela três vezes seguidas — a lista a esfumar-se
+            por trás da barra lê-se como um erro, e uma coisa que parece
+            avariada é uma coisa avariada, por mais bem intencionado que
+            seja o motivo. O sinal era pequeno; a desconfiança não é.
+
+            Fica o bege chapado das duas pontas. Não se perde nada que
+            se veja: perde-se um sussurro que ninguém pediu.
+        */}
+        <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--surface-2)]">
           <div className="flex h-14 items-center gap-3 px-4 sm:gap-5 sm:px-6">
             <Link
               href={home}
