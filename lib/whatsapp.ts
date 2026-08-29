@@ -33,6 +33,25 @@ export const ROUTINE_LABEL: Record<Routine, string> = {
   winback: 'Recuperar cliente',
 }
 
+/**
+ * O VERBO DO BOTÃO — o que aquele toque faz, não onde vai dar.
+ *
+ * Dizia «Abrir WhatsApp» em todas as filas: descrevia o destino a quem
+ * já sabia o destino. E «Enviar confirmação» em todas seria mentira em
+ * quatro delas — na véspera manda-se um lembrete, no dia seguinte
+ * pede-se uma avaliação, ao fim de um mês convida-se a voltar.
+ *
+ * O verbo sai da fila em que se está. É a diferença entre um botão que
+ * se lê e um botão que se decora.
+ */
+export const ROUTINE_ACTION: Record<Routine, string> = {
+  confirm: 'Enviar confirmação',
+  reminder_eve: 'Enviar lembrete',
+  reminder_today: 'Enviar lembrete',
+  review: 'Pedir avaliação',
+  winback: 'Convidar a voltar',
+}
+
 export const ROUTINE_HINT: Record<Routine, string> = {
   confirm: 'Ainda não recebeu nada por escrito.',
   reminder_eve: 'É atendida amanhã. É o aviso que mais evita faltas.',

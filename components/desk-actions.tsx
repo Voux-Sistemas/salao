@@ -10,7 +10,7 @@ import {
   type DeskState,
 } from '@/app/(desk)/agenda/actions'
 import { Button, Notice } from '@/components/ui'
-import { IconChat } from '@/components/desk-icons'
+import { IconWhatsApp } from '@/components/desk-icons'
 import type { Status } from '@/lib/booking'
 import type { Routine } from '@/lib/whatsapp'
 
@@ -345,7 +345,7 @@ export function SendWhatsApp({
   href,
   message,
   label,
-  variant = 'outline',
+  variant = 'ok',
   size = 'sm',
   done = false,
   className,
@@ -402,7 +402,7 @@ export function SendWhatsApp({
           variant={variant}
           size={size}
           className={className}
-          icon={<IconChat className="h-4 w-4" />}
+          icon={<IconWhatsApp className="h-4 w-4" />}
         />
       </form>
     </div>

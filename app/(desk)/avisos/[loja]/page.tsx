@@ -20,7 +20,13 @@ import {
   type IsoDay,
 } from '@/lib/time'
 import { isSunday } from '@/lib/sunday'
-import { ROUTINES, ROUTINE_HINT, ROUTINE_LABEL, type Routine } from '@/lib/whatsapp'
+import {
+  ROUTINES,
+  ROUTINE_ACTION,
+  ROUTINE_HINT,
+  ROUTINE_LABEL,
+  type Routine,
+} from '@/lib/whatsapp'
 import { Info } from 'lucide-react'
 import { SendWhatsApp } from '@/components/desk-actions'
 import { UnitSwitcher } from '@/components/unit-switcher'
@@ -442,7 +448,7 @@ function NoticeLine({
         routine={routine}
         href={message.href}
         message={message.text}
-        label="Abrir WhatsApp"
+        label={ROUTINE_ACTION[routine]}
         className="w-full sm:w-auto"
       />
     </div>
