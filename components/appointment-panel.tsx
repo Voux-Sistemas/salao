@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { formatCents } from '@/lib/money'
-import { formatDayLong, formatTime, isoDay } from '@/lib/time'
+import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
 import {
   nextStatuses,
   type AppointmentItemRow,
@@ -9,7 +9,12 @@ import {
 import { SOURCE_LABEL, STATUS_ACTION, STATUS_LABEL } from '@/lib/status'
 import { composeMessage, loadTemplates } from '@/lib/notify'
 import { Badge, ButtonLink } from '@/components/ui'
-import { SendWhatsApp, StatusButtons } from '@/components/desk-actions'
+import {
+  MENU_LINHA,
+  ProblemButtons,
+  SendWhatsApp,
+  StatusAction,
+} from '@/components/desk-actions'
 import { AGENDA_TONE } from '@/components/agenda-grid'
 import { IconClose } from '@/components/desk-icons'
 import type { Actor } from '@/lib/auth/actor'
@@ -17,10 +22,24 @@ import { can } from '@/lib/auth/actor'
 import { formatPhone } from '@/lib/text'
 
 /**
- * O painel lateral: cliente, serviços, valor — e as acções por ordem de
- * importância. Primeiro o passo natural do dia (confirmar, check-in,
- * iniciar, concluir), depois a palavra à cliente (WhatsApp), depois o
- * dinheiro (comanda) e só no fim o que corre mal (cancelar, falta).
+ * O painel lateral: cliente, serviços, valor — e UMA acção que manda.
+ *
+ * Tinha nove saídas à vista — check-in, iniciar, concluir, dois
+ * cancelares, falta, confirmação, comanda, remarcar — três a vermelho e
+ * quase todas do mesmo tamanho. Com nove saídas nenhuma é a saída, e a
+ * que ficava em grande era a única que ninguém dá.
+ *
+ * O QUE O RELÓGIO SABE NÃO PRECISA DE BOTÃO. A cadeia é marcada →
+ * confirmada → chegou → em atendimento → concluída, e os dois estados
+ * do meio descrevem o que o relógio já sabe: às 13:05, uma marcação das
+ * 13:00 está a decorrer. Ninguém precisa de o vir dizer ao sistema — e
+ * é por isso que ninguém o faz. Saem os dois botões; o selo lá em cima
+ * passa a dizer «Em curso» por conta do relógio.
+ *
+ * Fica o que precisa mesmo de um dedo, porque o relógio não sabe:
+ * concluída, faltou, cancelada. Concluir é o botão grande, e num balcão
+ * vai até ao fim — dá por concluída E abre a comanda, que era o segundo
+ * toque de sempre.
  *
  * «Enviar confirmação» abre o WhatsApp e NÃO muda o estado — mandar a
  * mensagem e a cliente confirmar são dois factos distintos.
@@ -54,10 +73,17 @@ export async function AppointmentPanel({
     templates,
   )
 
-  const options = nextStatuses(appointment.status).map((to) => ({
-    to,
-    label: STATUS_ACTION[to],
-  }))
+  /*
+    Os estados que o relógio conta sozinho não se oferecem. Continuam a
+    existir na base e no modelo: o que sai daqui é a OFERTA deles, e as
+    marcações antigas que lá estão continuam a ler-se.
+  */
+  const options = nextStatuses(appointment.status)
+    .filter((to) => to !== 'checked_in' && to !== 'in_service')
+    .map((to) => ({ to, label: STATUS_ACTION[to] }))
+
+  const podeConcluir = options.some((o) => o.to === 'completed')
+  const problemas = options.filter((o) => o.to !== 'completed')
 
   const total = appointment.total_cents - appointment.discount_cents
   const whenDay = capitalise(
@@ -67,6 +93,29 @@ export async function AppointmentPanel({
     can.seeCash(actor) &&
     appointment.status === 'completed' &&
     !appointment.closed_at
+  /** Quem vê dinheiro fecha a marcação e cobra no mesmo gesto. */
+  const cobra = can.seeCash(actor) && !appointment.closed_at
+
+  /*
+    EM CURSO — QUEM O DIZ É O RELÓGIO.
+
+    Não há aqui nenhum estado a ser lido: se a marcação não acabou de
+    uma das maneiras que a fecham, e as horas dela contêm este instante,
+    ela está a decorrer. A página do balcão é dinâmica, portanto isto
+    recalcula-se a cada visita.
+  */
+  const agora = new Date()
+  const acabada =
+    appointment.status === 'completed' ||
+    appointment.status === 'no_show' ||
+    appointment.status === 'cancelled_by_client' ||
+    appointment.status === 'cancelled_by_salon'
+  const aDecorrer =
+    !acabada && agora >= appointment.starts_at && agora < appointment.ends_at
+  const faltam = Math.max(
+    0,
+    Math.round((appointment.ends_at.getTime() - agora.getTime()) / 60000),
+  )
 
   return (
     <div className="flex h-full flex-col border-l border-[var(--line)] bg-[var(--surface-raised)]">
@@ -100,9 +149,16 @@ export async function AppointmentPanel({
         </a>
 
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <Badge tone={AGENDA_TONE[appointment.status]}>
-            {STATUS_LABEL[appointment.status]}
-          </Badge>
+          {aDecorrer ? (
+            <Badge tone="warn">
+              Em curso ·{' '}
+              {faltam > 0 ? `faltam ${formatDuration(faltam)}` : 'a terminar'}
+            </Badge>
+          ) : (
+            <Badge tone={AGENDA_TONE[appointment.status]}>
+              {STATUS_LABEL[appointment.status]}
+            </Badge>
+          )}
           {confirmSent ? <Badge tone="ok">Confirmação enviada</Badge> : null}
           {appointment.closed_at ? (
             <Badge tone="ok">Comanda fechada</Badge>
@@ -183,7 +239,7 @@ export async function AppointmentPanel({
       </div>
 
       <footer className="space-y-3 border-t border-[var(--line-soft)] px-5 py-4">
-        {/* o passo seguinte do dia, com o resto atrás dele */}
+        {/* Já concluída e por cobrar: o que falta é o dinheiro. */}
         {closeTab ? (
           <ButtonLink
             href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
@@ -193,44 +249,83 @@ export async function AppointmentPanel({
           </ButtonLink>
         ) : null}
 
-        {options.length > 0 ? (
-          <StatusButtons appointmentId={appointment.id} options={options} />
-        ) : !closeTab ? (
-          <p className="text-[0.75rem] text-[var(--ink-faint)]">
-            Esta marcação já não muda de estado.
-          </p>
-        ) : null}
-
-        <SendWhatsApp
-          appointmentId={appointment.id}
-          routine="confirm"
-          href={message.href}
-          message={message.text}
-          label="Enviar confirmação"
-          done={confirmSent}
-          className="w-full"
-        />
-
-        {can.seeCash(actor) ? (
-          <div className="flex flex-wrap gap-2 border-t border-[var(--line-soft)] pt-3">
-            {!closeTab ? (
-              <ButtonLink
-                href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
-                variant="outline"
-                size="sm"
-              >
-                Comanda
-              </ButtonLink>
+        {podeConcluir ? (
+          <>
+            <StatusAction
+              appointmentId={appointment.id}
+              to="completed"
+              label={cobra ? 'Concluir e cobrar' : 'Concluir'}
+              variant="primary"
+              size="md"
+              charge={cobra}
+              full
+            />
+            <div className="flex gap-2">
+              {cobra ? (
+                <StatusAction
+                  appointmentId={appointment.id}
+                  to="completed"
+                  label="Concluir sem cobrar"
+                  className="flex-1"
+                  full
+                />
+              ) : null}
+              <SendWhatsApp
+                appointmentId={appointment.id}
+                routine="confirm"
+                href={message.href}
+                message={message.text}
+                label="Confirmação"
+                done={confirmSent}
+                className={cobra ? 'flex-1' : 'w-full'}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            {!closeTab && problemas.length === 0 ? (
+              <p className="text-[0.75rem] text-[var(--ink-faint)]">
+                Esta marcação já não muda de estado.
+              </p>
             ) : null}
-            <ButtonLink
+            <SendWhatsApp
+              appointmentId={appointment.id}
+              routine="confirm"
+              href={message.href}
+              message={message.text}
+              label="Enviar confirmação"
+              done={confirmSent}
+              className="w-full"
+            />
+          </>
+        )}
+
+        {/*
+          O RESTO, NUMA LISTA SEM COR.
+
+          A comanda, a remarcação e o que corre mal descem para linhas de
+          uma lista. Continuam todas à mão — deixam de disputar o ecrã
+          com a única coisa que se faz todos os dias.
+        */}
+        <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)]">
+          {can.seeCash(actor) && !closeTab ? (
+            <Link
+              href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
+              className={MENU_LINHA}
+            >
+              Comanda
+            </Link>
+          ) : null}
+          {can.seeCash(actor) ? (
+            <Link
               href={`/agenda/${appointment.unit_slug}/remarcar/${appointment.id}`}
-              variant="quiet"
-              size="sm"
+              className={MENU_LINHA}
             >
               Remarcar
-            </ButtonLink>
-          </div>
-        ) : null}
+            </Link>
+          ) : null}
+          <ProblemButtons appointmentId={appointment.id} options={problemas} />
+        </div>
       </footer>
     </div>
   )

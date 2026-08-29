@@ -1,8 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
-import { requireActor, canSeeUnit, type Actor } from '@/lib/auth/actor'
+import { can, requireActor, canSeeUnit, type Actor } from '@/lib/auth/actor'
 import {
   canTransition,
   getAppointment,
@@ -105,6 +106,24 @@ export async function transitionAction(
   revalidatePath(`/agenda/${appointment.unit_slug}`)
   revalidatePath(`/avisos/${appointment.unit_slug}`)
   revalidatePath('/')
+
+  /*
+    CONCLUIR E COBRAR SÃO O MESMO GESTO — quase sempre.
+
+    Ao balcão, a marcação acaba e a cliente está à frente com o cartão
+    na mão: dar por concluída e abrir a comanda eram dois toques em dois
+    sítios, sempre pela mesma ordem. Quem carrega no botão grande leva
+    as duas coisas.
+
+    O DESTINO NÃO VEM DO FORMULÁRIO, vem daqui: o que chega de fora é um
+    sim ou não, e a morada monta-se com a loja desta marcação. Um
+    endereço enviado pelo navegador seria uma porta aberta para mandar
+    alguém para onde se quisesse.
+  */
+  if (form.get('charge') === '1' && can.seeCash(actor)) {
+    redirect(`/agenda/${appointment.unit_slug}/comanda/${appointmentId}`)
+  }
+
   return { error: null, done: 'Feito.' }
 }
 

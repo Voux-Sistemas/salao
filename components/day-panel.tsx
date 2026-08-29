@@ -552,8 +552,20 @@ function Marcacao({
   now: Date
   currency: string
 }) {
-  const emCurso = row.status === 'in_service' || row.status === 'checked_in'
   const passada = row.status === 'completed' || row.status === 'no_show'
+  /*
+    EM CURSO — QUEM O DIZ É O RELÓGIO, NÃO UM BOTÃO.
+
+    Lia os estados «chegou» e «em atendimento», que dependiam de alguém
+    os ter carregado no painel da marcação. Como ninguém os carregava,
+    esta barra de progresso — que diz quanto falta da visita que está a
+    decorrer — praticamente nunca aparecia. Agora conta-se do relógio, e
+    aparece sempre que é verdade.
+  */
+  const emCurso =
+    !passada &&
+    now.getTime() >= row.starts_at.getTime() &&
+    now.getTime() < row.ends_at.getTime()
 
   const duracaoMs = Math.max(60000, row.ends_at.getTime() - row.starts_at.getTime())
   const minutos = Math.round(duracaoMs / 60000)

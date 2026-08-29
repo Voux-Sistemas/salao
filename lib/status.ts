@@ -17,7 +17,18 @@ export const STATUS_LABEL: Record<Status, string> = {
   no_show: 'Faltou',
 }
 
-/** O verbo do botão que leva a marcação a esse estado. */
+/**
+ * O verbo do botão que leva a marcação a esse estado.
+ *
+ * «Check-in» e «Iniciar» continuam aqui porque os estados continuam a
+ * existir — o que deixou de existir foi o botão que os oferecia. Ver o
+ * painel da marcação: o relógio sabe que uma marcação das 13:00, às
+ * 13:05, está a decorrer, e ninguém tem de lho vir dizer.
+ *
+ * Numa lista sem cor, «Falta» lia-se como um substantivo — o que falta
+ * fazer — e «Cancelar» sozinho não dizia quem cancelou. Ambos passam a
+ * dizer o que são.
+ */
 export const STATUS_ACTION: Record<Status, string> = {
   booked: 'Repor',
   confirmed: 'Confirmar',
@@ -25,8 +36,8 @@ export const STATUS_ACTION: Record<Status, string> = {
   in_service: 'Iniciar',
   completed: 'Concluir',
   cancelled_by_client: 'Cancelar (cliente)',
-  cancelled_by_salon: 'Cancelar',
-  no_show: 'Falta',
+  cancelled_by_salon: 'Cancelar (salão)',
+  no_show: 'Não apareceu',
 }
 
 export type Tone = 'neutral' | 'accent' | 'ok' | 'warn' | 'bad'
