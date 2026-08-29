@@ -167,6 +167,20 @@ export function DeskServicePicker({
     ? [{ id: '__destaque', name: 'Os que mais marca', services: destaque }]
     : visible
 
+  /*
+    O TÍTULO DA SECÇÃO SAI QUANDO A PASTILHA JÁ O DIZ.
+
+    «OS QUE MAIS MARCA ——— 10» a dois dedos de uma pastilha azul que diz
+    «Os que mais marca» é a mesma frase duas vezes, e custa quarenta
+    píxeis no telemóvel. O mesmo vale para uma categoria escolhida: a
+    pastilha acesa tem o nome dela.
+
+    Quando a lista tem várias secções — a vista de todas, ou uma procura
+    que apanha três categorias — os títulos ficam: aí são eles que a
+    separam, e nenhuma pastilha os diz.
+  */
+  const nomeJaDito = emDestaque || catId !== null
+
   const shown = seccoes.reduce((sum, c) => sum + c.services.length, 0)
 
   // Com um só à vista, o Enter junta-o. É o atalho de quem já sabe o
@@ -338,7 +352,12 @@ export function DeskServicePicker({
                 serviços parecer o catálogo desta casa e não a tabela de
                 qualquer sistema.
               */}
-              <div className="flex items-center gap-3">
+              <div
+                className={clsx(
+                  'flex items-center gap-3',
+                  nomeJaDito && 'hidden',
+                )}
+              >
                 <h3 className="titulo-seccao shrink-0">{category.name}</h3>
                 <span
                   aria-hidden
@@ -362,9 +381,45 @@ export function DeskServicePicker({
                 `minmax(0,1fr)` — o chão desce a zero e o corte volta a
                 ser trabalho do `truncate`, que é quem o deve fazer.
               */}
-              <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {/*
+                NO TELEMÓVEL ISTO É UMA LISTA, NÃO SÃO SESSENTA E OITO
+                CARTÕES.
+
+                Numa coluna só, cada serviço tinha a sua moldura, o seu
+                canto redondo e oito píxeis de ar em volta: sessenta e
+                oito rectângulos brancos em fila, todos iguais — o
+                desenho de um cartão aplicado a uma coisa que é uma
+                lista. Passa a haver um painel por secção e um fio entre
+                linhas, como na agenda do dia.
+
+                A conta: a linha era sessenta e oito píxeis com o
+                intervalo, passa a cinquenta e cinco com o fio. Num
+                telemóvel de 375 são cerca de seis serviços à vista em
+                vez de quatro e meio.
+
+                A DURAÇÃO FICA POR BAIXO DO NOME. Subi-la para a linha
+                do preço poupava outro tanto, mas obrigava o nome a
+                cortar com reticências — e num catálogo que há-de
+                crescer, um nome cortado a meio custa mais do que dois
+                serviços a mais no ecrã.
+
+                No monitor não muda nada: a partir de `sm` são duas
+                colunas, e uma grelha de duas colunas com fios entre
+                linhas não é uma lista, é uma tabela. Lá ficam os
+                cartões, com o ar que a coluna tem para dar.
+              */}
+              <ul
+                className={clsx(
+                  'grid grid-cols-1 sm:grid-cols-2 sm:gap-2',
+                  'max-sm:overflow-hidden max-sm:rounded-[var(--radius)] max-sm:border max-sm:border-[var(--line-soft)] max-sm:bg-[var(--surface-raised)]',
+                  nomeJaDito ? null : 'mt-3',
+                )}
+              >
                 {category.services.map((service) => (
-                  <li key={service.id}>
+                  <li
+                    key={service.id}
+                    className="max-sm:border-t max-sm:border-[var(--line-soft)] max-sm:first:border-t-0"
+                  >
                     <ServiceRow service={service} />
                   </li>
                 ))}
@@ -419,6 +474,12 @@ function CategoryChip({
  *
  * O canto redondo e a sombra que aparece ao passar por cima são o resto
  * da queixa: sem eles isto é uma grelha de caixas, não é um catálogo.
+ *
+ * NO TELEMÓVEL A MOLDURA SAI. Lá as linhas vivem dentro de um painel,
+ * separadas por um fio, e uma moldura dentro de outra moldura é ruído —
+ * a mesma razão por que uma linha da agenda do dia também não tem
+ * caixa. O que fica é a cor de fundo, que é a única coisa que ali
+ * distingue um serviço já escolhido dos outros.
  */
 function ServiceRow({ service }: { service: PickerService }) {
   const nome = (
@@ -444,7 +505,7 @@ function ServiceRow({ service }: { service: PickerService }) {
   )
 
   const moldura =
-    'flex w-full items-center gap-3 rounded-[var(--radius)] border px-3.5 py-2.5 text-left'
+    'flex w-full items-center gap-3 rounded-[var(--radius)] border px-3.5 py-2.5 text-left max-sm:rounded-none max-sm:border-0 max-sm:py-2'
 
   if (service.state === 'chosen') {
     return (
