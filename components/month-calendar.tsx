@@ -17,10 +17,17 @@ import {
  * carregar. Aqui vê-se o mês todo e a seta muda de mês.
  *
  * SEM CAIXAS NENHUMAS. Trinta rectângulos brancos numa página de papel
- * parecem uma folha de cálculo; os números em serifa, soltos no papel,
- * parecem um calendário impresso — que é o que a montra desta casa é.
- * O que está livre leva um ponto de ouro por baixo, o dia escolhido um
- * círculo de ouro cheio, e hoje um fio de ouro à volta.
+ * parecem uma folha de cálculo; os números soltos no papel parecem um
+ * calendário impresso — que é o que a montra desta casa é. O que está
+ * livre leva um ponto de ouro por baixo, o dia escolhido um círculo de
+ * ouro cheio, e hoje um fio de ouro à volta.
+ *
+ * OS ALGARISMOS SÃO DA LETRA DO TEXTO, E DE LARGURA FIXA. A serifa da
+ * casa foi desenhada para títulos: em corpo dezasseis, trinta e um
+ * algarismos dela seguidos ficam irregulares — o «1» estreito, o «4»
+ * aberto, o «7» com bandeira — e as colunas deixam de alinhar a prumo.
+ * Num título isso é carácter; numa tabela de números é ruído. A serifa
+ * fica no nome do mês, que é onde ela manda.
  *
  * OS DIAS SEM NINGUÉM NÃO SÃO BOTÕES. Ficam a um quinto de tinta — lêem-
  * se, mas não chamam — e não levam ligação nenhuma: a cliente vê onde há
@@ -101,8 +108,16 @@ export function MonthCalendar({
   const podeRecuar = mesAnterior >= firstDay
   const podeAvancar = mesSeguinte <= lastDay
 
+  /*
+    TUDO NO MESMO EIXO.
+
+    Estava encostado à esquerda, e a página ficava com um lado cheio e
+    outro vazio. Ao centro, o olho desce a direito — do mês ao dia, e do
+    dia ao passo seguinte — e a mesma peça serve o telemóvel sem ter de
+    desfazer colunas nenhumas.
+  */
   return (
-    <div className="max-w-[23rem]">
+    <div className="mx-auto max-w-[21.5rem]">
       {/*
         O mês entre dois fios que se desvanecem do ouro para nada — a
         mesma peça dos títulos de secção da casa — com as setas nas
@@ -160,7 +175,7 @@ export function MonthCalendar({
               <span
                 key={valor}
                 aria-disabled="true"
-                className="display flex aspect-square items-center justify-center text-[1.0625rem] text-[var(--ink)] opacity-20"
+                className="tabular flex aspect-square items-center justify-center text-[0.875rem] font-medium text-[var(--ink)] opacity-20"
               >
                 {numero}
               </span>
@@ -194,7 +209,7 @@ export function MonthCalendar({
               <span className="relative flex flex-col items-center gap-[0.3rem]">
                 <span
                   className={clsx(
-                    'display text-[1.0625rem] leading-none',
+                    'tabular text-[0.875rem] leading-none font-medium',
                     escolhido
                       ? 'text-[var(--accent-ink)]'
                       : 'text-[var(--ink)]',
@@ -226,7 +241,7 @@ export function MonthCalendar({
         calendário de trinta números está a competir com aquilo que devia
         explicar. Uma linha em itálico diz o mesmo e não desenha nada.
       */}
-      <p className="mt-5 text-[0.75rem] text-[var(--ink-faint)] italic">
+      <p className="mt-5 text-center text-[0.75rem] text-[var(--ink-faint)] italic">
         {labels.noSlotsHint}
       </p>
     </div>

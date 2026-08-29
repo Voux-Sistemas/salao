@@ -151,18 +151,19 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
       subtitle={dict.funnel.daySubtitle}
     >
       {/*
-        O CALENDÁRIO À ESQUERDA, A DECISÃO À DIREITA.
+        TUDO NO MESMO EIXO.
 
-        Empilhados, a página era uma coluna estreita com dois terços do
-        monitor em branco ao lado — e o botão ficava a três palmos do
-        último dia da grelha, no fundo do ecrã. Lado a lado, o que se
-        escolhe e o que se faz com a escolha ficam à mesma altura dos
-        olhos, separados por um fio.
+        Tentei o calendário à esquerda e a decisão à direita, e ficou
+        pior: a página passou a ter um lado cheio e outro vazio, com o
+        botão a boiar numa coluna de trinta centímetros que só tinha uma
+        linha de texto.
 
-        No telemóvel volta a empilhar-se, que é a única coisa que lá
-        cabe.
+        Ao centro, o olho desce a direito — do mês ao dia, e do dia ao
+        passo seguinte — e o botão fica com a largura exacta da grelha,
+        por baixo dela. É também a única arrumação que serve o telemóvel
+        sem ter de se desfazer: ao eixo não há colunas para desmontar.
       */}
-      <div className="lg:grid lg:grid-cols-[23rem_minmax(0,1fr)] lg:items-start lg:gap-12">
+      <div className="mx-auto max-w-[21.5rem]">
       <MonthCalendar
         month={mes}
         day={day}
@@ -181,23 +182,24 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
         }}
       />
 
-      <div className="mt-10 lg:mt-0 lg:border-l lg:border-[var(--line-soft)] lg:pl-12">
-      {/* A data por extenso, em serifa: confirma em palavras o que o
-          calendário ao lado diz em números. */}
-      <div className="flex items-baseline gap-4">
-        <h2 className="display text-xl text-[var(--ink)] first-letter:uppercase">
+      {/* A data por extenso, em serifa, entre dois fios: confirma em
+          palavras o que a grelha por cima diz em números — e o nome do
+          dia da semana é o que a grelha nunca chega a dizer. */}
+      <div className="mt-7 flex items-center gap-3.5">
+        <span aria-hidden className="h-px flex-1 bg-[var(--line-soft)]" />
+        <h2 className="display shrink-0 text-lg text-[var(--ink)] first-letter:uppercase">
           {formatDayLong(day, unit.timezone, language)}
         </h2>
-        <span className="h-px flex-1 bg-[var(--line-soft)]" />
         {offset === 0 ? (
-          <span className="shrink-0 text-[0.6875rem] tracking-[0.14em] text-[var(--ink-faint)] uppercase">
+          <span className="shrink-0 text-[0.625rem] tracking-[0.14em] text-[var(--ink-faint)] uppercase">
             {dict.funnel.today}
           </span>
         ) : null}
+        <span aria-hidden className="h-px flex-1 bg-[var(--line-soft)]" />
       </div>
 
       {state === 'ok' ? (
-        <div className="mt-8">
+        <div className="mt-5">
           {/* Ao domingo o passo da profissional não existe — e por isso
               o botão também não pode prometê-lo. Vai direito à ementa,
               e o aviso por baixo diz porquê antes de ela dar pela
@@ -209,7 +211,7 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
                 : funnelHref(`${here}/servicos`, { day })
             }
             size="lg"
-            className="w-full sm:w-auto"
+            className="w-full"
           >
             {picksStaffOn(day) ? dict.funnel.dayAction : dict.funnel.chooseService}
           </ButtonLink>
@@ -220,16 +222,15 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
           ) : null}
         </div>
       ) : (
-        // Fechada é uma coisa, cheia é outra — e o calendário ao lado já
+        // Fechada é uma coisa, cheia é outra — e a grelha por cima já
         // mostra acesos os dias que servem, portanto a saída está à
         // vista.
-        <div className="mt-8">
+        <div className="mt-5">
           <Notice tone="warn">
             {state === 'closed' ? dict.unit.closedToday : dict.funnel.dayFull}
           </Notice>
         </div>
       )}
-      </div>
       </div>
     </FunnelShell>
   )
