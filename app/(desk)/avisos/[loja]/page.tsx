@@ -25,6 +25,7 @@ import {
   ROUTINE_ACTION,
   ROUTINE_HINT,
   ROUTINE_LABEL,
+  ROUTINE_SHORT,
   type Routine,
 } from '@/lib/whatsapp'
 import { Info } from 'lucide-react'
@@ -108,8 +109,75 @@ export default async function AvisosPage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
+    <div className="mx-auto max-w-4xl px-4 pt-5 pb-8 sm:px-6 lg:py-8">
+      {/*
+        NO TELEMÓVEL O TOPO É UMA FAIXA, E FICA PRESA.
+
+        O cabeçalho desta página valia o ecrã inteiro: o nome da loja, o
+        título em corpo trinta, o par de lojas, um parágrafo de cinco
+        linhas e as rotinas em duas filas de pastilhas. Para ver o
+        primeiro aviso era preciso rolar — numa página cujo trabalho é
+        despachar avisos.
+
+        É a mesma peça do encaixe: branca, encostada à barra da casa,
+        fechada por um fio, presa ao rolar. O nome da página, a loja num
+        botão pequeno, e as rotinas numa fila que anda de lado.
+      */}
+      <div className="sticky top-14 z-20 -mx-4 -mt-5 mb-4 border-b border-[var(--line)] bg-[var(--surface-raised)] px-4 sm:-mx-6 sm:px-6 lg:hidden">
+        <div className="flex items-center justify-between gap-3 py-2.5">
+          <p className="display truncate text-lg text-[var(--ink)]">
+            {mine ? 'Os meus avisos' : 'Avisos'}
+          </p>
+          {units.length > 1 ? (
+            <UnitSwitcher
+              units={units}
+              current={unit.slug}
+              base="/avisos"
+              showAll={false}
+            />
+          ) : (
+            <span className="titulo-seccao shrink-0">{unit.name}</span>
+          )}
+        </div>
+
+        {/* A fila anda de lado em vez de crescer para baixo: cinco
+            rotinas não cabem em 390px, e três filas de pastilhas eram
+            o mesmo muro do catálogo, por outro caminho. */}
+        <nav
+          aria-label="Rotinas"
+          className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6"
+        >
+          {ROUTINES.map((value) => {
+            const count = only(queues[value]).length
+            const active = value === routine
+            return (
+              <Link
+                key={value}
+                href={linkTo(value, chosen)}
+                aria-current={active ? 'page' : undefined}
+                className={clsx(
+                  'flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[0.8125rem] font-medium transition-colors',
+                  active
+                    ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
+                    : 'border-[var(--line-soft)] text-[var(--ink-muted)]',
+                )}
+              >
+                {ROUTINE_SHORT[value]}
+                <span
+                  className={clsx(
+                    'tabular text-[0.6875rem]',
+                    count > 0 ? 'text-[var(--ink)]' : 'text-[var(--ink-faint)]',
+                  )}
+                >
+                  {count}
+                </span>
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-4 max-lg:hidden">
         <div>
           <p className="eyebrow mb-1">{unit.name}</p>
           <h1 className="display text-3xl text-[var(--ink)]">
@@ -141,7 +209,12 @@ export default async function AvisosPage({
       </header>
 
       {/* --- a regra sagrada da casa --------------------------------- */}
-      <div className="mb-6 flex items-start gap-3 rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] px-4 py-3.5">
+      {/* Continua a ser verdade e continua a ser importante — mas é para
+          se ler UMA vez, não quinze por dia. No telemóvel valia cinco
+          linhas do primeiro ecrã, e quem lá vai já sabe que é ela a
+          carregar no botão: acabou de o fazer trinta vezes esta semana.
+          Fica no monitor, onde não custa nada. */}
+      <div className="mb-6 flex items-start gap-3 rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] px-4 py-3.5 max-lg:hidden">
         <span
           aria-hidden
           className="mt-px flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[color-mix(in_srgb,var(--accent)_11%,transparent)] text-[var(--accent)]"
@@ -160,7 +233,10 @@ export default async function AvisosPage({
 
       {/* --- as abas ------------------------------------------------ */}
       <nav
-        className={clsx('flex flex-wrap gap-1.5', showPeople ? 'mb-3' : 'mb-6')}
+        className={clsx(
+          'flex flex-wrap gap-1.5 max-lg:hidden',
+          showPeople ? 'mb-3' : 'mb-6',
+        )}
         aria-label="Rotinas"
       >
         {ROUTINES.map((value) => {
@@ -398,18 +474,26 @@ function NoticeLine({
     .join(', ')
 
   return (
-    /* No telemóvel o botão do WhatsApp comia metade da linha e o resto
-       ficava espremido a três palmos: o nome truncado, o telefone
-       partido ao meio e os serviços cortados. Aqui ele desce para uma
-       linha só sua, a toda a largura — que é como se carrega num botão
-       com o polegar. A partir de `sm` volta ao fim da linha. */
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
+    /*
+      A LINHA CABE NUMA LINHA.
+
+      O botão descia para uma linha só sua, a toda a largura, porque ao
+      lado do nome não cabia. Só que isso, mais o telefone, mais os
+      serviços em duas linhas, dava duzentos píxeis por aviso: quatro
+      por ecrã, numa página que existe para os despachar.
+
+      Agora cabe tudo numa linha porque saiu o que lá não fazia falta —
+      ver o telefone e o corte dos serviços aqui em baixo — e porque o
+      botão passa a dizer só «Enviar» no telemóvel. O alvo continua a
+      ter trinta e dois píxeis de altura, que é o que um polegar pede.
+    */
+    <div className="flex items-center gap-3 px-3 py-2.5 lg:gap-x-4 lg:px-4 lg:py-3">
       {/* --- a hora, à cabeça da linha ------------------------------- */}
       <Link
         href={`/agenda/${unitSlug}?d=${day}&m=${row.appointment_id}`}
-        className="w-14 shrink-0 text-center transition-colors hover:text-[var(--accent)]"
+        className="w-12 shrink-0 text-center transition-colors hover:text-[var(--accent)] lg:w-14"
       >
-        <span className="tabular block text-base leading-tight text-[var(--ink)]">
+        <span className="tabular block text-[0.9375rem] leading-tight text-[var(--ink)] lg:text-base">
           {formatTime(row.starts_at, timezone)}
         </span>
       </Link>
@@ -428,7 +512,10 @@ function NoticeLine({
               {row.client_name}
             </span>
           )}
-          <span className="tabular text-[0.75rem] text-[var(--ink-muted)]">
+          {/* O telefone não se marca à mão a partir daqui: quem o usa é
+              o botão, e o botão está ao lado. No telemóvel é o que sai
+              primeiro, para o nome e o serviço caberem. */}
+          <span className="tabular text-[0.75rem] text-[var(--ink-muted)] max-lg:hidden">
             {formatPhone(row.client_phone)}
           </span>
           {routine === 'winback' ? (
@@ -437,7 +524,7 @@ function NoticeLine({
             </Badge>
           ) : null}
         </div>
-        <p className="line-clamp-2 text-[0.75rem] text-[var(--ink-muted)]">
+        <p className="truncate text-[0.75rem] text-[var(--ink-muted)] lg:line-clamp-2 lg:whitespace-normal">
           {services || 'Sem serviços'}
           {staff ? ` · ${staff}` : ''}
         </p>
@@ -448,8 +535,13 @@ function NoticeLine({
         routine={routine}
         href={message.href}
         message={message.text}
-        label={ROUTINE_ACTION[routine]}
-        className="w-full sm:w-auto"
+        label={
+          <>
+            <span className="lg:hidden">Enviar</span>
+            <span className="max-lg:hidden">{ROUTINE_ACTION[routine]}</span>
+          </>
+        }
+        className="w-auto shrink-0"
       />
     </div>
   )

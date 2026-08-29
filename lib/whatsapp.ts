@@ -52,6 +52,22 @@ export const ROUTINE_ACTION: Record<Routine, string> = {
   winback: 'Convidar a voltar',
 }
 
+/**
+ * O NOME CURTO DA ROTINA — para a fila de pastilhas do telemóvel.
+ *
+ * Os nomes por extenso são bons num ecrã largo, onde cabem cinco lado a
+ * lado. Em trezentos e noventa píxeis davam três filas de pastilhas
+ * antes do primeiro aviso, e a página passava a ser o índice dela
+ * própria. Aqui a contagem ao lado faz o resto do trabalho.
+ */
+export const ROUTINE_SHORT: Record<Routine, string> = {
+  confirm: 'Confirmar',
+  reminder_eve: 'Véspera',
+  reminder_today: 'Hoje',
+  review: 'Avaliação',
+  winback: 'Recuperar',
+}
+
 export const ROUTINE_HINT: Record<Routine, string> = {
   confirm: 'Ainda não recebeu nada por escrito.',
   reminder_eve: 'É atendida amanhã. É o aviso que mais evita faltas.',

@@ -42,7 +42,16 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
       unitIds: actor.orgScope ? null : actor.unitIds,
       staffId: ownStaffId(actor),
     })
-  } catch {
+  } catch (erro) {
+    /*
+      NÃO É SILÊNCIO, É UM NÚMERO QUE NÃO APARECE.
+
+      A página não pode cair por causa de um selo, mas engolir o erro sem
+      deixar rasto foi um erro meu: o selo não apareceu no telemóvel e
+      não havia maneira de saber se a conta deu zero ou se rebentou.
+      Fica registado — nos registos da Netlify vê-se qual dos dois é.
+    */
+    console.error('[avisos] a contagem do sino falhou:', erro)
     avisos = 0
   }
 

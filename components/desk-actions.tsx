@@ -36,7 +36,7 @@ function Submit({
   className,
   icon,
 }: {
-  label: string
+  label: React.ReactNode
   variant: Variant
   size?: 'sm' | 'md'
   className?: string
@@ -354,7 +354,12 @@ export function SendWhatsApp({
   routine: Routine
   href: string
   message: string
-  label: string
+  /**
+   * Texto, ou dois textos com larguras diferentes: na fila dos avisos o
+   * botão diz «Enviar confirmação» no monitor e «Enviar» no telemóvel,
+   * onde a linha inteira tem trezentos e noventa píxeis.
+   */
+  label: React.ReactNode
   variant?: Variant
   size?: 'sm' | 'md'
   done?: boolean
@@ -398,7 +403,15 @@ export function SendWhatsApp({
           apagar o botão era um terceiro, e a mais.
         */}
         <Submit
-          label={done ? `${label} (de novo)` : label}
+          label={
+            done ? (
+              <>
+                {label} <span className="font-normal">(de novo)</span>
+              </>
+            ) : (
+              label
+            )
+          }
           variant={variant}
           size={size}
           className={className}
