@@ -43,7 +43,11 @@ export type PickerService = {
       à direita com os outros, em algarismos de largura fixa. */
   price: string
   onlyDesk: boolean
-  /** Endereço de juntar à visita. Nulo quando já lá está, ou está cheio. */
+  /**
+   * O que a linha faz ao ser tocada: juntar à visita, ou — se já lá
+   * estiver — tirá-la de lá. Nulo só quando a visita está cheia e este
+   * serviço não é nenhum dos que lá estão.
+   */
   href: string | null
   state: 'free' | 'chosen' | 'full'
 }
@@ -507,24 +511,57 @@ function ServiceRow({ service }: { service: PickerService }) {
   const moldura =
     'flex w-full items-center gap-3 rounded-[var(--radius)] border px-3.5 py-2.5 text-left max-sm:rounded-none max-sm:border-0 max-sm:py-2'
 
+  /*
+    JÁ ESTÁ NA VISITA — E TOCAR OUTRA VEZ TIRA-O DE LÁ.
+
+    Era um pedaço de texto com uma marca de visto, e o desfazer estava
+    no passo seguinte, no xis do cartão da visita. Quem se engana na
+    linha de baixo procura o desfazer onde acabou de tocar, e não noutro
+    ecrã — ainda por cima quando a linha ao lado continua a responder ao
+    toque.
+
+    A marca de visto vira um xis ao passar por cima, no vermelho de
+    desfazer: é o que a linha vai fazer, não o que ela é. No telemóvel
+    não há «passar por cima» — lá o que ensina é o toque, que devolve a
+    linha ao estado anterior à vista de toda a gente.
+  */
   if (service.state === 'chosen') {
-    return (
+    const escolhida = clsx(
+      moldura,
+      'group border-[color-mix(in_srgb,var(--accent)_45%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface-raised))]',
+    )
+    const marca = (
       <span
+        aria-hidden
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white transition-colors group-hover:bg-[var(--bad)]"
+      >
+        <Check className="h-3.5 w-3.5 group-hover:hidden" />
+        <X className="hidden h-3.5 w-3.5 group-hover:block" />
+      </span>
+    )
+    if (service.href === null) {
+      return (
+        <span className={escolhida}>
+          {nome}
+          {preco}
+          {marca}
+        </span>
+      )
+    }
+    return (
+      <Link
+        href={service.href}
+        scroll={false}
+        aria-label={`Tirar ${service.name} da visita`}
         className={clsx(
-          moldura,
-          'border-[color-mix(in_srgb,var(--accent)_45%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface-raised))]',
+          escolhida,
+          'transition-colors focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none',
         )}
       >
         {nome}
         {preco}
-        <span
-          aria-hidden
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white"
-          title="Já está na visita"
-        >
-          <Check className="h-3.5 w-3.5" />
-        </span>
-      </span>
+        {marca}
+      </Link>
     )
   }
 

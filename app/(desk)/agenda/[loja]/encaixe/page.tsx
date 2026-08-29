@@ -337,7 +337,20 @@ export default async function EncaixePage({ params, searchParams }: Params) {
   // deste lado: a peneira que lá está só esconde e mostra, nunca decide
   // o que é que se junta à visita.
   const cartFull = cart.length >= MAX_CART_LINES
-  const inCart = new Set(cart.map((line) => line.serviceId))
+  /*
+    TOCAR OUTRA VEZ TIRA — a linha do catálogo passa a alternar.
+
+    Um serviço escolhido ficava com uma marca de visto e deixava de ser
+    ligação: para o tirar era preciso ir ao passo 2 e carregar no xis do
+    cartão da visita. Quem se engana na linha de baixo — e engana-se, com
+    o telemóvel numa mão — não tem nenhuma razão para procurar o desfazer
+    noutro sítio que não seja onde acabou de tocar.
+
+    Um serviço só pode estar na visita UMA vez (enquanto lá está, o
+    endereço de juntar não existe), e por isso o índice da linha é o
+    primeiro que se encontrar.
+  */
+  const inCart = new Map(cart.map((line, index) => [line.serviceId, index]))
   const catalogue: PickerCategory[] = []
   const byCategory = new Map<string, PickerCategory>()
   for (const row of services) {
@@ -347,14 +360,19 @@ export default async function EncaixePage({ params, searchParams }: Params) {
       byCategory.set(row.category_id, entry)
       catalogue.push(entry)
     }
-    const chosen = inCart.has(row.id)
+    const posicao = inCart.get(row.id)
+    const chosen = posicao !== undefined
     entry.services.push({
       id: row.id,
       name: row.name,
       duration: formatDuration(row.duration_minutes),
       price: formatCents(row.price_cents),
       onlyDesk: !row.bookable_online,
-      href: chosen || cartFull ? null : withCart(addLine(cart, row.id)),
+      href: chosen
+        ? withCart(removeAt(cart, posicao))
+        : cartFull
+          ? null
+          : withCart(addLine(cart, row.id)),
       state: chosen ? 'chosen' : cartFull ? 'full' : 'free',
     })
   }
