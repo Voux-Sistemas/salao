@@ -128,12 +128,18 @@ export default async function AvisosPage({
           <p className="display truncate text-lg text-[var(--ink)]">
             {mine ? 'Os meus avisos' : 'Avisos'}
           </p>
+          {/* O par de separadores vinha inteiro para uma faixa que tem
+              lugar para uma pastilha: metade da largura gasta a repetir
+              o nome da loja onde não se está. A pastilha diz onde se
+              está, e abre as outras a um toque — é a mesma peça do
+              encaixe. Com uma loja só, nem seta há. */}
           {units.length > 1 ? (
             <UnitSwitcher
               units={units}
               current={unit.slug}
               base="/avisos"
               showAll={false}
+              variant="chip"
             />
           ) : (
             <span className="titulo-seccao shrink-0">{unit.name}</span>
@@ -320,9 +326,22 @@ export default async function AvisosPage({
         </nav>
       ) : null}
 
+      {/*
+        NO TELEMÓVEL O NOME DA FILA JÁ ESTÁ DITO, DOIS DEDOS ACIMA.
+
+        «CONFIRMAR MARCAÇÃO» em versaletes por baixo de uma pastilha azul
+        que diz «Confirmar» é a mesma frase duas vezes, e custa duas
+        linhas do pouco ecrã que há. Sai o título e fica a dica — que é a
+        única das duas que ensina alguma coisa: «ainda não recebeu nada
+        por escrito» diz PORQUE É QUE estas estão nesta fila.
+
+        No monitor ficam as duas: lá a fita das rotinas é uma linha de
+        botões pequenos no meio de uma página larga, e o título é o que
+        dá o começo à lista.
+      */}
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="titulo-seccao">{ROUTINE_LABEL[routine]}</h2>
-        <p className="text-[0.8125rem] text-[var(--ink-muted)]">
+        <h2 className="titulo-seccao max-lg:hidden">{ROUTINE_LABEL[routine]}</h2>
+        <p className="text-[0.8125rem] text-[var(--ink-muted)] max-lg:text-[0.75rem] max-lg:text-[var(--ink-faint)]">
           {ROUTINE_HINT[routine]}
         </p>
       </div>
@@ -339,7 +358,19 @@ export default async function AvisosPage({
           />
         </Card>
       ) : (
-        <Card className="overflow-hidden">
+        /*
+          UMA LISTA DE DIAS, E NÃO UMA CAIXA COM FAIXAS LÁ DENTRO.
+
+          O dia era uma faixa cinzenta DENTRO do cartão: cantos rectos a
+          cortar a lista ao meio, e o arredondado só nas quatro pontas de
+          fora. O conjunto lia-se quadrado — porque era.
+
+          O dia sobe para fora e passa a ser um título; cada dia ganha o
+          seu cartão, com o canto maior e um degrau de sombra. Deixa de
+          haver uma caixa com divisões e passa a haver uma lista de dias,
+          que é o que a coisa é.
+        */
+        <div className="space-y-4">
           {porDia(rows, unit.timezone).map((grupo) => (
             <div key={grupo.dia}>
               {/*
@@ -356,7 +387,7 @@ export default async function AvisosPage({
                 é como se fala ao balcão, e é a informação que faz
                 decidir se aquilo é para agora ou para depois.
               */}
-              <div className="flex items-center gap-3 border-t border-[var(--line-soft)] bg-[var(--surface)] px-4 py-2 first:border-t-0">
+              <div className="mb-1.5 flex items-center gap-3 px-1">
                 <h3 className="titulo-seccao shrink-0">
                   {nomeDoDia(grupo.dia, unit.timezone)}
                 </h3>
@@ -368,7 +399,7 @@ export default async function AvisosPage({
                   {grupo.linhas.length}
                 </span>
               </div>
-              <div className="divide-y divide-[var(--line-soft)]">
+              <div className="divide-y divide-[var(--line-soft)] overflow-hidden rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_1px_2px_rgba(46,38,28,0.04),0_12px_26px_-22px_rgba(46,38,28,0.35)]">
                 {grupo.linhas.map((row) => (
                   <NoticeLine
                     key={row.appointment_id}
@@ -385,7 +416,7 @@ export default async function AvisosPage({
               </div>
             </div>
           ))}
-        </Card>
+        </div>
       )}
     </div>
   )
@@ -541,7 +572,9 @@ function NoticeLine({
             <span className="max-lg:hidden">{ROUTINE_ACTION[routine]}</span>
           </>
         }
-        className="w-auto shrink-0"
+        /* Numa coluna de sete, a pílula lê-se como «uma coisa para
+           carregar»; o rectângulo lê-se como «uma etiqueta verde». */
+        className="w-auto shrink-0 [&_button]:rounded-full"
       />
     </div>
   )

@@ -160,7 +160,25 @@ export function DeskNav({
       // A folga do indicador do iPhone vai por fora da fila de ícones: a
       // barra cresce por baixo, em vez de espremer os rótulos.
       <nav style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="flex min-h-[4.25rem] items-stretch justify-around px-1">
+        {/*
+          COM POUCAS PORTAS, ELAS JUNTAM-SE AO CENTRO.
+
+          A barra dividia-se sempre em partes iguais, o que é o certo com
+          cinco. A profissional tem duas: cada ícone levava metade do
+          ecrã e ficava a boiar no meio de cento e noventa píxeis de
+          nada — a barra parecia ter perdido alguma coisa pelo caminho.
+
+          A partir de três volta a dividir-se por igual, como sempre: aí
+          são as portas que preenchem a barra, e não o vazio.
+        */}
+        <div
+          className={clsx(
+            'flex min-h-[4.25rem] items-stretch px-1',
+            items.length > 2
+              ? 'justify-around'
+              : 'justify-center gap-2 [&>a]:w-32 [&>a]:flex-none',
+          )}
+        >
           {items.map((item) => {
             const active = lit(item.href)
             const Icon = item.icon ? ICONS[item.icon] : IconDay
