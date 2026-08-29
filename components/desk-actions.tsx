@@ -15,7 +15,7 @@ import type { Routine } from '@/lib/whatsapp'
 
 const EMPTY: DeskState = { error: null, done: null }
 
-type Variant = 'primary' | 'outline' | 'quiet' | 'danger'
+type Variant = 'primary' | 'outline' | 'quiet' | 'danger' | 'ok'
 
 /**
  * UMA LINHA DENTRO DE UMA CAIXA.
@@ -141,12 +141,19 @@ export function CancelAction({
     return (
       <div className="space-y-2">
         {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
+        {/*
+          O vermelho vem da variante, não de classes soltas por cima do
+          contorno: o «outline» pinta o texto de tinta, e duas cores de
+          texto no mesmo botão resolvem-se pela ordem da folha de estilo,
+          não pela ordem em que se escrevem. Foi o que aconteceu à
+          primeira, e o botão saiu preto.
+        */}
         <Button
           type="button"
-          variant="outline"
+          variant="danger"
           size="md"
           onClick={() => setAberto(true)}
-          className="w-full border-[color-mix(in_srgb,var(--bad)_35%,transparent)] text-[var(--bad)] hover:border-[var(--bad)]"
+          className="w-full"
         >
           Cancelar
         </Button>

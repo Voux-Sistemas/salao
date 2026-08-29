@@ -8,7 +8,7 @@ import {
 } from '@/lib/booking'
 import { MOTIVO_LABEL, SOURCE_LABEL, STATUS_LABEL } from '@/lib/status'
 import { composeMessage, loadTemplates } from '@/lib/notify'
-import { Badge, ButtonLink } from '@/components/ui'
+import { Badge, ButtonLink, Notice } from '@/components/ui'
 import {
   CancelAction,
   SendWhatsApp,
@@ -253,6 +253,22 @@ export async function AppointmentPanel({
         o trabalho do dia.
       */}
       <footer className="space-y-2.5 border-t border-[var(--line-soft)] px-5 py-4">
+        {/*
+          O RECIBO DE QUE FICOU FEITO.
+
+          Ao concluir, o botão azul desaparece e um selo lá em cima muda
+          de palavra — é pouco para quem carregou e está à espera de
+          saber se pegou. Esta linha fica no sítio onde o botão estava, e
+          não é uma mensagem que passa: vem do estado da marcação, e por
+          isso continua lá amanhã.
+        */}
+        {appointment.status === 'completed' ? (
+          <Notice tone="ok">
+            Marcação concluída
+            {appointment.closed_at ? ' e cobrada' : ''}.
+          </Notice>
+        ) : null}
+
         {/* Já concluída e por cobrar: o que falta é o dinheiro. */}
         {closeTab ? (
           <ButtonLink
@@ -280,6 +296,7 @@ export async function AppointmentPanel({
           href={message.href}
           message={message.text}
           label="Enviar confirmação"
+          variant="ok"
           size="md"
           done={confirmSent}
           className="w-full"

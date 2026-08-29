@@ -13,7 +13,7 @@ import { Ornament } from '@/components/brand'
 // Botões
 // ---------------------------------------------------------------------
 
-type Variant = 'primary' | 'outline' | 'quiet' | 'danger'
+type Variant = 'primary' | 'outline' | 'quiet' | 'danger' | 'ok'
 type Size = 'sm' | 'md' | 'lg'
 
 /*
@@ -51,6 +51,14 @@ const VARIANTS: Record<Variant, string> = {
     'hover:bg-[color-mix(in_srgb,var(--ink)_9%,transparent)] hover:text-[var(--ink)]',
   danger:
     'border border-[color-mix(in_srgb,var(--bad)_40%,transparent)] text-[var(--bad)] hover:bg-[color-mix(in_srgb,var(--bad)_10%,transparent)]',
+  // O irmão do vermelho, na cor do que corre bem. Nasceu para o botão
+  // que avisa a cliente: ao lado de um «Cancelar» vermelho, um contorno
+  // neutro não dizia de que lado estava.
+  //
+  // NÃO É O AZUL DOS COMANDOS por escolha: o azul é «carregar aqui» e
+  // já está no botão de cima. Duas cores diferentes para duas coisas
+  // diferentes lêem-se sem se ler.
+  ok: 'border border-[color-mix(in_srgb,var(--ok)_40%,transparent)] text-[var(--ok)] hover:bg-[color-mix(in_srgb,var(--ok)_10%,transparent)]',
 }
 
 export function buttonClass(
