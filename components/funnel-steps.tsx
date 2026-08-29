@@ -52,8 +52,84 @@ export function FunnelSteps({
     .map((label, index) => ({ label, index }))
     .filter((entry) => picksStaff || entry.index !== 2)
 
+  /* O passo que está a acontecer, já contado na fila que se desenha —
+     ao domingo é a fila de cinco, e a conta é sobre essa. */
+  const agora = shown.findIndex((entry) => entry.index + 1 === current)
+  const posicao = agora >= 0 ? agora + 1 : 1
+  const nome = shown[agora >= 0 ? agora : 0]?.label ?? ''
+
   return (
-    <ol className="flex items-center gap-2 text-[0.6875rem] tracking-[0.14em] uppercase">
+    <>
+      {/*
+        NO TELEMÓVEL, PONTOS — E A CONTA AO LADO.
+
+        Aqui os rótulos não cabem, e o que sobrava eram cinco algarismos
+        soltos: não diziam onde se estava, nem o que vinha a seguir, nem
+        quanto faltava. Um rasto que não se lê é ornamento.
+
+        Ficam pontos — os feitos em ouro apagado, o de agora numa
+        barrinha, os que faltam em cinzento — e do outro lado da linha o
+        nome do passo e a conta.
+
+        A CONTA VAI EM BARRA, «2 / 6», e não por palavras: ao lado de
+        pontos que já mostram onde se está, escrever «passo 2 de 6» era
+        dizer a mesma coisa duas vezes.
+
+        E SAI DA FILA QUE SE DESENHA, nunca de um número escrito à mão:
+        ao domingo o funil tem cinco passos, e um «de 6» fixo passaria a
+        mentir todos os domingos — daqueles erros que ninguém nota
+        durante meses.
+      */}
+      <div className="flex items-center gap-1.5 sm:hidden">
+        {shown.map((entry, position) => {
+          const step = entry.index + 1
+          const done = step < current
+          const atual = step === current
+          const href = done ? (hrefs?.[entry.index] ?? null) : null
+
+          const ponto = (
+            <span
+              aria-hidden
+              className={clsx(
+                'block h-1.5 rounded-full bg-current transition-all',
+                atual ? 'w-5' : 'w-1.5',
+                atual
+                  ? 'text-[var(--accent)]'
+                  : done
+                    ? 'text-[color-mix(in_srgb,var(--accent)_50%,transparent)]'
+                    : 'text-[var(--line)]',
+              )}
+            />
+          )
+
+          /* O ponto tem seis píxeis; o alvo tem de ter mais. A caixa
+             cresce à volta dele com margens negativas, sem o ponto mudar
+             de tamanho nem a fila perder o ritmo. */
+          return href ? (
+            <Link
+              key={entry.label}
+              href={href}
+              aria-label={entry.label}
+              className="-my-3 -mx-1.5 inline-flex items-center px-1.5 py-3"
+            >
+              {ponto}
+            </Link>
+          ) : (
+            <span key={entry.label}>{ponto}</span>
+          )
+        })}
+
+        <span className="ml-auto flex shrink-0 items-baseline gap-2">
+          <span className="text-[0.625rem] font-bold tracking-[0.14em] text-[var(--accent)] uppercase">
+            {nome}
+          </span>
+          <span className="tabular text-[0.625rem] tracking-[0.08em] text-[var(--ink-faint)]">
+            {posicao} / {shown.length}
+          </span>
+        </span>
+      </div>
+
+    <ol className="hidden items-center gap-2 text-[0.6875rem] tracking-[0.14em] uppercase sm:flex">
       {shown.map((entry, position) => {
         const { label, index } = entry
         const step = index + 1
@@ -72,31 +148,17 @@ export function FunnelSteps({
             )}
           >
             <span className="tabular">{number}</span>
-            <span className="hidden sm:inline"> · {label}</span>
+            <span> · {label}</span>
           </span>
         )
 
         return (
           <li key={label} className="flex items-center gap-2">
-            {href ? (
-              // Ao telemóvel o rótulo esconde-se e sobra o algarismo: nove
-              // pixéis de largura para voltar atrás. A caixa de toque
-              // cresce à volta dele sem o número mudar de tamanho.
-              <Link
-                href={href}
-                className="inline-flex min-h-11 min-w-8 items-center justify-center sm:min-h-0 sm:min-w-0"
-              >
-                {content}
-              </Link>
-            ) : (
-              content
-            )}
-            {/* Seis algarismos e cinco traços não cabem na largura de um
-                telemóvel: o traço só aparece onde o rótulo também
-                aparece, e em baixo fica a fila de números. O último
-                nunca leva traço — e ao domingo o último é o quinto. */}
+            {href ? <Link href={href}>{content}</Link> : content}
+            {/* O último nunca leva traço — e ao domingo o último é o
+                quinto. */}
             {number < shown.length ? (
-              <span aria-hidden className="hidden text-[var(--line)] sm:inline">
+              <span aria-hidden className="text-[var(--line)]">
                 —
               </span>
             ) : null}
@@ -104,5 +166,6 @@ export function FunnelSteps({
         )
       })}
     </ol>
+    </>
   )
 }

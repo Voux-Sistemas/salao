@@ -54,17 +54,31 @@ export function FunnelShell({
               'radial-gradient(circle, color-mix(in srgb, var(--gold) 34%, transparent), transparent 70%)',
           }}
         />
-        <div className="relative mx-auto max-w-5xl px-5 pt-10 pb-9 sm:px-8 sm:pt-14 sm:pb-12">
+        <div className="relative mx-auto max-w-5xl px-5 pt-7 pb-6 sm:px-8 sm:pt-14 sm:pb-12">
           <p className="eyebrow eyebrow-gold">{eyebrow ?? dict.funnel.eyebrow}</p>
-          <h1 className="display animate-rise mt-3 text-[1.9rem] leading-[1.12] sm:text-[2.6rem]">
+          <h1 className="display animate-rise mt-3 text-[1.45rem] leading-[1.15] sm:text-[2.6rem] sm:leading-[1.12]">
             {title}
           </h1>
+          {/*
+            NO TELEMÓVEL O SUBTÍTULO SAI.
+
+            A faixa escura levava o ecrã inteiro — eyebrow, título em
+            corpo trinta, subtítulo em duas linhas, um fio e o rasto — e
+            no passo do dia não se via um único dia antes de rolar, numa
+            página que existe para escolher um dia.
+
+            O subtítulo é a pergunta do título dita por outras palavras:
+            «que dia lhe dá jeito?» e «escolha o dia e depois veja quem
+            está de serviço» são a mesma frase. No monitor sobra ecrã e
+            ela ajuda; em trezentos e noventa píxeis custa duas linhas
+            para não dizer nada de novo.
+          */}
           {subtitle ? (
-            <p className="animate-fade delay-1 mt-3 max-w-xl text-[0.9375rem] text-[var(--ink-muted)]">
+            <p className="animate-fade delay-1 mt-3 hidden max-w-xl text-[0.9375rem] text-[var(--ink-muted)] sm:block">
               {subtitle}
             </p>
           ) : null}
-          <div className="mt-7 border-t border-[var(--line-soft)] pt-5">
+          <div className="mt-5 border-t border-[var(--line-soft)] pt-4 sm:mt-7 sm:pt-5">
             <FunnelSteps
               current={step}
               dict={dict}
