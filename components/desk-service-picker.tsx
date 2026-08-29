@@ -107,6 +107,18 @@ export function DeskServicePicker({
 
   const atalhos = ordenadas.slice(0, ATALHOS)
   const noMenu = ordenadas.slice(ATALHOS)
+  /*
+    NO TELEMÓVEL NÃO HÁ ATALHOS — HÁ UMA LINHA SÓ.
+
+    Os quatro atalhos foram desenhados para o monitor, onde a fita tem
+    setecentos píxeis. Em trezentos e noventa, «Os que mais marca» mais
+    «Todas» mais quatro nomes mais o menu davam TRÊS FILAS de pastilhas
+    antes do primeiro serviço — o muro que a peneira existe para evitar.
+
+    Lá ficam três: os mais marcados, todas, e o menu com as categorias
+    todas lá dentro. Nada se perde: o menu já as tinha todas.
+  */
+  const atalhoEscolhido = atalhos.find((c) => c.id === catId) ?? null
   /** A escolhida entrou no menu? Então sobe, para se ver onde se está. */
   const escolhidaNoMenu = noMenu.find((c) => c.id === catId) ?? null
 
@@ -224,6 +236,7 @@ export function DeskServicePicker({
           {atalhos.map((category) => (
             <CategoryChip
               key={category.id}
+              className="hidden sm:inline-flex"
               active={catId === category.id}
               onClick={() => {
                 setSoDestaque(false)
@@ -234,6 +247,19 @@ export function DeskServicePicker({
             </CategoryChip>
           ))}
 
+          {/* Com os atalhos escondidos, a escolhida ficaria sem sítio
+              nenhum no telemóvel: quem filtrou por «Cabelo» tem de ver
+              que filtrou. Volta, sozinha, no lugar dos quatro. */}
+          {atalhoEscolhido ? (
+            <CategoryChip
+              active
+              className="sm:hidden"
+              onClick={() => setCatId(null)}
+            >
+              {atalhoEscolhido.name}
+            </CategoryChip>
+          ) : null}
+
           {/* A categoria escolhida sobe do menu para a fita: sem isso,
               quem filtra por «Podologia» fica sem ver onde está. */}
           {escolhidaNoMenu ? (
@@ -242,15 +268,21 @@ export function DeskServicePicker({
             </CategoryChip>
           ) : null}
 
-          {noMenu.length > 0 ? (
-            <details key={catId ?? 'todas'} className="relative">
+          {/* No monitor o menu só aparece quando sobram categorias; no
+              telemóvel é a única porta para elas, e aparece sempre. */}
+          {categories.length > 0 ? (
+            <details
+              key={catId ?? 'todas'}
+              className={clsx('relative', noMenu.length === 0 && 'sm:hidden')}
+            >
               <summary
                 className={clsx(
                   'inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-full border border-dashed px-3 text-[0.75rem] font-semibold whitespace-nowrap transition-colors [&::-webkit-details-marker]:hidden',
                   'border-[var(--line)] text-[var(--ink-muted)] hover:text-[var(--ink)]',
                 )}
               >
-                Todas as categorias
+                <span className="sm:hidden">Categorias</span>
+                <span className="hidden sm:inline">Todas as categorias</span>
                 <ChevronDown aria-hidden className="h-3 w-3 shrink-0" />
               </summary>
               <div className="absolute top-full left-0 z-30 mt-1.5 max-h-72 min-w-[12rem] overflow-y-auto rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] py-1 shadow-[var(--shadow-soft)]">
@@ -342,10 +374,12 @@ export function DeskServicePicker({
 function CategoryChip({
   active,
   onClick,
+  className,
   children,
 }: {
   active: boolean
   onClick: () => void
+  className?: string
   children: React.ReactNode
 }) {
   return (
@@ -358,6 +392,7 @@ function CategoryChip({
         active
           ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)]'
           : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]',
+        className,
       )}
     >
       {children}

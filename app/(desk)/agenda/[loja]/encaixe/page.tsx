@@ -59,6 +59,8 @@ export const metadata: Metadata = { title: 'Encaixe' }
 
 
 const CLIENT_PARAM = 'cli'
+/** Qual dos três passos está à vista — só o telemóvel lhe liga. */
+const STEP_PARAM = 'p'
 const HAND_PARAM = 'hm'
 /** A marcação que acabou de nascer, para o «marcar e continuar». */
 const DONE_PARAM = 'ok'
@@ -232,6 +234,40 @@ export default async function EncaixePage({ params, searchParams }: Params) {
   const plan: Plan | null =
     ctx && chosenAt ? buildPlan(ctx, chosenAt.getTime()) : null
 
+  /*
+    UM PASSO DE CADA VEZ — E SÓ NO TELEMÓVEL.
+
+    Os três passos são uma sequência de verdade: as horas livres
+    precisam dos serviços, e a confirmação precisa da hora. No monitor
+    isso vê-se de uma vez, em duas colunas, e é a vantagem do ecrã
+    largo — lá não muda nada.
+
+    Em trezentos e noventa píxeis a mesma página é uma coluna de três
+    metros: percorre-se a lista dos serviços e a visita aparece a meio
+    dela, o «2 Quando» vem a seguir sem nada que o separe, e o passo 3
+    fica a dois ecrãs de distância. Os passos misturam-se por estarem
+    todos abertos ao mesmo tempo.
+
+    Aqui mostra-se um. A fita de cima diz qual, e deixa voltar atrás; a
+    barra de baixo diz o que a visita já é, e leva ao seguinte. É o
+    MESMO html — o que muda é o que está escondido —, e por isso o
+    monitor continua a receber a página inteira.
+
+    O passo viaja no endereço como tudo o resto nesta página: o
+    retrocesso do navegador anda para trás nos passos, e uma ligação
+    aberta noutro sítio abre onde estava.
+  */
+  const podeConfirmar = cart.length > 0 && chosenAt !== null
+  const pedido = first(query[STEP_PARAM])
+  const passo: 1 | 2 | 3 =
+    pedido === '3' && podeConfirmar
+      ? 3
+      : pedido === '2' || pedido === '3'
+        ? 2
+        : 1
+  /** Fora do passo, o cartão fica para o monitor — que os mostra todos. */
+  const soNoPasso = (n: 1 | 2 | 3) => (passo === n ? null : 'hidden lg:block')
+
   // --- endereços ----------------------------------------------------
   const here = `/agenda/${unit.slug}/encaixe`
   const link = (next: {
@@ -240,6 +276,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     time?: string | null
     hand?: string | null
     client?: string | null
+    step?: 1 | 2 | 3
   }): string => {
     const value = new URLSearchParams()
     const nextCart = next.cart ?? cart
@@ -251,6 +288,9 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     if (handValue) value.set(HAND_PARAM, handValue)
     const who = next.client === undefined ? clientId : next.client
     if (who) value.set(CLIENT_PARAM, who)
+    // O primeiro passo é o que se calha ter: não precisa de nome.
+    const step = next.step ?? passo
+    if (step !== 1) value.set(STEP_PARAM, String(step))
     return `${here}?${value.toString()}`
   }
 
@@ -386,6 +426,40 @@ export default async function EncaixePage({ params, searchParams }: Params) {
         </h1>
       </header>
 
+      {/*
+        A FITA DIZ ONDE SE ESTÁ, E DEIXA VOLTAR ATRÁS.
+
+        Os passos já eram três e já estavam numerados; o que faltava era
+        poder vê-los todos de fora, para saber quantos são e quanto
+        falta. Cada degrau é uma ligação — o terceiro só acende quando
+        houver visita e hora, porque antes disso não há lá nada.
+
+        No monitor não aparece: lá os três cartões estão à vista.
+      */}
+      <nav
+        aria-label="Passos"
+        className="mb-5 flex border-b border-[var(--line-soft)] lg:hidden"
+      >
+        <Degrau
+          numero="1"
+          nome="Serviços"
+          activo={passo === 1}
+          href={link({ step: 1 })}
+        />
+        <Degrau
+          numero="2"
+          nome="Quando"
+          activo={passo === 2}
+          href={link({ step: 2 })}
+        />
+        <Degrau
+          numero="3"
+          nome="Cliente"
+          activo={passo === 3}
+          href={podeConfirmar ? link({ step: 3 }) : null}
+        />
+      </nav>
+
       {/* O recibo da anterior. Some-se ao primeiro toque, porque o `ok`
           não viaja em nenhuma das ligações desta página — e é isso que
           se quer: fica à vista enquanto a página está parada, e sai do
@@ -407,7 +481,10 @@ export default async function EncaixePage({ params, searchParams }: Params) {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
         {/* --- catálogo -------------------------------------------- */}
-        <section id="servicos" className="min-w-0 scroll-mt-20">
+        <section
+          id="servicos"
+          className={clsx('min-w-0 scroll-mt-20', soNoPasso(1))}
+        >
           <StepTitle step="1">Serviços</StepTitle>
           {services.length === 0 ? (
             <Empty
@@ -426,7 +503,15 @@ export default async function EncaixePage({ params, searchParams }: Params) {
 
         {/* --- a visita, o quando, o fecho -------------------------- */}
         <aside className="min-w-0 space-y-6 lg:sticky lg:top-20">
-          <Card className="px-4 py-4 shadow-[var(--shadow-soft)]">
+          {/* A VISITA É O CARTÃO DO PASSO 2, não um cartão perdido a
+              meio da lista dos serviços — que é onde ninguém a
+              procurava. No passo 1 ela lê-se na barra de baixo. */}
+          <Card
+            className={clsx(
+              'px-4 py-4 shadow-[var(--shadow-soft)]',
+              soNoPasso(2),
+            )}
+          >
             <h2 className="mb-3 flex items-baseline gap-2.5">
               <span className="titulo-seccao shrink-0">A visita</span>
               <span
@@ -582,7 +667,10 @@ export default async function EncaixePage({ params, searchParams }: Params) {
             As horas livres é que precisam de saber o que se vai fazer —
             essas continuam a aparecer só depois dos serviços.
           */}
-          <Card id="quando" className="scroll-mt-20 px-4 py-4">
+          <Card
+            id="quando"
+            className={clsx('scroll-mt-20 px-4 py-4', soNoPasso(2))}
+          >
             <StepTitle step="2">Quando</StepTitle>
 
             <DeskDayStrip
@@ -712,6 +800,9 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                 >
                   <p className="titulo-seccao mb-2">Ou uma hora à mão</p>
                   <input type="hidden" name={DAY_PARAM} value={day} />
+                  {/* Sem isto o formulário voltava ao primeiro passo:
+                      o que ele envia é tudo o que o endereço leva. */}
+                  <input type="hidden" name={STEP_PARAM} value="2" />
                   <input
                     type="hidden"
                     name={CART_PARAM}
@@ -759,12 +850,15 @@ export default async function EncaixePage({ params, searchParams }: Params) {
             passar por cima dela para chegar ao que interessava.
           */}
           {cart.length > 0 && chosenAt ? (
-            <Card id="confirmar" className="scroll-mt-20 px-4 py-4">
+            <Card
+              id="confirmar"
+              className={clsx('scroll-mt-20 px-4 py-4', soNoPasso(3))}
+            >
               <ScrollHere chave={chosenAt.toISOString()} />
               <StepTitle step="3">Cliente e confirmar</StepTitle>
               {plan ? (
                 <>
-                  <ul className="mb-4 space-y-1.5">
+                  <ul className="space-y-1.5 lg:mb-4">
                     {plan.items.map((item) => (
                       <li
                         key={`${item.serviceId}-${item.startsAt.toISOString()}`}
@@ -782,6 +876,18 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                       </li>
                     ))}
                   </ul>
+
+                  {/* No monitor o total está no cartão da visita, ao
+                      lado. No telemóvel esse cartão é outro passo, e a
+                      conferência tem de fechar as contas sozinha. */}
+                  <div className="mt-2.5 mb-4 flex items-baseline justify-between border-t border-[var(--line-soft)] pt-2.5 lg:hidden">
+                    <span className="text-[0.8125rem] text-[var(--ink-muted)]">
+                      {formatDuration(totalMinutes)}
+                    </span>
+                    <span className="display tabular text-lg text-[var(--ink)]">
+                      {formatCents(totalCents)}
+                    </span>
+                  </div>
 
                   {client ? (
                     <div className="mb-4 flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface)] px-3.5 py-2.5">
@@ -843,12 +949,24 @@ export default async function EncaixePage({ params, searchParams }: Params) {
       </div>
 
       {/*
-        A BARRA QUE NUNCA SE PERDE — só no telemóvel, onde os passos se
-        empilham e o total fica fora do ecrã. Diz o que a visita já é
-        (total, tempo, hora) e leva ao próximo passo em falta. Pousa em
-        cima da barra de navegação do balcão (4.5rem), nunca atrás dela.
+        A BARRA É O CHÃO DO PASSO — só no telemóvel.
+
+        Diz o que a visita já é (total, tempo, e o que falta) e tem UM
+        botão só: «Seguinte». Apagado enquanto faltar alguma coisa, que
+        é como se vê que falta — dantes o botão mudava de nome («escolher
+        a hora») e ia dar ao mesmo sítio que a caixa do passo, com o
+        mesmo nome e outra acção.
+
+        NO PASSO 3 NÃO APARECE. Lá o que fecha a marcação são os dois
+        botões do formulário, e um terceiro botão em cima deles, com o
+        mesmo nome, dava duas maneiras de carregar na mesma coisa — e
+        duas marcações, se ambas fossem carregadas. Sai, e devolve
+        sessenta píxeis ao passo que mais precisa deles.
+
+        Pousa em cima da barra de navegação do balcão (4.5rem), nunca
+        atrás dela.
       */}
-      {cart.length > 0 ? (
+      {cart.length > 0 && passo !== 3 ? (
         <div
           className="fixed inset-x-0 z-30 border-t border-[var(--line)] bg-[var(--surface-raised)] px-4 py-2.5 shadow-[0_-6px_18px_-12px_rgba(46,38,28,0.45)] lg:hidden"
           style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
@@ -862,17 +980,32 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                 </span>
               </p>
               <p className="tabular truncate text-[0.6875rem] text-[var(--ink-faint)]">
-                {chosenAt
-                  ? `${capitalise(formatDayLong(day, tz))} · ${formatTime(chosenAt, tz)}`
-                  : 'Falta escolher a hora'}
+                {passo === 1
+                  ? `${cart.length} ${cart.length === 1 ? 'serviço' : 'serviços'}`
+                  : chosenAt
+                    ? `${capitalise(formatDayLong(day, tz))} · ${formatTime(chosenAt, tz)}`
+                    : 'Falta escolher a hora'}
               </p>
             </div>
-            <a
-              href={chosenAt ? '#confirmar' : '#quando'}
-              className={buttonClass('primary', 'sm', 'shrink-0')}
-            >
-              {chosenAt ? 'Confirmar' : 'Escolher a hora'}
-            </a>
+            {passo === 1 || podeConfirmar ? (
+              <Link
+                href={link({ step: passo === 1 ? 2 : 3 })}
+                className={buttonClass('primary', 'sm', 'shrink-0')}
+              >
+                Seguinte
+              </Link>
+            ) : (
+              <span
+                aria-disabled="true"
+                className={buttonClass(
+                  'primary',
+                  'sm',
+                  'pointer-events-none shrink-0 opacity-40',
+                )}
+              >
+                Seguinte
+              </span>
+            )}
           </div>
         </div>
       ) : null}
@@ -901,10 +1034,19 @@ function StepTitle({
     O número aqui É informação: estes três passos são mesmo uma
     sequência — não se escolhe a hora antes de haver serviços, nem se
     confirma antes de haver hora.
+
+    NO TELEMÓVEL O TÍTULO NÃO APARECE: está em cima, na fita. Com um
+    passo de cada vez à vista, a fita dizia «2 Quando» e o cartão logo a
+    seguir dizia outra vez «2 Quando» — repetição do desenho, não da
+    informação. No monitor, onde os três cartões vivem juntos, é ao
+    contrário: é o título que os separa uns dos outros.
   */
   return (
     <h2
-      className={clsx('flex items-baseline gap-2.5', flush ? null : 'mb-3.5')}
+      className={clsx(
+        'hidden items-baseline gap-2.5 lg:flex',
+        flush ? null : 'mb-3.5',
+      )}
     >
       <span className="algarismo-casa shrink-0 text-[1.25rem] leading-none text-[var(--house)]">
         {step}
@@ -915,6 +1057,59 @@ function StepTitle({
         className="h-px flex-1 translate-y-[-0.2em] bg-[linear-gradient(90deg,color-mix(in_srgb,var(--house)_34%,transparent),transparent)]"
       />
     </h2>
+  )
+}
+
+/**
+ * UM DEGRAU DA FITA DOS PASSOS.
+ *
+ * Apagado quando ainda não se lá pode chegar — e aí não é ligação
+ * nenhuma, é texto: um botão que não faz nada é pior do que não haver
+ * botão. O algarismo é o mesmo ouro dos títulos dos passos, para se
+ * reconhecer que é a mesma coisa vista de fora.
+ */
+function Degrau({
+  numero,
+  nome,
+  activo,
+  href,
+}: {
+  numero: string
+  nome: string
+  activo: boolean
+  href: string | null
+}) {
+  const dentro = (
+    <>
+      <span className="algarismo-casa text-[0.9375rem] leading-none text-[var(--house)]">
+        {numero}
+      </span>
+      <span className="titulo-seccao">{nome}</span>
+    </>
+  )
+  const moldura =
+    'flex flex-1 items-baseline justify-center gap-1.5 border-b-2 pb-2.5 -mb-px transition-opacity'
+
+  if (!href) {
+    return (
+      <span className={clsx(moldura, 'border-transparent opacity-30')}>
+        {dentro}
+      </span>
+    )
+  }
+  return (
+    <Link
+      href={href}
+      aria-current={activo ? 'step' : undefined}
+      className={clsx(
+        moldura,
+        activo
+          ? 'border-[var(--accent)]'
+          : 'border-transparent opacity-55 hover:opacity-100',
+      )}
+    >
+      {dentro}
+    </Link>
   )
 }
 
