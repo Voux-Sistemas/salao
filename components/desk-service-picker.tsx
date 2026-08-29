@@ -117,6 +117,13 @@ export function DeskServicePicker({
 
     Lá ficam três: os mais marcados, todas, e o menu com as categorias
     todas lá dentro. Nada se perde: o menu já as tinha todas.
+
+    É `max-sm:hidden`, e não `hidden sm:inline-flex`: nesta versão do
+    Tailwind o `.inline-flex` é escrito DEPOIS do `.hidden` na folha de
+    estilo, e por isso um `hidden` posto ao lado do `inline-flex` da
+    pastilha não esconde coisa nenhuma. Quem manda é a ordem no
+    ficheiro, não a ordem no atributo — e as regras dentro de um
+    `@media` vêm sempre depois de todas as outras.
   */
   const atalhoEscolhido = atalhos.find((c) => c.id === catId) ?? null
   /** A escolhida entrou no menu? Então sobe, para se ver onde se está. */
@@ -236,7 +243,7 @@ export function DeskServicePicker({
           {atalhos.map((category) => (
             <CategoryChip
               key={category.id}
-              className="hidden sm:inline-flex"
+              className="max-sm:hidden"
               active={catId === category.id}
               onClick={() => {
                 setSoDestaque(false)

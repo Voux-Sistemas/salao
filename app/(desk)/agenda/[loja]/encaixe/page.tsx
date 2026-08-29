@@ -402,9 +402,33 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     // O respiro de baixo é para a barra fixa: sem ele, a última linha
     // da página morria escondida atrás do total.
     <div className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:py-8">
+      {/*
+        NO TELEMÓVEL O CABEÇALHO É UMA LINHA.
+
+        Eram três coisas empilhadas — a volta à agenda, a loja, e o
+        nome da página em corpo trinta — e valiam duzentos píxeis antes
+        do primeiro passo, num ecrã que tem setecentos. Num sítio onde
+        se marca de pé, com a cliente à frente, o título da página é a
+        informação que menos falta faz: já se sabe onde se está.
+
+        Passam a caber na mesma linha: a seta que volta, o nome, e a
+        loja à direita. No monitor o cabeçalho fica como estava — lá
+        sobra ecrã, e um título grande é o que abre a página.
+      */}
+      <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
+        <Link
+          href={`/agenda/${unit.slug}?d=${day}`}
+          className="flex min-w-0 items-center gap-2 text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0 text-[var(--ink-faint)]" />
+          <span className="display truncate text-xl">Encaixe</span>
+        </Link>
+        <span className="titulo-seccao shrink-0">{unit.name}</span>
+      </div>
+
       <Link
         href={`/agenda/${unit.slug}?d=${day}`}
-        className="mb-4 inline-flex items-center gap-1.5 text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)] lg:mb-6"
+        className="mb-4 inline-flex items-center gap-1.5 text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)] max-lg:hidden lg:mb-6"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         Voltar à agenda
@@ -419,7 +443,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
         lia-se pela quinquagésima vez a quem a sabe de cor desde a
         primeira. Quem abre o encaixe já sabe o que o encaixe é.
       */}
-      <header className="mb-5 lg:mb-8">
+      <header className="mb-5 max-lg:hidden lg:mb-8">
         <p className="titulo-seccao mb-1 lg:mb-2">{unit.name} · Balcão</p>
         <h1 className="display text-2xl text-[var(--ink)] lg:text-3xl">
           Encaixe
@@ -1065,8 +1089,8 @@ function StepTitle({
  *
  * Apagado quando ainda não se lá pode chegar — e aí não é ligação
  * nenhuma, é texto: um botão que não faz nada é pior do que não haver
- * botão. O algarismo é o mesmo ouro dos títulos dos passos, para se
- * reconhecer que é a mesma coisa vista de fora.
+ * botão. O que está a acontecer leva a cor dos comandos e um fio por
+ * baixo; os outros dois ficam em cinzento de papel.
  */
 function Degrau({
   numero,
@@ -1079,20 +1103,31 @@ function Degrau({
   activo: boolean
   href: string | null
 }) {
+  /*
+    O nome do passo não usa a classe da casa: `.skin-desk
+    .titulo-seccao` pinta-a de ouro com mais força do que qualquer
+    utilitário de cor lhe possa pôr por cima. Aqui a cor é que diz onde
+    se está, e por isso escreve-se à mão — as medidas são as mesmas.
+  */
   const dentro = (
     <>
-      <span className="algarismo-casa text-[0.9375rem] leading-none text-[var(--house)]">
-        {numero}
+      <span className="tabular text-[0.875rem] leading-none">{numero}</span>
+      <span className="text-[0.625rem] font-semibold tracking-[0.14em] uppercase">
+        {nome}
       </span>
-      <span className="titulo-seccao">{nome}</span>
     </>
   )
   const moldura =
-    'flex flex-1 items-baseline justify-center gap-1.5 border-b-2 pb-2.5 -mb-px transition-opacity'
+    'flex flex-1 flex-col items-center gap-1 border-b-2 pb-2 -mb-px transition-colors'
 
   if (!href) {
     return (
-      <span className={clsx(moldura, 'border-transparent opacity-30')}>
+      <span
+        className={clsx(
+          moldura,
+          'border-transparent text-[var(--ink-faint)] opacity-45',
+        )}
+      >
         {dentro}
       </span>
     )
@@ -1104,8 +1139,8 @@ function Degrau({
       className={clsx(
         moldura,
         activo
-          ? 'border-[var(--accent)]'
-          : 'border-transparent opacity-55 hover:opacity-100',
+          ? 'border-[var(--accent)] text-[var(--accent)]'
+          : 'border-transparent text-[var(--ink-faint)] hover:text-[var(--ink-muted)]',
       )}
     >
       {dentro}
