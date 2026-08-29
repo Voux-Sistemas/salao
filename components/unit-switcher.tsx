@@ -69,7 +69,15 @@ export function UnitSwitcher({
           {atual?.name ?? allLabel}
           <ChevronDown aria-hidden className="h-3 w-3 shrink-0" />
         </summary>
-        <div className="absolute top-full left-0 z-30 mt-1.5 min-w-[10rem] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] pb-1 shadow-[var(--shadow-soft)]">
+        {/*
+          O PAINEL ABRE PARA DENTRO, NÃO PARA FORA.
+
+          Estava agarrado à esquerda da pastilha e crescia para a
+          direita. Esta pastilha vive no canto direito da faixa — no
+          telemóvel o painel saía pelo lado de fora do ecrã e tapava a
+          caixa do lado. Agarrado à direita, cresce para onde há
+          página. */}
+        <div className="absolute top-full right-0 z-30 mt-1.5 min-w-[10rem] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] pb-1 shadow-[var(--shadow-soft)]">
           <p className="px-3.5 pt-2 pb-1 text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
             Lojas
           </p>
