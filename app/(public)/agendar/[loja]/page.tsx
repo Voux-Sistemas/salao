@@ -2,11 +2,13 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getUnitBySlug } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
-import { firstOpenDay, pulseOfDays } from '@/lib/availability'
+import { firstOpenDay, pulseOfDays, staffForDay } from '@/lib/availability'
+import { openingWindows } from '@/lib/hours'
 import {
   addDays,
   daysBetween,
   formatDayLong,
+  formatMinutes,
   isoRange,
   today,
   type IsoDay,
@@ -77,6 +79,24 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 /** O mês visível do calendário. Só existe neste passo. */
 const MONTH_PARAM = 'm'
 
+/** Um facto do dia: o rótulo em versaletes, a resposta na tinta. */
+function Facto({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex items-baseline gap-3">
+      <dt className="w-16 shrink-0 text-[0.625rem] tracking-[0.12em] text-[var(--ink-faint)] uppercase">
+        {label}
+      </dt>
+      <dd className="min-w-0 text-[var(--ink)]">{children}</dd>
+    </div>
+  )
+}
+
 export default async function ChooseDayPage({ params, searchParams }: Params) {
   const { loja } = await params
   const query = await searchParams
@@ -134,6 +154,34 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
   const pulse = await pulseOfDays(unit, diasDoMes, 'online')
   const deadDays = new Set(diasDoMes.filter((d) => pulse.get(d) !== 'ok'))
   const state = pulse.get(day) ?? 'ok'
+
+  /*
+    OS TRÊS FACTOS DO DIA ESCOLHIDO.
+
+    A coluna ao lado do calendário tinha uma data, uma palavra e um
+    botão — três linhas de texto ao lado de uma grelha de seis, e por
+    isso o ecrã lia-se sempre torto. Mas o problema não era de arrumação:
+    era de substância.
+
+    Estes são os factos que a cliente quer ANTES de carregar em «ver quem
+    está» — a loja, as horas a que abre nesse dia, e quantas estão de
+    serviço — e que até aqui só descobria no passo seguinte, já depois de
+    ter escolhido. Equilibra-se a página a resolver, e não a arrumar.
+
+    CUSTAM DUAS IDAS À BASE, e são só para o dia escolhido: somam-se às
+    do pulso do mês. Ver o comentário do `pulseOfDays` acima.
+  */
+  const [janelas, equipa] = await Promise.all([
+    openingWindows(unit.id, day),
+    staffForDay(unit, day, 'online'),
+  ])
+  const aoServico = equipa.filter((p) => p.available).length
+  const horario =
+    janelas.length > 0
+      ? janelas
+          .map((w) => `${formatMinutes(w.openMin)}–${formatMinutes(w.closeMin)}`)
+          .join(' · ')
+      : null
 
   const here = `/agendar/${unit.slug}`
   const offset = daysBetween(firstDay, day)
@@ -238,6 +286,25 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
             className="h-px flex-1 bg-[var(--line-soft)] lg:hidden"
           />
         </div>
+
+        {/* Os três factos, em pares de rótulo e resposta. O rótulo em
+            versaletes finos, a resposta na tinta do texto: lê-se de
+            relance, e não compete com a data que está por cima. */}
+        <dl className="mt-5 space-y-2 border-t border-[var(--line-soft)] pt-4 text-[0.8125rem] lg:mt-6">
+          <Facto label={dict.funnel.dayStore}>{unit.name}</Facto>
+          {horario ? (
+            <Facto label={dict.funnel.dayOpens}>
+              <span className="tabular">{horario}</span>
+            </Facto>
+          ) : null}
+          {aoServico > 0 ? (
+            <Facto label={dict.funnel.dayTeam}>
+              {aoServico === 1
+                ? dict.funnel.dayTeamOne
+                : dict.funnel.dayTeamCount.replace('{n}', String(aoServico))}
+            </Facto>
+          ) : null}
+        </dl>
 
       {state === 'ok' ? (
         <div className="mt-5">

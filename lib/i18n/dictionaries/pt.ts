@@ -151,6 +151,14 @@ export const pt = {
        sobre papel quase branco não se via, e o algarismo de exemplo
        ficava a parecer um número perdido na página. */
     dayNoSlotsHint: 'Os dias apagados não têm vaga.',
+    /* Os três factos do dia escolhido, ao lado do calendário. São o que
+       a cliente quer saber ANTES de carregar em «ver quem está» — e que
+       até aqui só descobria no passo seguinte, já depois de escolher. */
+    dayStore: 'Loja',
+    dayOpens: 'Abre',
+    dayTeam: 'Equipa',
+    dayTeamCount: '{n} de serviço',
+    dayTeamOne: '1 de serviço',
     staffTitle: 'Com quem quer ser atendida?',
     staffSubtitle: 'Quem está de serviço neste dia aparece a cheio. Os outros ficam apagados.',
     staffOff: 'Folga',
