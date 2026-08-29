@@ -192,7 +192,22 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
         No monitor passa para o lado, encostada a um fio vertical — e
         ganha uma largura sua, para não se esticar até à margem.
       */}
-      <div className="mt-7 lg:mt-1 lg:w-[16.5rem] lg:shrink-0 lg:border-l lg:border-[var(--line-soft)] lg:pl-12">
+      {/*
+        UM FIO QUE COMEÇA E ACABA EM NADA.
+
+        Era uma borda de canto a canto da coluna mais alta — e uma borda
+        toca nas duas pontas com a mesma força, o que num sítio sem
+        moldura nenhuma parece um risco de caneta. Este nasce do nada,
+        chega a um sexto de tinta ao meio, e volta a desaparecer: separa
+        sem cortar. É o mesmo gesto dos fios que acompanham os títulos
+        da casa, virado ao alto.
+      */}
+      <span
+        aria-hidden
+        className="hidden w-px self-stretch bg-[linear-gradient(180deg,transparent,color-mix(in_srgb,var(--ink)_15%,transparent)_16%,color-mix(in_srgb,var(--ink)_15%,transparent)_84%,transparent)] lg:block"
+      />
+
+      <div className="mt-7 lg:mt-1 lg:w-[17rem] lg:shrink-0">
         <div className="flex items-center gap-3.5 lg:flex-col lg:items-start lg:gap-2">
           <span
             aria-hidden

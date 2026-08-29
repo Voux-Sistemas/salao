@@ -117,7 +117,7 @@ export function MonthCalendar({
     desfazer colunas nenhumas.
   */
   return (
-    <div className="mx-auto max-w-[21.5rem]">
+    <div className="mx-auto max-w-[21.5rem] lg:max-w-[24rem]">
       {/*
         O mês entre dois fios que se desvanecem do ouro para nada — a
         mesma peça dos títulos de secção da casa — com as setas nas
@@ -134,7 +134,7 @@ export function MonthCalendar({
           aria-hidden
           className="h-px flex-1 bg-[linear-gradient(270deg,color-mix(in_srgb,var(--accent)_32%,transparent),transparent)]"
         />
-        <p className="display shrink-0 text-[1.1875rem] whitespace-nowrap text-[var(--ink)] first-letter:uppercase">
+        <p className="display shrink-0 text-[1.1875rem] whitespace-nowrap text-[var(--ink)] first-letter:uppercase lg:text-[1.3125rem]">
           {formatMonthYear(primeiro, timezone, language)}
         </p>
         <span
@@ -154,7 +154,7 @@ export function MonthCalendar({
           <span
             key={i}
             aria-hidden
-            className="pb-2.5 text-center text-[0.5938rem] font-bold tracking-[0.14em] text-[var(--ink-faint)] uppercase"
+            className="pb-3 text-center text-[0.5938rem] font-bold tracking-[0.16em] text-[var(--ink-faint)] uppercase lg:text-[0.625rem]"
           >
             {nome}
           </span>
@@ -175,7 +175,7 @@ export function MonthCalendar({
               <span
                 key={valor}
                 aria-disabled="true"
-                className="tabular flex aspect-square items-center justify-center text-[0.875rem] font-medium text-[var(--ink)] opacity-20"
+                className="tabular flex aspect-square items-center justify-center text-[0.9375rem] font-medium text-[var(--ink)] opacity-20 lg:text-base"
               >
                 {numero}
               </span>
@@ -189,44 +189,51 @@ export function MonthCalendar({
               aria-current={escolhido ? 'date' : undefined}
               className="group relative flex aspect-square items-center justify-center"
             >
+              {/*
+                A BOLINHA SAI DE DENTRO DO NÚMERO.
+
+                Estava empilhada com ele, os dois a dividir o meio da
+                célula: o número subia para dar lugar ao ponto, e dentro
+                do círculo cheio ficavam as duas coisas apertadas contra
+                as paredes. E era redundante — um dia pintado de ouro já
+                diz que está livre, e é o único que está escolhido.
+
+                Agora o número fica no centro óptico da célula, sozinho,
+                e o ponto desce para o pé dela, fora do caminho. No dia
+                escolhido não há ponto nenhum: o círculo já o disse.
+              */}
               {escolhido ? (
                 <span
                   aria-hidden
-                  className="absolute inset-1 rounded-full bg-[var(--accent)]"
+                  className="absolute inset-[0.3rem] rounded-full bg-[var(--accent)]"
                 />
               ) : valor === today ? (
                 <span
                   aria-hidden
-                  className="absolute inset-1.5 rounded-full border border-[color-mix(in_srgb,var(--accent)_45%,transparent)]"
+                  className="absolute inset-[0.3rem] rounded-full border border-[color-mix(in_srgb,var(--accent)_45%,transparent)]"
                 />
               ) : (
                 <span
                   aria-hidden
-                  className="absolute inset-1 rounded-full transition-colors group-hover:bg-[color-mix(in_srgb,var(--accent)_9%,transparent)]"
+                  className="absolute inset-[0.3rem] rounded-full transition-colors group-hover:bg-[color-mix(in_srgb,var(--accent)_9%,transparent)]"
                 />
               )}
 
-              <span className="relative flex flex-col items-center gap-[0.3rem]">
-                <span
-                  className={clsx(
-                    'tabular text-[0.875rem] leading-none font-medium',
-                    escolhido
-                      ? 'text-[var(--accent-ink)]'
-                      : 'text-[var(--ink)]',
-                  )}
-                >
-                  {numero}
-                </span>
+              <span
+                className={clsx(
+                  'tabular relative text-[0.9375rem] leading-none font-medium lg:text-base',
+                  escolhido ? 'text-[var(--accent-ink)]' : 'text-[var(--ink)]',
+                )}
+              >
+                {numero}
+              </span>
+
+              {escolhido ? null : (
                 <span
                   aria-hidden
-                  className={clsx(
-                    'block h-[3px] w-[3px] rounded-full',
-                    escolhido
-                      ? 'bg-[color-mix(in_srgb,var(--accent-ink)_75%,transparent)]'
-                      : 'bg-[var(--accent)]',
-                  )}
+                  className="absolute bottom-[0.45rem] block h-[3px] w-[3px] rounded-full bg-[var(--accent)]"
                 />
-              </span>
+              )}
             </Link>
           )
         })}
