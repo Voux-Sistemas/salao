@@ -73,8 +73,19 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
         {/* Vidro fosco em vez de branco chapado: a lista passa por
             baixo e vê-se que passa. Numa agenda que se rola o dia
             inteiro, saber que ainda há conteúdo acima vale mais do que
-            a barra ser opaca. */}
-        <header className="sticky top-0 z-30 border-b border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--surface-raised)_78%,transparent)] backdrop-blur-md">
+            a barra ser opaca.
+
+            E O VIDRO É BEGE, COMO A BARRA DE BAIXO. Uma página fica
+            bem segura quando as duas pontas são da mesma cor: as duas
+            dizem «isto é a casa», e o que está entre elas é o trabalho.
+            Enquanto esta foi quase branca, era mais um cartão da lista
+            — e a de baixo, essa, já parecia o chão.
+
+            O que se trocou foi o TOM, não o material: o `color-mix` e o
+            desfoque são os mesmos, e a lista continua a ver-se a passar
+            por baixo. A percentagem sobe de 78 para 86, que é o que o
+            bege precisa para pesar o mesmo que o branco pesava. */}
+        <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--surface-2)_86%,transparent)] backdrop-blur-md">
           <div className="flex h-14 items-center gap-3 px-4 sm:gap-5 sm:px-6">
             <Link
               href={home}
