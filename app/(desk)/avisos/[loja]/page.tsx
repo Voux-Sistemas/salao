@@ -28,7 +28,7 @@ import {
   ROUTINE_SHORT,
   type Routine,
 } from '@/lib/whatsapp'
-import { Info } from 'lucide-react'
+import { ChevronDown, Info } from 'lucide-react'
 import { SendWhatsApp } from '@/components/desk-actions'
 import { UnitSwitcher } from '@/components/unit-switcher'
 import { Badge, Card, Empty } from '@/components/ui'
@@ -158,41 +158,146 @@ export default async function AvisosPage({
           )}
         </div>
 
-        {/* A fila anda de lado em vez de crescer para baixo: cinco
-            rotinas não cabem em 390px, e três filas de pastilhas eram
-            o mesmo muro do catálogo, por outro caminho. */}
-        <nav
-          aria-label="Rotinas"
-          className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6"
-        >
-          {ROUTINES.map((value) => {
-            const count = only(queues[value]).length
-            const active = value === routine
-            return (
-              <Link
-                key={value}
-                href={linkTo(value, chosen)}
-                aria-current={active ? 'page' : undefined}
-                className={clsx(
-                  'flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[0.8125rem] font-medium transition-colors',
-                  active
-                    ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
-                    : 'border-[var(--line-soft)] text-[var(--ink-muted)]',
-                )}
-              >
-                {ROUTINE_SHORT[value]}
-                <span
+        {/*
+          DUAS CAIXAS, LADO A LADO, NUMA LINHA.
+
+          Eram cinco pastilhas de rotina numa fila que rolava de lado, e
+          por baixo seis nomes de colaboradoras em texto solto que
+          quebrava em três filas. Cinco rotinas e seis pessoas não cabem
+          em trezentos e noventa píxeis, e rolar não é a solução: é o
+          adiamento dela — uma fila que rola esconde o que tem, e a
+          palavra que fica na borda («Avaliaçã») parece um erro.
+
+          Aqui nada rola, nada quebra e nada se corta. E cresce sozinho:
+          com dez rotinas ou vinte pessoas, as caixas são as mesmas.
+
+          ABERTAS MOSTRAM O QUE A PASTILHA NUNCA CONSEGUIU: os nomes
+          inteiros e a conta de cada um. «Lembrete da véspera» e «Karita
+          Lorrany» nunca couberam numa pastilha; numa lista cabem sempre.
+
+          É o `<details>` da casa, com ligações lá dentro: sem
+          JavaScript, o retrocesso do navegador funciona, e a `key`
+          fecha-o ao escolher.
+        */}
+        <div className="flex gap-2 pb-2.5">
+          <details key={routine} className="relative min-w-0 flex-1">
+            <summary className="flex h-9 cursor-pointer list-none items-center justify-between gap-2 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] px-3 text-[0.8125rem] font-semibold text-[var(--ink)] [&::-webkit-details-marker]:hidden">
+              <span className="truncate">{ROUTINE_LABEL[routine]}</span>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <span className="tabular text-[0.6875rem] font-bold text-[var(--accent)]">
+                  {only(queues[routine]).length}
+                </span>
+                <ChevronDown
+                  aria-hidden
+                  className="h-3.5 w-3.5 text-[var(--ink-faint)]"
+                />
+              </span>
+            </summary>
+            <div className="absolute top-full left-0 z-30 mt-1.5 w-[15rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-soft)]">
+              {ROUTINES.map((value) => {
+                const count = only(queues[value]).length
+                const active = value === routine
+                return (
+                  <Link
+                    key={value}
+                    href={linkTo(value, chosen)}
+                    aria-current={active ? 'page' : undefined}
+                    className={clsx(
+                      'flex items-center justify-between gap-3 border-t border-[var(--line-soft)] px-3.5 py-2.5 text-[0.8125rem] first:border-t-0',
+                      active
+                        ? 'font-semibold text-[var(--accent)]'
+                        : 'text-[var(--ink-muted)]',
+                    )}
+                  >
+                    {ROUTINE_LABEL[value]}
+                    <span
+                      className={clsx(
+                        'tabular shrink-0 text-[0.6875rem]',
+                        count > 0
+                          ? 'text-[var(--ink)]'
+                          : 'text-[var(--ink-faint)]',
+                      )}
+                    >
+                      {count}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          </details>
+
+          {/*
+            FECHADA, A CAIXA CONVIDA — NÃO DESCREVE.
+
+            Dizia «Todas» enquanto ninguém estivesse escolhido, e isso
+            lia-se como uma decisão já tomada por alguém. «Colaboradores»
+            diz o que ela é: uma caixa por abrir. «Todas» continua a
+            existir, e é a primeira opção lá dentro — ver a casa toda é
+            uma decisão a sério, e quando se toma é ela que a caixa
+            passa a mostrar.
+          */}
+          {showPeople ? (
+            <details
+              key={chosen ?? 'todas'}
+              className="relative w-[8.75rem] shrink-0"
+            >
+              <summary className="flex h-9 cursor-pointer list-none items-center justify-between gap-2 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] px-3 text-[0.8125rem] font-semibold text-[var(--ink)] [&::-webkit-details-marker]:hidden">
+                <span className="truncate">
+                  {chosen
+                    ? (people.find((p) => p.id === chosen)?.name ??
+                      'Colaboradores')
+                    : 'Colaboradores'}
+                </span>
+                <ChevronDown
+                  aria-hidden
+                  className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)]"
+                />
+              </summary>
+              <div className="absolute top-full right-0 z-30 mt-1.5 w-[14rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-soft)]">
+                <Link
+                  href={linkTo(routine, null)}
+                  aria-current={chosen ? undefined : 'page'}
                   className={clsx(
-                    'tabular text-[0.6875rem]',
-                    count > 0 ? 'text-[var(--ink)]' : 'text-[var(--ink-faint)]',
+                    'flex items-center justify-between gap-3 px-3.5 py-2.5 text-[0.8125rem]',
+                    chosen
+                      ? 'text-[var(--ink-muted)]'
+                      : 'font-semibold text-[var(--accent)]',
                   )}
                 >
-                  {count}
-                </span>
-              </Link>
-            )
-          })}
-        </nav>
+                  Todas
+                </Link>
+                {people.map((person) => {
+                  const active = person.id === chosen
+                  return (
+                    <Link
+                      key={person.id}
+                      href={linkTo(routine, person.id)}
+                      aria-current={active ? 'page' : undefined}
+                      className={clsx(
+                        'flex items-center justify-between gap-3 border-t border-[var(--line-soft)] px-3.5 py-2.5 text-[0.8125rem]',
+                        active
+                          ? 'font-semibold text-[var(--accent)]'
+                          : 'text-[var(--ink-muted)]',
+                      )}
+                    >
+                      <span className="truncate">{person.name}</span>
+                      <span
+                        className={clsx(
+                          'tabular shrink-0 text-[0.6875rem]',
+                          person.count > 0
+                            ? 'text-[var(--ink)]'
+                            : 'text-[var(--ink-faint)]',
+                        )}
+                      >
+                        {person.count}
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </details>
+          ) : null}
+        </div>
       </div>
 
       <header className="mb-5 flex flex-wrap items-end justify-between gap-4 max-lg:hidden">
@@ -287,9 +392,14 @@ export default async function AvisosPage({
       </nav>
 
       {/* --- de quem é cada fila ------------------------------------ */}
+      {/* No telemóvel esta fila quebrava em três linhas de texto solto e
+          comia mais ecrã do que a lista que vinha filtrar. Lá em cima é
+          agora uma caixa; aqui fica para o monitor, onde os seis nomes
+          cabem numa linha e uma escolha à vista vale mais do que uma
+          escolha guardada atrás de um toque. */}
       {showPeople ? (
         <nav
-          className="mb-6 flex flex-wrap items-center gap-x-1 gap-y-1.5"
+          className="mb-6 flex flex-wrap items-center gap-x-1 gap-y-1.5 max-lg:hidden"
           aria-label="Por profissional"
         >
           <span className="mr-1.5 text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
