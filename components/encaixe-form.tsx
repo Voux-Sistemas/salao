@@ -99,25 +99,45 @@ export function EncaixeForm({
         </div>
       )}
 
-      <Field label="Como chegou" htmlFor="encaixe-source">
-        <Select id="encaixe-source" name="source" defaultValue="counter">
-          {SOURCES.map((value) => (
-            <option key={value} value={value}>
-              {SOURCE_LABEL[value]}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      {/*
+        A ORIGEM E A NOTA FECHAM-SE.
 
-      <Field label="Nota interna" htmlFor="encaixe-note">
-        <Textarea
-          id="encaixe-note"
-          name="note"
-          maxLength={500}
-          className="min-h-16"
-          placeholder="Só a equipa vê isto."
-        />
-      </Field>
+        Estavam sempre abertas, e valiam cento e oitenta píxeis entre a
+        cliente e o botão de marcar. Mas quem marca do balcão está no
+        balcão: a origem já vem certa, e a nota interna escreve-se numa
+        marcação em vinte. Duas coisas que se usam raramente não podem
+        estar à frente da que se usa sempre.
+
+        Ficam DENTRO do formulário: fechadas continuam a ser enviadas —
+        o `<details>` esconde, não desliga —, e por isso a origem
+        continua a chegar como «Balcão» sem ninguém lhe tocar.
+      */}
+      <details className="rounded-[var(--radius)] border border-[var(--line-soft)] px-3 py-2">
+        <summary className="cursor-pointer list-none text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)] [&::-webkit-details-marker]:hidden">
+          Origem e nota interna
+        </summary>
+        <div className="mt-3 space-y-4">
+          <Field label="Como chegou" htmlFor="encaixe-source">
+            <Select id="encaixe-source" name="source" defaultValue="counter">
+              {SOURCES.map((value) => (
+                <option key={value} value={value}>
+                  {SOURCE_LABEL[value]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="Nota interna" htmlFor="encaixe-note">
+            <Textarea
+              id="encaixe-note"
+              name="note"
+              maxLength={500}
+              className="min-h-16"
+              placeholder="Só a equipa vê isto."
+            />
+          </Field>
+        </div>
+      </details>
 
       <div className="flex flex-wrap gap-2">
         <Submit>Marcar encaixe</Submit>

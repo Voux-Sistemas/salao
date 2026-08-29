@@ -74,6 +74,7 @@ type ServiceRow = {
 }
 
 type SkillRow = { service_id: string; staff_id: string; staff_name: string }
+type PopularRow = { service_id: string; n: number }
 type PriceRow = { ord: number; price_cents: number; duration_minutes: number }
 type ClientRow = { id: string; name: string; phone: string; visits: number }
 type DoneRow = {
@@ -123,7 +124,7 @@ export default async function EncaixePage({ params, searchParams }: Params) {
   const day: IsoDay =
     askedDay && isValidDay(askedDay) ? askedDay : today(tz, now)
 
-  const [services, skills] = await Promise.all([
+  const [services, skills, popular] = await Promise.all([
     sql<ServiceRow[]>`
       select c.id as category_id, c.name as category_name,
              s.id, s.name, s.bookable_online,
@@ -146,6 +147,33 @@ export default async function EncaixePage({ params, searchParams }: Params) {
        where s.org_id = ${actor.orgId} and s.is_active
          and (${ownStaff}::uuid is null or s.id = ${ownStaff}::uuid)
        order by s.sort_order, s.name
+    `,
+    /*
+      O QUE ESTA CASA MAIS MARCA.
+
+      Sessenta e oito serviços abertos de uma vez são um catálogo; quem
+      está ao balcão com a cliente à frente quer os dez que marca todos
+      os dias. Conta-se o que saiu daqui, não o que a Gestão acha que
+      sai: é a agenda desta loja que responde.
+
+      NOVENTA DIAS. Menos do que isso e um mês atípico manda na lista —
+      uma semana de noivas põe o penteado à frente do brushing. Muito
+      mais e o Verão continua a mandar em Janeiro.
+
+      As canceladas e as faltas não contam: contam-se as que a casa fez,
+      não as que alguém escreveu.
+    */
+    sql<PopularRow[]>`
+      select ai.service_id, count(*)::int as n
+        from appointment_item ai
+        join appointment a on a.id = ai.appointment_id
+       where a.unit_id = ${unit.id}
+         and a.starts_at >= now() - interval '90 days'
+         and a.status not in
+             ('no_show', 'cancelled_by_client', 'cancelled_by_salon')
+       group by ai.service_id
+       order by n desc
+       limit 60
     `,
   ])
 
@@ -291,6 +319,43 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     })
   }
 
+  /*
+    OS QUE MAIS SE MARCAM, E AS CATEGORIAS QUE MAIS PESAM.
+
+    A contagem chega da base por serviço; daqui saem as duas coisas que
+    a peneira precisa: uma lista curta dos serviços mais marcados, e a
+    ORDEM das categorias — que é a soma do que cada uma vale.
+
+    A CASA NOVA NÃO TEM HISTÓRIA, e é o caso que interessa não estragar:
+    sem marcações, a contagem vem vazia, a lista dos «mais marcados» não
+    aparece, e as categorias ficam pela ordem que a dona lhes deu na
+    Gestão. Nada quebra, e o ecrã abre na primeira categoria dela.
+  */
+  const contagem = new Map(popular.map((row) => [row.service_id, row.n]))
+
+  const destaque = popular
+    .flatMap((row) => {
+      const entry = byCategory.get(byId.get(row.service_id)?.category_id ?? '')
+      return entry?.services.find((s) => s.id === row.service_id) ?? []
+    })
+    .slice(0, 10)
+
+  /** O peso de cada categoria: a soma do que os serviços dela valem. */
+  const pesoDaCategoria = new Map<string, number>()
+  for (const row of services) {
+    const n = contagem.get(row.id) ?? 0
+    if (n === 0) continue
+    pesoDaCategoria.set(
+      row.category_id,
+      (pesoDaCategoria.get(row.category_id) ?? 0) + n,
+    )
+  }
+  const ordemDasCategorias = [...catalogue]
+    .sort(
+      (a, b) => (pesoDaCategoria.get(b.id) ?? 0) - (pesoDaCategoria.get(a.id) ?? 0),
+    )
+    .map((c) => c.id)
+
   const pickerClients: PickerClient[] = allClients
 
   return (
@@ -305,19 +370,20 @@ export default async function EncaixePage({ params, searchParams }: Params) {
         Voltar à agenda
       </Link>
 
-      {/* No telemóvel o cabeçalho é uma linha: o nome da página e a
-          casa. A explicação fica para o monitor — quem marca vinte
-          encaixes por dia já a sabe de cor, e ela custava um dedo de
-          ecrã antes do primeiro passo. */}
+      {/*
+        O cabeçalho é uma linha: o nome da página e a casa.
+
+        A explicação — «do balcão marca-se tudo, sem regras de
+        antecedência» — esteve aqui e saiu. Já só aparecia no monitor,
+        por gastar um dedo de ecrã antes do primeiro passo, e no monitor
+        lia-se pela quinquagésima vez a quem a sabe de cor desde a
+        primeira. Quem abre o encaixe já sabe o que o encaixe é.
+      */}
       <header className="mb-5 lg:mb-8">
         <p className="titulo-seccao mb-1 lg:mb-2">{unit.name} · Balcão</p>
         <h1 className="display text-2xl text-[var(--ink)] lg:text-3xl">
           Encaixe
         </h1>
-        <p className="mt-1.5 hidden max-w-xl text-[0.8125rem] text-[var(--ink-muted)] lg:block">
-          Do balcão marca-se tudo: serviços fechados ao online, quem não
-          aceita marcação online, e sem regras de antecedência.
-        </p>
       </header>
 
       {/* O recibo da anterior. Some-se ao primeiro toque, porque o `ok`
@@ -349,7 +415,12 @@ export default async function EncaixePage({ params, searchParams }: Params) {
               hint="Ainda não há serviços na rede."
             />
           ) : (
-            <DeskServicePicker categories={catalogue} total={services.length} />
+            <DeskServicePicker
+              categories={catalogue}
+              total={services.length}
+              destaque={destaque}
+              ordem={ordemDasCategorias}
+            />
           )}
         </section>
 
@@ -415,23 +486,58 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                           haver horas até alguém ganhar a habilidade.
                         </p>
                       ) : (
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          <StaffChip
-                            href={withCart(setStaffAt(cart, index, null))}
-                            label="Sem preferência"
-                            active={line.staffId === null}
-                          />
-                          {eligible.map((option) => (
-                            <StaffChip
-                              key={option.staff_id}
-                              href={withCart(
-                                setStaffAt(cart, index, option.staff_id),
-                              )}
-                              label={option.staff_name}
-                              active={line.staffId === option.staff_id}
+                        /*
+                          QUEM FAZ, NUMA CAIXA — E NÃO NUMA FILA DE
+                          PASTILHAS.
+
+                          Eram uma pastilha por pessoa mais o «Sem
+                          preferência»: numa casa de quatro profissionais
+                          são cinco pastilhas POR SERVIÇO, e uma visita
+                          de três serviços enchia a coluna com quinze
+                          fichas de que se toca numa. A caixa custa o
+                          mesmo com quatro pessoas ou com doze.
+
+                          É um `<details>`, não um menu de cliente: as
+                          opções continuam a ser ligações com o endereço
+                          já feito, o retrocesso do navegador funciona, e
+                          não entra JavaScript nenhum. A `key` fecha-o ao
+                          escolher.
+                        */
+                        <details
+                          key={line.staffId ?? 'livre'}
+                          className="relative mt-1.5"
+                        >
+                          <summary className="inline-flex h-8 cursor-pointer list-none items-center gap-2 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] px-2.5 text-[0.75rem] font-medium text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)] [&::-webkit-details-marker]:hidden">
+                            <span className="truncate">
+                              {line.staffId
+                                ? (eligible.find(
+                                    (o) => o.staff_id === line.staffId,
+                                  )?.staff_name ?? 'Sem preferência')
+                                : 'Sem preferência'}
+                            </span>
+                            <ChevronDown
+                              aria-hidden
+                              className="h-3 w-3 shrink-0 text-[var(--ink-faint)]"
                             />
-                          ))}
-                        </div>
+                          </summary>
+                          <div className="absolute top-full left-0 z-30 mt-1 min-w-[11rem] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] py-1 shadow-[var(--shadow-soft)]">
+                            <StaffOption
+                              href={withCart(setStaffAt(cart, index, null))}
+                              label="Sem preferência"
+                              active={line.staffId === null}
+                            />
+                            {eligible.map((option) => (
+                              <StaffOption
+                                key={option.staff_id}
+                                href={withCart(
+                                  setStaffAt(cart, index, option.staff_id),
+                                )}
+                                label={option.staff_name}
+                                active={line.staffId === option.staff_id}
+                              />
+                            ))}
+                          </div>
+                        </details>
                       )}
                     </li>
                   )
@@ -518,31 +624,64 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                   </Notice>
                 ) : null}
 
+                {/*
+                  AS HORAS PASSAM PARA DENTRO DE UMA CAIXA.
+
+                  Ao balcão a grelha é de cinco em cinco minutos, e isso
+                  não muda: quem encaixa tem a sala à frente e sabe que a
+                  cadeira vaga às 17h50 — a grelha larga do site escondia
+                  exactamente essa vaga. O preço disso era um muro de
+                  cento e cinquenta botões entre a visita e a cliente.
+
+                  A caixa tem lá dentro as mesmas horas, e só as que
+                  servem para esta visita. Fechada ocupa uma linha; aberta
+                  mostra a grelha inteira, a rolar dentro dela. O que se
+                  escolheu lê-se sem abrir nada, que é o que a grelha
+                  aberta nunca conseguia dizer.
+                */}
                 {slots.length > 0 ? (
-                  <ul className="grid grid-cols-4 gap-1.5">
-                    {slots.map((slot) => {
-                      const iso = slot.startsAt.toISOString()
-                      const active =
-                        chosenAt !== null &&
-                        chosenAt.getTime() === slot.startsAt.getTime()
-                      return (
-                        <li key={iso}>
-                          <Link
-                            href={link({ time: iso, hand: null })}
-                            scroll={false}
-                            className={clsx(
-                              'tabular flex h-9 items-center justify-center rounded-[var(--radius-sm)] border text-[0.8125rem] font-medium transition-colors',
-                              active
-                                ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
-                                : 'border-[var(--line-soft)] text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
-                            )}
-                          >
-                            {formatMinutes(slot.minutesOfDay)}
-                          </Link>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                  <details key={chosenAt?.toISOString() ?? 'sem-hora'}>
+                    <summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] px-3 transition-colors hover:border-[var(--accent)] [&::-webkit-details-marker]:hidden">
+                      <span className="tabular text-[0.9375rem] font-semibold text-[var(--ink)]">
+                        {chosenAt
+                          ? formatTime(chosenAt, tz)
+                          : 'Escolher a hora'}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="tabular text-[0.6875rem] text-[var(--ink-faint)]">
+                          {slots.length} livres
+                        </span>
+                        <ChevronDown
+                          aria-hidden
+                          className="h-3.5 w-3.5 text-[var(--ink-faint)]"
+                        />
+                      </span>
+                    </summary>
+                    <ul className="mt-1.5 grid max-h-64 grid-cols-4 gap-1.5 overflow-y-auto rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] p-2">
+                      {slots.map((slot) => {
+                        const iso = slot.startsAt.toISOString()
+                        const active =
+                          chosenAt !== null &&
+                          chosenAt.getTime() === slot.startsAt.getTime()
+                        return (
+                          <li key={iso}>
+                            <Link
+                              href={link({ time: iso, hand: null })}
+                              scroll={false}
+                              className={clsx(
+                                'tabular flex h-9 items-center justify-center rounded-[var(--radius-sm)] border text-[0.8125rem] font-medium transition-colors',
+                                active
+                                  ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
+                                  : 'border-[var(--line-soft)] text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+                              )}
+                            >
+                              {formatMinutes(slot.minutesOfDay)}
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </details>
                 ) : problem === null ? (
                   <p className="text-[0.8125rem] text-[var(--ink-muted)]">
                     Nenhuma hora certa está livre neste dia. Ainda pode
@@ -763,7 +902,8 @@ function StepTitle({
   )
 }
 
-function StaffChip({
+/** Uma linha do menu de quem faz. Continua a ser uma ligação. */
+function StaffOption({
   href,
   label,
   active,
@@ -776,11 +916,12 @@ function StaffChip({
     <Link
       href={href}
       scroll={false}
+      aria-current={active ? 'true' : undefined}
       className={clsx(
-        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6875rem] transition-colors',
+        'block px-3.5 py-2 text-[0.8125rem] whitespace-nowrap transition-colors',
         active
-          ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
-          : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+          ? 'font-semibold text-[var(--ink)]'
+          : 'text-[var(--ink-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]',
       )}
     >
       {label}

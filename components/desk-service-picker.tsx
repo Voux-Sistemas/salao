@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import clsx from 'clsx'
-import { Check, Plus, X } from 'lucide-react'
+import { Check, ChevronDown, Plus, X } from 'lucide-react'
 import { Badge, Input } from '@/components/ui'
 import { searchKey } from '@/lib/text'
 
@@ -50,12 +50,21 @@ export type PickerService = {
 
 export type PickerCategory = { id: string; name: string; services: PickerService[] }
 
+/** Quantas categorias ficam à vista antes do menu. */
+const ATALHOS = 4
+
 export function DeskServicePicker({
   categories,
   total,
+  destaque = [],
+  ordem = [],
 }: {
   categories: PickerCategory[]
   total: number
+  /** Os serviços que esta casa mais marcou nos últimos noventa dias. */
+  destaque?: PickerService[]
+  /** Ids das categorias, das que mais pesam para as que menos. */
+  ordem?: string[]
 }) {
   const router = useRouter()
   const [term, setTerm] = useState('')
@@ -72,7 +81,44 @@ export function DeskServicePicker({
   const [catId, setCatId] = useState<string | null>(null)
   const box = useRef<HTMLInputElement>(null)
 
+  /*
+    QUATRO ATALHOS, E O RESTO NUM MENU.
+
+    A fita de pastilhas tinha um limite que não se via enquanto a casa
+    era pequena: ela CRESCE PARA BAIXO. Com as sete categorias desta
+    loja é uma linha; numa casa de cinquenta são cinco ou seis filas de
+    pastilhas antes do primeiro serviço — o muro que a peneira existe
+    para evitar, de volta e por outro caminho.
+
+    Ficam à vista as quatro que esta casa mais marca, que são as que se
+    tocam todos os dias, e as outras num menu que não cresce com elas.
+    A ordem vem do servidor, contada da agenda; sem história nenhuma
+    vem a ordem que a dona deu na Gestão.
+  */
+  const ordenadas = useMemo(() => {
+    if (ordem.length === 0) return categories
+    const posicao = new Map(ordem.map((id, i) => [id, i]))
+    return [...categories].sort(
+      (a, b) =>
+        (posicao.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+        (posicao.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+    )
+  }, [categories, ordem])
+
+  const atalhos = ordenadas.slice(0, ATALHOS)
+  const noMenu = ordenadas.slice(ATALHOS)
+  /** A escolhida entrou no menu? Então sobe, para se ver onde se está. */
+  const escolhidaNoMenu = noMenu.find((c) => c.id === catId) ?? null
+
+  /*
+    «Os que mais marca» é uma vista, não uma categoria: não filtra por
+    nada, mostra uma lista curta. Só existe quando há história, e sai do
+    caminho assim que se escreve ou se escolhe uma categoria.
+  */
+  const [soDestaque, setSoDestaque] = useState(destaque.length > 0)
+
   const chave = searchKey(term.trim())
+  const emDestaque = soDestaque && !chave && catId === null
 
   const visible = useMemo(() => {
     const pool =
@@ -93,11 +139,20 @@ export function DeskServicePicker({
       .filter((category): category is PickerCategory => category !== null)
   }, [categories, catId, chave])
 
-  const shown = visible.reduce((sum, c) => sum + c.services.length, 0)
+  /*
+    A vista dos mais marcados é uma secção como as outras — a mesma
+    lista, o mesmo cartão, o mesmo botão de juntar. Só o conteúdo é que
+    vem de outro sítio, e por isso não precisa de desenho próprio.
+  */
+  const seccoes = emDestaque
+    ? [{ id: '__destaque', name: 'Os que mais marca', services: destaque }]
+    : visible
+
+  const shown = seccoes.reduce((sum, c) => sum + c.services.length, 0)
 
   // Com um só à vista, o Enter junta-o. É o atalho de quem já sabe o
   // nome do serviço e escreve três letras para lá chegar.
-  const only = shown === 1 ? visible[0]?.services[0] : undefined
+  const only = shown === 1 ? seccoes[0]?.services[0] : undefined
 
   return (
     <div>
@@ -139,39 +194,100 @@ export function DeskServicePicker({
           ) : null}
         </div>
         <p className="tabular shrink-0 text-[0.75rem] text-[var(--ink-faint)]">
-          {chave || catId ? `${shown} de ${total}` : `${total} serviços`}
+          {chave || catId || emDestaque ? `${shown} de ${total}` : `${total} serviços`}
         </p>
       </div>
 
       {categories.length > 1 ? (
-        <div className="no-scrollbar -mx-1 mb-4 flex items-center gap-1.5 overflow-x-auto px-1">
+        <div className="-mx-1 mb-4 flex flex-wrap items-center gap-1.5 px-1">
+          {destaque.length > 0 ? (
+            <CategoryChip
+              active={emDestaque}
+              onClick={() => {
+                setSoDestaque(true)
+                setCatId(null)
+                setTerm('')
+              }}
+            >
+              Os que mais marca
+            </CategoryChip>
+          ) : null}
           <CategoryChip
-            active={catId === null}
-            onClick={() => setCatId(null)}
+            active={catId === null && !emDestaque}
+            onClick={() => {
+              setSoDestaque(false)
+              setCatId(null)
+            }}
           >
             Todas
           </CategoryChip>
-          {categories.map((category) => (
+          {atalhos.map((category) => (
             <CategoryChip
               key={category.id}
               active={catId === category.id}
-              onClick={() =>
+              onClick={() => {
+                setSoDestaque(false)
                 setCatId(catId === category.id ? null : category.id)
-              }
+              }}
             >
               {category.name}
             </CategoryChip>
           ))}
+
+          {/* A categoria escolhida sobe do menu para a fita: sem isso,
+              quem filtra por «Podologia» fica sem ver onde está. */}
+          {escolhidaNoMenu ? (
+            <CategoryChip active onClick={() => setCatId(null)}>
+              {escolhidaNoMenu.name}
+            </CategoryChip>
+          ) : null}
+
+          {noMenu.length > 0 ? (
+            <details key={catId ?? 'todas'} className="relative">
+              <summary
+                className={clsx(
+                  'inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-full border border-dashed px-3 text-[0.75rem] font-semibold whitespace-nowrap transition-colors [&::-webkit-details-marker]:hidden',
+                  'border-[var(--line)] text-[var(--ink-muted)] hover:text-[var(--ink)]',
+                )}
+              >
+                Todas as categorias
+                <ChevronDown aria-hidden className="h-3 w-3 shrink-0" />
+              </summary>
+              <div className="absolute top-full left-0 z-30 mt-1.5 max-h-72 min-w-[12rem] overflow-y-auto rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] py-1 shadow-[var(--shadow-soft)]">
+                {ordenadas.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => {
+                      setSoDestaque(false)
+                      setCatId(category.id)
+                    }}
+                    className={clsx(
+                      'flex w-full items-center justify-between gap-4 px-3.5 py-2 text-left text-[0.8125rem] whitespace-nowrap transition-colors',
+                      category.id === catId
+                        ? 'font-semibold text-[var(--ink)]'
+                        : 'text-[var(--ink-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]',
+                    )}
+                  >
+                    {category.name}
+                    <span className="tabular text-[0.6875rem] text-[var(--ink-faint)]">
+                      {category.services.length}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : null}
 
-      {visible.length === 0 ? (
+      {seccoes.length === 0 ? (
         <p className="text-[0.8125rem] text-[var(--ink-muted)]">
           Nenhum serviço com isso. Apague para ver a lista toda.
         </p>
       ) : (
         <div className="space-y-8">
-          {visible.map((category) => (
+          {seccoes.map((category) => (
             <div key={category.id}>
               {/*
                 O NOME DA CATEGORIA É ARRUMAÇÃO, NÃO É UM DADO.
