@@ -120,7 +120,25 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
             Fica o bege chapado das duas pontas. Não se perde nada que
             se veja: perde-se um sussurro que ninguém pediu.
         */}
-        <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--surface-2)]">
+        {/*
+            E A COR SOBE PARA ALÉM DA BARRA.
+
+            No Safari do iPhone, ao rolar, a barra de endereço encolhe e o
+            ecrã útil cresce A MEIO DO GESTO. Nesse instante o navegador
+            já mudou a área visível mas ainda não reposicionou o que está
+            preso — e fica descoberta uma tira ACIMA do cabeçalho, onde se
+            vê a lista que acabou de passar por trás dele.
+
+            Não é nosso e não se desliga: acontece a qualquer página com
+            cabeçalho preso. Mas tapa-se. Este bloco pinta a mesma cor da
+            barra oito centímetros para cima dela, fora do ecrã — quando o
+            navegador destapa a tira, o que lá está é bege, não é a lista.
+
+            Sai de graça: está fora da vista o tempo todo, não recebe
+            toques, e no puxão para baixo lá de cima passa a mostrar a cor
+            da casa em vez do fundo do papel.
+        */}
+        <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--surface-2)] before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-40 before:bg-[var(--surface-2)] before:content-['']">
           <div className="flex h-14 items-center gap-3 px-4 sm:gap-5 sm:px-6">
             <Link
               href={home}
