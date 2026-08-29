@@ -8,6 +8,7 @@ import {
   resolveUnit,
   unitsFor,
 } from '@/lib/auth/actor'
+import { sql } from '@/lib/db'
 import { loadQueues, type NoticeRow } from '@/lib/notices'
 import { composeMessage, loadTemplates } from '@/lib/notify'
 import { STATUS_LABEL, STATUS_TONE } from '@/lib/status'
@@ -66,11 +67,20 @@ export default async function AvisosPage({
     r && (ROUTINES as string[]).includes(r) ? (r as Routine) : 'confirm'
 
   const mine = noticesStaffId(actor)
-  const [queues, units, templates] = await Promise.all([
+  const [queues, units, templates, corRows] = await Promise.all([
     loadQueues(unit, { staffId: mine }),
     unitsFor(actor),
     loadTemplates(actor.orgId),
+    /* A cor de cada pessoa, a mesma da agenda: é o que faz as pastilhas
+       de «quem avisa» serem a MESMA peça e não uma parecida. */
+    sql<{ id: string; display_color: string }[]>`
+      select id, display_color from staff where org_id = ${actor.orgId}
+    `,
   ])
+
+  const cores = Object.fromEntries(
+    corRows.map((r) => [r.id, r.display_color]),
+  )
 
   /*
    * Quem aparece na tira de nomes vem das cinco filas juntas, não só da
@@ -320,12 +330,17 @@ export default async function AvisosPage({
               Códigos de acesso
             </Link>
           ) : null}
+          {/* A pastilha da casa, igual à da agenda, do encaixe e da
+              caixa. Esta página tinha ficado com o par de separadores —
+              e uma casa não pode ter duas maneiras de dizer a mesma
+              coisa, muito menos a mesma coisa que é «onde estou». */}
           {units.length > 1 ? (
             <UnitSwitcher
               units={units}
               current={unit.slug}
               base="/avisos"
               showAll={false}
+              variant="chip"
             />
           ) : null}
         </div>
@@ -355,9 +370,21 @@ export default async function AvisosPage({
       </div>
 
       {/* --- as abas ------------------------------------------------ */}
+      {/*
+        UM CONTROLO SEGMENTADO, E NÃO CINCO BOTÕES SOLTOS.
+
+        Eram cinco molduras iguais, e a aberta distinguia-se por uma água
+        de azul — que é pouco para dizer «é esta». A caixa afundada com a
+        aberta a subir ao branco é o gesto que a casa já usa nos
+        separadores da Gestão: diz «uma destas» sem precisar de legenda,
+        e diz QUAL sem ser preciso comparar tons.
+
+        A caixa tem a largura dos separadores, não a da página: esticada,
+        o fundo afundado atravessava o ecrã como uma tarja.
+      */}
       <nav
         className={clsx(
-          'flex flex-wrap gap-1.5 max-lg:hidden',
+          'flex w-max items-center gap-1 rounded-[var(--radius)] bg-[var(--surface-2)] p-1 max-lg:hidden',
           showPeople ? 'mb-3' : 'mb-6',
         )}
         aria-label="Rotinas"
@@ -371,17 +398,21 @@ export default async function AvisosPage({
               href={linkTo(value, chosen)}
               aria-current={active ? 'page' : undefined}
               className={clsx(
-                'flex items-center gap-2 rounded-[var(--radius)] border px-3 py-1.5 text-[0.8125rem] transition-colors',
+                'flex items-center gap-2 rounded-[var(--radius-sm)] px-3 py-1.5 text-[0.8125rem] whitespace-nowrap transition-all',
                 active
-                  ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-[var(--accent)]'
-                  : 'border-[var(--line-soft)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+                  ? 'bg-[var(--surface-raised)] font-semibold text-[var(--ink)] shadow-[0_1px_2px_rgba(15,21,32,0.10)]'
+                  : 'text-[var(--ink-muted)] hover:text-[var(--ink)]',
               )}
             >
               {ROUTINE_LABEL[value]}
               <span
                 className={clsx(
                   'tabular text-[0.6875rem]',
-                  count > 0 ? 'text-[var(--ink)]' : 'text-[var(--ink-faint)]',
+                  active
+                    ? 'font-bold text-[var(--accent)]'
+                    : count > 0
+                      ? 'text-[var(--ink-muted)]'
+                      : 'text-[var(--ink-faint)]',
                 )}
               >
                 {count}
@@ -402,49 +433,38 @@ export default async function AvisosPage({
           className="mb-6 flex flex-wrap items-center gap-x-1 gap-y-1.5 max-lg:hidden"
           aria-label="Por profissional"
         >
-          <span className="mr-1.5 text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
-            Quem avisa
-          </span>
-          <Link
+          {/*
+            AS MESMAS PASTILHAS DA AGENDA, COM O PONTO DA COR DE CADA UMA.
+
+            Eram nomes em texto solto, sem moldura e sem alinhamento, a
+            discutir peso com as rotinas que estão mesmo por cima. A
+            agenda do dia já tem esta peça — o ponto de cor, o nome, a
+            conta — e a cor vem do mesmo sítio: o `display_color` da
+            ficha. Deixa de haver dois vocabulários para a mesma ideia.
+          */}
+          <span className="titulo-seccao mr-1.5 shrink-0">Quem avisa</span>
+          <span
+            aria-hidden
+            className="mr-1.5 h-5 w-px shrink-0 bg-[var(--line)]"
+          />
+          <PessoaChip
             href={linkTo(routine, null)}
-            aria-current={chosen ? undefined : 'page'}
-            className={clsx(
-              'rounded-full px-2.5 py-1 text-[0.75rem] transition-colors',
-              chosen
-                ? 'text-[var(--ink-muted)] hover:text-[var(--accent)]'
-                : 'bg-[var(--surface-sunken)] text-[var(--ink)]',
-            )}
+            active={!chosen}
+            count={queues[routine].length}
           >
             Todas
-          </Link>
-          {people.map((person) => {
-            const active = person.id === chosen
-            return (
-              <Link
-                key={person.id}
-                href={linkTo(routine, person.id)}
-                aria-current={active ? 'page' : undefined}
-                className={clsx(
-                  'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.75rem] transition-colors',
-                  active
-                    ? 'bg-[var(--surface-sunken)] text-[var(--ink)]'
-                    : 'text-[var(--ink-muted)] hover:text-[var(--accent)]',
-                )}
-              >
-                {person.name}
-                <span
-                  className={clsx(
-                    'tabular text-[0.6875rem]',
-                    person.count > 0
-                      ? 'text-[var(--ink)]'
-                      : 'text-[var(--ink-faint)]',
-                  )}
-                >
-                  {person.count}
-                </span>
-              </Link>
-            )
-          })}
+          </PessoaChip>
+          {people.map((person) => (
+            <PessoaChip
+              key={person.id}
+              href={linkTo(routine, person.id)}
+              active={person.id === chosen}
+              color={cores[person.id]}
+              count={person.count}
+            >
+              {person.name}
+            </PessoaChip>
+          ))}
         </nav>
       ) : null}
 
@@ -461,12 +481,13 @@ export default async function AvisosPage({
         botões pequenos no meio de uma página larga, e o título é o que
         dá o começo à lista.
       */}
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="titulo-seccao max-lg:hidden">{ROUTINE_LABEL[routine]}</h2>
-        <p className="text-[0.8125rem] text-[var(--ink-muted)] max-lg:text-[0.75rem] max-lg:text-[var(--ink-faint)]">
-          {ROUTINE_HINT[routine]}
-        </p>
-      </div>
+      {/* O nome da fila já está dito, e nos dois ecrãs: em cima, a
+          branco, no separador que está aberto; no telemóvel, na caixa.
+          Fica a dica — a única das duas que ensina alguma coisa: diz
+          PORQUE É QUE estas estão nesta fila. */}
+      <p className="mb-3 text-[0.8125rem] text-[var(--ink-muted)] max-lg:text-[0.75rem] max-lg:text-[var(--ink-faint)]">
+        {ROUTINE_HINT[routine]}
+      </p>
 
       {rows.length === 0 ? (
         <Card>
@@ -541,6 +562,56 @@ export default async function AvisosPage({
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * UMA PASTILHA DE PESSOA — a mesma da fita da agenda do dia.
+ *
+ * Ponto da cor da ficha, o nome, e a conta ao lado. Sem cor é a de
+ * «Todas», que não é uma pessoa e por isso não tem ponto.
+ */
+function PessoaChip({
+  href,
+  active,
+  color,
+  count,
+  children,
+}: {
+  href: string
+  active: boolean
+  color?: string
+  count: number
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className={clsx(
+        'inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-3 text-[0.75rem] transition-colors',
+        active
+          ? 'border-[var(--line)] bg-[var(--surface-2)] font-semibold text-[var(--ink)]'
+          : 'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]',
+      )}
+    >
+      {color ? (
+        <span
+          aria-hidden
+          className="block h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ background: color }}
+        />
+      ) : null}
+      {children}
+      <span
+        className={clsx(
+          'tabular text-[0.6875rem]',
+          count > 0 ? 'text-[var(--ink)]' : 'text-[var(--ink-faint)]',
+        )}
+      >
+        {count}
+      </span>
+    </Link>
   )
 }
 
