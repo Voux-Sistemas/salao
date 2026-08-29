@@ -481,11 +481,11 @@ export default async function AgendaDayPage({
           rótulo — foi-se, e com ela um dedo de altura do ecrã pequeno.
         */}
         <div className="flex items-center gap-3 px-4 pt-2.5 sm:px-6 sm:pt-3">
-          <div className="min-w-0 flex-1 leading-tight">
+          <div className="flex min-w-0 flex-1 items-baseline gap-3.5 leading-tight">
             <DayJump
               day={day}
               hrefTemplate={withDay('{d}')}
-              className="block max-w-full"
+              className="block min-w-0 max-w-full"
             >
               <h1 className="display flex items-center gap-1 text-[1.0625rem] text-[var(--ink)] sm:text-lg">
                 <span className="truncate">
@@ -497,64 +497,26 @@ export default async function AgendaDayPage({
                 />
               </h1>
             </DayJump>
-          </div>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            {/* No ecrã largo há espaço para as três; no telemóvel só o
-                Encaixe fica aqui, e as outras duas descem. */}
-            <span className="hidden items-center gap-1.5 sm:flex">
-              {interruptorVista}
-              {portaDaSemana}
-              {voltarAHoje}
-            </span>
-            {encaixeHref ? (
-              <ButtonLink href={`${here}/encaixe?d=${day}`} size="sm">
-                Encaixe
-              </ButtonLink>
-            ) : null}
-          </div>
-        </div>
+            {/*
+              OS FACTOS DO DIA LÊEM-SE AO LADO DO TÍTULO.
 
-        {/* a casa, os números, e — no telemóvel — como ver ----------- */}
-        {/*
-          A LOJA DESCEU DO CANTO PARA ESTA LINHA.
+              Tinham fila própria por baixo dele, e essa fila existia por
+              causa da loja — que lá vivia como texto sublinhado, vestida
+              de facto no meio de dois números que ninguém carrega. Com a
+              loja arrumada na fila dos filtros, o que sobrou foram
+              factos; e factos lêem-se como a data se lê, encostados ao
+              título. É o gesto que o painel do Hoje já faz.
 
-          Era um segmentado Valongo|Maia encostado ao «Encaixe»: um
-          bloco permanente, do tamanho de um botão, para uma escolha que
-          se faz de manhã e não se volta a tocar. Ao lado do «Encaixe»,
-          que se carrega dez vezes por dia, competia em peso com ele.
-          Agora é o ⌄ do nome da casa, dentro da linha que já dizia
-          quantas marcações ela tem — e o canto fica para quem trabalha.
+              FORA do `DayJump`, que é um campo de data deitado por cima
+              do título: lá dentro, tocar em «14 marcações» abria o
+              calendário.
 
-          E NO TELEMÓVEL ELA JÁ NÃO EXISTE.
-
-          Chegou a ter três inquilinos — os números, o filtro e o
-          interruptor — e o que cedia era sempre o texto. Os comandos
-          desceram para uma fila própria; a linha ficou só com os
-          números; e os números, num ecrã de 390, eram a coisa que se
-          lia menos vezes de todas as que lá estavam. Saiu inteira, e a
-          casa foi com ela para a pastilha lá de baixo.
-
-          No monitor fica: lá há largura para os números e para tudo o
-          resto, e é onde se olha para o dia com tempo.
-        */}
-        <div className="hidden items-center gap-3 px-4 pt-1 pb-0.5 sm:flex sm:px-6 sm:pt-0">
-          <div className="flex min-w-0 flex-1 items-center gap-1 text-[0.6875rem] text-[var(--ink-faint)]">
-            {units.length > 1 ? (
-              <UnitSwitcher
-                units={units}
-                current={unit.slug}
-                base="/agenda"
-                showAll={false}
-                variant="inline"
-              />
-            ) : (
-              <span className="font-semibold text-[var(--ink-muted)]">
-                {unit.name}
-              </span>
-            )}
-            <span className="truncate">
-              ·{' '}
+              Só no monitor. No telemóvel esta linha saiu inteira — lá os
+              números eram a coisa que se lia menos vezes de todas as que
+              lá estavam.
+            */}
+            <span className="tabular hidden shrink-0 text-[0.75rem] text-[var(--ink-faint)] sm:inline">
               {appointmentCount === 1
                 ? '1 marcação'
                 : `${appointmentCount} marcações`}
@@ -570,6 +532,21 @@ export default async function AgendaDayPage({
                 ? ` · ${offCount} de folga`
                 : ''}
             </span>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {/* No ecrã largo há espaço para as três; no telemóvel só o
+                Encaixe fica aqui, e as outras duas descem. */}
+            <span className="hidden items-center gap-1.5 sm:flex">
+              {interruptorVista}
+              {portaDaSemana}
+              {voltarAHoje}
+            </span>
+            {encaixeHref ? (
+              <ButtonLink href={`${here}/encaixe?d=${day}`} size="sm">
+                Encaixe
+              </ButtonLink>
+            ) : null}
           </div>
         </div>
 
@@ -632,11 +609,47 @@ export default async function AgendaDayPage({
         </div>
 
 
-        {/* uma profissional de cada vez ------------------------------ */}
-        {/* Só no ecrã largo: no telemóvel esta fila fechou-se no
-            «Todas ⌄» da linha dos números. */}
-        {temFiltro ? (
-          <div className="hidden items-center gap-1 pr-3 sm:flex sm:gap-1.5 sm:pr-5">
+        {/* o que se vê: a casa, e quem lá está ----------------------- */}
+        {/*
+          A FILA PASSA A RESPONDER A UMA PERGUNTA SÓ, E INTEIRA.
+
+          A loja vivia na linha de baixo do título, vestida de facto: o
+          tamanho, a cor e o peso dos dois números que estavam ao lado
+          dela e que ninguém carrega, com um sublinhado fininho a ser
+          tudo o que a distinguia. E esta fila — que é toda ela de
+          escolher o que se vê — não a tinha.
+
+          Agora tem. A casa é a primeira pastilha, com um fio a separá-la
+          das outras: ela escolhe a CASA, as outras escolhem as pessoas
+          dentro dela. É a mesma pastilha do telemóvel, no mesmo sítio da
+          fila, e quem usa os dois ecrãs reconhece-a.
+
+          A fila existe também quando não há filtro de pessoas — uma
+          profissional só e duas casas — porque nesse dia a pastilha da
+          casa é a única coisa que aqui mora, e continua a ter de morar
+          algures.
+        */}
+        {temFiltro || units.length > 1 ? (
+          <div className="hidden items-center gap-1.5 px-4 py-2 sm:flex sm:px-6">
+            {units.length > 1 ? (
+              <>
+                <UnitSwitcher
+                  units={units}
+                  current={unit.slug}
+                  base="/agenda"
+                  showAll={false}
+                  variant="chip"
+                />
+                {temFiltro ? (
+                  <span
+                    aria-hidden
+                    className="mx-1 block h-4 w-px shrink-0 bg-[var(--line-soft)]"
+                  />
+                ) : null}
+              </>
+            ) : null}
+            {temFiltro ? (
+              <>
             {/*
               A FITA DEIXA DE ESTICAR ATÉ À MARGEM.
 
@@ -654,7 +667,7 @@ export default async function AgendaDayPage({
             <div className="relative min-w-0 max-w-full">
               <nav
                 aria-label="Ver uma profissional"
-                className="no-scrollbar flex items-center gap-1.5 overflow-x-auto py-1.5 pl-4 pr-6 sm:py-2 sm:pl-6"
+                className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pr-6"
               >
                 <StaffChip href={withDay(day, null)} active={picked === null}>
                   Todas
@@ -746,6 +759,8 @@ export default async function AgendaDayPage({
               <Users aria-hidden className="h-3.5 w-3.5" />
               {scope === 'equipa' ? 'Só hoje' : 'Equipa'}
             </Link>
+              </>
+            ) : null}
           </div>
         ) : null}
         </div>
