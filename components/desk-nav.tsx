@@ -31,6 +31,30 @@ export type NavItem = {
   icon?: NavIconName
   /** Rótulo curto para caber debaixo do ícone. */
   short?: string
+  /**
+   * Quantos estão à espera. Só a barra dos Avisos o usa, e só aparece
+   * quando é mais do que zero: um zero num selo é ruído com forma de
+   * aviso.
+   */
+  badge?: number
+}
+
+/**
+ * O SELO DO QUE ESTÁ À ESPERA.
+ *
+ * Vermelho e pequeno, encostado ao canto do glifo. A partir de dez
+ * escreve-se «9+»: o número exacto de uma fila grande não muda nada —
+ * quem tem doze avisos e quem tem trinta faz a mesma coisa a seguir.
+ */
+function Selo({ n }: { n: number }) {
+  return (
+    <span
+      aria-hidden
+      className="tabular absolute -top-0.5 right-2 flex h-[1.05rem] min-w-[1.05rem] items-center justify-center rounded-full bg-[var(--bad)] px-1 text-[0.625rem] font-extrabold text-white"
+    >
+      {n > 9 ? '9+' : n}
+    </span>
+  )
 }
 
 /**
@@ -113,12 +137,13 @@ export function DeskNav({
               href={item.href}
               aria-current={active ? 'page' : undefined}
               className={clsx(
-                'flex w-full flex-col items-center gap-1 rounded-[var(--radius-sm)] py-2.5 transition-colors',
+                'relative flex w-full flex-col items-center gap-1 rounded-[var(--radius-sm)] py-2.5 transition-colors',
                 active
                   ? 'bg-[color-mix(in_srgb,var(--accent)_11%,transparent)] text-[var(--accent)]'
                   : 'text-[var(--ink-faint)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]',
               )}
             >
+              {item.badge ? <Selo n={item.badge} /> : null}
               <Icon className="h-[1.3rem] w-[1.3rem]" />
               <span className="max-w-full truncate px-0.5 text-[0.625rem] font-semibold">
                 {item.short ?? item.label}
@@ -145,12 +170,13 @@ export function DeskNav({
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={clsx(
-                  'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pb-2 pt-2.5 transition-colors',
+                  'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pb-2 pt-2.5 transition-colors',
                   active
                     ? 'text-[var(--house-deep)]'
                     : 'text-[var(--ink-muted)]',
                 )}
               >
+                {item.badge ? <Selo n={item.badge} /> : null}
                 {/*
                   A PASTILHA É OURO CHEIO, NÃO É UM TOM POR CIMA DO FUNDO.
 

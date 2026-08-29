@@ -7,6 +7,8 @@ import { signOutAction } from '@/app/(auth)/entrar/actions'
 import { initial } from '@/lib/text'
 import { DeskNav, type NavItem } from '@/components/desk-nav'
 import { NovasMarcacoes } from '@/components/novas-marcacoes'
+import { countNotices } from '@/lib/notices'
+import { ownStaffId } from '@/lib/auth/actor'
 import { Monogram } from '@/components/brand'
 import { IconSignOut } from '@/components/desk-icons'
 
@@ -23,6 +25,26 @@ import { IconSignOut } from '@/components/desk-icons'
 export async function DeskChrome({ children }: { children: ReactNode }) {
   const actor = await requireActor()
   const org = await getOrg()
+
+  /*
+    O NÚMERO DO SINO.
+
+    Corre em todas as páginas do balcão, e por isso vai dentro de um
+    try/catch: um número decorativo não pode derrubar a agenda de quem
+    está a trabalhar. Se a contagem falhar, o sino fica sem selo e mais
+    nada acontece — a página dos Avisos continua lá, com as contas
+    verdadeiras de cada fila.
+  */
+  let avisos = 0
+  try {
+    avisos = await countNotices({
+      orgId: actor.orgId,
+      unitIds: actor.orgScope ? null : actor.unitIds,
+      staffId: ownStaffId(actor),
+    })
+  } catch {
+    avisos = 0
+  }
 
   const home = actor.role === 'professional' ? '/agenda' : '/'
   const houseName = org?.name ?? BRAND.fallbackName
@@ -55,7 +77,7 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
         </Link>
 
         <div className="min-h-0 flex-1 overflow-y-auto py-2">
-          <DeskNav items={navFor(actor)} variant="rail" />
+          <DeskNav items={navFor(actor, avisos)} variant="rail" />
         </div>
 
         <form action={signOutAction} className="w-full shrink-0">
@@ -134,7 +156,7 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
         // o mesmo do controlo de separadores — lê-se como chão.
         className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-2)] shadow-[0_-8px_24px_-18px_rgba(15,21,32,0.28)] lg:hidden"
       >
-        <DeskNav items={mobileNavFor(actor)} variant="bottom" />
+        <DeskNav items={mobileNavFor(actor, avisos)} variant="bottom" />
       </nav>
     </div>
   )
@@ -147,11 +169,17 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
  * que marcaram com ela. Sem caixa, sem clientes, sem gestão — e é este
  * par que a barra do telemóvel mostra inteiro.
  */
-function navFor(actor: Actor): NavItem[] {
+function navFor(actor: Actor, avisos = 0): NavItem[] {
   if (actor.role === 'professional') {
     return [
       { href: '/agenda', label: 'A minha agenda', short: 'Agenda', icon: 'agenda' },
-      { href: '/avisos', label: 'Os meus avisos', short: 'Avisos', icon: 'avisos' },
+      {
+        href: '/avisos',
+        label: 'Os meus avisos',
+        short: 'Avisos',
+        icon: 'avisos',
+        badge: avisos,
+      },
     ]
   }
 
@@ -160,7 +188,12 @@ function navFor(actor: Actor): NavItem[] {
     { href: '/agenda', label: 'Agenda', icon: 'agenda' },
   ]
   if (can.seeNotices(actor)) {
-    items.push({ href: '/avisos', label: 'Avisos', icon: 'avisos' })
+    items.push({
+      href: '/avisos',
+      label: 'Avisos',
+      icon: 'avisos',
+      badge: avisos,
+    })
   }
   if (can.seeCash(actor)) {
     items.push({ href: '/caixa', label: 'Caixa', icon: 'caixa' })
@@ -180,8 +213,8 @@ function navFor(actor: Actor): NavItem[] {
  * é lá que ela avisa as clientes. Cortar-lhe os avisos era tirar-lhe
  * metade do trabalho.
  */
-function mobileNavFor(actor: Actor): NavItem[] {
-  const items = navFor(actor)
+function mobileNavFor(actor: Actor, avisos = 0): NavItem[] {
+  const items = navFor(actor, avisos)
   if (items.length <= 5) return items
   return items.filter((item) => item.href !== '/avisos').slice(0, 5)
 }

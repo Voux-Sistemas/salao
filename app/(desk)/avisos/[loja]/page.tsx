@@ -11,7 +11,14 @@ import {
 import { loadQueues, type NoticeRow } from '@/lib/notices'
 import { composeMessage, loadTemplates } from '@/lib/notify'
 import { STATUS_LABEL, STATUS_TONE } from '@/lib/status'
-import { formatDayShort, formatTime, isoDay } from '@/lib/time'
+import {
+  addDays,
+  formatDayLong,
+  formatTime,
+  isoDay,
+  today,
+  type IsoDay,
+} from '@/lib/time'
 import { isSunday } from '@/lib/sunday'
 import { ROUTINES, ROUTINE_HINT, ROUTINE_LABEL, type Routine } from '@/lib/whatsapp'
 import { Info } from 'lucide-react'
@@ -250,24 +257,88 @@ export default async function AvisosPage({
           />
         </Card>
       ) : (
-        <Card className="divide-y divide-[var(--line-soft)]">
-          {rows.map((row) => (
-            <NoticeLine
-              key={row.appointment_id}
-              row={row}
-              routine={routine}
-              unitName={unit.name}
-              unitSlug={unit.slug}
-              timezone={unit.timezone}
-              templates={templates}
-              linkClient={can.seeClients(actor)}
-              hideStaffId={mine}
-            />
+        <Card className="overflow-hidden">
+          {porDia(rows, unit.timezone).map((grupo) => (
+            <div key={grupo.dia}>
+              {/*
+                O DIA É O QUE ARRUMA ESTA FILA.
+
+                As linhas vinham em fila única com a data repetida em
+                cada uma, na coluna mais estreita do ecrã: catorze
+                marcações de três dias diferentes, e o dia — que é o que
+                divide o trabalho — escrito em corpo dez ao lado da
+                hora. Passa a haver um título por dia, com a conta do
+                dia à direita, e a data sai de dentro das linhas.
+
+                O primeiro dia diz «Hoje» ou «Amanhã» em vez do nome:
+                é como se fala ao balcão, e é a informação que faz
+                decidir se aquilo é para agora ou para depois.
+              */}
+              <div className="flex items-center gap-3 border-t border-[var(--line-soft)] bg-[var(--surface)] px-4 py-2 first:border-t-0">
+                <h3 className="titulo-seccao shrink-0">
+                  {nomeDoDia(grupo.dia, unit.timezone)}
+                </h3>
+                <span
+                  aria-hidden
+                  className="h-px flex-1 bg-[linear-gradient(90deg,color-mix(in_srgb,var(--house)_34%,transparent),transparent)]"
+                />
+                <span className="tabular shrink-0 text-[0.6875rem] text-[var(--ink-faint)]">
+                  {grupo.linhas.length}
+                </span>
+              </div>
+              <div className="divide-y divide-[var(--line-soft)]">
+                {grupo.linhas.map((row) => (
+                  <NoticeLine
+                    key={row.appointment_id}
+                    row={row}
+                    routine={routine}
+                    unitName={unit.name}
+                    unitSlug={unit.slug}
+                    timezone={unit.timezone}
+                    templates={templates}
+                    linkClient={can.seeClients(actor)}
+                    hideStaffId={mine}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </Card>
       )}
     </div>
   )
+}
+
+/**
+ * A FILA PARTIDA POR DIA, PELA ORDEM EM QUE JÁ VEM.
+ *
+ * Não ordena nada: as filas já vêm ordenadas do `loadQueue` — a maioria
+ * por hora, a de recuperar clientes ao contrário — e um agrupamento que
+ * reordenasse desmentia a fila que o servidor escolheu. Só corta onde o
+ * dia muda.
+ */
+function porDia(
+  linhas: NoticeRow[],
+  timezone: string,
+): { dia: IsoDay; linhas: NoticeRow[] }[] {
+  const grupos: { dia: IsoDay; linhas: NoticeRow[] }[] = []
+  for (const linha of linhas) {
+    const dia = isoDay(linha.starts_at, timezone)
+    const ultimo = grupos[grupos.length - 1]
+    if (ultimo && ultimo.dia === dia) ultimo.linhas.push(linha)
+    else grupos.push({ dia, linhas: [linha] })
+  }
+  return grupos
+}
+
+/** «Hoje», «Amanhã», ou o nome do dia por extenso. */
+function nomeDoDia(dia: IsoDay, timezone: string): string {
+  const hoje = today(timezone)
+  if (dia === hoje) return 'Hoje'
+  if (dia === addDays(hoje, 1)) return 'Amanhã'
+  if (dia === addDays(hoje, -1)) return 'Ontem'
+  const nome = formatDayLong(dia, timezone)
+  return nome.charAt(0).toUpperCase() + nome.slice(1)
 }
 
 function NoticeLine({
@@ -334,9 +405,6 @@ function NoticeLine({
       >
         <span className="tabular block text-base leading-tight text-[var(--ink)]">
           {formatTime(row.starts_at, timezone)}
-        </span>
-        <span className="tabular block text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
-          {formatDayShort(day, timezone)}
         </span>
       </Link>
 

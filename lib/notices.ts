@@ -38,6 +38,103 @@ const WINBACK_DAYS = 30
 export type Queues = Record<Routine, NoticeRow[]>
 
 /**
+ * QUANTOS AVISOS ESTÃO À ESPERA — UM NÚMERO SÓ, PARA O SINO.
+ *
+ * O número aparece na navegação de todas as páginas do balcão, e por
+ * isso corre a cada visita a qualquer uma delas. É uma consulta só: as
+ * cinco rotinas contadas em cinco subconsultas, na mesma ida à base.
+ *
+ * CONTA A REDE QUE A PESSOA VÊ. Quem tem uma loja tem o número da loja;
+ * quem tem duas tem a soma, e é isso que a dona quer saber quando olha
+ * de relance. A profissional conta só o que passou pelas mãos dela — e
+ * o domingo, que é da casa toda.
+ *
+ * ISTO REPETE AS CONDIÇÕES DO `loadQueue`, e é uma dívida assumida: uma
+ * contagem que abrisse as cinco filas de verdade eram cinco consultas
+ * por loja em cada página do balcão. QUEM MEXER NUMA DAS DUAS TEM DE
+ * MEXER NA OUTRA — as condições estão pela mesma ordem nas duas, de
+ * propósito, para se poderem ler lado a lado.
+ *
+ * O tecto do `loadQueue` (duzentos por fila) não se aplica aqui: um
+ * número é um número, e se um dia forem trezentos é isso que tem de
+ * aparecer.
+ */
+export async function countNotices(input: {
+  orgId: string
+  /** Nulo quando a pessoa vê a rede toda. */
+  unitIds: string[] | null
+  staffId: string | null
+}): Promise<number> {
+  const { orgId, unitIds, staffId } = input
+  if (unitIds !== null && unitIds.length === 0) return 0
+
+  const rows = await sql<{ total: number }[]>`
+    with vista as (
+      select a.id, a.client_id, a.status, a.starts_at,
+             (a.starts_at at time zone u.timezone)::date as dia,
+             (now() at time zone u.timezone)::date as hoje
+        from appointment a
+        join unit u on u.id = a.unit_id
+       where a.org_id = ${orgId}
+         and (${unitIds}::uuid[] is null
+              or a.unit_id = any(${unitIds}::uuid[]))
+         and (
+           ${staffId}::uuid is null
+           -- Ao domingo a fila é de todas. A razão está no base().
+           or extract(dow from (a.starts_at at time zone u.timezone)) = 0
+           or exists (
+             select 1 from appointment_item i
+              where i.appointment_id = a.id and i.staff_id = ${staffId}::uuid
+           )
+         )
+    )
+    select (
+        (select count(*) from vista v
+          where v.status in ('booked', 'confirmed')
+            and v.starts_at >= now()
+            and not exists (select 1 from notification_log n
+                             where n.appointment_id = v.id
+                               and n.routine = 'confirm'))
+      + (select count(*) from vista v
+          where v.status in ('booked', 'confirmed')
+            and v.dia = v.hoje + 1
+            and not exists (select 1 from notification_log n
+                             where n.appointment_id = v.id
+                               and n.routine = 'reminder_eve'))
+      + (select count(*) from vista v
+          where v.status in ('booked', 'confirmed')
+            and v.dia = v.hoje
+            and v.starts_at >= now()
+            and not exists (select 1 from notification_log n
+                             where n.appointment_id = v.id
+                               and n.routine = 'reminder_today'))
+      + (select count(*) from vista v
+          where v.status = 'completed'
+            and v.dia = v.hoje - 1
+            and not exists (select 1 from notification_log n
+                             where n.appointment_id = v.id
+                               and n.routine = 'review'))
+      + (select count(*) from vista v
+          where v.status in ('no_show', 'cancelled_by_client')
+            and v.starts_at < now()
+            and v.dia >= v.hoje - ${WINBACK_DAYS}
+            and not exists (select 1 from notification_log n
+                             where n.appointment_id = v.id
+                               and n.routine = 'winback')
+            and not exists (
+                  select 1 from appointment f
+                   where f.client_id = v.client_id
+                     and f.starts_at >= now()
+                     and f.status in ('booked', 'confirmed',
+                                      'checked_in', 'in_service')))
+    )::int as total
+  `
+
+  return rows[0]?.total ?? 0
+}
+
+
+/**
  * DE QUEM É A FILA.
  *
  * Quem avisa a cliente é quem lhe pega no cabelo. A profissional trata
