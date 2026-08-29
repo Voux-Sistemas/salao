@@ -3,12 +3,18 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
-import { requireActor, canSeeUnit, type Actor } from '@/lib/auth/actor'
+import {
+  ownStaffId,
+  requireActor,
+  canSeeUnit,
+  type Actor,
+} from '@/lib/auth/actor'
 import {
   canTransition,
   deleteAppointment,
   getAppointment,
   transitionAppointment,
+  type Source,
   type Status,
 } from '@/lib/booking'
 import { ROUTINES, type Routine } from '@/lib/whatsapp'
@@ -16,6 +22,80 @@ import { agendaIsPrivateOn } from '@/lib/sunday'
 import { isoDay } from '@/lib/time'
 
 export type DeskState = { error: string | null; done?: string | null }
+
+export type NovaMarcacao = {
+  id: string
+  unit_slug: string
+  day: string
+  client_name: string
+  /** «30/08 · 10:00», já na hora da loja: o navegador não sabe o fuso. */
+  quando: string
+  services: string | null
+  staff: string | null
+  source: Source
+}
+
+/**
+ * O QUE ENTROU DESDE QUE A PÁGINA ABRIU.
+ *
+ * Uma marcação feita pelo site cai na agenda sem ninguém dar por ela: a
+ * página do balcão foi desenhada há uma hora e não volta a olhar para a
+ * base. Quem está ao balcão descobre a marcação quando a cliente chega.
+ *
+ * Isto é a pergunta que falta — «entrou alguma coisa desde as tantas?» —
+ * e é só uma pergunta: não muda nada, não revalida nada, e responde com
+ * o que se precisa para a escrever numa linha.
+ *
+ * A HORA VEM DO NAVEGADOR, e isso é de propósito: o relógio que conta é
+ * o do momento em que aquela página abriu, não o do servidor. Se vier
+ * uma data impossível, o pedido não devolve nada em vez de devolver o
+ * catálogo inteiro.
+ *
+ * QUEM VÊ O QUÊ é a mesma regra do resto da casa: a rede toda para quem
+ * a vê, as lojas de quem tem lojas, e a profissional só o que é dela.
+ * O tecto de vinte é rede: quem tiver mais do que vinte marcações novas
+ * numa sessão tem outra coisa para fazer que não ler avisos.
+ */
+export async function novasMarcacoes(
+  desdeIso: string,
+): Promise<NovaMarcacao[]> {
+  const actor = await requireActor()
+  const desde = new Date(desdeIso)
+  if (Number.isNaN(desde.getTime())) return []
+
+  const ownStaff = ownStaffId(actor)
+  const units = actor.orgScope ? null : actor.unitIds
+  if (units !== null && units.length === 0) return []
+
+  return sql<NovaMarcacao[]>`
+    select a.id, u.slug as unit_slug, a.source,
+           c.name as client_name,
+           to_char(a.starts_at at time zone u.timezone,
+                   'DD/MM') || ' · ' ||
+           to_char(a.starts_at at time zone u.timezone,
+                   'HH24:MI') as quando,
+           (select string_agg(i.service_name, ' + ' order by i.sort_order)
+              from appointment_item i where i.appointment_id = a.id) as services,
+           (select string_agg(distinct s.name, ', ')
+              from appointment_item i
+              join staff s on s.id = i.staff_id
+             where i.appointment_id = a.id) as staff,
+           to_char(a.starts_at at time zone u.timezone, 'YYYY-MM-DD') as day
+      from appointment a
+      join unit u on u.id = a.unit_id
+      join client c on c.id = a.client_id
+     where a.org_id = ${actor.orgId}
+       and a.created_at > ${desde}
+       and a.status not in ('cancelled_by_client', 'cancelled_by_salon')
+       and (${units}::uuid[] is null or a.unit_id = any(${units}::uuid[]))
+       and (${ownStaff}::uuid is null or exists (
+             select 1 from appointment_item i
+              where i.appointment_id = a.id and i.staff_id = ${ownStaff}::uuid
+           ))
+     order by a.created_at desc
+     limit 20
+  `
+}
 
 /**
  * Esta pessoa pode mexer nesta marcação?

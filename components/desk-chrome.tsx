@@ -6,6 +6,7 @@ import { can, requireActor, type Actor } from '@/lib/auth/actor'
 import { signOutAction } from '@/app/(auth)/entrar/actions'
 import { initial } from '@/lib/text'
 import { DeskNav, type NavItem } from '@/components/desk-nav'
+import { NovasMarcacoes } from '@/components/novas-marcacoes'
 import { Monogram } from '@/components/brand'
 import { IconSignOut } from '@/components/desk-icons'
 
@@ -112,6 +113,11 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
         <main className="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
           {children}
         </main>
+
+        {/* O aviso das marcações novas vive na moldura, não numa página:
+            quem está ao balcão anda entre a agenda, a caixa e as fichas
+            o dia inteiro, e o recado tem de o seguir. */}
+        <NovasMarcacoes />
       </div>
 
       {/* A barra do fundo — só no telemóvel. ------------------------- */}
