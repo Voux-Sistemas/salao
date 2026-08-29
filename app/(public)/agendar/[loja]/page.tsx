@@ -60,7 +60,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   }
 }
 
-
 /**
  * Passo 2 — escolher o dia.
  *
@@ -151,6 +150,19 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
       title={dict.funnel.dayTitle}
       subtitle={dict.funnel.daySubtitle}
     >
+      {/*
+        O CALENDÁRIO À ESQUERDA, A DECISÃO À DIREITA.
+
+        Empilhados, a página era uma coluna estreita com dois terços do
+        monitor em branco ao lado — e o botão ficava a três palmos do
+        último dia da grelha, no fundo do ecrã. Lado a lado, o que se
+        escolhe e o que se faz com a escolha ficam à mesma altura dos
+        olhos, separados por um fio.
+
+        No telemóvel volta a empilhar-se, que é a única coisa que lá
+        cabe.
+      */}
+      <div className="lg:grid lg:grid-cols-[23rem_minmax(0,1fr)] lg:items-start lg:gap-12">
       <MonthCalendar
         month={mes}
         day={day}
@@ -165,29 +177,14 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
         labels={{
           previous: dict.funnel.monthPrevious,
           next: dict.funnel.monthNext,
-          hasSlots: dict.funnel.dayHasSlots,
-          noSlots: dict.funnel.dayNoSlots,
+          noSlotsHint: dict.funnel.dayNoSlotsHint,
         }}
       />
 
-      {/*
-        ATÉ QUANDO A CASA ACEITA MARCAÇÕES, ESCRITO.
-
-        O limite existe desde sempre — o `max_lead_days` da loja — mas era
-        invisível: a cliente só o encontrava a bater contra ele, depois de
-        carregar na seta até ela deixar de andar. Uma regra que só se
-        conhece por tropeço não é uma regra, é uma armadilha.
-      */}
-      <p className="mt-5 text-[0.8125rem] text-[var(--ink-muted)]">
-        {dict.funnel.bookUntil.replace(
-          '{d}',
-          formatDayLong(lastDay, unit.timezone, language),
-        )}
-      </p>
-
+      <div className="mt-10 lg:mt-0 lg:border-l lg:border-[var(--line-soft)] lg:pl-12">
       {/* A data por extenso, em serifa: confirma em palavras o que o
-          calendário acima diz em números. */}
-      <div className="mt-8 flex items-baseline gap-4">
+          calendário ao lado diz em números. */}
+      <div className="flex items-baseline gap-4">
         <h2 className="display text-xl text-[var(--ink)] first-letter:uppercase">
           {formatDayLong(day, unit.timezone, language)}
         </h2>
@@ -223,14 +220,17 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
           ) : null}
         </div>
       ) : (
-        // Fechada é uma coisa, cheia é outra — e a tira acima já mostra
-        // acesos os dias que servem, portanto a saída está à vista.
+        // Fechada é uma coisa, cheia é outra — e o calendário ao lado já
+        // mostra acesos os dias que servem, portanto a saída está à
+        // vista.
         <div className="mt-8">
           <Notice tone="warn">
             {state === 'closed' ? dict.unit.closedToday : dict.funnel.dayFull}
           </Notice>
         </div>
       )}
+      </div>
+      </div>
     </FunnelShell>
   )
 }

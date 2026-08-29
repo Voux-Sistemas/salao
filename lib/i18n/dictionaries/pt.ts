@@ -147,11 +147,10 @@ export const pt = {
     dayFull: 'Este dia já está cheio. Os dias acesos no calendário ainda têm vaga.',
     monthPrevious: 'Mês anterior',
     monthNext: 'Mês seguinte',
-    dayHasSlots: 'tem vaga',
-    dayNoSlots: 'sem vaga',
-    /* O limite de antecedência existe desde sempre, mas era invisível: a
-       cliente só o encontrava a bater contra ele. {d} é a data. */
-    bookUntil: 'Pode marcar até {d}.',
+    /* Substitui a legenda com amostras desenhadas: um quadrado branco
+       sobre papel quase branco não se via, e o algarismo de exemplo
+       ficava a parecer um número perdido na página. */
+    dayNoSlotsHint: 'Os dias apagados não têm vaga.',
     staffTitle: 'Com quem quer ser atendida?',
     staffSubtitle: 'Quem está de serviço neste dia aparece a cheio. Os outros ficam apagados.',
     staffOff: 'Folga',
