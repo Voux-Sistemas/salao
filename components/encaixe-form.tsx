@@ -84,11 +84,7 @@ export function EncaixeForm({
           <Field label="Nome" htmlFor="encaixe-name">
             <Input id="encaixe-name" name="name" autoComplete="off" required />
           </Field>
-          <Field
-            label="Telefone"
-            htmlFor="encaixe-phone"
-            hint="É por aqui que a ficha se reconhece."
-          >
+          <Field label="Telefone" htmlFor="encaixe-phone">
             <PhoneInput
               id="encaixe-phone"
               name="phone"
@@ -139,14 +135,13 @@ export function EncaixeForm({
         </div>
       </details>
 
+      {/* O «continuar» explica-se ao ser carregado uma vez: fica-se no
+          mesmo dia, com a visita limpa. A legenda por baixo dizia-o a
+          quem já o sabia, todas as vezes. */}
       <div className="flex flex-wrap gap-2">
         <Submit>Marcar encaixe</Submit>
         <Submit again>Marcar e continuar</Submit>
       </div>
-      <p className="text-[0.6875rem] text-[var(--ink-faint)]">
-        «Continuar» fica neste dia, com a visita limpa, pronta para a
-        marcação seguinte.
-      </p>
     </form>
   )
 }

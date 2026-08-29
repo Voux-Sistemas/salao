@@ -508,12 +508,26 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                           className="relative mt-1.5"
                         >
                           <summary className="inline-flex h-8 cursor-pointer list-none items-center gap-2 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] px-2.5 text-[0.75rem] font-medium text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)] [&::-webkit-details-marker]:hidden">
+                            {/*
+                              FECHADA, A CAIXA CONVIDA — NÃO DESCREVE.
+
+                              Dizia «Sem preferência» enquanto ninguém
+                              estivesse escolhido, e isso lia-se como uma
+                              decisão já tomada por alguém. «Selecionar
+                              Colaborador» diz o que ela é: uma caixa por
+                              abrir.
+
+                              «Sem preferência» continua a existir, e é a
+                              primeira opção lá dentro — deixar o motor
+                              escolher é uma decisão a sério, e quando se
+                              toma é ela que a caixa passa a mostrar.
+                            */}
                             <span className="truncate">
                               {line.staffId
                                 ? (eligible.find(
                                     (o) => o.staff_id === line.staffId,
                                   )?.staff_name ?? 'Sem preferência')
-                                : 'Sem preferência'}
+                                : 'Selecionar Colaborador'}
                             </span>
                             <ChevronDown
                               aria-hidden
@@ -727,10 +741,12 @@ export default async function EncaixePage({ params, searchParams }: Params) {
                     </button>
                   </div>
                 </Form>
-                <p className="mt-2 text-[0.6875rem] text-[var(--ink-faint)]">
-                  A hora à mão pode cair fora da grelha — é isso que faz um
-                  encaixe.
-                </p>
+                {/* Estava aqui «a hora à mão pode cair fora da grelha —
+                    é isso que faz um encaixe». É a única regra desta
+                    página que não se adivinha do desenho, e sai por
+                    decisão de quem a lê todos os dias. Fica escrita
+                    aqui, para quem vier a seguir: a hora à mão NÃO
+                    obedece à granularidade da loja. */}
               </>
             )}
           </Card>

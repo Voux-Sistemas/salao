@@ -50,8 +50,21 @@ export function ClientPicker({
   const chave = searchKey(term.trim())
   const digits = term.replace(/\D/g, '')
 
+  /*
+    SEM TEXTO, SEM LISTA.
+
+    A lista abria com as fichas todas — sessenta e três nomes por ordem
+    alfabética entre o campo de procura e o formulário de ficha nova.
+    Ninguém escolhe uma cliente por varrimento: ou se sabe o nome, e
+    escreve-se, ou é ficha nova, e preenche-se em baixo. A lista aberta
+    só servia para empurrar as duas coisas para fora do ecrã.
+
+    As fichas continuam a vir todas com a página — a peneira corre no
+    navegador, a cada letra, sem ir ao servidor. O que muda é quando é
+    que elas se mostram.
+  */
   const matches = useMemo(() => {
-    if (!chave) return clients
+    if (!chave) return []
     return clients.filter(
       (client) =>
         searchKey(client.name).includes(chave) ||
@@ -94,7 +107,9 @@ export function ClientPicker({
         ) : null}
       </div>
 
-      {shown.length === 0 ? (
+      {/* Campo vazio não é «não encontrei nada»: é ainda não perguntou.
+          Duas coisas diferentes não podem dizer a mesma frase. */}
+      {!chave ? null : shown.length === 0 ? (
         <p className="text-[0.8125rem] text-[var(--ink-muted)]">
           Nenhuma ficha com isso. Se é cliente nova, escreva o nome e o
           telefone aqui em baixo — a ficha nasce ao marcar.
@@ -124,11 +139,13 @@ export function ClientPicker({
         </Card>
       )}
 
-      {hidden > 0 ? (
+      {/* «N fichas ao todo — escreva para procurar» saiu com a lista:
+          era o rodapé de uma coisa que já não está aberta. Fica só o
+          aviso de que a procura trouxe mais do que cabe. */}
+      {chave && hidden > 0 ? (
         <p className="tabular text-[0.6875rem] text-[var(--ink-faint)]">
-          {chave
-            ? `+ ${hidden} ${hidden === 1 ? 'ficha' : 'fichas'} — escreva mais para afinar.`
-            : `${clients.length} fichas ao todo — escreva para procurar.`}
+          + {hidden} {hidden === 1 ? 'ficha' : 'fichas'} — escreva mais para
+          afinar.
         </p>
       ) : null}
     </div>
