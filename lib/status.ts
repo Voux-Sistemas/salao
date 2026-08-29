@@ -17,21 +17,6 @@ export const STATUS_LABEL: Record<Status, string> = {
   no_show: 'Faltou',
 }
 
-/**
- * AS TRÊS MANEIRAS DE UMA MARCAÇÃO NÃO SE FAZER.
- *
- * Vivem dentro da pergunta «o que aconteceu?», e por isso não são
- * verbos de botão: são respostas. A cliente ter desmarcado, a casa ter
- * desmarcado e a cliente não ter aparecido são três factos diferentes,
- * e a estatística do ano vive dessa diferença — é para isso que se
- * pergunta em vez de haver um «cancelar» só.
- */
-export const MOTIVO_LABEL: Partial<Record<Status, string>> = {
-  cancelled_by_client: 'A cliente desmarcou',
-  cancelled_by_salon: 'O salão desmarcou',
-  no_show: 'Não apareceu',
-}
-
 export type Tone = 'neutral' | 'accent' | 'ok' | 'warn' | 'bad'
 
 export const STATUS_TONE: Record<Status, Tone> = {

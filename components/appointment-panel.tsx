@@ -6,7 +6,7 @@ import {
   type AppointmentItemRow,
   type AppointmentRow,
 } from '@/lib/booking'
-import { MOTIVO_LABEL, SOURCE_LABEL, STATUS_LABEL } from '@/lib/status'
+import { SOURCE_LABEL, STATUS_LABEL } from '@/lib/status'
 import { composeMessage, loadTemplates } from '@/lib/notify'
 import { Badge, ButtonLink, Notice } from '@/components/ui'
 import {
@@ -82,9 +82,24 @@ export async function AppointmentPanel({
   )
 
   const podeConcluir = options.includes('completed')
-  const motivos = options
-    .filter((to) => MOTIVO_LABEL[to])
-    .map((to) => ({ to, label: MOTIVO_LABEL[to]! }))
+  /*
+    UMA DESMARCAÇÃO SÓ, EM NOME DO SALÃO.
+
+    Havia três — a cliente desmarcou, o salão desmarcou, não apareceu —
+    e ao balcão, com a cliente à frente, eram três decisões onde só há
+    uma vontade. Fica uma, e fica em nome da casa: entre pôr a culpa na
+    cliente por omissão ou na casa que escolheu não perguntar, é a casa
+    que a leva.
+
+    Os outros dois estados continuam a existir na base e no modelo. Se
+    um dia a diferença fizer falta a quem lê as contas do ano, volta a
+    pergunta — não é preciso mexer em mais nada.
+  */
+  const cancelTo = options.includes('cancelled_by_salon')
+    ? ('cancelled_by_salon' as const)
+    : options.includes('cancelled_by_client')
+      ? ('cancelled_by_client' as const)
+      : null
 
   const total = appointment.total_cents - appointment.discount_cents
   const whenDay = capitalise(
@@ -315,42 +330,24 @@ export async function AppointmentPanel({
           className="w-full"
         />
 
-        {/* Há alguma coisa a perguntar, ou há alguma coisa a apagar:
+        {/* Há alguma coisa para desmarcar, ou alguma coisa para apagar:
             numa marcação concluída só a segunda é verdade. */}
-        {motivos.length > 0 || podeApagar ? (
+        {cancelTo !== null || podeApagar ? (
           <CancelAction
             appointmentId={appointment.id}
-            options={motivos}
+            cancelTo={cancelTo}
             itens={appointment.items.length}
             podeApagar={podeApagar}
             avisoDinheiro={dono && temDinheiro}
           />
         ) : null}
 
-        {!podeConcluir && !closeTab && motivos.length === 0 ? (
+        {!podeConcluir && !closeTab && cancelTo === null && !podeApagar ? (
           <p className="text-[0.75rem] text-[var(--ink-faint)]">
             Esta marcação já não muda de estado.
           </p>
         ) : null}
 
-        {can.seeCash(actor) ? (
-          <p className="flex items-center gap-4 pt-1 text-[0.75rem] text-[var(--ink-muted)]">
-            {!closeTab ? (
-              <Link
-                href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
-                className="underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
-              >
-                Comanda
-              </Link>
-            ) : null}
-            <Link
-              href={`/agenda/${appointment.unit_slug}/remarcar/${appointment.id}`}
-              className="underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
-            >
-              Remarcar
-            </Link>
-          </p>
-        ) : null}
       </footer>
     </div>
   )

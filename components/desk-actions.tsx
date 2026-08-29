@@ -127,13 +127,17 @@ export function StatusAction({
  */
 export function CancelAction({
   appointmentId,
-  options,
+  cancelTo,
   itens,
   podeApagar = false,
   avisoDinheiro = false,
 }: {
   appointmentId: string
-  options: { to: Status; label: string }[]
+  /**
+   * O estado para onde uma desmarcação leva — ou nulo quando já não há
+   * nenhum, que é o caso de uma marcação concluída.
+   */
+  cancelTo: Status | null
   /** Quantos serviços vão atrás, para a confirmação os poder contar. */
   itens: number
   /** A dona, e sem dinheiro pelo meio. */
@@ -155,18 +159,17 @@ export function CancelAction({
   const aberto = passo !== 'fechado'
 
   /*
-    UMA MARCAÇÃO CONCLUÍDA NÃO TEM PERGUNTA — MAS TEM ENGANOS.
+    UMA MARCAÇÃO CONCLUÍDA NÃO SE DESMARCA — MAS TEM ENGANOS.
 
     Concluída é o fim da cadeia: não há estado nenhum a seguir, e por
-    isso não há «o que aconteceu?» para fazer. Só que é precisamente
-    ali que ficam as linhas de teste e os enganos que já se fecharam —
-    e o apagar, que vivia dentro dessa pergunta, ficava sem porta.
+    isso não há nada para desmarcar. Só que é precisamente ali que ficam
+    as linhas de teste e os enganos que já se fecharam — e o apagar, que
+    vive dentro deste botão, ficaria sem porta.
 
-    Quando não há motivos para perguntar, o botão deixa de dizer
-    «Cancelar» (que não faria nada) e passa a ser o que resta: apagar.
-    A confirmação é a mesma, e as coleiras também.
+    Sem para onde desmarcar, o botão deixa de dizer «Cancelar» (que não
+    faria nada) e passa a ser o que resta: apagar.
   */
-  const soApagar = options.length === 0
+  const soApagar = cancelTo === null
 
   /*
     O SEGUNDO TOQUE DIZ O QUE SE PERDE — não «tem a certeza?».
@@ -231,25 +234,38 @@ export function CancelAction({
   return (
     <div className="space-y-2">
       {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
+      {/*
+        UMA PERGUNTA DE CADA VEZ.
+
+        Perguntava «o que aconteceu?» e dava três respostas — a cliente
+        desmarcou, o salão desmarcou, não apareceu — porque os três são
+        factos diferentes. Ao balcão, com a cliente à frente, isso são
+        três decisões onde só havia uma vontade: desmarcar. Passa a
+        perguntar só o que interessa naquele segundo.
+
+        A desmarcação fica em nome do SALÃO. Alguém tem de a carregar, e
+        entre pôr a culpa na cliente por omissão ou na casa que escolheu
+        não perguntar, é a casa que a leva.
+      */}
       <div className="overflow-hidden rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--bad)_35%,transparent)]">
         <p className="px-3.5 py-2.5 text-[0.75rem] font-semibold text-[var(--bad)]">
-          O que aconteceu?
+          Desmarcar esta marcação?
         </p>
-        {options.map((option) => (
-          <form key={option.to} action={action}>
+        {cancelTo ? (
+          <form action={action}>
             <input type="hidden" name="appointment" value={appointmentId} />
-            <input type="hidden" name="to" value={option.to} />
-            <MenuSubmit label={option.label} />
+            <input type="hidden" name="to" value={cancelTo} />
+            <MenuSubmit label="Sim, desmarcar" />
           </form>
-        ))}
+        ) : null}
 
         {/*
           APAGAR VIVE AQUI, DEPOIS DE UM FIO.
 
           É onde se vem quando uma marcação não se fez, e por isso é onde
           se vem quando ela nunca devia ter existido. O fio separa duas
-          famílias: as três de cima são factos do salão, esta é um erro
-          do sistema.
+          coisas: desmarcar é um facto do salão, apagar é um erro do
+          sistema.
         */}
         {podeApagar ? (
           <>
