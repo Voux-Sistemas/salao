@@ -155,6 +155,20 @@ export function CancelAction({
   const aberto = passo !== 'fechado'
 
   /*
+    UMA MARCAÇÃO CONCLUÍDA NÃO TEM PERGUNTA — MAS TEM ENGANOS.
+
+    Concluída é o fim da cadeia: não há estado nenhum a seguir, e por
+    isso não há «o que aconteceu?» para fazer. Só que é precisamente
+    ali que ficam as linhas de teste e os enganos que já se fecharam —
+    e o apagar, que vivia dentro dessa pergunta, ficava sem porta.
+
+    Quando não há motivos para perguntar, o botão deixa de dizer
+    «Cancelar» (que não faria nada) e passa a ser o que resta: apagar.
+    A confirmação é a mesma, e as coleiras também.
+  */
+  const soApagar = options.length === 0
+
+  /*
     O SEGUNDO TOQUE DIZ O QUE SE PERDE — não «tem a certeza?».
 
     Uma pergunta de sim ou não não informa ninguém: quem carregou já
@@ -180,7 +194,7 @@ export function CancelAction({
           </form>
           <button
             type="button"
-            onClick={() => setPasso('pergunta')}
+            onClick={() => setPasso(soApagar ? 'fechado' : 'pergunta')}
             className={clsx(MENU_LINHA, 'justify-center text-[0.75rem]')}
           >
             Voltar atrás
@@ -205,10 +219,10 @@ export function CancelAction({
           type="button"
           variant="danger"
           size="md"
-          onClick={() => setPasso('pergunta')}
+          onClick={() => setPasso(soApagar ? 'apagar' : 'pergunta')}
           className="w-full"
         >
-          Cancelar
+          {soApagar ? 'Apagar marcação' : 'Cancelar'}
         </Button>
       </div>
     )

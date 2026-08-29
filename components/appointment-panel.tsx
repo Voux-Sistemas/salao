@@ -315,7 +315,9 @@ export async function AppointmentPanel({
           className="w-full"
         />
 
-        {motivos.length > 0 ? (
+        {/* Há alguma coisa a perguntar, ou há alguma coisa a apagar:
+            numa marcação concluída só a segunda é verdade. */}
+        {motivos.length > 0 || podeApagar ? (
           <CancelAction
             appointmentId={appointment.id}
             options={motivos}
