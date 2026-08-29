@@ -123,7 +123,19 @@ export default async function AvisosPage({
         fechada por um fio, presa ao rolar. O nome da página, a loja num
         botão pequeno, e as rotinas numa fila que anda de lado.
       */}
-      <div className="sticky top-14 z-20 -mx-4 -mt-5 mb-4 border-b border-[var(--line)] bg-[var(--surface-raised)] px-4 sm:-mx-6 sm:px-6 lg:hidden">
+      {/*
+        A FAIXA PRENDE-SE A 57 PÍXEIS, NÃO A 56.
+
+        A barra da casa mede 56 de conteúdo mais 1 do fio de baixo. Presa
+        a 56, esta ficava um píxel acima do sítio dela — e por essa
+        fresta via-se a lista a correr entre as duas barras. Uma risca de
+        um píxel de conteúdo em movimento não se lê como uma risca: lê-se
+        como o cabeçalho a abanar.
+
+        Fica escrito em conta e não em número redondo, para quem um dia
+        mexer na altura da barra de cima perceber de onde veio o 57.
+      */}
+      <div className="sticky top-[calc(3.5rem+1px)] z-20 -mx-4 -mt-5 mb-4 border-b border-[var(--line)] bg-[var(--surface-raised)] px-4 sm:-mx-6 sm:px-6 lg:hidden">
         <div className="flex items-center justify-between gap-3 py-2.5">
           <p className="display truncate text-lg text-[var(--ink)]">
             {mine ? 'Os meus avisos' : 'Avisos'}

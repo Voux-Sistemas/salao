@@ -139,9 +139,14 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
 
         {/* Folga em baixo para a barra do telemóvel. Entra também a
             faixa do indicador do iPhone: a barra assenta no fundo do
-            ecrã e cresce por cima dela, portanto tapa mais do que os
-            4,5rem do seu corpo. */}
-        <main className="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+            ecrã e cresce por cima dela, portanto tapa mais do que o
+            corpo dela.
+
+            A CONTA É A ALTURA A SÉRIO DA BARRA: 4,25rem de conteúdo mais
+            o fio de cima. Estava escrita a 4,5rem — um número redondo à
+            mão, que sobrava três píxeis aqui e faltava-os a quem se
+            encostasse a ela. */}
+        <main className="flex-1 pb-[calc(4.25rem+1px+env(safe-area-inset-bottom))] lg:pb-0">
           {children}
         </main>
 
