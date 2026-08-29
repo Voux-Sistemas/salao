@@ -28,6 +28,11 @@ import {
  *
  * NÃO ENTRA JAVASCRIPT NENHUM: cada dia é uma ligação, o mês vive no
  * endereço, e o retrocesso do navegador anda para trás nos meses.
+ *
+ * A COR É O `--accent`, E NÃO O `--house`. Esta peça vive na montra, e
+ * a pele da montra não tem `--house` nenhum — escrito assim, o dia
+ * escolhido ficava com fundo nenhum e letra branca, ou seja invisível.
+ * O ouro da montra é o próprio `--accent`.
  */
 export function MonthCalendar({
   month,
@@ -91,8 +96,19 @@ export function MonthCalendar({
   const podeRecuar = mesAnterior >= firstDay
   const podeAvancar = mesSeguinte <= lastDay
 
+  /*
+    UM CALENDÁRIO TEM A LARGURA DE UM CALENDÁRIO.
+
+    Sem tecto, as sete colunas esticavam-se pela página toda: no monitor
+    davam células de cento e trinta píxeis e um mês com setecentos de
+    altura, com os números perdidos no meio de cada quadrado. Uma grelha
+    de datas não cresce com o ecrã — cresce até caber, e depois pára.
+
+    Vinte e três rem dão células de sessenta no monitor e de quarenta e
+    seis num telemóvel de 390: o polegar chega às duas.
+  */
   return (
-    <div>
+    <div className="max-w-[23rem]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <Seta
           href={podeRecuar ? monthHref(mesAnterior) : null}
@@ -156,10 +172,10 @@ export function MonthCalendar({
               className={clsx(
                 'display flex aspect-square flex-col items-center justify-center gap-1 rounded-[var(--radius)] border text-[0.9375rem] transition-colors sm:text-base',
                 escolhido
-                  ? 'border-[var(--house)] bg-[var(--house)] text-white'
+                  ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
                   : valor === today
-                    ? 'border-[var(--house)] bg-[var(--surface-raised)] text-[var(--ink)] hover:bg-[var(--surface-2)]'
-                    : 'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink)] hover:border-[var(--house)]',
+                    ? 'border-[var(--accent)] bg-[var(--surface-raised)] text-[var(--ink)] hover:bg-[var(--surface-2)]'
+                    : 'border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--ink)] hover:border-[var(--accent)]',
               )}
             >
               {numero}
@@ -167,7 +183,9 @@ export function MonthCalendar({
                 aria-hidden
                 className={clsx(
                   'block h-1 w-1 rounded-full',
-                  escolhido ? 'bg-white/85' : 'bg-[var(--house)]',
+                  escolhido
+                    ? 'bg-[color-mix(in_srgb,var(--accent-ink)_85%,transparent)]'
+                    : 'bg-[var(--accent)]',
                 )}
               />
             </Link>
@@ -227,7 +245,7 @@ function Seta({
       aria-label={label}
       className={clsx(
         moldura,
-        'transition-colors hover:border-[var(--house)] hover:text-[var(--ink)]',
+        'transition-colors hover:border-[var(--accent)] hover:text-[var(--ink)]',
       )}
     >
       {children}
