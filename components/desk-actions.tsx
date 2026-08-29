@@ -368,9 +368,22 @@ export function SendWhatsApp({
         <input type="hidden" name="appointment" value={appointmentId} />
         <input type="hidden" name="routine" value={routine} />
         <input type="hidden" name="message" value={message} />
+        {/*
+          JÁ ENVIADA NÃO É O MESMO QUE DESLIGADA.
+
+          O botão trocava de variante quando a mensagem já tinha saído, e
+          ficava cinzento — a cor de uma coisa que não se usa. Mas a
+          confirmação manda-se outra vez a toda a hora: a cliente apagou,
+          mudou de número, ligou a perguntar. Continua a ser o mesmo
+          botão, e continua a ser verde.
+
+          O que já saiu diz-se pelas palavras — «(de novo)» — e pelo selo
+          «Confirmação enviada» lá em cima. São dois sítios a dizê-lo;
+          apagar o botão era um terceiro, e a mais.
+        */}
         <Submit
           label={done ? `${label} (de novo)` : label}
-          variant={done ? 'quiet' : variant}
+          variant={variant}
           size={size}
           className={className}
           icon={<IconChat className="h-4 w-4" />}
