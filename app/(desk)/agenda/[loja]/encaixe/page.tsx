@@ -403,27 +403,73 @@ export default async function EncaixePage({ params, searchParams }: Params) {
     // da página morria escondida atrás do total.
     <div className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:py-8">
       {/*
-        NO TELEMÓVEL O CABEÇALHO É UMA LINHA.
+        NO TELEMÓVEL O TOPO É UMA FAIXA, E A FAIXA FICA PRESA.
 
-        Eram três coisas empilhadas — a volta à agenda, a loja, e o
-        nome da página em corpo trinta — e valiam duzentos píxeis antes
-        do primeiro passo, num ecrã que tem setecentos. Num sítio onde
-        se marca de pé, com a cliente à frente, o título da página é a
-        informação que menos falta faz: já se sabe onde se está.
+        Eram cinco coisas empilhadas e soltas no fundo bege — a volta à
+        agenda, a loja, o nome da página em corpo trinta, e a fita dos
+        passos — e valiam duzentos píxeis antes do primeiro serviço, num
+        ecrã que tem setecentos. Num sítio onde se marca de pé, com a
+        cliente à frente, o título da página é a informação que menos
+        falta faz: já se sabe onde se está.
 
-        Passam a caber na mesma linha: a seta que volta, o nome, e a
-        loja à direita. No monitor o cabeçalho fica como estava — lá
-        sobra ecrã, e um título grande é o que abre a página.
+        Passam a ser UMA peça: fundo branco como a barra da casa,
+        encostada a ela, fechada por um fio. A seta que volta, o nome e
+        a loja numa linha; a fita dos passos por baixo.
+
+        E FICA PRESA AO ROLAR, que é o que mais se sente. O passo 1 é o
+        mais comprido de todos — a lista tem sessenta e oito serviços —
+        e bastavam três para se deixar de ver em que passo se estava, e
+        para voltar atrás era preciso rolar até acima.
+
+        As margens negativas levam-na de lado a lado: a faixa é do ecrã,
+        não da coluna de texto. Fica ABAIXO da barra da casa (3.5rem, o
+        `top-14`) e por baixo dela no empilhamento — aquela é vidro
+        fosco e é a de cima em toda a área de trabalho.
+
+        No monitor não aparece: lá o cabeçalho grande é o que abre a
+        página, e os passos vivem lado a lado.
       */}
-      <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
-        <Link
-          href={`/agenda/${unit.slug}?d=${day}`}
-          className="flex min-w-0 items-center gap-2 text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
-        >
-          <ArrowLeft className="h-4 w-4 shrink-0 text-[var(--ink-faint)]" />
-          <span className="display truncate text-xl">Encaixe</span>
-        </Link>
-        <span className="titulo-seccao shrink-0">{unit.name}</span>
+      <div className="sticky top-14 z-20 -mx-4 -mt-5 mb-4 border-b border-[var(--line)] bg-[var(--surface-raised)] px-4 sm:-mx-6 sm:px-6 lg:hidden">
+        <div className="flex items-center justify-between gap-3 py-2.5">
+          <Link
+            href={`/agenda/${unit.slug}?d=${day}`}
+            className="flex min-w-0 items-center gap-2 text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
+          >
+            <ArrowLeft className="h-4 w-4 shrink-0 text-[var(--ink-faint)]" />
+            <span className="display truncate text-lg">Encaixe</span>
+          </Link>
+          <span className="titulo-seccao shrink-0">{unit.name}</span>
+        </div>
+
+        {/*
+          A FITA DIZ ONDE SE ESTÁ, E DEIXA VOLTAR ATRÁS.
+
+          Os passos já eram três e já estavam numerados; o que faltava
+          era poder vê-los todos de fora, para saber quantos são e
+          quanto falta. Cada degrau é uma ligação — o terceiro só acende
+          quando houver visita e hora, porque antes disso não há lá
+          nada.
+        */}
+        <nav aria-label="Passos" className="flex">
+          <Degrau
+            numero="1"
+            nome="Serviços"
+            activo={passo === 1}
+            href={link({ step: 1 })}
+          />
+          <Degrau
+            numero="2"
+            nome="Quando"
+            activo={passo === 2}
+            href={link({ step: 2 })}
+          />
+          <Degrau
+            numero="3"
+            nome="Cliente"
+            activo={passo === 3}
+            href={podeConfirmar ? link({ step: 3 }) : null}
+          />
+        </nav>
       </div>
 
       <Link
@@ -450,39 +496,6 @@ export default async function EncaixePage({ params, searchParams }: Params) {
         </h1>
       </header>
 
-      {/*
-        A FITA DIZ ONDE SE ESTÁ, E DEIXA VOLTAR ATRÁS.
-
-        Os passos já eram três e já estavam numerados; o que faltava era
-        poder vê-los todos de fora, para saber quantos são e quanto
-        falta. Cada degrau é uma ligação — o terceiro só acende quando
-        houver visita e hora, porque antes disso não há lá nada.
-
-        No monitor não aparece: lá os três cartões estão à vista.
-      */}
-      <nav
-        aria-label="Passos"
-        className="mb-5 flex border-b border-[var(--line-soft)] lg:hidden"
-      >
-        <Degrau
-          numero="1"
-          nome="Serviços"
-          activo={passo === 1}
-          href={link({ step: 1 })}
-        />
-        <Degrau
-          numero="2"
-          nome="Quando"
-          activo={passo === 2}
-          href={link({ step: 2 })}
-        />
-        <Degrau
-          numero="3"
-          nome="Cliente"
-          activo={passo === 3}
-          href={podeConfirmar ? link({ step: 3 }) : null}
-        />
-      </nav>
 
       {/* O recibo da anterior. Some-se ao primeiro toque, porque o `ok`
           não viaja em nenhuma das ligações desta página — e é isso que
@@ -987,12 +1000,17 @@ export default async function EncaixePage({ params, searchParams }: Params) {
         duas marcações, se ambas fossem carregadas. Sai, e devolve
         sessenta píxeis ao passo que mais precisa deles.
 
+        É UM FIO, NÃO UMA SOMBRA. A sombra fazia-a parecer uma coisa
+        pousada por cima da lista; o fio, igual ao que fecha a faixa de
+        cima, faz dela o chão da página. Entre as duas, o meio fica a
+        ser a única coisa que se mexe.
+
         Pousa em cima da barra de navegação do balcão (4.5rem), nunca
         atrás dela.
       */}
       {cart.length > 0 && passo !== 3 ? (
         <div
-          className="fixed inset-x-0 z-30 border-t border-[var(--line)] bg-[var(--surface-raised)] px-4 py-2.5 shadow-[0_-6px_18px_-12px_rgba(46,38,28,0.45)] lg:hidden"
+          className="fixed inset-x-0 z-30 border-t border-[var(--line)] bg-[var(--surface-raised)] px-4 py-2.5 lg:hidden"
           style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
         >
           <div className="mx-auto flex max-w-6xl items-center gap-3">
