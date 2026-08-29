@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
-import { ChevronDown, Columns3, Rows3, Users } from 'lucide-react'
+import { ChevronDown, Columns3, Plus, Rows3, Users } from 'lucide-react'
 import { requireActor, resolveUnit, unitsFor, can } from '@/lib/auth/actor'
 import { loadAgendaDay, type AgendaScope } from '@/lib/agenda'
 import { getAppointment } from '@/lib/booking'
@@ -21,8 +21,6 @@ import {
 import {
   AgendaGrid,
   AgendaList,
-  casaLivre,
-  duracao,
   larguraMinimaDaGrelha,
 } from '@/components/agenda-grid'
 import { AgendaFocus } from '@/components/agenda-focus'
@@ -193,7 +191,6 @@ export default async function AgendaDayPage({
   // milissegundos anda 60 min ao lado nos domingos de mudança de hora.
   const nowMin = isToday ? minutesOfDay(now, unit.timezone) : null
 
-  const appointmentCount = new Set(agenda.blocks.map((b) => b.appointmentId)).size
   /*
     QUEM TRABALHA CONTA-SE À PARTE DE QUEM ESTÁ DE FOLGA.
 
@@ -217,46 +214,6 @@ export default async function AgendaDayPage({
   const pickedName = picked
     ? (full.columns.find((c) => c.staffId === picked)?.name ?? null)
     : null
-
-  /*
-    «2 POR FECHAR» E «CASA LIVRE 3 H 40», EM VEZ DE «4 PROFISSIONAIS».
-
-    Quantas pessoas estão ao balcão já se vê na fita de baixo, nome por
-    nome — dizê-lo outra vez em número era a mesma informação a pagar
-    duas vezes. No lugar entram as duas coisas que este subtítulo pode
-    dizer e mais nenhum sítio diz: o que ficou por fechar, que é
-    trabalho de alguém, e quanto tempo a casa tem por vender, que é a
-    conta que decide se vale a pena ir buscar clientes.
-
-    O fim de cada marcação é o do seu bloco mais tardio: uma marcação de
-    dois serviços encadeados só acabou quando o segundo acabou.
-  */
-  const fimDaMarcacao = new Map<string, number>()
-  const estadoDaMarcacao = new Map<string, string>()
-  for (const block of agenda.blocks) {
-    fimDaMarcacao.set(
-      block.appointmentId,
-      Math.max(fimDaMarcacao.get(block.appointmentId) ?? 0, block.endMin),
-    )
-    estadoDaMarcacao.set(block.appointmentId, block.status)
-  }
-  const porFechar =
-    nowMin === null
-      ? 0
-      : [...fimDaMarcacao].filter(([id, fim]) => {
-          const estado = estadoDaMarcacao.get(id) ?? ''
-          return (
-            fim <= nowMin &&
-            estado !== 'completed' &&
-            estado !== 'no_show' &&
-            !estado.startsWith('cancel')
-          )
-        }).length
-
-  const livreMin = casaLivre(agenda).reduce(
-    (total, janela) => total + (janela.end - janela.start),
-    0,
-  )
 
   /*
     A FITA ANDA COM O DIA, EM VEZ DE FICAR PRESA À SEMANA DO CALENDÁRIO.
@@ -355,11 +312,18 @@ export default async function AgendaDayPage({
     </Link>
   )
 
+  /*
+    O «HOJE» MORA NO FIM DA FITA DOS DIAS.
+
+    `h-10` para ter a altura das células da fita densa: ele é a oitava,
+    e uma oitava mais baixa do que as outras sete lia-se como um botão
+    pousado ao lado em vez de um dia.
+  */
   const voltarAHoje = !isToday ? (
     <Link
       href={withDay(todayDay)}
       scroll={false}
-      className={buttonClass('quiet', 'sm')}
+      className={buttonClass('quiet', 'sm', 'h-10')}
     >
       Hoje
     </Link>
@@ -499,53 +463,45 @@ export default async function AgendaDayPage({
             </DayJump>
 
             {/*
-              OS FACTOS DO DIA LÊEM-SE AO LADO DO TÍTULO.
+              OS NÚMEROS DO DIA SAÍRAM DAQUI, E DE TODO O CABEÇALHO.
 
-              Tinham fila própria por baixo dele, e essa fila existia por
-              causa da loja — que lá vivia como texto sublinhado, vestida
-              de facto no meio de dois números que ninguém carrega. Com a
-              loja arrumada na fila dos filtros, o que sobrou foram
-              factos; e factos lêem-se como a data se lê, encostados ao
-              título. É o gesto que o painel do Hoje já faz.
-
-              FORA do `DayJump`, que é um campo de data deitado por cima
-              do título: lá dentro, tocar em «14 marcações» abria o
-              calendário.
-
-              Só no monitor. No telemóvel esta linha saiu inteira — lá os
-              números eram a coisa que se lia menos vezes de todas as que
-              lá estavam.
+              Chegaram a ter fila própria, e depois a ler-se ao lado do
+              título — «14 marcações · casa livre 3 h 20». O que a lista
+              por baixo mostra é o mesmo dia, marcação a marcação e folga
+              a folga: o número era o resumo de uma coisa que está toda à
+              vista dois centímetros abaixo. Ficou o título e mais nada.
             */}
-            <span className="tabular hidden shrink-0 text-[0.75rem] text-[var(--ink-faint)] sm:inline">
-              {appointmentCount === 1
-                ? '1 marcação'
-                : `${appointmentCount} marcações`}
-              {!onlyStaffId && pickedName ? ` · ${shortName(pickedName)}` : ''}
-              {porFechar > 0 ? (
-                <span className="font-semibold text-[var(--warn)]">
-                  {' '}
-                  · {porFechar} por fechar
-                </span>
-              ) : null}
-              {livreMin > 0 ? ` · casa livre ${duracao(livreMin)}` : ''}
-              {!onlyStaffId && !pickedName && offCount > 0
-                ? ` · ${offCount} de folga`
-                : ''}
-            </span>
           </div>
 
+          {/*
+            DUAS FAMÍLIAS, COM UM FIO ENTRE ELAS.
+
+            Estiveram aqui quatro botões encostados, e cada um fazia uma
+            coisa de natureza diferente: o interruptor troca a VISTA
+            deste dia, o «Semana» leva a OUTRA PÁGINA, o «Hoje» leva a
+            OUTRO DIA, o «Encaixe» CRIA. Só o último se distinguia — e
+            distinguia-se pela cor, não pelo sítio.
+
+            Agora à esquerda do fio está COMO OLHAR e à direita O QUE
+            FAZER. O «Hoje» não está em nenhuma das duas: desceu para o
+            fim da fita dos dias, que é onde o dia se muda.
+          */}
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            {/* No ecrã largo há espaço para as três; no telemóvel só o
-                Encaixe fica aqui, e as outras duas descem. */}
             <span className="hidden items-center gap-1.5 sm:flex">
               {interruptorVista}
               {portaDaSemana}
-              {voltarAHoje}
             </span>
             {encaixeHref ? (
-              <ButtonLink href={`${here}/encaixe?d=${day}`} size="sm">
-                Encaixe
-              </ButtonLink>
+              <>
+                <span
+                  aria-hidden
+                  className="hidden h-5 w-px bg-[var(--line-soft)] sm:block"
+                />
+                <ButtonLink href={`${here}/encaixe?d=${day}`} size="sm">
+                  <Plus aria-hidden className="h-3.5 w-3.5" />
+                  Encaixe
+                </ButtonLink>
+              </>
             ) : null}
           </div>
         </div>
@@ -574,6 +530,18 @@ export default async function AgendaDayPage({
               hrefFor={(value) => withDay(value)}
             />
           </div>
+
+          {/*
+            O «HOJE» É A OITAVA CÉLULA DA FITA.
+
+            Esteve em cima, entre o «Semana» e o «Encaixe», e era o botão
+            mais fora do sítio do ecrã: ele muda o DIA, e a fita que muda
+            o dia estava catorze píxeis abaixo dele, sem nada que os
+            ligasse. Aqui tem a altura das outras sete e a mesma família
+            — e só existe quando não se está em hoje, que é quando ele
+            tem alguma coisa para fazer.
+          */}
+          {voltarAHoje}
         </div>
 
         {/* os comandos, só no telemóvel ------------------------------ */}
@@ -587,10 +555,9 @@ export default async function AgendaDayPage({
           pontas ocupadas — quem se vê à esquerda, como se vê à direita
           — e nenhuma das outras filas tem de ceder nada.
 
-          `flex-wrap` porque num dia que não é hoje entra mais um botão,
-          o «Hoje», e cinco comandos não cabem em 358px. Passar para a
-          linha de baixo é feio uma vez por semana; cortado ao meio na
-          margem seria feio sempre.
+          `flex-wrap` é o travão para o dia em que a casa tem um nome
+          comprido: partir para a linha de baixo é feio de vez em quando,
+          cortado ao meio na margem seria feio sempre.
         */}
         <div className="flex flex-wrap items-center gap-2 px-4 pb-2.5 sm:hidden">
           {/* A casa, no sítio onde a linha dos números a deixou. */}
@@ -605,7 +572,6 @@ export default async function AgendaDayPage({
           <span className="flex-grow" />
           {interruptorVista}
           {portaDaSemana}
-          {voltarAHoje}
         </div>
 
 
