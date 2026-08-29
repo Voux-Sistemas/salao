@@ -237,6 +237,19 @@ export function formatWeekdayShort(
   }).format(dayStart(day, timezone))
 }
 
+/** "agosto de 2026" — o cabeçalho de um mês inteiro. */
+export function formatMonthYear(
+  day: IsoDay,
+  timezone: string,
+  language = 'pt',
+): string {
+  return new Intl.DateTimeFormat(localeOf(language), {
+    month: 'long',
+    year: 'numeric',
+    timeZone: timezone,
+  }).format(dayStart(day, timezone))
+}
+
 /** "ago" — o mês em três letras, para os blocos de calendário. */
 export function formatMonthShort(
   day: IsoDay,

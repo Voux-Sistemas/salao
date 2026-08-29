@@ -144,7 +144,14 @@ export const pt = {
     dayTitle: 'Que dia lhe dá jeito?',
     daySubtitle: 'Escolha o dia e depois veja quem está de serviço.',
     dayAction: 'Ver quem está',
-    dayFull: 'Este dia já está cheio. Os dias acesos na tira ainda têm vaga.',
+    dayFull: 'Este dia já está cheio. Os dias acesos no calendário ainda têm vaga.',
+    monthPrevious: 'Mês anterior',
+    monthNext: 'Mês seguinte',
+    dayHasSlots: 'tem vaga',
+    dayNoSlots: 'sem vaga',
+    /* O limite de antecedência existe desde sempre, mas era invisível: a
+       cliente só o encontrava a bater contra ele. {d} é a data. */
+    bookUntil: 'Pode marcar até {d}.',
     staffTitle: 'Com quem quer ser atendida?',
     staffSubtitle: 'Quem está de serviço neste dia aparece a cheio. Os outros ficam apagados.',
     staffOff: 'Folga',

@@ -16,7 +16,7 @@ import { DAY_PARAM, first, funnelHref } from '@/lib/cart'
 import { picksStaffOn } from '@/lib/sunday'
 import { ButtonLink, Notice } from '@/components/ui'
 import { FunnelShell } from '@/components/funnel-shell'
-import { DayStrip } from '@/components/day-strip'
+import { MonthCalendar } from '@/components/month-calendar'
 
 type Params = {
   params: Promise<{ loja: string }>
@@ -75,6 +75,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
  * Tudo o que se escolhe entra no endereço: nada disto precisa de sessão
  * nem de JavaScript.
  */
+/** O mês visível do calendário. Só existe neste passo. */
+const MONTH_PARAM = 'm'
+
 export default async function ChooseDayPage({ params, searchParams }: Params) {
   const { loja } = await params
   const query = await searchParams
@@ -102,11 +105,35 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
   const day: IsoDay =
     askedDay ?? (await firstOpenDay(unit, firstDay, lastDay, 'online')) ?? firstDay
 
-  // O pulso da semana visível: um dia sem ninguém fica apagado na tira
-  // ANTES de a cliente lhe carregar em cima.
-  const week = isoRange(day, 7).filter((d) => d <= lastDay)
-  const pulse = await pulseOfDays(unit, week, 'online')
-  const deadDays = new Set(week.filter((d) => pulse.get(d) !== 'ok'))
+  /*
+    O MÊS VISÍVEL VIVE NO ENDEREÇO, como tudo o resto deste funil.
+
+    Sem `m`, mostra-se o mês do dia escolhido. Com `m`, mostra-se esse —
+    e é assim que a seta do mês funciona sem uma linha de JavaScript.
+    Fora do que a casa aceita, cai para o mês de hoje.
+  */
+  const askedMonth = first(query[MONTH_PARAM])
+  const mesPedido =
+    askedMonth && isValidDay(askedMonth) ? (askedMonth as IsoDay) : null
+  const mesBase = mesPedido ?? day
+  const mes = `${mesBase.slice(0, 8)}01` as IsoDay
+
+  /*
+    O PULSO DO MÊS INTEIRO: um dia sem ninguém fica apagado ANTES de a
+    cliente lhe carregar em cima.
+
+    E É AQUI QUE SE OLHA SE A PÁGINA FICAR LENTA. O `pulseOfDays` faz
+    duas idas à base por dia; eram catorze para a fita de sete, passam a
+    ser umas sessenta para um mês. Correm todas ao mesmo tempo e a casa é
+    pequena, mas o número está escrito para não ser preciso descobri-lo.
+    Se doer, a saída é uma consulta só que responda pelos trinta dias de
+    uma vez — não é tirar o calendário.
+  */
+  const diasDoMes = isoRange(mes, 31)
+    .filter((d) => d.slice(0, 7) === mes.slice(0, 7))
+    .filter((d) => d >= firstDay && d <= lastDay)
+  const pulse = await pulseOfDays(unit, diasDoMes, 'online')
+  const deadDays = new Set(diasDoMes.filter((d) => pulse.get(d) !== 'ok'))
   const state = pulse.get(day) ?? 'ok'
 
   const here = `/agendar/${unit.slug}`
@@ -124,20 +151,42 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
       title={dict.funnel.dayTitle}
       subtitle={dict.funnel.daySubtitle}
     >
-      <DayStrip
+      <MonthCalendar
+        month={mes}
         day={day}
+        today={firstDay}
         firstDay={firstDay}
         lastDay={lastDay}
         timezone={unit.timezone}
         language={language}
-        dict={dict}
         href={(value) => funnelHref(here, { day: value })}
-        label={dict.funnel.steps.day}
-        disabled={deadDays}
+        monthHref={(value) => `${here}?${MONTH_PARAM}=${value}`}
+        dead={deadDays}
+        labels={{
+          previous: dict.funnel.monthPrevious,
+          next: dict.funnel.monthNext,
+          hasSlots: dict.funnel.dayHasSlots,
+          noSlots: dict.funnel.dayNoSlots,
+        }}
       />
 
-      {/* A data por extenso, em serifa: confirma em palavras o que a
-          tira acima diz em números. */}
+      {/*
+        ATÉ QUANDO A CASA ACEITA MARCAÇÕES, ESCRITO.
+
+        O limite existe desde sempre — o `max_lead_days` da loja — mas era
+        invisível: a cliente só o encontrava a bater contra ele, depois de
+        carregar na seta até ela deixar de andar. Uma regra que só se
+        conhece por tropeço não é uma regra, é uma armadilha.
+      */}
+      <p className="mt-5 text-[0.8125rem] text-[var(--ink-muted)]">
+        {dict.funnel.bookUntil.replace(
+          '{d}',
+          formatDayLong(lastDay, unit.timezone, language),
+        )}
+      </p>
+
+      {/* A data por extenso, em serifa: confirma em palavras o que o
+          calendário acima diz em números. */}
       <div className="mt-8 flex items-baseline gap-4">
         <h2 className="display text-xl text-[var(--ink)] first-letter:uppercase">
           {formatDayLong(day, unit.timezone, language)}
