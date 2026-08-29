@@ -51,14 +51,21 @@ const VARIANTS: Record<Variant, string> = {
     'hover:bg-[color-mix(in_srgb,var(--ink)_9%,transparent)] hover:text-[var(--ink)]',
   danger:
     'border border-[color-mix(in_srgb,var(--bad)_40%,transparent)] text-[var(--bad)] hover:bg-[color-mix(in_srgb,var(--bad)_10%,transparent)]',
-  // O irmão do vermelho, na cor do que corre bem. Nasceu para o botão
-  // que avisa a cliente: ao lado de um «Cancelar» vermelho, um contorno
+  // O irmão do azul, na cor do que corre bem. Nasceu para o botão que
+  // avisa a cliente: ao lado de um «Cancelar» vermelho, um contorno
   // neutro não dizia de que lado estava.
+  //
+  // É CHEIO, e não um contorno com letra verde. Um contorno lê-se como
+  // «o outro botão», e a distância entre um verde escuro e a tinta
+  // preta, num rótulo de catorze píxeis, é menor do que parece no
+  // ecrã de quem o desenha. Cheio, vê-se de relance.
   //
   // NÃO É O AZUL DOS COMANDOS por escolha: o azul é «carregar aqui» e
   // já está no botão de cima. Duas cores diferentes para duas coisas
   // diferentes lêem-se sem se ler.
-  ok: 'border border-[color-mix(in_srgb,var(--ok)_40%,transparent)] text-[var(--ok)] hover:bg-[color-mix(in_srgb,var(--ok)_10%,transparent)]',
+  ok:
+    'sheen bg-[var(--ok)] text-white hover:bg-[color-mix(in_srgb,var(--ok)_84%,black)] ' +
+    'hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]',
 }
 
 export function buttonClass(
