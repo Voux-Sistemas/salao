@@ -156,6 +156,16 @@ export function DeskNav({
   }
 
   if (variant === 'bottom') {
+    /*
+      COM SEIS PORTAS, A PASTILHA ENCOLHE.
+
+      A pastilha de cinquenta e seis píxeis foi desenhada para cinco
+      portas. Com seis, cada uma leva sessenta e cinco: a pastilha e o
+      rótulo ficavam a tocar-se nas bordas. Quatro píxeis a menos de cada
+      lado, e volta a haver ar entre elas.
+    */
+    const apertado = items.length > 5
+
     return (
       // A folga do indicador do iPhone vai por fora da fila de ícones: a
       // barra cresce por baixo, em vez de espremer os rótulos.
@@ -220,7 +230,8 @@ export function DeskNav({
                 */}
                 <span
                   className={clsx(
-                    'flex h-7 w-14 items-center justify-center rounded-full transition-colors',
+                    'flex h-7 items-center justify-center rounded-full transition-colors',
+                    apertado ? 'w-12' : 'w-14',
                     active
                       ? 'bg-[var(--house)] text-white shadow-[0_4px_10px_-4px_color-mix(in_srgb,var(--house)_70%,transparent)]'
                       : 'bg-transparent',
@@ -230,7 +241,8 @@ export function DeskNav({
                 </span>
                 <span
                   className={clsx(
-                    'max-w-full truncate px-1 text-[0.625rem]',
+                    'max-w-full truncate text-[0.625rem]',
+                    apertado ? 'px-0.5' : 'px-1',
                     active ? 'font-bold' : 'font-semibold',
                   )}
                 >

@@ -246,17 +246,26 @@ function navFor(actor: Actor, avisos = 0): NavItem[] {
 }
 
 /**
- * No fundo do telemóvel cabem cinco portas. Quando são mais, os Avisos
- * são os primeiros a sair — quem gere está ao balcão, num ecrã largo.
+ * NO FUNDO DO TELEMÓVEL CABEM AS PORTAS TODAS.
  *
- * Quando são menos, ficam todas: a profissional trabalha do telemóvel e
- * é lá que ela avisa as clientes. Cortar-lhe os avisos era tirar-lhe
- * metade do trabalho.
+ * Cortava às cinco, e os Avisos eram os primeiros a sair, com esta razão
+ * escrita aqui: «quem gere está ao balcão, num ecrã largo». Estava
+ * errada. A dona tem seis portas e trabalha do telemóvel — e a fila de
+ * avisos é dela também: é ela quem confirma as marcações quando mais
+ * ninguém o fez, é a rede de segurança da casa. Tirar-lhe justamente
+ * essa porta era o contrário do que a regra queria.
+ *
+ * Seis em trezentos e noventa píxeis dão sessenta e cinco cada uma: o
+ * glifo cabe folgado e o rótulo fica no limite. Apertada é melhor do que
+ * incompleta — e sobretudo, ninguém tem de descobrir onde foi parar uma
+ * coisa que ontem estava ali.
+ *
+ * SEIS É O TECTO DO QUE A CASA TEM. Se um dia nascer uma sétima porta,
+ * isto tem de voltar a decidir alguma coisa — e a decisão já não pode
+ * ser «saem os avisos».
  */
 function mobileNavFor(actor: Actor, avisos = 0): NavItem[] {
-  const items = navFor(actor, avisos)
-  if (items.length <= 5) return items
-  return items.filter((item) => item.href !== '/avisos').slice(0, 5)
+  return navFor(actor, avisos)
 }
 
 const ROLE_LABEL = {
