@@ -247,7 +247,11 @@ export async function unitsFor(actor: Actor): Promise<Unit[]> {
 
 export const can = {
   seeDashboard: (a: Actor) => a.role !== 'professional',
-  seeCash: (a: Actor) => a.role !== 'professional',
+  /* Chamava-se `seeCash` e abria duas coisas: a gaveta do dia e a
+     comanda da cliente. A gaveta saiu — a casa não a usava — e o nome
+     ficou a apontar para um sítio que já não existe. Continua a ser o
+     mesmo portão: quem pode ver o dinheiro de uma marcação. */
+  seeMoney: (a: Actor) => a.role !== 'professional',
   seeClients: (a: Actor) => a.role !== 'professional',
   /* Toda a gente avisa — mas a profissional só vê as clientes dela.
      Quem corta a fila é o `noticesStaffId`, não este portão. */

@@ -123,8 +123,8 @@ export async function removePaymentAction(
 }
 
 /**
- * Fechar é o gatilho das comissões e é o que lança o dinheiro vivo na
- * caixa. Depois disto não entram mais pagamentos nem descontos.
+ * Fechar é o gatilho das comissões. Depois disto não entram mais
+ * pagamentos nem descontos.
  */
 export async function closeComandaAction(
   _previous: ComandaState,
@@ -145,11 +145,6 @@ export async function closeComandaAction(
         return CLOSED
       case 'unpaid':
         return { error: 'Ainda falta receber. Registe os pagamentos primeiro.' }
-      case 'no_cash_session':
-        return {
-          error:
-            'Há dinheiro vivo nesta comanda e a caixa da loja está fechada. Abra a caixa antes de fechar a comanda.',
-        }
       case 'cancelled':
         return { error: 'Uma marcação cancelada não se fecha.' }
       default:
@@ -158,7 +153,6 @@ export async function closeComandaAction(
   }
 
   touch(found.appointment.unit_slug, appointmentId)
-  revalidatePath(`/caixa/${found.appointment.unit_slug}`)
   revalidatePath('/')
   return { error: null, done: 'Comanda fechada.' }
 }

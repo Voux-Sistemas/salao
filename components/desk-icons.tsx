@@ -60,17 +60,6 @@ export function IconBell({ className }: { className?: string }) {
   )
 }
 
-/** Caixa: a nota com o círculo ao centro. */
-export function IconCash({ className }: { className?: string }) {
-  return (
-    <Glyph className={className}>
-      <rect x="2.75" y="6.5" width="18.5" height="11" rx="1" />
-      <circle cx="12" cy="12" r="2.4" />
-      <path d="M6 11.4v1.2M18 11.4v1.2" />
-    </Glyph>
-  )
-}
-
 /** Clientes: uma figura de busto, sem rosto. */
 export function IconClients({ className }: { className?: string }) {
   return (

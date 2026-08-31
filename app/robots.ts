@@ -25,7 +25,6 @@ export default function robots(): MetadataRoute.Robots {
         '/comecar',
         '/agenda',
         '/admin',
-        '/caixa',
         '/clientes',
         '/avisos',
         // A área da cliente e os passos pessoais do funil.

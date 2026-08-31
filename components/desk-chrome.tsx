@@ -249,9 +249,6 @@ function navFor(actor: Actor, avisos = 0): NavItem[] {
       badge: avisos,
     })
   }
-  if (can.seeCash(actor)) {
-    items.push({ href: '/caixa', label: 'Caixa', icon: 'caixa' })
-  }
   if (can.seeClients(actor)) {
     items.push({ href: '/clientes', label: 'Clientes', icon: 'clientes' })
   }
@@ -264,19 +261,19 @@ function navFor(actor: Actor, avisos = 0): NavItem[] {
  *
  * Cortava às cinco, e os Avisos eram os primeiros a sair, com esta razão
  * escrita aqui: «quem gere está ao balcão, num ecrã largo». Estava
- * errada. A dona tem seis portas e trabalha do telemóvel — e a fila de
- * avisos é dela também: é ela quem confirma as marcações quando mais
- * ninguém o fez, é a rede de segurança da casa. Tirar-lhe justamente
- * essa porta era o contrário do que a regra queria.
+ * errada. A dona trabalha do telemóvel — e a fila de avisos é dela
+ * também: é ela quem confirma as marcações quando mais ninguém o fez, é
+ * a rede de segurança da casa. Tirar-lhe justamente essa porta era o
+ * contrário do que a regra queria.
  *
- * Seis em trezentos e noventa píxeis dão sessenta e cinco cada uma: o
- * glifo cabe folgado e o rótulo fica no limite. Apertada é melhor do que
- * incompleta — e sobretudo, ninguém tem de descobrir onde foi parar uma
- * coisa que ontem estava ali.
+ * Eram seis, e seis em trezentos e noventa píxeis davam sessenta e cinco
+ * cada uma — o rótulo no limite. Com a saída da Caixa são cinco, a
+ * setenta e oito: folga que não se foi buscar, veio ter. Apertada era
+ * melhor do que incompleta, e agora não é nem uma coisa nem outra.
  *
- * SEIS É O TECTO DO QUE A CASA TEM. Se um dia nascer uma sétima porta,
- * isto tem de voltar a decidir alguma coisa — e a decisão já não pode
- * ser «saem os avisos».
+ * O TECTO É O QUE A CASA TEM. Se um dia nascer uma porta nova, isto tem
+ * de voltar a decidir alguma coisa — e a decisão já não pode ser «saem
+ * os avisos».
  */
 function mobileNavFor(actor: Actor, avisos = 0): NavItem[] {
   return navFor(actor, avisos)

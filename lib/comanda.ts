@@ -1,5 +1,4 @@
 import 'server-only'
-import type postgres from 'postgres'
 import { sql } from '@/lib/db'
 import { distributeProportionally, type Cents } from '@/lib/money'
 import type { PaymentMethod } from '@/lib/status'
@@ -16,8 +15,6 @@ import type { PaymentMethod } from '@/lib/status'
  * e, para a comissão, RATEADO PROPORCIONALMENTE pelos itens sem perder
  * cêntimos.
  */
-
-type Tx = postgres.TransactionSql<Record<string, never>>
 
 export type ComandaTotals = {
   itemsCents: Cents
@@ -71,7 +68,7 @@ export function totals(
 
 export type WriteResult =
   | { ok: true }
-  | { ok: false; reason: 'not_found' | 'closed' | 'invalid' | 'no_cash_session' }
+  | { ok: false; reason: 'not_found' | 'closed' | 'invalid' }
 
 /** No máximo um desconto por marcação, com motivo e autor. */
 export async function setDiscount(input: {
@@ -181,10 +178,10 @@ export async function removePayment(input: {
 // ---------------------------------------------------------------------
 
 export type CloseResult =
-  | { ok: true; commissionCents: Cents; cashCents: Cents }
+  | { ok: true; commissionCents: Cents }
   | {
       ok: false
-      reason: 'not_found' | 'closed' | 'unpaid' | 'no_cash_session' | 'cancelled'
+      reason: 'not_found' | 'closed' | 'unpaid' | 'cancelled'
     }
 
 type ItemRow = {
@@ -195,9 +192,14 @@ type ItemRow = {
 }
 
 /**
- * Fechar trava novos pagamentos e descontos, gera as comissões item a
- * item e lança o dinheiro vivo na caixa. Tudo numa transação: ou é tudo
- * ou não é nada.
+ * Fechar trava novos pagamentos e descontos e gera as comissões item a
+ * item. Tudo numa transação: ou é tudo ou não é nada.
+ *
+ * Houve aqui um terceiro trabalho: lançar o dinheiro vivo na gaveta, e
+ * recusar o fecho se a gaveta do dia não estivesse aberta. A casa não
+ * usa gaveta — conta o dinheiro à maneira dela — e o que restava era um
+ * fecho que barrava por causa de um registo que ninguém abria. A
+ * comanda continua a dizer quanto foi em dinheiro: está nos pagamentos.
  */
 export async function closeComanda(input: {
   appointmentId: string
@@ -286,49 +288,12 @@ export async function closeComanda(input: {
       `
     }
 
-    // --- dinheiro vivo entra na caixa -------------------------------
-    const cashPayments = payments.filter((p) => p.method === 'cash')
-    const cashCents = cashPayments.reduce((sum, p) => sum + p.amount_cents, 0)
-
-    if (cashCents > 0) {
-      const sessionId = await openCashSessionId(tx, appointment.unit_id)
-      if (!sessionId) {
-        return { ok: false, reason: 'no_cash_session' } as CloseResult
-      }
-      for (const payment of cashPayments) {
-        await tx`
-          insert into cash_movement
-            (cash_session_id, kind, amount_cents, payment_id, appointment_id, by_staff_id)
-          values
-            (${sessionId}, 'sale', ${payment.amount_cents}, ${payment.id},
-             ${appointment.id}, ${input.byStaffId})
-          on conflict do nothing
-        `
-      }
-    }
-
     await tx`
       update appointment
          set closed_at = now(), closed_by_staff_id = ${input.byStaffId}
        where id = ${appointment.id}
     `
 
-    return { ok: true, commissionCents: commissionTotal, cashCents } as CloseResult
+    return { ok: true, commissionCents: commissionTotal } as CloseResult
   })
-}
-
-/**
- * Só há uma caixa aberta por loja de cada vez. Se ficou de ontem, é lá
- * que o dinheiro entra — quem fecha o dia é quem conta a gaveta.
- */
-async function openCashSessionId(
-  tx: Tx,
-  unitId: string,
-): Promise<string | null> {
-  const rows = await tx<{ id: string }[]>`
-    select id from cash_session
-     where unit_id = ${unitId} and status = 'open'
-     limit 1
-  `
-  return rows[0]?.id ?? null
 }

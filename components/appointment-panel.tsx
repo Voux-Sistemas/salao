@@ -106,7 +106,7 @@ export async function AppointmentPanel({
     formatDayLong(isoDay(appointment.starts_at, tz), tz),
   )
   const closeTab =
-    can.seeCash(actor) &&
+    can.seeMoney(actor) &&
     appointment.status === 'completed' &&
     !appointment.closed_at
   /*

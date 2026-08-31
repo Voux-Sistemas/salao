@@ -29,7 +29,7 @@ export function UnitSwitcher({
   units: Unit[]
   /** slug da loja escolhida, ou null quando se está em «Todas». */
   current: string | null
-  /** prefixo do endereço, por exemplo `/caixa`. */
+  /** prefixo do endereço, por exemplo `/agenda`. */
   base: string
   allLabel?: string
   showAll?: boolean

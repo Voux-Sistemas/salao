@@ -7,7 +7,6 @@ import clsx from 'clsx'
 import {
   IconAgenda,
   IconBell,
-  IconCash,
   IconClients,
   IconDay,
   IconManage,
@@ -17,7 +16,6 @@ const ICONS = {
   hoje: IconDay,
   agenda: IconAgenda,
   avisos: IconBell,
-  caixa: IconCash,
   clientes: IconClients,
   gestao: IconManage,
 } as const
