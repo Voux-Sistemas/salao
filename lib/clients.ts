@@ -29,12 +29,12 @@ export type ClientRow = {
   preferred_unit_name: string | null
   visits: number
   next_at: Date | null
-  /** O nome guardado é só dígitos, ou está vazio. Ver `SEM_NOME`. */
+  /** O nome guardado não tem uma única letra. Ver `SEM_LETRAS`. */
   no_name: boolean
 }
 
 /**
- * UMA FICHA CUJO NOME É UM NÚMERO NÃO TEM NOME.
+ * UM NOME SEM UMA ÚNICA LETRA NÃO É UM NOME.
  *
  * Quando a cliente marca sem escrever como se chama, a ficha nasce com
  * o que houver — e o que há é o telefone. Ficava a ler-se «+351 913 362
@@ -42,14 +42,18 @@ export type ClientRow = {
  * dígitos ordenam antes das letras eram as PRIMEIRAS de toda a lista:
  * a primeira coisa que alguém via ao abrir Clientes.
  *
- * Isto reconhece-as — só espaços, dígitos e a pontuação de um número —
- * para a lista lhes poder chamar «Sem nome» e as mandar para o fim.
+ * A PRIMEIRA VERSÃO DISTO ENUMERAVA OS CARACTERES PERMITIDOS —
+ * `^[ +()0-9.-]*$` — e falhou em produção com a ficha mais visível de
+ * todas. Basta um caractere fora da lista para a ficha voltar a passar
+ * por nome: um espaço inquebrável colado de outro sítio, um travessão
+ * que não é hífen, um ponto de outra família. Uma lista de permissões
+ * tem de adivinhar tudo o que pode aparecer, e nunca adivinha.
  *
- * Sem barras invertidas de propósito: dentro de um literal de template
- * de JavaScript, `\s` perde a barra pelo caminho e o padrão deixa de
- * ser o que aqui está escrito.
+ * A pergunta ao contrário não tem esse problema: TEM ALGUMA LETRA? Se
+ * não tem nenhuma, não é um nome — seja o que for que lá esteja.
+ * `[[:alpha:]]` conhece acentos e alfabetos que não o nosso.
  */
-const SEM_NOME = `^[ +()0-9.-]*$`
+const SEM_LETRAS = `[[:alpha:]]`
 
 export type ClientDetail = ClientRow & {
   org_id: string
@@ -119,7 +123,7 @@ export async function searchClients(
       select c.id, c.name, c.phone, c.email, c.language, c.tags,
              c.no_show_count, c.first_visit_at, c.last_visit_at,
              u.name as preferred_unit_name,
-             coalesce(c.name, '') ~ ${SEM_NOME} as no_name,
+             coalesce(c.name, '') !~ ${SEM_LETRAS} as no_name,
              (select count(*)::int from appointment a
                where a.client_id = c.id and a.status = 'completed') as visits,
              (select min(a.starts_at) from appointment a
@@ -132,7 +136,7 @@ export async function searchClients(
        where ${where()}
        -- As sem nome vão para o fim: ordenadas pelo nome, os dígitos
        -- vinham antes das letras e abriam a lista.
-       order by coalesce(c.name, '') ~ ${SEM_NOME}, c.name
+       order by coalesce(c.name, '') !~ ${SEM_LETRAS}, c.name
        limit ${LIST_LIMIT} offset ${offset}
     `,
     sql<{ total: number }[]>`
@@ -170,7 +174,7 @@ export async function getClient(
            c.is_active, c.created_at,
            u.name as preferred_unit_name,
            s.name as preferred_staff_name,
-           coalesce(c.name, '') ~ ${SEM_NOME} as no_name,
+           coalesce(c.name, '') !~ ${SEM_LETRAS} as no_name,
            (select count(*)::int from appointment a
              where a.client_id = c.id and a.status = 'completed') as visits,
            (select min(a.starts_at) from appointment a

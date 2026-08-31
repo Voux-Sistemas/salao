@@ -256,6 +256,26 @@ export default async function ClientesPage({
           }
         />
       ) : (
+        <>
+        {/*
+          OS TÍTULOS DAS COLUNAS — SÓ ONDE HÁ COLUNAS.
+
+          No telemóvel a linha é duas linhas empilhadas e não há nada
+          para intitular: uma fila de rótulos ali seria uma legenda para
+          uma tabela que não existe. Vivem fora do cartão, encostados às
+          colunas que anunciam, e por isso as larguras têm de ser as
+          mesmas — a régua está aqui e na linha, e as duas têm de andar
+          juntas se um dia mudarem.
+        */}
+        <div className="max-sm:hidden mb-1.5 flex items-center gap-3.5 px-4 text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+          <span className="w-10 shrink-0" />
+          <span className="w-[13rem] shrink-0">Nome</span>
+          <span className="w-[8.5rem] shrink-0">Telefone</span>
+          <span className="min-w-0 flex-1">Histórico</span>
+          <span className="w-[5.5rem] shrink-0">Loja</span>
+          <span className="w-[7rem] shrink-0 text-right">Volta</span>
+        </div>
+
         <Card className="overflow-hidden">
           {seccoes(rows).map((seccao) => (
             <div key={seccao.letra}>
@@ -285,6 +305,7 @@ export default async function ClientesPage({
             </div>
           ))}
         </Card>
+        </>
       )}
 
       {pages > 1 ? (
@@ -382,14 +403,28 @@ function ClientLine({
   hoje: IsoDay
 }) {
   const volta = row.next_at ? quando(row.next_at, timezone, hoje) : null
-  const historico = [
-    row.visits > 0 ? `${row.visits} visita${row.visits === 1 ? '' : 's'}` : null,
-    lastVisitAt
-      ? `última a ${formatDayShort(isoDay(lastVisitAt, timezone), timezone)}`
-      : null,
-  ]
+  const visitas =
+    row.visits > 0 ? `${row.visits} visita${row.visits === 1 ? '' : 's'}` : null
+  const ultima = lastVisitAt
+    ? formatDayShort(isoDay(lastVisitAt, timezone), timezone)
+    : null
+
+  const historico = [visitas, ultima ? `última a ${ultima}` : null]
     .filter(Boolean)
     .join(' · ')
+  /*
+    NO TELEMÓVEL A MESMA COISA, MAIS CURTA.
+
+    A linha de baixo leva o telefone E o histórico, e não cabia: saía
+    «+351 91 206 010 · 1 visita …» cortado a meio. E o corte caía em
+    sítios diferentes conforme o comprimento do número, que é o que
+    fazia a lista parecer desalinhada.
+
+    Sai o «última a» — a data ao lado de «1 visita» já se lê como a
+    dessa visita — e sai o indicativo, que é o mesmo em todas as linhas
+    e por isso não distingue ninguém.
+  */
+  const historicoCurto = [visitas, ultima].filter(Boolean).join(' · ')
 
   return (
     <Link
@@ -426,8 +461,8 @@ function ClientLine({
             para aqui, e a casa fica de fora — quem precisa dela abre a
             ficha. */}
         <span className="mt-0.5 block truncate text-[0.75rem] text-[var(--ink-faint)] sm:hidden">
-          <Telefone row={row} />
-          {historico ? ` · ${historico}` : ''}
+          <Telefone row={row} curto />
+          {historicoCurto ? ` · ${historicoCurto}` : ''}
           <Faltas n={row.no_show_count} />
         </span>
       </span>
@@ -477,14 +512,39 @@ function ClientLine({
   )
 }
 
-/** O número, ou a falta dele — que é a raiz das fichas repetidas. */
-function Telefone({ row }: { row: ClientRow }) {
+/**
+ * O número, ou a falta dele — que é a raiz das fichas repetidas.
+ *
+ * «Sem telefone» estava a negrito na cor de aviso, e no telemóvel
+ * ficava sozinho na linha: lia-se como um erro do sistema em vez de um
+ * campo por preencher, e repetia-se de três em três linhas. Fica na
+ * mesma cor, com o peso do texto à volta.
+ *
+ * `curto` tira o indicativo. É o mesmo em todas as linhas, portanto não
+ * distingue ninguém — e são cinco caracteres que fazem falta ao resto.
+ */
+function Telefone({ row, curto = false }: { row: ClientRow; curto?: boolean }) {
   if (!row.phone) {
-    return (
-      <span className="font-semibold text-[var(--warn)]">sem telefone</span>
-    )
+    return <span className="text-[var(--warn)]">sem telefone</span>
   }
-  return <span className="tabular">{formatPhone(row.phone)}</span>
+  const escrito = formatPhone(row.phone)
+  return (
+    <span className="tabular">{curto ? semIndicativo(escrito) : escrito}</span>
+  )
+}
+
+/**
+ * «+351 913 362 196» → «913 362 196».
+ *
+ * `formatPhone` junta os grupos com espaços inquebráveis, e é por eles
+ * que se corta. Se o número não vier nesse formato — um número
+ * estrangeiro que a função não soube agrupar — devolve-se como está:
+ * mais vale largo do que errado.
+ */
+function semIndicativo(escrito: string): string {
+  const partes = escrito.split('\u00a0')
+  if (partes.length < 2 || !partes[0]?.startsWith('+')) return escrito
+  return partes.slice(1).join('\u00a0')
 }
 
 /**
