@@ -265,7 +265,38 @@ export function DeskNav({
    * atravessava a página como uma tarja.
    */
   return (
-    <div className="-mx-1 overflow-x-auto px-1 py-0.5">
+    /*
+      O CORTE TEM DE SE LER COMO «HÁ MAIS», E NÃO COMO «PARTIU».
+
+      Seis separadores não cabem em 390 píxeis, e portanto a caixa rola
+      de lado — isso é inevitável. O que se pode escolher é COMO acaba,
+      e três coisas mudam isso:
+
+      1. VAI ATÉ À BEIRA DO ECRÃ. A margem negativa anula a da página, e
+         o corte passa a acontecer na borda do vidro. Cortado quinze
+         píxeis antes dela, parecia uma caixa mal medida; na beira,
+         parece o que é — uma fila que continua.
+
+      2. PÁRA SEMPRE NUM SEPARADOR INTEIRO. Com `snap`, o dedo larga e a
+         fila encaixa: nunca fica um «Comissõe» a meio da palavra, que é
+         o que se via.
+
+      3. DESVANECE-SE NAS DUAS PONTAS. Dezasseis píxeis de máscara em
+         cada lado: o que está a sair esbate-se em vez de bater contra a
+         borda. É também o que diz, sem legenda, que há mais para lá.
+
+      E a barra de rolagem esconde-se — num controlo destes ela não
+      informa nada que a máscara já não diga, e no telemóvel aparece por
+      cima do primeiro separador.
+    */
+    <div
+      className={clsx(
+        '-mx-4 overflow-x-auto px-4 py-0.5 sm:-mx-6 sm:px-6',
+        'snap-x snap-mandatory scroll-px-4 sm:scroll-px-6',
+        '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        '[mask-image:linear-gradient(90deg,transparent_0,#000_1rem,#000_calc(100%-1rem),transparent_100%)]',
+      )}
+    >
       <nav className="flex w-max items-center gap-1 rounded-[var(--radius)] bg-[var(--surface-2)] p-1">
         {items.map((item) => {
           const active = lit(item.href)
@@ -276,7 +307,7 @@ export function DeskNav({
               ref={active ? aceso : undefined}
               aria-current={active ? 'page' : undefined}
               className={clsx(
-                'whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-1.5 text-[0.8125rem] font-medium transition-all',
+                'snap-start whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-1.5 text-[0.8125rem] font-medium transition-all',
                 active
                   ? 'bg-[var(--surface-raised)] text-[var(--ink)] shadow-[0_1px_2px_rgba(15,21,32,0.10)]'
                   : 'text-[var(--ink-muted)] hover:text-[var(--ink)]',
