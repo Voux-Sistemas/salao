@@ -91,7 +91,31 @@ export default async function PessoaPage({
     0,
   )
   const mine = memberUnits.filter((unitId) => timezones.has(unitId))
-  const current = schedule.filter((row) => row.is_current)
+
+  /*
+    A QUE ESTÁ EM VIGOR E A QUE JÁ ESTÁ MARCADA PARA ENTRAR.
+
+    O editor só recebia a que vigora HOJE. Uma escala gravada para
+    começar amanhã — que é o caso normal, porque uma vigência não se
+    corrige e a nova abre depois da que fecha — desaparecia do ecrã
+    assim que se gravava: a semana voltava a aparecer toda vazia, e quem
+    a acabou de escrever julgava que se tinha perdido.
+
+    A vindoura vem DEPOIS da que vigora, de propósito: o editor lê a
+    lista por ordem e o último dia ganha, portanto o que se vê e se
+    edita é o que vai passar a valer — que é o que interessa a quem
+    está a mexer nele.
+  */
+  const emVigor = schedule.filter((row) => row.is_current)
+  const vindoura = schedule.filter((row) => row.is_future)
+  const current = [...emVigor, ...vindoura]
+  /** O dia em que a escala marcada começa, se ainda não começou. */
+  const comecaEm =
+    emVigor.length === 0 && vindoura.length > 0
+      ? vindoura
+          .map((r) => r.valid_from)
+          .sort()[0]
+      : null
 
   /*
    * OS AVISOS CABEM NUMA LINHA.
@@ -105,6 +129,8 @@ export default async function PessoaPage({
   if (!member.has_password) gaps.push('palavra-passe')
   if (mine.length === 0) gaps.push('loja')
   else if (current.length === 0) gaps.push('escala')
+  // Uma escala marcada para daqui a uns dias não é uma escala em falta.
+  // O aviso dela é outro, e vem por baixo — ver `comecaEm`.
   if (member.accepts_online_booking && skillCount === 0) gaps.push('serviços')
 
   return (
@@ -154,6 +180,13 @@ export default async function PessoaPage({
           certeza de que se está na ficha certa.
         */}
 
+        {gaps.length === 0 && comecaEm ? (
+          <p className="mt-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[0.8125rem] text-[var(--ink-muted)]">
+            A escala entra a {formatDayLong(comecaEm as IsoDay, org.timezone)} —
+            até lá não aparece na agenda nem no funil.
+          </p>
+        ) : null}
+
         {gaps.length > 0 ? (
           <p className="mt-3 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_8%,transparent)] px-3 py-2 text-[0.8125rem] text-[var(--warn)]">
             Falta {gaps.join(', ')} — e sem isso não entra na agenda nem no
@@ -187,6 +220,7 @@ export default async function PessoaPage({
           is_current: row.is_current,
         }))}
         today={todayIso}
+        scheduleFrom={comecaEm ?? todayIso}
         canGrantNetwork={actor.orgScope && actor.role !== 'manager'}
         canGrantMaster={can.manageMasters(actor)}
         self={member.id === actor.id}

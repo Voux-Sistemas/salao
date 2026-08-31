@@ -210,6 +210,7 @@ export function Ficha({
   groups,
   schedule,
   today,
+  scheduleFrom,
   canGrantNetwork,
   canGrantMaster,
   self,
@@ -223,6 +224,13 @@ export function Ficha({
   groups: SkillGroupView[]
   schedule: ScheduleSlice[]
   today: string
+  /**
+   * O dia em que a escala nova passa a valer. É o dia de hoje quase sempre —
+   * mas se já houver uma marcada para entrar mais à frente, é a data
+   * dela: sem isto, gravar outra vez abria uma segunda vigência por
+   * cima da primeira e a base recusava-as às duas.
+   */
+  scheduleFrom?: string
   canGrantNetwork: boolean
   /** Só de dentro do degrau se dá o degrau. */
   canGrantMaster: boolean
@@ -292,7 +300,7 @@ export function Ficha({
   /* Que dia esta aberto para edicao — so no telemovel; a partir do sm
      as caixas estao sempre a vista e isto nao pinta nada. */
   const [editar, setEditar] = useState<number | null>(null)
-  const [from, setFrom] = useState(today)
+  const [from, setFrom] = useState(scheduleFrom ?? today)
 
   // Trocar de loja troca a semana à vista. Fazê-lo aqui, e não num
   // efeito, evita o piscar de uma semana errada antes da certa.
