@@ -790,7 +790,7 @@ export function Ficha({
                           className={clsx(
                             'grid h-[1.1rem] w-[1.1rem] place-items-center rounded-[4px] border-[1.5px] text-[11px] font-bold transition-colors',
                             slot.on
-                              ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
+                              ? 'border-[var(--action)] bg-[var(--action)] text-[var(--action-ink)]'
                               : 'border-[var(--line)] text-transparent',
                           )}
                         >
@@ -1190,7 +1190,7 @@ function Caixa({
           className={clsx(
             'grid h-[1.1rem] w-[1.1rem] shrink-0 place-items-center rounded-[4px] border-[1.5px] text-[11px] font-bold transition-colors',
             on
-              ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
+              ? 'border-[var(--action)] bg-[var(--action)] text-[var(--action-ink)]'
               : 'border-[var(--line)] text-transparent',
           )}
         >

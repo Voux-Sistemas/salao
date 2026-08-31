@@ -64,6 +64,11 @@
   --accent: #8E6F41;
   --accent-strong: #6F552F;
   --accent-ink: #FBF8F1;
+  /* A ACÇÃO — o botão que fecha a conversa. Na montra é a cor da casa:
+     lá o botão é raro e é o momento, e vai vestido de ouro. */
+  --action: #8E6F41;
+  --action-strong: #6F552F;
+  --action-ink: #FBF8F1;
   --gold: #C6A96B;
   --line: rgba(34, 29, 23, 0.16);
   --line-soft: rgba(34, 29, 23, 0.08);
@@ -101,6 +106,9 @@
   --accent: #D3B87E;
   --accent-strong: #E4CD9C;
   --accent-ink: #191407;
+  --action: #D3B87E;
+  --action-strong: #E4CD9C;
+  --action-ink: #191407;
   --gold: #D3B87E;
   --line: rgba(211, 184, 126, 0.22);
   --line-soft: rgba(242, 237, 226, 0.09);
@@ -132,10 +140,11 @@
    uma família sem serifa para tudo o que se lê depressa, e cor com
    significado em vez de enfeite.
 
-   Três famílias de cor, e nunca se misturam:
-     --accent   azul — o que se carrega
+   Quatro famílias de cor, e nunca se misturam:
+     --action   tinta — o botão que se carrega
+     --accent   o ouro escuro — o que está escolhido, e as ligações
      --gold     violeta (a «segunda série» dos gráficos)
-     --house    o ouro da casa, SÓ decoração: o monograma, um fio
+     --house    o ouro claro, SÓ assinatura: o monograma, um fio
    Verde, âmbar e vermelho ficam livres para o que são: bom, atenção,
    mau. Uma cor por significado — é isto que faz um painel ler-se de
    relance, e é por isso que o ouro nunca entra num número.
@@ -179,6 +188,33 @@
   --accent: #6E5729;
   --accent-strong: #4E3C1C;
   --accent-ink: #FFFFFF;
+
+  /* ---------------------------------------------------------------
+     A ACÇÃO É TINTA, E NÃO OURO.
+
+     Contei antes de mexer: o acento aparece em 141 sítios como TEXTO e
+     em 28 como mancha. Ou seja, pôr tudo em ouro foi pintar cento e
+     quarenta e um textos pequenos de castanho — e castanho escuro é
+     uma cor de pouca energia. Um ou dois pedaços são elegantes; cento
+     e quarenta e um são sépia, uma fotografia velha. Não era o tom que
+     estava errado: era a quantidade.
+
+     São dois trabalhos diferentes. O ACENTO diz «isto está escolhido»
+     e «isto é uma ligação»: é quase todo texto pequeno, e precisa de
+     ser legível mais do que forte — fica no ouro escuro, que é da
+     casa. A ACÇÃO é o botão que fecha a conversa: são poucos, são
+     manchas grandes, e precisam de peso — passa a tinta.
+
+     E ASSIM O OURO VOLTA A VALER. Deixa de encher as manchas grandes e
+     fica onde marca: o monograma, o traço do título, a pastilha do
+     menu, o dia escolhido. Concentrado, que é o contrário de apagado.
+
+     Preto não é apagado — é firme, e é o que se usa quando se quer que
+     o conteúdo seja a estrela e não a moldura.
+     --------------------------------------------------------------- */
+  --action: #221D17;
+  --action-strong: #0E0C0A;
+  --action-ink: #F5F2EC;
   /* Não é ouro nenhum: é a segunda série. O nome do token é estrutural
      — «a outra cor» — e cada pele decide qual é. */
   --gold: #6552D9;

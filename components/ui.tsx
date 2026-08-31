@@ -35,8 +35,22 @@ const SIZES: Record<Size, string> = {
 }
 
 const VARIANTS: Record<Variant, string> = {
+  /*
+    O QUE SE CARREGA VAI NA `--action`, NÃO NA `--accent`.
+
+    São dois trabalhos diferentes, e durante muito tempo foram a mesma
+    cor. O ACENTO diz «isto está escolhido» e «isto é uma ligação»: são
+    cento e quarenta e um sítios, quase todos texto pequeno, e precisa
+    de ser legível mais do que forte. A ACÇÃO é o botão que fecha a
+    conversa: são poucos, são manchas grandes, e precisam de peso.
+
+    Quando puseram os dois no mesmo castanho, os poucos ficaram sem
+    força e os muitos encheram o ecrã de sépia. Separados, cada um pode
+    ser o que tem de ser — e cada pele decide: na montra a acção é a
+    cor da casa, no balcão é tinta.
+  */
   primary:
-    'sheen bg-[var(--accent)] text-[var(--accent-ink)] hover:bg-[var(--accent-strong)] ' +
+    'sheen bg-[var(--action)] text-[var(--action-ink)] hover:bg-[var(--action-strong)] ' +
     'hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]',
   outline:
     'border border-[var(--line)] text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)] ' +
