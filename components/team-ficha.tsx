@@ -327,11 +327,23 @@ export function Ficha({
   }, [groups])
 
   const [skills, setSkills] = useState<Set<string>>(() => new Set(started))
-  const [open, setOpen] = useState<string[]>(() =>
-    groups
-      .filter((g) => g.services.some((s) => s.has))
-      .map((g) => g.category),
-  )
+  /*
+    AS CATEGORIAS ABREM FECHADAS.
+
+    Abriam as que já tinham algum serviço marcado — o que numa pessoa
+    com trinta e cinco serviços é quase todas, e o cartão nascia com
+    setenta linhas de vistos empilhados. A regra saía-lhe pela culatra:
+    quanto mais completa a ficha, pior se lia.
+
+    Fechadas, a linha de cada categoria diz o que interessa — «Cabelo,
+    13 de 13» — e vê-se o preçário inteiro num ecrã. Quem quer mexer
+    numa abre-a.
+
+    A BUSCA CONTINUA A ABRIR SOZINHA o que der resultado (é o
+    `Boolean(needle.trim())` mais abaixo), por isso procurar um serviço
+    não esbarra nisto.
+  */
+  const [open, setOpen] = useState<string[]>([])
   const [needle, setNeedle] = useState('')
 
   const total = groups.reduce((sum, g) => sum + g.services.length, 0)
