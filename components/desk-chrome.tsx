@@ -189,12 +189,26 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
         // separada por um fio quase invisível: não se via onde a página
         // acabava e onde começava o menu da casa. No bege afundado —
         // o mesmo do controlo de separadores — lê-se como chão.
-        // E A COR DESCE PARA ALÉM DELA, pela mesma razão que sobe no
-        // cabeçalho: ao rolar, o Safari do iPhone muda a altura do ecrã
-        // útil antes de reposicionar o que está preso, e por baixo desta
-        // barra fica descoberta uma tira onde se vê a lista. Dez
-        // centímetros da cor da casa, fora do ecrã, tapam-na.
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-2)] shadow-[0_-8px_24px_-18px_rgba(15,21,32,0.28)] after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-[var(--surface-2)] after:content-[''] lg:hidden"
+        //
+        // A BARRA É QUE DESCE, E NÃO UMA SOMBRA DELA.
+        //
+        // Ao rolar, o Safari do iPhone muda a altura do ecrã útil antes
+        // de reposicionar o que está preso, e por baixo desta barra
+        // ficava à vista uma tira da página. Tapava-se com um
+        // pseudo-elemento — e um pseudo-elemento não recebe toques: via-
+        // se a tira na mesma e, pior, tocar-lhe carregava no que estava
+        // por baixo, que é o que se via a acontecer.
+        //
+        // Agora quem desce é a PRÓPRIA barra: seis rem de preenchimento
+        // por baixo, e outros tantos de margem negativa a puxá-la para
+        // fora do ecrã. O fundo é dela, os toques são dela, e o menu
+        // fica exactamente onde estava — a conta fecha, porque o que a
+        // margem tira é o que o preenchimento pôs.
+        //
+        // A folga do indicador do iPhone NÃO se soma aqui: quem já a põe
+        // é o `DeskNav`, por dentro. Somada nos dois sítios, os ícones
+        // subiam trinta e quatro píxeis e ficava um vão por baixo deles.
+        className="fixed inset-x-0 bottom-0 z-40 mb-[-6rem] border-t border-[var(--line)] bg-[var(--surface-2)] pb-24 shadow-[0_-8px_24px_-18px_rgba(15,21,32,0.28)] lg:hidden"
       >
         <DeskNav items={mobileNavFor(actor, avisos)} variant="bottom" />
       </nav>
