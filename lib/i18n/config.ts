@@ -6,9 +6,9 @@
  * O CATÁLOGO TEM DOIS NOMES PARA A MESMA COISA, e é de propósito.
  *
  * O nome da casa — `service.name`, sempre português — é o que manda: vai
- * para a agenda, para a comanda, para a caixa e para os relatórios, e é
+ * para a agenda e para os relatórios, e é
  * ele que fica congelado em `appointment_item.service_name` no momento
- * da marcação. Não se traduz nunca; traduzir a comanda de uma cliente
+ * da marcação. Não se traduz nunca; traduzir a marcação de uma cliente
  * espanhola era pôr o balcão a ler uma língua que não fala.
  *
  * O nome para fora vive em `name_en` / `name_es` (e as descrições ao

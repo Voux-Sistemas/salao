@@ -51,7 +51,6 @@ export type ClientVisit = {
   timezone: string
   starts_at: Date
   status: Status
-  closed_at: Date | null
   services: string | null
   staff_names: string | null
   gross_cents: number
@@ -183,7 +182,7 @@ export async function clientVisits(
 ): Promise<ClientVisit[]> {
   return sql<ClientVisit[]>`
     select a.id as appointment_id, u.slug as unit_slug, u.name as unit_name,
-           u.timezone, a.starts_at, a.status, a.closed_at, a.discount_cents,
+           u.timezone, a.starts_at, a.status, a.discount_cents,
            coalesce((select sum(i.price_cents)::int from appointment_item i
                       where i.appointment_id = a.id), 0) as gross_cents,
            (select string_agg(i.service_name, ' + ' order by i.sort_order)

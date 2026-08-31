@@ -21,8 +21,8 @@ type Variant = 'primary' | 'outline' | 'quiet' | 'danger' | 'ok'
 /**
  * UMA LINHA DENTRO DE UMA CAIXA.
  *
- * A pergunta do cancelamento e as duas portas discretas do painel — a
- * comanda e a remarcação — usam a mesma moldura, e é por isso que a
+ * A pergunta do cancelamento e a porta discreta do painel — a
+ * remarcação — usam a mesma moldura, e é por isso que a
  * classe sai daqui: umas são botões de formulário e outras são
  * ligações, e têm de ficar iguais.
  */
@@ -113,8 +113,8 @@ export function StatusAction({
  *
  * Foram três botões vermelhos do tamanho dos outros, e o vermelho era um
  * terço do painel. Depois foram três linhas cinzentas de um menu, e aí
- * cancelar uma marcação passou a custar exactamente o mesmo que abrir
- * uma comanda: um toque, sem aviso, sem volta.
+ * cancelar uma marcação passou a custar exactamente o mesmo que
+ * qualquer outra coisa: um toque, sem aviso, sem volta.
  *
  * Agora é UM botão, discreto, ao lado dos outros dois. Carregar nele não
  * cancela nada: abre a pergunta. Só o segundo toque envia — e é lá, na
@@ -130,7 +130,7 @@ export function CancelAction({
   cancelTo,
   itens,
   podeApagar = false,
-  avisoDinheiro = false,
+  avisoConcluida = false,
 }: {
   appointmentId: string
   /**
@@ -140,10 +140,10 @@ export function CancelAction({
   cancelTo: Status | null
   /** Quantos serviços vão atrás, para a confirmação os poder contar. */
   itens: number
-  /** A dona, e sem dinheiro pelo meio. */
+  /** A dona, e a marcação ainda não aconteceu. */
   podeApagar?: boolean
-  /** A dona, mas já com dinheiro: em vez da linha, a razão. */
-  avisoDinheiro?: boolean
+  /** A dona, mas a marcação já foi concluída: em vez da linha, a razão. */
+  avisoConcluida?: boolean
 }) {
   const [state, action] = useActionState<DeskState, FormData>(
     transitionAction,
@@ -285,9 +285,10 @@ export function CancelAction({
 
         {/* A razão em vez do silêncio: quem a procura tem de saber
             porque é que não está lá. */}
-        {avisoDinheiro ? (
+        {avisoConcluida ? (
           <p className="border-t border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-3.5 py-2.5 text-[0.75rem] leading-relaxed text-[var(--warn)]">
-            Esta já tem dinheiro registado. Não se apaga — desmarca-se.
+            Esta já foi dada por concluída e conta na faturação. Não se
+            apaga — desmarca-se.
           </p>
         ) : null}
 

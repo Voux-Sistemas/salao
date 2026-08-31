@@ -30,7 +30,7 @@ import {
  * agenda de papel.
  *
  * O que NÃO se traz é o resto da ficha: preço, telefone, estado,
- * comanda. Isso é do dia, e o dia está a um toque.
+ * marcação. Isso é do dia, e o dia está a um toque.
  */
 
 /** Uma marcação vista de longe: onde está e de quem é. */

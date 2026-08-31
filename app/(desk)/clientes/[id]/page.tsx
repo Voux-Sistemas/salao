@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import clsx from 'clsx'
 import { ArrowLeft, MessageCircle } from 'lucide-react'
 import { requireManagement, unitsFor } from '@/lib/auth/actor'
 import {
@@ -377,18 +378,25 @@ function VisitLine({ visit }: { visit: ClientVisit }) {
         </p>
       </div>
 
-      {visit.closed_at ? (
-        <Link
-          href={`/agenda/${visit.unit_slug}/comanda/${visit.appointment_id}`}
-          className="tabular shrink-0 text-sm text-[var(--ink)] underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
-        >
-          {formatCents(net)}
-        </Link>
-      ) : (
-        <span className="tabular shrink-0 text-sm text-[var(--ink-faint)]">
-          {formatCents(net)}
-        </span>
-      )}
+      {/*
+        O VALOR ERA UMA PORTA, E DEIXOU DE TER PARA ONDE DAR.
+
+        Levava à comanda daquela visita, e por isso só ficava aceso
+        depois de ela estar fechada. Sem comanda, o valor é só o que a
+        visita valeu — e vale à mesma, esteja ou não concluída. Acende
+        quando aconteceu: nas outras é o preço do que está combinado, e
+        isso lê-se mais devagar.
+      */}
+      <span
+        className={clsx(
+          'tabular shrink-0 text-sm',
+          visit.status === 'completed'
+            ? 'text-[var(--ink)]'
+            : 'text-[var(--ink-faint)]',
+        )}
+      >
+        {formatCents(net)}
+      </span>
     </div>
   )
 }

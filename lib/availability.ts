@@ -60,7 +60,7 @@ export type PlannedItem = {
   serviceId: string
   serviceName: string
   staffId: string
-  /** Nome verdadeiro. Só para dentro: agenda, comanda, encaixe. */
+  /** Nome verdadeiro. Só para dentro: agenda e encaixe. */
   staffName: string
   /** O que a cliente pode ver. Igual ao de cima quando não há alcunha. */
   staffPublicName: string

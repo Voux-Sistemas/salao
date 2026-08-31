@@ -67,7 +67,6 @@ export type AgendaBlock = {
   clientPhone: string | null
   status: Status
   source: Source
-  closedAt: Date | null
   /** A confirmação já saiu por escrito? Não é o mesmo que estar confirmada. */
   confirmSent: boolean
   /** Quantos serviços tem a marcação a que este item pertence. */
@@ -144,7 +143,6 @@ type BlockRow = {
   client_phone: string | null
   status: Status
   source: Source
-  closed_at: Date | null
   confirm_sent: boolean
 }
 
@@ -237,7 +235,6 @@ export async function loadAgendaDay(
         c.phone              as client_phone,
         a.status,
         a.source,
-        a.closed_at,
         exists (
           select 1 from notification_log n
            where n.appointment_id = a.id and n.routine = 'confirm'
@@ -354,7 +351,6 @@ export async function loadAgendaDay(
     clientPhone: r.client_phone,
     status: r.status,
     source: r.source,
-    closedAt: r.closed_at,
     confirmSent: r.confirm_sent,
     itemCount: r.item_count,
     sortOrder: r.sort_order,

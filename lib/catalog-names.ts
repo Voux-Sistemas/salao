@@ -9,9 +9,9 @@ import type { Language } from '@/lib/i18n/config'
  *
  * O nome da CASA — o que está em `service.name` e o que ficou congelado
  * em `appointment_item.service_name` no momento da marcação — é sempre
- * português. É esse que aparece na agenda, na comanda, na caixa e nos
+ * português. É esse que aparece na agenda e nos
  * relatórios, e é esse que continua a aparecer daqui a um ano quando o
- * preçário já mudou de nome. Traduzir a comanda de uma cliente
+ * preçário já mudou de nome. Traduzir a marcação de uma cliente
  * espanhola era pôr o balcão a ler uma língua que não fala.
  *
  * O nome PARA FORA é este: sai da tradução da ficha do serviço e muda

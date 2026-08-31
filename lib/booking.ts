@@ -483,12 +483,20 @@ export function nextStatuses(from: Status): Status[] {
  * blocos que prendiam as horas das colaboradoras, os blocos de recurso
  * e o registo das mensagens enviadas.
  *
- * E É POR ISSO QUE O DINHEIRO TRAVA. A tabela «payment» também está
- * ligada com «on delete cascade»: apagar uma marcação paga apagaria os
- * pagamentos dela em silêncio, e o dinheiro recebido desaparecia das
- * contas sem deixar rasto. A verificação corre DENTRO da transação, com a
- * linha travada, para que ninguém consiga cobrar entre a pergunta e a
- * resposta.
+ * E É POR ISSO QUE UMA MARCAÇÃO CONCLUÍDA TRAVA.
+ *
+ * A trava era o dinheiro: uma marcação com pagamento lançado na comanda
+ * não se apagava, porque a tabela «payment» vinha atrás por cascata e o
+ * que a cliente pagou desaparecia das contas sem deixar rasto.
+ *
+ * A comanda saiu, e a faturação passou a ser a própria marcação
+ * concluída. A trava não deixou de fazer sentido — mudou de nome. Uma
+ * concluída é receita registada; apagá-la é apagar um dia do mês, e é
+ * exactamente o que a regra sempre quis impedir. Desmarcar continua a
+ * ser a saída para o que não aconteceu.
+ *
+ * A verificação corre DENTRO da transação, com a linha travada, para
+ * que ninguém consiga concluir entre a pergunta e a resposta.
  */
 export type DeleteResult =
   | { ok: true }
@@ -499,17 +507,15 @@ export async function deleteAppointment(input: {
   orgId: string
 }): Promise<DeleteResult> {
   return sql.begin(async (tx) => {
-    const rows = await tx<{ closed_at: Date | null; pagos: number }[]>`
-      select a.closed_at,
-             (select count(*)::int from payment p
-               where p.appointment_id = a.id) as pagos
+    const rows = await tx<{ status: Status }[]>`
+      select a.status
         from appointment a
        where a.id = ${input.appointmentId} and a.org_id = ${input.orgId}
          for update
     `
     const found = rows[0]
     if (!found) return { ok: false, reason: 'not_found' } as const
-    if (found.closed_at !== null || found.pagos > 0) {
+    if (found.status === 'completed') {
       return { ok: false, reason: 'has_money' } as const
     }
 
@@ -520,7 +526,7 @@ export async function deleteAppointment(input: {
 
 export type TransitionResult =
   | { ok: true; from: Status }
-  | { ok: false; reason: 'not_found' | 'not_allowed' | 'closed' }
+  | { ok: false; reason: 'not_found' | 'not_allowed' }
 
 /**
  * Cada mudança de estado fica registada com quem a fez, quando e porquê.
@@ -536,9 +542,9 @@ export async function transitionAppointment(input: {
 }): Promise<TransitionResult> {
   return sql.begin(async (tx) => {
     const rows = await tx<
-      { status: Status; client_id: string; closed_at: Date | null; ends_at: Date }[]
+      { status: Status; client_id: string; ends_at: Date }[]
     >`
-      select status, client_id, closed_at, ends_at
+      select status, client_id, ends_at
         from appointment
        where id = ${input.appointmentId}
          for update
@@ -549,12 +555,14 @@ export async function transitionAppointment(input: {
     if (appointment.status === input.to) {
       return { ok: true, from: appointment.status } as const
     }
+    /*
+      Havia aqui uma segunda trava, para a comanda fechada. Era
+      redundante mesmo antes de a comanda sair: uma marcação só se
+      fechava depois de concluída, e de «concluída» a tabela de estados
+      não deixa sair para lado nenhum. Quem trava é o `canTransition`.
+    */
     if (!canTransition(appointment.status, input.to)) {
       return { ok: false, reason: 'not_allowed' } as const
-    }
-    // Comanda fechada não muda mais de estado.
-    if (appointment.closed_at) {
-      return { ok: false, reason: 'closed' } as const
     }
 
     await tx`
@@ -648,14 +656,13 @@ export async function rescheduleAppointment(input: {
       language: Language
       client_note: string | null
       internal_note: string | null
-      closed_at: Date | null
       /* Quem atendia antes. Entra na fila junto com quem vai atender:
          remarcar mexe nas duas agendas, não só na de destino. */
       staff_ids: string[]
     }[]
   >`
     select a.id, a.status, a.client_id, a.language,
-           a.client_note, a.internal_note, a.closed_at,
+           a.client_note, a.internal_note,
            coalesce(
              (select array_agg(distinct i.staff_id)
                 from appointment_item i where i.appointment_id = a.id),
@@ -666,7 +673,7 @@ export async function rescheduleAppointment(input: {
   `
   const previous = previousRows[0]
   if (!previous) return { ok: false, reason: 'not_found' }
-  if (previous.closed_at || isTerminal(previous.status)) {
+  if (isTerminal(previous.status)) {
     return { ok: false, reason: 'not_allowed' }
   }
 
@@ -697,17 +704,16 @@ export async function rescheduleAppointment(input: {
         )
 
         // A antiga sai da agenda primeiro: os seus blocos libertam o
-        // horário que a nova vai ocupar. O `closed_at` volta a ser
-        // lido AQUI, com a linha presa: a leitura lá de cima é de
-        // antes da fila, e entre uma e outra a comanda pode ter sido
-        // fechada — cancelar uma comanda fechada e paga desarrumava
-        // contas que já estavam feitas.
-        const locked = await tx<{ status: Status; closed_at: Date | null }[]>`
-          select status, closed_at from appointment
+        // horário que a nova vai ocupar. O estado volta a ser lido
+        // AQUI, com a linha presa: a leitura lá de cima é de antes da
+        // fila, e entre uma e outra a marcação pode ter sido dada por
+        // concluída — cancelar uma concluída apagava a receita do dia.
+        const locked = await tx<{ status: Status }[]>`
+          select status from appointment
            where id = ${previous.id} for update
         `
         const current = locked[0]
-        if (!current || current.closed_at || isTerminal(current.status)) {
+        if (!current || isTerminal(current.status)) {
           return 'gone' as const
         }
 
@@ -775,18 +781,13 @@ export async function rescheduleAppointment(input: {
         await writePlan(tx, appointment.id, input.unit.id, fresh)
 
         /*
-         * O DINHEIRO MUDA-SE COM A CLIENTE. Um sinal pago ao balcão
-         * fica agarrado à marcação — e uma marcação cancelada nunca
-         * fecha comanda, por isso um pagamento deixado na antiga ficava
-         * preso a uma conta que já não se fecha, e a nova nascia «por
-         * pagar» como se o dinheiro não existisse. Os pagamentos
-         * seguem para a marcação nova; o registo de onde e quando
-         * entraram (unit_id, received_at) fica como estava.
+         * Havia aqui um passo a mais: arrastar os pagamentos da antiga
+         * para a nova, para que um sinal pago ao balcão não ficasse
+         * preso a uma marcação cancelada. A comanda saiu e com ela a
+         * única porta por onde se lançava um pagamento; a receita vem
+         * agora da marcação concluída, e essa segue para a nova por si.
+         * As linhas antigas ficam onde estão — ninguém as lê.
          */
-        await tx`
-          update payment set appointment_id = ${appointment.id}
-           where appointment_id = ${previous.id}
-        `
 
         await tx`
           insert into appointment_status_event
@@ -851,12 +852,12 @@ export type AppointmentRow = {
   client_note: string | null
   internal_note: string | null
   language: Language
+  /* Só se põe desconto pela comanda, e a comanda saiu: nas marcações
+     novas é sempre zero. Lê-se à mesma, porque o que ficou escrito de
+     trás continua a abater no que a marcação vale. */
   discount_cents: number
   discount_reason: string | null
-  closed_at: Date | null
   total_cents: number
-  /** O que já foi recebido por esta marcação. Zero quando não há nada. */
-  paid_cents: number
   rescheduled_from_id: string | null
 }
 
@@ -869,16 +870,12 @@ export async function getAppointment(
            a.client_id, c.name as client_name, c.phone as client_phone,
            a.status, a.source, a.starts_at, a.ends_at,
            a.client_note, a.internal_note, a.language,
-           a.discount_cents, a.discount_reason, a.closed_at,
+           a.discount_cents, a.discount_reason,
            a.rescheduled_from_id,
            coalesce((
              select sum(i.price_cents) from appointment_item i
               where i.appointment_id = a.id
-           ), 0)::int as total_cents,
-           coalesce((
-             select sum(p.amount_cents) from payment p
-              where p.appointment_id = a.id
-           ), 0)::int as paid_cents
+           ), 0)::int as total_cents
       from appointment a
       join unit u on u.id = a.unit_id
       join client c on c.id = a.client_id

@@ -1044,8 +1044,12 @@ export function AgendaList({
           que pede mão.
 
           · concluída — um visto verde ao pé do preço, sem palavra.
-          · já passou e não foi concluída — «fechar», que é a comanda
-            por fechar, e é a única coisa que alguém tem de ir fazer.
+          · já passou e não foi concluída — «concluir», que é a única
+            coisa que alguém tem de ir fazer ali. Dizia «fechar», da
+            comanda por fechar; a comanda saiu, e concluir passou a ser
+            o gesto que dá a marcação por feita E a faz contar no que a
+            casa faturou nesse dia. Uma hora que passou sem isto é uma
+            hora que não conta.
           · confirmada e ainda por vir — silêncio.
           · tudo o resto (chegou, em atendimento, faltou, cancelada) diz
             o seu nome, porque é excepção.
@@ -1054,7 +1058,7 @@ export function AgendaList({
         const etiqueta = concluida
           ? null
           : passou && !falhou
-            ? { texto: 'fechar', tom: 'warn' as Tone }
+            ? { texto: 'concluir', tom: 'warn' as Tone }
             : card.status === 'confirmed'
               ? null
               : { texto: STATUS_LABEL[card.status], tom: tone }
@@ -1177,7 +1181,7 @@ export function AgendaList({
                     />
                   ) : null}
                   {/* O preço desce as duas coisas, peso e tinta: lê-se
-                      quando se vai fechar a comanda, não antes. */}
+                      quando se vai cobrar, não antes. */}
                   <span className="tabular shrink-0 text-[0.8125rem] font-semibold text-[var(--ink-muted)]">
                     {formatCents(card.priceCents)}
                   </span>

@@ -357,7 +357,7 @@ export default async function AdminPage() {
           {team.length === 0 ? (
             <Empty
               title="Ainda sem histórico"
-              hint="Assim que houver comandas fechadas, vê-se aqui quanto cada uma trouxe."
+              hint="Assim que houver marcações concluídas, vê-se aqui quanto cada uma trouxe."
             />
           ) : (
             <ServiceBars
@@ -386,7 +386,7 @@ export default async function AdminPage() {
           {services.length === 0 ? (
             <Empty
               title="Ainda sem histórico"
-              hint="Assim que houver comandas fechadas, os serviços que mais rendem aparecem aqui."
+              hint="Assim que houver marcações concluídas, os serviços que mais rendem aparecem aqui."
             />
           ) : (
             <div className="grid gap-x-10 gap-y-4 sm:grid-cols-2">

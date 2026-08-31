@@ -6,6 +6,7 @@ import { can } from '@/lib/auth/actor'
 import { DAY_PARAM, TIME_PARAM } from '@/lib/cart'
 import { formatCents } from '@/lib/money'
 import { openingWindows } from '@/lib/hours'
+import { receitaDaMarcacao } from '@/lib/dashboard'
 import {
   addDays,
   dayEnd,
@@ -64,7 +65,8 @@ type ApptRow = {
   client_name: string
   services: string | null
   staff_names: string | null
-  paid_cents: number
+  /** Quanto vale, já com desconto. Só se mostra depois de concluída. */
+  revenue_cents: number
 }
 
 type MoneyRow = { unit_id: string; revenue_cents: number }
@@ -144,10 +146,7 @@ export async function DayPanel({
               join staff s on s.id = ai.staff_id
              where ai.appointment_id = a.id
           ) as staff_names,
-          (
-            select coalesce(sum(p.amount_cents), 0)::int
-              from payment p where p.appointment_id = a.id
-          ) as paid_cents
+          ${receitaDaMarcacao()} as revenue_cents
         from appointment a
         join client c on c.id = a.client_id
         where a.unit_id = any(${ids}::uuid[])
@@ -157,44 +156,49 @@ export async function DayPanel({
       `,
 
       /*
-       * O dinheiro do dia conta-se pelo que FOI RECEBIDO, e não pelo
-       * que as marcações de hoje valem. Uma marcação por fechar não é
-       * dinheiro, e uma comanda fechada ontem e paga hoje é.
+       * O dinheiro do dia é o que as marcações CONCLUÍDAS valem. Contava-
+       * se pelos pagamentos lançados na comanda, e ninguém tinha tempo
+       * para os lançar: o painel dizia vinte euros num mês de onze
+       * marcações. Agora vem do gesto que elas já fazem — dar a marcação
+       * por concluída.
        */
       sql<MoneyRow[]>`
         select
           u.id as unit_id,
-          (
-            select coalesce(sum(p.amount_cents), 0)::int from payment p
-             where p.unit_id = u.id
-               and p.received_at >= ${dayFrom} and p.received_at < ${dayTo}
-          ) as revenue_cents
+          coalesce((
+            select sum(${receitaDaMarcacao()})::int
+              from appointment a
+             where a.unit_id = u.id
+               and a.status = 'completed'
+               and a.starts_at >= ${dayFrom} and a.starts_at < ${dayTo}
+          ), 0) as revenue_cents
         from unit u
         where u.id = any(${ids}::uuid[])
       `,
 
       sql<MonthRow[]>`
         select
-          coalesce(sum(amount_cents) filter (
-            where received_at >= ${dayStart(monthStart, tz)}
-              and received_at < ${dayTo}
+          coalesce(sum(${receitaDaMarcacao()}) filter (
+            where a.starts_at >= ${dayStart(monthStart, tz)}
+              and a.starts_at < ${dayTo}
           ), 0)::int as current_cents,
-          coalesce(sum(amount_cents) filter (
-            where received_at >= ${dayStart(previousMonthStart, tz)}
-              and received_at < ${previousCut}
+          coalesce(sum(${receitaDaMarcacao()}) filter (
+            where a.starts_at >= ${dayStart(previousMonthStart, tz)}
+              and a.starts_at < ${previousCut}
           ), 0)::int as previous_cents
-        from payment
-        where unit_id = any(${ids}::uuid[])
+        from appointment a
+        where a.unit_id = any(${ids}::uuid[]) and a.status = 'completed'
       `,
 
       sql<DailyRow[]>`
         select
-          to_char((p.received_at at time zone ${tz})::date, 'YYYY-MM-DD') as day,
-          sum(p.amount_cents)::int as cents
-        from payment p
-        where p.unit_id = any(${ids}::uuid[])
-          and p.received_at >= ${dayStart(monthStart, tz)}
-          and p.received_at < ${dayTo}
+          to_char((a.starts_at at time zone ${tz})::date, 'YYYY-MM-DD') as day,
+          sum(${receitaDaMarcacao()})::int as cents
+        from appointment a
+        where a.unit_id = any(${ids}::uuid[])
+          and a.status = 'completed'
+          and a.starts_at >= ${dayStart(monthStart, tz)}
+          and a.starts_at < ${dayTo}
         group by 1
         order by 1
       `,
@@ -588,7 +592,7 @@ function Marcacao({
           >
             {row.client_name}
           </span>
-          <Selo status={row.status} paid={row.paid_cents} currency={currency} />
+          <Selo status={row.status} valor={row.revenue_cents} currency={currency} />
         </span>
 
         <span className="mt-0.5 block truncate text-[0.75rem] text-[var(--ink-faint)]">
@@ -675,17 +679,18 @@ function Folga({
  */
 function Selo({
   status,
-  paid,
+  valor,
   currency,
 }: {
   status: Status
-  paid: number
+  /** O que a marcação vale. Dizia o que tinha sido cobrado. */
+  valor: number
   currency: string
 }) {
   if (status === 'completed') {
     return (
       <span className="tabular shrink-0 text-[0.75rem] font-bold text-[var(--ok)]">
-        {formatCents(paid, currency)}
+        {formatCents(valor, currency)}
       </span>
     )
   }

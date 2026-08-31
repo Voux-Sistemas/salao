@@ -54,7 +54,7 @@ export function UnitSwitcher({
     A PASTILHA DIZ O NOME DA CASA, E NÃO «LOJAS». Com a linha dos
     números fora, este é o único sítio do ecrã onde a palavra «Valongo»
     aparece — e num sistema com duas casas, saber em qual se está antes
-    de fechar uma comanda não é enfeite. A palavra «lojas» fica onde
+    de concluir uma marcação não é enfeite. A palavra «lojas» fica onde
     ela é uma legenda e não uma resposta: no cimo do menu que se abre.
   */
   if (variant === 'chip') {

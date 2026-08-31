@@ -173,12 +173,13 @@ export async function passarAction(
   }
 
   /*
-    UMA MARCAÇÃO FECHADA NÃO SE PASSA. A conta já está feita e o
-    trabalho já tem dono: mudar a mão agora reescrevia o que já ficou
-    registado. Se foi engano, desfaz-se o fecho primeiro.
+    UMA MARCAÇÃO JÁ FEITA NÃO SE PASSA. Travava no fecho da comanda;
+    passa a travar na conclusão, que é o que agora diz que aquilo
+    aconteceu. Quem a fez, fez — mudar a mão depois era reescrever a
+    produção de quem esteve lá. Passar é para o que ainda está por vir.
   */
-  if (appointment.closed_at) {
-    return { error: 'Esta comanda já foi fechada. Não se passa depois disso.' }
+  if (appointment.status === 'completed') {
+    return { error: 'Esta já foi dada por concluída. Não se passa depois disso.' }
   }
 
   /* Quem recebe tem de ser da casa, da loja, e saber fazer tudo o que
@@ -340,11 +341,9 @@ export async function transitionAction(
   if (!result.ok) {
     return {
       error:
-        result.reason === 'closed'
-          ? 'A comanda já está fechada.'
-          : result.reason === 'not_allowed'
-            ? 'Já não é possível mudar para esse estado.'
-            : 'Essa marcação não existe.',
+        result.reason === 'not_allowed'
+          ? 'Já não é possível mudar para esse estado.'
+          : 'Essa marcação não existe.',
     }
   }
 
@@ -353,12 +352,15 @@ export async function transitionAction(
   revalidatePath('/')
 
   /*
-    CONCLUIR CONCLUI, E MAIS NADA.
+    CONCLUIR É AGORA O ÚNICO GESTO, E POR ISSO PESA MAIS.
 
-    Chegou a levar a comanda atrás, para poupar um toque a quem cobra
-    logo a seguir. Mas o botão dizia «Concluir» e mudava de página — um
-    botão não deve levar a um sítio que o nome dele não anuncia, e ao
-    balcão nem sempre se cobra na hora. A comanda tem porta própria.
+    Chegou a levar a comanda atrás, para poupar um toque a quem cobrava
+    logo a seguir; depois passou a concluir e mais nada, porque um botão
+    não deve levar a um sítio que o nome dele não anuncia.
+
+    A comanda saiu de vez, e este toque ficou com o trabalho dela: é
+    daqui que sai a faturação do dia. Não se acrescentou passo nenhum —
+    tirou-se um, e o que sobrou passou a valer pelos dois.
   */
   return { error: null, done: 'Feito.' }
 }
@@ -408,7 +410,7 @@ export async function deleteAppointmentAction(
     return {
       error:
         result.reason === 'has_money'
-          ? 'Esta marcação já tem dinheiro registado. Não se apaga — desmarca-se.'
+          ? 'Esta marcação já foi dada por concluída e conta na faturação. Não se apaga — desmarca-se.'
           : 'Essa marcação não existe.',
     }
   }

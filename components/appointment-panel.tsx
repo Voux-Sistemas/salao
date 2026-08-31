@@ -8,7 +8,7 @@ import {
 } from '@/lib/booking'
 import { SOURCE_LABEL, STATUS_LABEL } from '@/lib/status'
 import { composeMessage, loadTemplates } from '@/lib/notify'
-import { Badge, ButtonLink, Notice } from '@/components/ui'
+import { Badge, Notice } from '@/components/ui'
 import {
   CancelAction,
   SendWhatsApp,
@@ -28,6 +28,8 @@ import { formatPhone } from '@/lib/text'
  * quase todas do mesmo tamanho. Com nove saídas nenhuma é a saída, e a
  * que ficava em grande era a única que ninguém dá.
  *
+ * A comanda foi a última a cair, e não por desenho: ninguém a abria.
+ *
  * O QUE O RELÓGIO SABE NÃO PRECISA DE BOTÃO. A cadeia é marcada →
  * confirmada → chegou → em atendimento → concluída, e os dois estados
  * do meio descrevem o que o relógio já sabe: às 13:05, uma marcação das
@@ -36,9 +38,9 @@ import { formatPhone } from '@/lib/text'
  * passa a dizer «Em curso» por conta do relógio.
  *
  * Fica o que precisa mesmo de um dedo, porque o relógio não sabe:
- * concluída, faltou, cancelada. Concluir é o botão grande, e num balcão
- * vai até ao fim — dá por concluída E abre a comanda, que era o segundo
- * toque de sempre.
+ * concluída, faltou, cancelada. Concluir é o botão grande — e é agora o
+ * único toque que há: é ele que dá a marcação por feita E é dele que o
+ * painel tira a faturação do dia.
  *
  * «Enviar confirmação» abre o WhatsApp e NÃO muda o estado — mandar a
  * mensagem e a cliente confirmar são dois factos distintos.
@@ -105,25 +107,24 @@ export async function AppointmentPanel({
   const whenDay = capitalise(
     formatDayLong(isoDay(appointment.starts_at, tz), tz),
   )
-  const closeTab =
-    can.seeMoney(actor) &&
-    appointment.status === 'completed' &&
-    !appointment.closed_at
   /*
-    APAGAR — SÓ A DONA, E SÓ ENQUANTO NÃO HOUVER DINHEIRO.
+    APAGAR — SÓ A DONA, E SÓ ENQUANTO NÃO TIVER ACONTECIDO.
 
     Desmarcar é trabalho de balcão e fica na história da cliente; apagar
-    é dizer que aquilo nunca devia ter existido. Com um pagamento pelo
-    meio deixa de ser uma opção: os pagamentos vão atrás por cascata da
-    base, e o movimento de caixa fica sem dono.
+    é dizer que aquilo nunca devia ter existido.
+
+    A trava era o dinheiro: uma marcação com pagamento lançado não se
+    apagava, porque os pagamentos iam atrás por cascata da base. Sem
+    comanda não há pagamentos a lançar — mas a trava faz mais falta
+    agora, não menos: o que o painel fatura passou a SER a marcação
+    concluída. Apagá-la é apagar a receita do dia, e é por isso que
+    passa a ser CONCLUÍDA a palavra que tranca.
 
     Isto decide o que se DESENHA. Quem manda a sério é a acção do
     servidor, que volta a verificar tudo com a linha travada.
   */
   const dono = actor.role === 'master'
-  const temDinheiro =
-    appointment.closed_at !== null || appointment.paid_cents > 0
-  const podeApagar = dono && !temDinheiro
+  const podeApagar = dono && appointment.status !== 'completed'
 
   /*
     EM CURSO — QUEM O DIZ É O RELÓGIO.
@@ -205,9 +206,6 @@ export async function AppointmentPanel({
             </Badge>
           )}
           {confirmSent ? <Badge tone="ok">Confirmação enviada</Badge> : null}
-          {appointment.closed_at ? (
-            <Badge tone="ok">Comanda fechada</Badge>
-          ) : null}
           {appointment.rescheduled_from_id ? <Badge>Remarcada</Badge> : null}
         </div>
       </header>
@@ -292,9 +290,8 @@ export async function AppointmentPanel({
         o que lá estava, o que se faz num dia normal são três coisas:
         dar por concluída, avisar a cliente, e desmarcar.
 
-        A comanda e a remarcação ficam por baixo, em texto: são portas
-        que têm de existir — é daqui que se chega às duas — mas não são
-        o trabalho do dia.
+        A remarcação fica por baixo, em texto: é uma porta que tem de
+        existir — é daqui que se lá chega — mas não é o trabalho do dia.
       */}
       <footer className="space-y-2.5 border-t border-[var(--line-soft)] px-5 py-4">
         {/*
@@ -307,20 +304,7 @@ export async function AppointmentPanel({
           isso continua lá amanhã.
         */}
         {appointment.status === 'completed' ? (
-          <Notice tone="ok">
-            Marcação concluída
-            {appointment.closed_at ? ' e cobrada' : ''}.
-          </Notice>
-        ) : null}
-
-        {/* Já concluída e por cobrar: o que falta é o dinheiro. */}
-        {closeTab ? (
-          <ButtonLink
-            href={`/agenda/${appointment.unit_slug}/comanda/${appointment.id}`}
-            className="w-full"
-          >
-            Fechar comanda
-          </ButtonLink>
+          <Notice tone="ok">Marcação concluída.</Notice>
         ) : null}
 
         {podeConcluir ? (
@@ -354,11 +338,11 @@ export async function AppointmentPanel({
             cancelTo={cancelTo}
             itens={appointment.items.length}
             podeApagar={podeApagar}
-            avisoDinheiro={dono && temDinheiro}
+            avisoConcluida={dono && appointment.status === 'completed'}
           />
         ) : null}
 
-        {!podeConcluir && !closeTab && cancelTo === null && !podeApagar ? (
+        {!podeConcluir && cancelTo === null && !podeApagar ? (
           <p className="text-[0.75rem] text-[var(--ink-faint)]">
             Esta marcação já não muda de estado.
           </p>

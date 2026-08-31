@@ -234,7 +234,7 @@ export async function saveServiceAction(
 
 /**
  * Retirar do catálogo não apaga o passado: o que já foi feito guarda o
- * nome e o preço congelados na comanda.
+ * nome e o preço congelados na marcação.
  */
 export async function retireServiceAction(form: FormData): Promise<void> {
   const found = await reach(String(form.get('service') ?? ''))

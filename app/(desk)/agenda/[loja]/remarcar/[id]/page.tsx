@@ -12,7 +12,7 @@ import {
   type CartLine,
   type Plan,
 } from '@/lib/availability'
-import { getAppointment } from '@/lib/booking'
+import { getAppointment, isTerminal } from '@/lib/booking'
 import {
   CART_PARAM,
   DAY_PARAM,
@@ -178,7 +178,11 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
   const withCart = (nextCart: CartLine[]) =>
     link({ cart: nextCart, time: null, hand: null })
 
-  const locked = appointment.closed_at !== null
+  // Uma marcação que já aconteceu não se remarca — remarca-se o que
+  // ainda está por vir. Travava no fecho da comanda; passa a travar
+  // nos estados que dão a marcação por acabada, que é a mesma trava que
+  // o servidor aplica quando a remarcação é gravada.
+  const locked = isTerminal(appointment.status)
 
   // --- a fita de dias: sete de cada vez, ancorada em hoje ------------
   const todayDay = today(tz, now)
@@ -246,7 +250,7 @@ export default async function RemarcarPage({ params, searchParams }: Params) {
 
       {locked ? (
         <Notice tone="warn">
-          Esta marcação já está fechada — uma comanda fechada não se remarca.
+          Esta marcação já acabou — o que já aconteceu não se remarca.
         </Notice>
       ) : (
         <div className="space-y-10">
