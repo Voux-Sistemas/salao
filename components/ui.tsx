@@ -246,17 +246,58 @@ const CONTROL =
 const CONTROL_HEIGHT = 'h-11 sm:h-10'
 
 /** Os tipos que abrem uma roda do sistema em vez de um teclado. */
-const SEM_TECLADO = new Set(['date', 'time', 'datetime-local', 'month', 'color'])
+const SEM_TECLADO = new Set(['date', 'time', 'datetime-local', 'month'])
+
+/*
+  A CAIXA DE DATA E DE HORA ANDA COM A MOLDURA POR FORA.
+
+  A prova está numa captura do telemóvel: dentro do MESMO painel, com as
+  MESMAS classes, uma caixinha de escolha acaba exactamente na borda
+  interior e uma caixa de data acaba 26 píxeis para lá dela. Vinte e
+  seis é o `px-3` dos dois lados mais a moldura — ou seja, esta caixa
+  soma o seu preenchimento à largura que se lhe manda, e o
+  `box-sizing: border-box` não a demove.
+
+  Não é uma medida que eu possa acertar: é um controlo do sistema, com
+  um relógio e um calendário lá dentro, e a última palavra é dele.
+
+  ENTÃO TIRA-SE-LHE O QUE ELE SOMA. A moldura, o fundo e o
+  preenchimento passam para uma caixa por fora; o campo fica em pêlo —
+  sem borda, sem preenchimento, transparente — e enche o interior dela.
+  Zero mais zero é zero: não há nada para somar, e não há transbordo
+  possível em telemóvel nenhum.
+
+  A luz de foco muda de `focus:` para `focus-within:`, porque quem
+  recebe o foco passa a ser o campo lá dentro e quem se ilumina é a
+  moldura cá fora.
+*/
+const CONTROL_NU =
+  'w-full min-w-0 border-0 bg-transparent p-0 text-inherit outline-none ' +
+  'focus:outline-none'
+
+/*
+  Escrito à letra, e não com um `.replace()` sobre o CONTROL. O Tailwind
+  lê o TEXTO dos ficheiros para saber que classes há-de gerar: uma
+  classe montada em tempo de execução nunca chega ao ficheiro de estilo,
+  e o campo ficava sem luz de foco nenhuma sem ninguém dar por isso.
+*/
+const CONTROL_MOLDURA =
+  'box-border flex w-full items-center bg-[var(--surface-raised)] border border-[var(--line)] ' +
+  'rounded-[var(--radius)] px-3 text-sm text-[var(--ink)] ' +
+  'transition-[border-color,box-shadow] duration-300 focus-within:border-[var(--accent)] ' +
+  'focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]'
 
 export function Input({ className, ...props }: ComponentProps<'input'>) {
+  if (SEM_TECLADO.has(props.type ?? 'text')) {
+    return (
+      <span className={clsx(CONTROL_MOLDURA, CONTROL_HEIGHT, className)}>
+        <input className={CONTROL_NU} {...props} />
+      </span>
+    )
+  }
   return (
     <input
-      className={clsx(
-        CONTROL,
-        CONTROL_HEIGHT,
-        SEM_TECLADO.has(props.type ?? 'text') ? null : 'max-sm:text-base',
-        className,
-      )}
+      className={clsx(CONTROL, CONTROL_HEIGHT, 'max-sm:text-base', className)}
       {...props}
     />
   )
