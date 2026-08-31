@@ -149,8 +149,8 @@ export default async function SemanaPage({
           {week.staff.length > 0 && !onlyStaffId
             ? ` · ${
                 week.staff.length === 1
-                  ? '1 profissional'
-                  : `${week.staff.length} profissionais`
+                  ? '1 colaborador'
+                  : `${week.staff.length} colaboradores`
               }`
             : ''}
         </p>
@@ -159,7 +159,7 @@ export default async function SemanaPage({
       {vazia && week.totals.appointments === 0 ? (
         <Empty
           title="Semana sem escala"
-          hint="Ninguém tem turno nesta semana. As escalas fazem-se na ficha de cada profissional."
+          hint="Ninguém tem turno nesta semana. As escalas fazem-se na ficha de cada colaborador."
         />
       ) : (
         <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)]">

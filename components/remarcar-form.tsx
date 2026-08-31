@@ -51,7 +51,7 @@ export function RemarcarForm({
             name="reason"
             maxLength={160}
             autoComplete="off"
-            placeholder="Pedido da cliente, atraso, troca de profissional…"
+            placeholder="Pedido da cliente, atraso, troca de colaborador…"
           />
         </Field>
         <Submit />

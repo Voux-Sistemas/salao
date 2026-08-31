@@ -66,11 +66,11 @@ export function RuleForm({
 
   const scope =
     staffId && serviceId
-      ? 'Vale para esta profissional neste serviço — e ganha a todas as outras.'
+      ? 'Vale para este colaborador neste serviço — e ganha a todas as outras.'
       : staffId
-        ? 'Vale para tudo o que esta profissional faz, salvo regra de profissional + serviço.'
+        ? 'Vale para tudo o que este colaborador faz, salvo regra de colaborador + serviço.'
         : serviceId
-          ? 'Vale para este serviço, com quem quer que o faça, salvo regra de profissional.'
+          ? 'Vale para este serviço, com quem quer que o faça, salvo regra de colaborador.'
           : 'É a regra da casa: vale quando não houver nenhuma mais específica.'
 
   return (
@@ -79,7 +79,7 @@ export function RuleForm({
       {state.done ? <Notice tone="ok">{state.done}</Notice> : null}
 
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_7rem_auto] sm:items-end">
-        <Field label="Profissional" htmlFor="rule-staff">
+        <Field label="Colaborador" htmlFor="rule-staff">
           <Select
             id="rule-staff"
             name="staff"

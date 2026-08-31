@@ -44,7 +44,7 @@ const LEVEL_NAME: Record<Level, string> = {
   master: 'Sistema',
   owner: 'Dona',
   manager: 'Gerente',
-  professional: 'Profissional',
+  professional: 'Colaborador',
 }
 
 const LEVEL_HINT: Record<Level, string> = {
@@ -454,11 +454,15 @@ export function Ficha({
         E oito dos nove escrevem-se UMA VEZ NA VIDA. Ficam à vista os
         três que se mexem, e o resto dobra-se.
 
-        «A PESSOA» E NÃO «COLABORADOR». A casa diz «profissional» em
-        todo o lado, mas «Profissional» é também um dos papéis desta
-        mesma página — como título confundia-se com ele.
+        «COLABORADOR», QUE É A PALAVRA DA CASA. Andava a dizer-se
+        «profissional» em quase todo o balcão e «colaborador» em dois
+        sítios — no encaixe e no seletor dos avisos. Ganhou o
+        «colaborador», por escolha do dono, e passou a valer no balcão
+        inteiro, incluindo o nome do PAPEL nesta mesma página. É por
+        isso que o título e o papel dizem agora a mesma coisa: não é
+        confusão, é a mesma palavra a nomear a mesma pessoa.
       */}
-      <Bloco title="A pessoa">
+      <Bloco title="Colaborador">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nome" htmlFor="f-name">
             <Input

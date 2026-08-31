@@ -431,7 +431,7 @@ export default async function AvisosPage({
       {showPeople ? (
         <nav
           className="mb-6 flex flex-wrap items-center gap-x-1 gap-y-1.5 max-lg:hidden"
-          aria-label="Por profissional"
+          aria-label="Por colaborador"
         >
           {/*
             AS MESMAS PASTILHAS DA AGENDA, COM O PONTO DA COR DE CADA UMA.
@@ -495,7 +495,7 @@ export default async function AvisosPage({
             title="Fila vazia"
             hint={
               chosen
-                ? 'Esta profissional não tem ninguém à espera nesta rotina.'
+                ? 'Este colaborador não tem ninguém à espera nesta rotina.'
                 : 'Ninguém se enquadra nesta rotina neste momento. Nada a fazer.'
             }
           />

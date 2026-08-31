@@ -37,8 +37,8 @@ export function scopeOf(rule: {
 }
 
 export const SCOPE_LABEL: Record<RuleScope, string> = {
-  staff_service: 'Profissional + serviço',
-  staff: 'Profissional',
+  staff_service: 'Colaborador + serviço',
+  staff: 'Colaborador',
   service: 'Serviço',
   house: 'Casa',
 }

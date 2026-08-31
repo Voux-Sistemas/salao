@@ -84,7 +84,7 @@ export default async function ComissoesPage({
             explicação para isso. */}
         {chosen && !open && pending.length > 0 ? (
           <Notice tone="warn">
-            Essa profissional já não tem nada por pagar.
+            Esse colaborador já não tem nada por pagar.
           </Notice>
         ) : null}
 
@@ -105,7 +105,7 @@ export default async function ComissoesPage({
             <table className="w-full text-sm md:min-w-[640px]">
               <thead>
                 <tr className="border-b border-[var(--line-soft)] text-left">
-                  <th className={cellHead}>Profissional</th>
+                  <th className={cellHead}>Colaborador</th>
                   <th className={`${cellHead} hidden md:table-cell`}>Desde</th>
                   <th className={`${cellHead} hidden text-right md:table-cell`}>
                     % congelada

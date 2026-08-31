@@ -632,7 +632,7 @@ export default async function AgendaDayPage({
             */}
             <div className="relative min-w-0 max-w-full">
               <nav
-                aria-label="Ver uma profissional"
+                aria-label="Ver um colaborador"
                 className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pr-6"
               >
                 <StaffChip href={withDay(day, null)} active={picked === null}>

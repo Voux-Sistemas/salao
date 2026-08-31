@@ -356,7 +356,7 @@ export default async function AdminPage() {
         <div className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0 px-5 py-5 sm:px-6">
           <PanelHead
-            title="Produção por profissional"
+            title="Produção por colaborador"
             aside="seis semanas · concluídas"
             inCard
           />
@@ -737,7 +737,7 @@ async function ManagerTiles({ actor }: { actor: Actor }) {
           icon={Scissors}
           title="Serviços"
           value={`${total.services} no catálogo`}
-          hint="Preço, duração, folgas e exceções por loja ou profissional."
+          hint="Preço, duração, folgas e exceções por loja ou colaborador."
         />
       ) : null}
 

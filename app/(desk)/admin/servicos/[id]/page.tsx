@@ -85,7 +85,7 @@ export default async function ServicoPage({
       {/* --- excepções ---------------------------------------------- */}
       <Panel
         title="Excepções de preço e duração"
-        hint="Ganha sempre a mais específica: profissional + loja, depois profissional, depois loja, depois o preço-base."
+        hint="Ganha sempre a mais específica: colaborador + loja, depois colaborador, depois loja, depois o preço-base."
         flush
       >
         <div className="px-5 py-5 sm:px-6">
@@ -118,7 +118,7 @@ export default async function ServicoPage({
       {/* --- recursos ----------------------------------------------- */}
       <Panel
         title="Recursos que consome"
-        hint="Se não houver um livre de cada tipo, o horário não se oferece — mesmo com a profissional disponível."
+        hint="Se não houver um livre de cada tipo, o horário não se oferece — mesmo com o colaborador disponível."
         flush
       >
         <div className="px-5 py-5 sm:px-6">
@@ -227,9 +227,9 @@ function OverrideLine({
 
   const label =
     row.staff_id && row.unit_id
-      ? 'Profissional + loja'
+      ? 'Colaborador + loja'
       : row.staff_id
-        ? 'Profissional'
+        ? 'Colaborador'
         : 'Loja'
 
   return (

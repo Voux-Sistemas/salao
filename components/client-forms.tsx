@@ -158,7 +158,7 @@ export function ClientForm({
                 ))}
               </Select>
             </Field>
-            <Field label="Profissional de preferência" htmlFor="client-staff">
+            <Field label="Colaborador de preferência" htmlFor="client-staff">
               <Select
                 id="client-staff"
                 name="staff"

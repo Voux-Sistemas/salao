@@ -634,7 +634,7 @@ export function OverrideForm({
             ))}
           </Select>
         </Field>
-        <Field label="Profissional" htmlFor="override-staff">
+        <Field label="Colaborador" htmlFor="override-staff">
           <Select id="override-staff" name="staff">
             <option value="">Todas</option>
             {staff.map((person) => (

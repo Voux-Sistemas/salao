@@ -272,7 +272,7 @@ const ROLE_LABEL = {
   master: 'Sistema',
   owner: 'Dona',
   manager: 'Gerente',
-  professional: 'Profissional',
+  professional: 'Colaborador',
 } as const
 
 function AccountMenu({ actor }: { actor: Actor }) {

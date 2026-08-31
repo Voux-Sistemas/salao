@@ -61,7 +61,24 @@ export const STRATEGY_LABEL: Record<
   least_busy_week: 'A menos ocupada da semana',
 }
 
-/** Os quatro degraus que se guardam na base de dados. */
+/**
+ * Os quatro degraus que se guardam na base de dados.
+ *
+ * DUAS PALAVRAS PARA A MESMA PESSOA, E DE PROPÓSITO.
+ *
+ * No balcão diz-se COLABORADOR; na montra, à cliente, diz-se
+ * PROFISSIONAL. Não é descuido de quem escreveu — é a decisão da casa,
+ * e não se «arruma» juntando as duas.
+ *
+ * «Colaborador» é palavra de dentro: é como a dona fala de quem lá
+ * trabalha, e é o que ela quer ler nos ecrãs da equipa. À cliente de um
+ * salão essa palavra soa a recursos humanos, e ainda por cima perde o
+ * feminino que a casa usa — «a profissional» viraria «o colaborador».
+ *
+ * O nome na base e no modelo de permissões continua `professional`, e
+ * os comentários do código falam dele por esse nome. O que muda é o
+ * rótulo, que é a única parte que alguém lê.
+ */
 export const LEVEL_LABEL: Record<
   'master' | 'owner' | 'manager' | 'professional',
   string
@@ -69,7 +86,7 @@ export const LEVEL_LABEL: Record<
   master: 'Sistema',
   owner: 'Dona',
   manager: 'Gerente',
-  professional: 'Profissional',
+  professional: 'Colaborador',
 }
 
 export const ABSENCE_LABEL: Record<

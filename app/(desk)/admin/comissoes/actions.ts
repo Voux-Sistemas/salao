@@ -64,7 +64,7 @@ export async function payAction(
   const actor = await requireOrgScope()
 
   const staffId = String(form.get('staff') ?? '')
-  if (!staffId) return { error: 'Escolha a profissional.' }
+  if (!staffId) return { error: 'Escolha o colaborador.' }
 
   const expectedCents = Number(form.get('total') ?? NaN)
   const expectedEntries = Number(form.get('entries') ?? NaN)
@@ -84,7 +84,7 @@ export async function payAction(
   if (!result.ok) {
     if (result.reason === 'nothing') {
       revalidatePath('/admin/comissoes')
-      return { error: 'Já não há nada por pagar a esta profissional.' }
+      return { error: 'Já não há nada por pagar a este colaborador.' }
     }
     revalidatePath('/admin/comissoes')
     return {
