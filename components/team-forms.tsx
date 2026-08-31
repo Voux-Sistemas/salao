@@ -177,14 +177,14 @@ export function AbsenceForm({
       {allDay ? <input type="hidden" name="allday" value="on" /> : null}
 
       {/*
-        DUAS A DUAS, E NÃO EM ESCADA.
+        ESTAS DUAS FICAM EM COLUNA NO TELEMÓVEL.
 
-        Quatro caixas de largura inteira empilhadas num telemóvel são
-        quatro degraus e trezentos píxeis de rolo para uma folga. Estas
-        são todas curtas — cabem duas por fila mesmo em 318 píxeis, que
-        é o que sobra de um ecrã de 390 depois das margens.
+        Tinha-as posto lado a lado, e o «Só parte do dia» saía cortado
+        ao meio — uma caixinha de escolha não encolhe o texto, corta-o.
+        As datas emparelham (ver abaixo) porque «31/08/2026» é sempre do
+        mesmo tamanho e cabe; as palavras não são, e por isso não cabem.
       */}
-      <div className="grid grid-cols-2 items-end gap-3 sm:max-w-md">
+      <div className="grid items-end gap-3 sm:max-w-md sm:grid-cols-2">
         <Field label="Motivo" htmlFor="abs-kind">
           <Select
             id="abs-kind"
@@ -224,13 +224,15 @@ export function AbsenceForm({
             onChange={(e) => setReason(e.target.value)}
             maxLength={120}
             autoComplete="off"
-            placeholder="Consulta médica, mudança de casa…"
+            placeholder="Consulta médica…"
             required
           />
         </Field>
       ) : null}
 
       {allDay ? (
+        /* As datas emparelham — «31/08/2026» tem sempre a mesma
+           largura, e cabe a meia fila mesmo no telemóvel. */
         <div className="grid grid-cols-2 items-start gap-3 sm:max-w-md">
           <Field label="De" htmlFor="abs-from">
             <Input

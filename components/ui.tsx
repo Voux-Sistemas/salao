@@ -188,25 +188,62 @@ export function Field({
   )
 }
 
-// `text-base sm:text-sm`: abaixo dos 16px, o Safari do iPhone dá zoom
-// sozinho mal se toca no campo — e depois deixa a página encavalitada,
-// meia fora do ecrã, com a cliente a arrastar para trás. Ao telemóvel os
-// campos são de 16px; no monitor voltam aos 14 de sempre.
+/*
+  A LETRA DOS CAMPOS: CATORZE, EXCEPTO ONDE ABRE TECLADO.
+
+  Era dezasseis em todos os campos no telemóvel, e por uma razão boa: o
+  Safari do iPhone dá um salto de zoom mal se toca num campo com letra
+  mais pequena, e deixa a página encavalitada, meia fora do ecrã, com a
+  pessoa a arrastar para trás. Foi por isso que se escreveu assim.
+
+  Mas o zoom só acontece onde APARECE TECLADO. Uma caixinha de escolha
+  abre a roda do iPhone; uma caixa de data ou de hora abre o calendário
+  e o relógio. Nenhuma delas escreve nada, e nenhuma delas faz o ecrã
+  saltar — e são elas que enchem o balcão de letra grande: as horas da
+  escala, as datas das ausências, os motivos, as lojas.
+
+  Então a base passa a catorze, como no monitor, e os dezasseis voltam
+  em `max-sm:` só a quem chama o teclado: o texto, o número, o telefone
+  e o bloco de notas. Media query ganha sempre à regra de base, seja
+  qual for a ordem em que o Tailwind as escreveu — é o mesmo motivo por
+  que se usa `max-sm:hidden` e não `hidden sm:block` nesta casa.
+
+  A caixa continua com 44 px de altura no telemóvel: encolhe a letra,
+  não o alvo do polegar.
+*/
 const CONTROL =
   'w-full bg-[var(--surface-raised)] border border-[var(--line)] rounded-[var(--radius)] px-3 ' +
-  'text-base sm:text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] ' +
+  'text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] ' +
   'transition-[border-color,box-shadow] duration-300 focus:outline-none focus:border-[var(--accent)] ' +
   'focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]'
 
 /** 44px no telemóvel — a medida de um polegar; 40 no monitor. */
 const CONTROL_HEIGHT = 'h-11 sm:h-10'
 
+/** Os tipos que abrem uma roda do sistema em vez de um teclado. */
+const SEM_TECLADO = new Set(['date', 'time', 'datetime-local', 'month', 'color'])
+
 export function Input({ className, ...props }: ComponentProps<'input'>) {
-  return <input className={clsx(CONTROL, CONTROL_HEIGHT, className)} {...props} />
+  return (
+    <input
+      className={clsx(
+        CONTROL,
+        CONTROL_HEIGHT,
+        SEM_TECLADO.has(props.type ?? 'text') ? null : 'max-sm:text-base',
+        className,
+      )}
+      {...props}
+    />
+  )
 }
 
 export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
-  return <textarea className={clsx(CONTROL, 'py-2 min-h-24', className)} {...props} />
+  return (
+    <textarea
+      className={clsx(CONTROL, 'max-sm:text-base py-2 min-h-24', className)}
+      {...props}
+    />
+  )
 }
 
 export function Select({ className, children, ...props }: ComponentProps<'select'>) {

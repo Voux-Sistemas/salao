@@ -700,21 +700,29 @@ export function Ficha({
                   slot.on && !abertura.includes(weekday)
                 return (
                   /*
-                    A LINHA TEM DE CABER EM 318 PÍXEIS.
+                    NO TELEMÓVEL SÃO DUAS LINHAS, E DE PROPÓSITO.
 
-                    É o que sobra de um telemóvel de 390 depois das
-                    margens da página (16 de cada lado) e do cartão (20).
-                    Com a coluna do dia a 112 e duas caixas de 112, a
-                    conta dava 254 para 198 disponíveis: faltavam 56, e
-                    o `flex-wrap` fazia o que lhe mandaram — empilhava.
+                    Tentei duas vezes fazer caber o dia e as duas horas
+                    numa linha só, encolhendo as caixas. Não cabe, e a
+                    razão não é a conta: UM `input[type=time]` NÃO
+                    ENCOLHE. O navegador dá-lhe uma largura mínima
+                    própria — o «09:00» mais o relógio que lhe pendura
+                    à direita — e o `width` que se lhe manda de fora é
+                    ignorado por baixo dessa medida. Pedi 92 píxeis e
+                    saíram 125, e as duas caixas empilharam-se dentro da
+                    coluna como o `flex-wrap` manda.
 
-                    Encolhida — 96 para o dia, 92 para cada caixa — dá
-                    208 para 214. Cabe numa linha só, e o telemóvel
-                    deixa de precisar de um desenho diferente.
+                    Então em vez de lutar pela linha, dão-se-lhe duas: o
+                    dia em cima, as horas por baixo, indentadas por
+                    debaixo do nome. A partir do `sm` volta tudo a uma
+                    linha, que é onde há largura para ela.
+
+                    Isto não depende de nenhuma medida de ecrã: as duas
+                    caixas repartem o que houver.
                   */
                   <div
                     key={weekday}
-                    className="grid grid-cols-[6rem_1fr] items-center gap-x-2 gap-y-1 border-b border-[var(--line-soft)] py-1.5 last:border-0 sm:grid-cols-[7rem_1fr] sm:gap-x-3"
+                    className="flex flex-col gap-1.5 border-b border-[var(--line-soft)] py-2 last:border-0 sm:grid sm:grid-cols-[7rem_1fr] sm:items-center sm:gap-x-3 sm:gap-y-1 sm:py-1.5"
                   >
                     <Caixa
                       on={slot.on}
@@ -728,28 +736,11 @@ export function Ficha({
                       label={WEEKDAY_NAMES_PT[weekday] ?? ''}
                     />
                     {slot.on ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/*
-                          A LARGURA VEM DE FORA, E TEM DE VIR.
-
-                          Estas caixas foram escritas com `w-28` e saíam
-                          com a largura toda, empilhadas — o `Input` da
-                          casa traz `w-full` por dentro, e o Tailwind 4
-                          escreve o `.w-full` DEPOIS do `.w-28`. Ganha o
-                          último, e o que aqui se pedia perdia-se. É a
-                          mesma armadilha do `hidden sm:inline-flex`.
-
-                          Numa moldura de largura fixa, o `w-full` de
-                          dentro passa a ser exactamente o que se quer.
-
-                          SETE REM E NÃO SEIS. Um campo de hora não tem
-                          só «09:00» lá dentro: tem o relógio que o
-                          navegador lhe pendura à direita, e o `px-3`
-                          que vem do `Input` da casa dos dois lados. Com
-                          seis, o relógio ficava encostado ao número e
-                          lia-se cortado.
-                        */}
-                        <span className="block w-[5.75rem] sm:w-[7rem]">
+                      /* Os 28 píxeis da esquerda são a caixa de visto
+                         mais o seu intervalo: põem as horas debaixo do
+                         nome do dia, e não debaixo do quadradinho. */
+                      <div className="flex items-center gap-2 pl-7 sm:pl-0">
+                        <span className="min-w-0 flex-1 sm:w-[7rem] sm:flex-none">
                           <Input
                             type="time"
                             value={slot.starts}
@@ -763,11 +754,13 @@ export function Ficha({
                                 ),
                               )
                             }
-                            className="tabular"
+                            className="tabular min-w-0"
                           />
                         </span>
-                        <span className="text-[var(--ink-faint)]">→</span>
-                        <span className="block w-[5.75rem] sm:w-[7rem]">
+                        <span className="shrink-0 text-[var(--ink-faint)]">
+                          →
+                        </span>
+                        <span className="min-w-0 flex-1 sm:w-[7rem] sm:flex-none">
                           <Input
                             type="time"
                             value={slot.ends}
@@ -781,21 +774,18 @@ export function Ficha({
                                 ),
                               )
                             }
-                            className="tabular"
+                            className="tabular min-w-0"
                           />
                         </span>
                       </div>
                     ) : (
-                      /* Alinhado com a caixa da hora, e não com a
-                         moldura: as duas coisas ocupam o mesmo sítio na
-                         linha, e o olho desce a coluna sem tropeçar. */
-                      <span className="px-3 text-[0.8125rem] text-[var(--ink-faint)]">
+                      <span className="pl-7 text-[0.8125rem] text-[var(--ink-faint)] sm:pl-3">
                         Não trabalha
                       </span>
                     )}
 
                     {fechado ? (
-                      <p className="col-start-2 px-3 text-[0.75rem] text-[var(--warn)]">
+                      <p className="pl-7 text-[0.75rem] text-[var(--warn)] sm:col-start-2 sm:pl-3">
                         A casa fecha neste dia — este turno não vai dar
                         horas a ninguém.
                       </p>
@@ -985,7 +975,7 @@ export function Ficha({
 function Bloco({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-soft)]">
-      <h3 className="display px-5 pt-4 text-lg text-[var(--ink)] sm:px-6">
+      <h3 className="display px-5 pt-4 text-base text-[var(--ink)] sm:px-6 sm:text-lg">
         {title}
       </h3>
       <div className="px-5 pb-5 pt-4 sm:px-6">{children}</div>
