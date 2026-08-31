@@ -11,9 +11,9 @@ import type { ParsedClient } from '@/lib/csv'
  * O TELEFONE É A IDENTIDADE: é único na rede, e por isso a mesma pessoa
  * nas duas lojas é uma só ficha — o histórico atravessa as lojas.
  *
- * A ficha guarda o que serve para atender bem: a bebida, a alergia, a
- * nota do serviço, a loja e a profissional de preferência, a língua. As
- * notas internas são da equipa e nunca aparecem à cliente.
+ * A ficha guarda o que serve para atender bem: a nota do serviço, a
+ * loja e a colaboradora de preferência, a língua. As notas internas
+ * são da equipa e nunca aparecem à cliente.
  */
 
 export type ClientRow = {
@@ -58,8 +58,6 @@ const SEM_LETRAS = `[[:alpha:]]`
 export type ClientDetail = ClientRow & {
   org_id: string
   birthdate: string | null
-  drink_preference: string | null
-  allergies: string | null
   service_notes: string | null
   preferred_unit_id: string | null
   preferred_staff_id: string | null
@@ -168,7 +166,7 @@ export async function getClient(
   const rows = await sql<ClientDetail[]>`
     select c.id, c.org_id, c.name, c.phone, c.email, c.language, c.tags,
            to_char(c.birthdate, 'YYYY-MM-DD') as birthdate,
-           c.drink_preference, c.allergies, c.service_notes,
+           c.service_notes,
            c.preferred_unit_id, c.preferred_staff_id,
            c.no_show_count, c.first_visit_at, c.last_visit_at,
            c.is_active, c.created_at,
@@ -265,8 +263,6 @@ export type ClientInput = {
   birthdate: string | null
   preferredUnitId: string | null
   preferredStaffId: string | null
-  drinkPreference: string | null
-  allergies: string | null
   serviceNotes: string | null
   tags: string[]
 }
@@ -330,14 +326,12 @@ export async function createClient(
     const rows = await sql<{ id: string }[]>`
       insert into client
         (org_id, name, phone, email, language, birthdate,
-         preferred_unit_id, preferred_staff_id,
-         drink_preference, allergies, service_notes, tags)
+         preferred_unit_id, preferred_staff_id, service_notes, tags)
       values
         (${orgId}, ${input.name}, ${input.phone}, ${input.email},
          ${input.language}, ${input.birthdate}::date,
          ${input.preferredUnitId}, ${input.preferredStaffId},
-         ${input.drinkPreference}, ${input.allergies}, ${input.serviceNotes},
-         ${input.tags})
+         ${input.serviceNotes}, ${input.tags})
       returning id
     `
     const row = rows[0]
@@ -374,8 +368,10 @@ export async function updateClient(
              birthdate = ${input.birthdate}::date,
              preferred_unit_id = ${input.preferredUnitId},
              preferred_staff_id = ${input.preferredStaffId},
-             drink_preference = ${input.drinkPreference},
-             allergies = ${input.allergies},
+             /* A bebida e as alergias saíram do ecrã e NÃO se tocam
+                aqui de propósito: sem campo no formulário chegariam
+                sempre vazias, e cada gravação apagava em silêncio o que
+                alguém tinha escrito. Ficam como estão. */
              service_notes = ${input.serviceNotes},
              tags = ${input.tags}
        where id = ${clientId} and org_id = ${orgId}
@@ -507,12 +503,12 @@ export async function runImport(
     const rows = await sql<{ id: string }[]>`
       insert into client
         (org_id, name, phone, email, language, birthdate,
-         drink_preference, allergies, service_notes, tags)
+         service_notes, tags)
       values
         (${orgId}, ${row.name}, ${row.phone}, ${record.email},
          ${isLanguage(record.language) ? record.language : 'pt'},
          ${record.birthdate}::date,
-         ${record.drink}, ${record.allergies}, ${record.notes}, ${record.tags})
+         ${record.notes}, ${record.tags})
       on conflict (org_id, phone) do nothing
       returning id
     `

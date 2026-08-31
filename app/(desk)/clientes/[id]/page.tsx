@@ -30,7 +30,6 @@ import {
   ButtonLink,
   buttonClass,
   Card,
-  Divider,
   Empty,
 } from '@/components/ui'
 import { isUuid } from '@/lib/id'
@@ -77,6 +76,12 @@ export default async function ClientePage({
   const bookHere =
     units.find((unit) => unit.id === client.preferred_unit_id) ?? units[0]
 
+  /* «Valongo · Filipa Rocha», ou nada. Vivia num cartão de números,
+     debaixo de um fio, com o rótulo «Prefere» — e não é um número. */
+  const prefere = [client.preferred_unit_name, client.preferred_staff_name]
+    .filter(Boolean)
+    .join(' · ')
+
   /* A ficha pode ainda não ter as datas gravadas — o histórico sabe.
      As visitas vêm por ordem descendente; conta só o que foi concluído. */
   const completed = visits.filter((visit) => visit.status === 'completed')
@@ -94,31 +99,50 @@ export default async function ClientePage({
         Clientes
       </Link>
 
-      {/* --- quem é ------------------------------------------------- */}
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-4">
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--accent)]">
-            <Monogram initials={initialsOf(client.name)} className="text-2xl" />
+      {/*
+        QUEM É — NUMA LINHA, NÃO EM TRÊS ANDARES.
+
+        O telefone estava numa linha, a língua noutra, e a loja preferida
+        vivia lá em baixo dentro do cartão dos números, debaixo de um
+        fio, onde não pertencia: não é um número.
+
+        Juntam-se todos debaixo do nome. E o selo da língua só aparece
+        quando NÃO é português — estava em todas as fichas, sozinho, a
+        dizer o que já se supunha.
+
+        O monograma é redondo e dourado, como na lista. Era quadrado e
+        cinzento aqui: a mesma pessoa com duas caras conforme o ecrã.
+      */}
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent)_11%,transparent)] text-[var(--accent)]">
+            <Monogram initials={initialsOf(client.name)} className="text-xl" />
           </span>
           <div className="min-w-0">
-            <h1 className="display text-3xl text-[var(--ink)]">
+            <h1 className="display text-[1.875rem] leading-none text-[var(--ink)]">
               {client.name}
             </h1>
-            {/* O ponto separador ficava colado ao telefone e, quando o
-                e-mail descia para a linha seguinte, a de cima acabava
-                num «·» pendurado. Preso ao e-mail, desce com ele. (O
-                número já não se parte: os espaços de `formatPhone` são
-                inquebráveis.) */}
-            <p className="mt-1 text-sm text-[var(--ink-muted)]">
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[0.8125rem] text-[var(--ink-muted)]">
               <span className="tabular">{formatPhone(client.phone)}</span>
               {client.email ? (
-                <span className="whitespace-nowrap"> · {client.email}</span>
+                <>
+                  <span className="text-[var(--ink-faint)]">·</span>
+                  <span>{client.email}</span>
+                </>
               ) : null}
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <Badge>{LANGUAGE_LABEL[client.language]}</Badge>
+              {prefere ? (
+                <>
+                  <span className="text-[var(--ink-faint)]">·</span>
+                  <span className="font-semibold text-[var(--accent)]">
+                    {prefere}
+                  </span>
+                </>
+              ) : null}
+              {client.language !== 'pt' ? (
+                <Badge>{LANGUAGE_LABEL[client.language]}</Badge>
+              ) : null}
               {client.no_show_count > 0 ? (
-                <Badge tone="warn">
+                <Badge tone="bad">
                   {client.no_show_count} falta
                   {client.no_show_count === 1 ? '' : 's'}
                 </Badge>
@@ -153,72 +177,75 @@ export default async function ClientePage({
         </div>
       </header>
 
-      {/* --- o essencial -------------------------------------------- */}
-      <Card className="mb-6 px-5 py-4">
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-          <Figure
-            label="Visitas"
-            value={client.visits > 0 ? String(client.visits) : '—'}
-          />
-          <Figure
-            label="Primeira"
-            value={
-              firstVisitAt
-                ? formatDayShort(isoDay(firstVisitAt, tz), tz)
-                : '—'
-            }
-          />
-          <Figure
-            label="Última"
-            value={
-              lastVisitAt ? formatDayShort(isoDay(lastVisitAt, tz), tz) : '—'
-            }
-          />
-          {/* As três primeiras são curtas — 20, 10/07, 21/08 — e esta
-              vinha por extenso, «22 de agosto às 15:00», a quebrar em
-              duas linhas e a desalinhar a fila toda. Aqui só se quer
-              saber quando é: 22/08 · 15:00 chega e cabe. */}
-          <Figure
-            label="Próxima"
-            value={
-              client.next_at ? formatDateTimeShort(client.next_at, tz) : '—'
-            }
-            accent={Boolean(client.next_at)}
-          />
-        </dl>
+      {/*
+        OS QUATRO NÚMEROS, ENCOSTADOS.
 
-        {client.drink_preference ||
-        client.allergies ||
-        client.service_notes ||
-        client.preferred_unit_name ||
-        client.preferred_staff_name ? (
-          <>
-            <Divider className="my-4" />
-            <dl className="space-y-2 text-sm">
-              {client.allergies ? (
-                <Line label="Alergias" tone="bad">
-                  {client.allergies}
-                </Line>
-              ) : null}
-              {client.drink_preference ? (
-                <Line label="Bebida">{client.drink_preference}</Line>
-              ) : null}
-              {client.preferred_unit_name || client.preferred_staff_name ? (
-                <Line label="Prefere">
-                  {[client.preferred_unit_name, client.preferred_staff_name]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Line>
-              ) : null}
-              {client.service_notes ? (
-                <Line label="Serviço">{client.service_notes}</Line>
-              ) : null}
-            </dl>
-          </>
-        ) : null}
-      </Card>
+        Estavam numa grelha larga com espaço entre eles, e cada um
+        parecia sozinho. Encostados, com um fio a separá-los, lêem-se
+        como uma fila — que é o que são: a mesma cliente, contada de
+        quatro maneiras.
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem] lg:items-start">
+        A PRÓXIMA TEM FUNDO PRÓPRIO. Das quatro é a única sobre a qual
+        se faz alguma coisa; as outras três são história.
+
+        E as visitas dizem «0», não «—»: zero é um facto, um traço não é
+        nada. Só as datas que não existem levam traço — essas realmente
+        não existem.
+      */}
+      {/*
+        OS FIOS SÃO O FUNDO, NÃO SÃO BORDAS.
+
+        A primeira versão punha borda esquerda em cada caixa e tirava-a à
+        primeira de cada linha — e como são duas por linha no telemóvel e
+        quatro no monitor, isso pedia `nth-child` a discutir com `first:`
+        dentro do mesmo `sm:`. Quem ganha essa discussão é a ordem por
+        que o Tailwind emite as regras, não a ordem em que se escrevem: é
+        uma armadilha que esta casa já pagou.
+
+        Aqui o fundo do quadro é a cor do fio e as caixas ficam com um
+        píxel de intervalo. Desenha-se sozinho, com duas colunas ou com
+        quatro, e não há nada para discutir.
+      */}
+      <div className="mb-5 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--line-soft)] sm:grid-cols-4">
+        <Figure label="Visitas" value={String(client.visits)} />
+        <Figure
+          label="Primeira"
+          value={firstVisitAt ? formatDayShort(isoDay(firstVisitAt, tz), tz) : null}
+        />
+        <Figure
+          label="Última"
+          value={lastVisitAt ? formatDayShort(isoDay(lastVisitAt, tz), tz) : null}
+        />
+        {/* Por extenso — «22 de agosto às 15:00» — quebrava em duas
+            linhas e desalinhava a fila toda. Aqui só se quer saber
+            quando é. */}
+        <Figure
+          label="Próxima"
+          value={client.next_at ? formatDateTimeShort(client.next_at, tz) : null}
+          proxima
+        />
+      </div>
+
+      {client.service_notes ? (
+        <Card className="mb-5 px-4 py-3">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.13em] text-[var(--ink-faint)]">
+            Nota do serviço
+          </p>
+          <p className="mt-1.5 whitespace-pre-wrap text-[0.875rem] leading-relaxed text-[var(--ink)]">
+            {client.service_notes}
+          </p>
+        </Card>
+      ) : null}
+
+      {/*
+        O HISTÓRICO LEVA QUASE O DOBRO DAS NOTAS.
+
+        Era `1fr / 20rem`, quase meio a meio — e como a caixa de escrever
+        notas estava sempre aberta, o cartão vazio das notas ficava mais
+        alto do que o histórico. A coisa que se lê era mais pequena do
+        que a coisa que raramente se escreve.
+      */}
+      <div className="grid gap-5 lg:grid-cols-[1.9fr_1fr] lg:items-start">
         {/* --- o que já cá fez ------------------------------------- */}
         <section>
           <h2 className="titulo-seccao mb-2">Histórico</h2>
@@ -253,100 +280,120 @@ export default async function ClientePage({
 
         {/* --- notas internas -------------------------------------- */}
         <section>
-          <h2 className="titulo-seccao mb-2">Notas da equipa</h2>
-          <Card className="px-4 py-4">
-            <p className="mb-3 text-[0.75rem] text-[var(--ink-faint)]">
-              Só a equipa vê isto. A cliente nunca.
-            </p>
-            <NoteForm clientId={client.id} />
-
+          <h2 className="titulo-seccao mb-2">
+            Notas da equipa
             {notes.length > 0 ? (
-              <ul className="mt-4 space-y-2.5 border-t border-[var(--line-soft)] pt-4">
-                {notes.map((note) => (
-                  <li
-                    key={note.id}
-                    className="rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5"
-                  >
-                    <div className="flex items-start gap-2">
-                      <p className="min-w-0 flex-1 whitespace-pre-wrap text-[0.8125rem] text-[var(--ink)]">
-                        {note.body}
-                      </p>
-                      <DeleteNote clientId={client.id} noteId={note.id} />
-                    </div>
-                    <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
-                      {note.author ?? 'Equipa'} ·{' '}
-                      {formatDateTime(note.created_at, tz)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <span className="tabular ml-2 font-normal normal-case tracking-normal text-[var(--ink-faint)]">
+                {notes.length}
+              </span>
             ) : null}
+          </h2>
+          <Card className="overflow-hidden">
+            {notes.map((note) => (
+              <div
+                key={note.id}
+                className="border-t border-[var(--line-soft)] px-4 py-3 first:border-t-0"
+              >
+                <div className="flex items-start gap-2">
+                  <p className="min-w-0 flex-1 whitespace-pre-wrap text-[0.8125rem] leading-relaxed text-[var(--ink)]">
+                    {note.body}
+                  </p>
+                  <DeleteNote clientId={client.id} noteId={note.id} />
+                </div>
+                <p className="mt-1.5 text-[0.6875rem] text-[var(--ink-faint)]">
+                  {note.author ?? 'Equipa'} ·{' '}
+                  {formatDateTime(note.created_at, tz)}
+                </p>
+              </div>
+            ))}
+            <NoteForm clientId={client.id} />
           </Card>
+          <p className="mt-2 text-[0.75rem] text-[var(--ink-faint)]">
+            Só a equipa vê. A cliente nunca.
+          </p>
         </section>
       </div>
 
-      {/* --- editar ------------------------------------------------- */}
-      <section className="mt-8">
-        <h2 className="titulo-seccao mb-2">Editar ficha</h2>
-        <Card className="px-4 py-5 sm:px-6">
+      {/*
+        EDITAR É UMA PORTA, NÃO O CHÃO.
+
+        O formulário estava sempre aberto e era mais de metade da página:
+        vinha-se a uma ficha para LER — quem é, o que fez, o que a equipa
+        escreveu — e o que se via primeiro era um formulário de vinte
+        campos a empurrar tudo para cima.
+
+        Fechado por omissão, como os serviços na Gestão.
+      */}
+      <details className="group mt-6">
+        <summary className="flex cursor-pointer list-none items-center gap-3 rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] px-4 py-3 text-[0.875rem] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--surface-2)] [&::-webkit-details-marker]:hidden">
+          Editar ficha
+          <span className="ml-auto hidden text-[0.75rem] font-normal text-[var(--ink-faint)] sm:inline">
+            nome, telefone, preferências, nota do serviço, etiquetas
+          </span>
+          <span
+            aria-hidden
+            className="text-[0.75rem] text-[var(--ink-faint)] group-open:rotate-180"
+          >
+            ⌄
+          </span>
+        </summary>
+        <Card className="mt-2 px-4 py-5 sm:px-6">
           <ClientForm
             client={client}
             units={options.units}
             staff={options.staff}
           />
         </Card>
-      </section>
+      </details>
     </div>
   )
 }
 
+/**
+ * Uma das quatro caixas. `value` a nulo é «não há» — desenha-se um
+ * traço apagado, para a fila não perder o alinhamento.
+ *
+ * Cada caixa pinta o seu próprio fundo; o fio entre elas é o fundo do
+ * quadro a aparecer pelo intervalo de um píxel.
+ */
 function Figure({
   label,
   value,
-  accent = false,
+  proxima = false,
 }: {
   label: string
-  value: string
-  accent?: boolean
+  value: string | null
+  proxima?: boolean
 }) {
   return (
-    <div>
-      <dt className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
-        {label}
-      </dt>
-      <dd
-        className={
-          accent
-            ? 'tabular mt-0.5 text-sm text-[var(--accent)]'
-            : 'tabular mt-0.5 text-sm text-[var(--ink)]'
-        }
+    <div
+      className={clsx(
+        'px-4 py-3',
+        proxima
+          ? 'bg-[color-mix(in_srgb,var(--accent)_7%,var(--surface-raised))]'
+          : 'bg-[var(--surface-raised)]',
+      )}
+    >
+      <p
+        className={clsx(
+          'text-[0.625rem] font-semibold uppercase tracking-[0.13em]',
+          proxima ? 'text-[var(--accent)]' : 'text-[var(--ink-faint)]',
+        )}
       >
-        {value}
-      </dd>
-    </div>
-  )
-}
-
-function Line({
-  label,
-  tone = 'neutral',
-  children,
-}: {
-  label: string
-  tone?: 'neutral' | 'bad'
-  children: string
-}) {
-  return (
-    <div className="flex gap-3">
-      <dt className="w-20 shrink-0 text-[0.75rem] uppercase tracking-[0.05em] text-[var(--ink-faint)]">
         {label}
-      </dt>
-      <dd
-        className="min-w-0 flex-1 whitespace-pre-wrap"
-        style={{ color: tone === 'bad' ? 'var(--bad)' : 'var(--ink)' }}
+      </p>
+      <p
+        className={clsx(
+          'metric mt-1.5',
+          value === null
+            ? 'text-lg font-medium text-[var(--ink-faint)]'
+            : proxima
+              ? 'text-base text-[var(--accent)]'
+              : 'text-xl text-[var(--ink)]',
+        )}
       >
-        {children}
-      </dd>
+        {value ?? '—'}
+      </p>
     </div>
   )
 }

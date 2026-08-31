@@ -79,8 +79,6 @@ export type ClientField =
   | 'email'
   | 'language'
   | 'birthdate'
-  | 'drink'
-  | 'allergies'
   | 'notes'
   | 'tags'
 
@@ -91,8 +89,6 @@ const HEADERS: Record<ClientField, string[]> = {
   email: ['email', 'e-mail', 'correio'],
   language: ['idioma', 'lingua', 'língua', 'language'],
   birthdate: ['aniversario', 'aniversário', 'nascimento', 'data de nascimento', 'birthdate', 'birthday'],
-  drink: ['bebida', 'drink', 'preferencia de bebida', 'preferência de bebida'],
-  allergies: ['alergia', 'alergias', 'allergies'],
   notes: ['notas', 'nota', 'observacoes', 'observações', 'notes'],
   tags: ['etiquetas', 'tags', 'marcadores'],
 }
@@ -128,8 +124,6 @@ export type ParsedClient = {
   email: string | null
   language: string | null
   birthdate: string | null
-  drink: string | null
-  allergies: string | null
   notes: string | null
   tags: string[]
 }
@@ -166,7 +160,7 @@ export function readClients(text: string): {
   const hasHeader = looksLikeHeader(first)
   const map = hasHeader
     ? mapHeader(first)
-    : ({ name: 0, phone: 1, email: 2, language: -1, birthdate: -1, drink: -1, allergies: -1, notes: -1, tags: -1 } as Record<ClientField, number>)
+    : ({ name: 0, phone: 1, email: 2, language: -1, birthdate: -1, notes: -1, tags: -1 } as Record<ClientField, number>)
 
   const body = hasHeader ? rows.slice(1) : rows
   const offset = hasHeader ? 2 : 1
@@ -180,8 +174,6 @@ export function readClients(text: string): {
       email: cell(row, map.email) || null,
       language: cell(row, map.language).slice(0, 2).toLowerCase() || null,
       birthdate: parseDate(cell(row, map.birthdate)),
-      drink: cell(row, map.drink) || null,
-      allergies: cell(row, map.allergies) || null,
       notes: cell(row, map.notes) || null,
       tags: tags
         ? tags

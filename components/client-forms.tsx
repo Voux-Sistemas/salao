@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { FileUp, Trash2 } from 'lucide-react'
+import { FileUp, Plus, Trash2 } from 'lucide-react'
 import {
   addNoteAction,
   previewImportAction,
@@ -45,8 +45,6 @@ export type ClientDraft = {
   birthdate?: string | null
   preferred_unit_id?: string | null
   preferred_staff_id?: string | null
-  drink_preference?: string | null
-  allergies?: string | null
   service_notes?: string | null
   tags?: string[]
 }
@@ -55,8 +53,10 @@ export type ClientDraft = {
  * A FICHA. O telefone é a identidade — muda-se com cuidado, porque é
  * por ele que a cliente é a mesma pessoa nas duas lojas.
  *
- * As preferências não são enfeite: a bebida, a alergia e a nota do
- * serviço são o que faz a casa parecer que se lembra.
+ * TINHA AQUI A BEBIDA E AS ALERGIAS, e saíram: a casa não as usa. As
+ * colunas ficam na base com o que lá está escrito — não se apaga o que
+ * alguém um dia escreveu — mas deixam de se ler e de se poder mudar, e
+ * por isso o gravar também deixa de lhes tocar.
  */
 export function ClientForm({
   client,
@@ -174,32 +174,6 @@ export function ClientForm({
             </Field>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Bebida" htmlFor="client-drink">
-              <Input
-                id="client-drink"
-                name="drink"
-                maxLength={80}
-                autoComplete="off"
-                placeholder="Chá verde, café sem açúcar…"
-                defaultValue={client?.drink_preference ?? ''}
-              />
-            </Field>
-            <Field
-              label="Alergias"
-              htmlFor="client-allergies"
-              hint="Aparece a quem a atende."
-            >
-              <Input
-                id="client-allergies"
-                name="allergies"
-                maxLength={160}
-                autoComplete="off"
-                defaultValue={client?.allergies ?? ''}
-              />
-            </Field>
-          </div>
-
           <Field
             label="Nota do serviço"
             htmlFor="client-service-notes"
@@ -236,24 +210,74 @@ export function ClientForm({
 
 /* --- notas internas -------------------------------------------------- */
 
+/**
+ * ESCREVER UMA NOTA — FECHADO ATÉ SE QUERER.
+ *
+ * A caixa estava sempre aberta, com o botão por baixo, e isso fazia com
+ * que o cartão das notas — quase sempre vazio — ficasse mais alto do que
+ * o histórico ao lado, que é a coisa que se lê. Uma caixa de texto vazia
+ * a ocupar mais espaço do que o conteúdo é o cartão a pedir uma coisa
+ * que ninguém veio cá fazer.
+ *
+ * Fica uma linha. Ao toque abre a caixa, e fecha-se outra vez ao gravar.
+ */
 export function NoteForm({ clientId }: { clientId: string }) {
   const [state, action] = useActionState<ClientState, FormData>(
     addNoteAction,
     EMPTY,
   )
+  const [aberto, setAberto] = useState(false)
+  const [visto, setVisto] = useState<string | null>(null)
+
+  // Gravou: a caixa fecha-se sozinha. `visto` impede que volte a fechar
+  // se a pessoa a reabrir sem ter gravado outra vez.
+  if (state.done && state.done !== visto) {
+    setVisto(state.done)
+    setAberto(false)
+  }
+
+  if (!aberto) {
+    return (
+      <div>
+        <Result state={state} />
+        <button
+          type="button"
+          onClick={() => setAberto(true)}
+          className="flex w-full items-center gap-2 border-t border-[var(--line-soft)] px-4 py-3 text-left text-[0.8125rem] font-semibold text-[var(--accent)] transition-colors first:border-t-0 hover:bg-[var(--surface-2)]"
+        >
+          <Plus size={14} />
+          Escrever uma nota
+        </button>
+      </div>
+    )
+  }
 
   return (
-    <form action={action} className="space-y-3">
+    <form
+      action={action}
+      className="space-y-3 border-t border-[var(--line-soft)] px-4 py-3.5"
+    >
       <input type="hidden" name="client" value={clientId} />
       <Result state={state} />
       <Textarea
         name="body"
         required
+        autoFocus
         maxLength={800}
         placeholder="O que a equipa precisa de saber e a cliente não vê."
         className="min-h-20"
       />
-      <Submit label="Guardar nota" />
+      <div className="flex items-center gap-2">
+        <Submit label="Guardar nota" />
+        <Button
+          type="button"
+          variant="quiet"
+          size="sm"
+          onClick={() => setAberto(false)}
+        >
+          Deixar
+        </Button>
+      </div>
     </form>
   )
 }
@@ -366,7 +390,7 @@ export function ImportForm() {
           <Field
             label="Ficheiro CSV"
             htmlFor="import-file"
-            hint="Vírgula ou ponto-e-vírgula, até 512 KB. Colunas: nome, telefone, email, idioma, nascimento, bebida, alergias, notas, etiquetas."
+            hint="Vírgula ou ponto-e-vírgula, até 512 KB. Colunas: nome, telefone, email, idioma, nascimento, notas, etiquetas."
           >
             <CsvPicker />
           </Field>

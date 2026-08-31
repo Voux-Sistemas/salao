@@ -58,8 +58,6 @@ function readInput(form: FormData): ClientInput | string {
     birthdate,
     preferredUnitId: uuidOrNull(form, 'unit'),
     preferredStaffId: uuidOrNull(form, 'staff'),
-    drinkPreference: optional(form, 'drink'),
-    allergies: optional(form, 'allergies'),
     serviceNotes: optional(form, 'service_notes'),
     tags: text(form, 'tags')
       .split(/[;,]/)
