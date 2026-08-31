@@ -452,10 +452,29 @@ export function Ficha({
       : null
 
   return (
-    <form action={action} className="space-y-4">
-      <input type="hidden" name="staff" value={member?.id ?? ''} />
-      <input type="hidden" name="ficha" value={payload} />
+    /*
+      ISTO DEIXA DE SER UM FORMULÁRIO À VOLTA DE TUDO.
 
+      Era: um `<form>` abria antes do primeiro cartão e só fechava
+      depois do último. E lá dentro, no cartão da escala, viviam mais
+      três formulários — o do turno extra, o da ausência e o da
+      palavra-passe. Um formulário dentro de outro não é HTML válido, e
+      o resultado é o que se via: carregar em «Marcar turno» não fazia
+      nada, sem erro nenhum, porque o formulário de dentro nunca chegou
+      a existir como formulário.
+
+      E NÃO PRECISAVA DE ENVOLVER NADA. Tudo o que esta ficha grava
+      viaja em DOIS campos escondidos — o `staff` e o `ficha`, que é a
+      ficha inteira num JSON. Os campos que se vêem no ecrã não são
+      campos de formulário: são estado do React, e o botão de guardar
+      lê-os desse estado, não do formulário.
+
+      Então o `<form>` encolhe até ao que é: dois campos escondidos, ao
+      fundo, invisível. O botão «Guardar» aponta-lhe com `form="ficha"`
+      — é para isso que esse atributo existe — e os três formulários da
+      direita deixam de estar dentro de coisa nenhuma.
+    */
+    <div className="space-y-4">
       {state.error ? (
         <p className="rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--bad)_35%,transparent)] bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] px-3 py-2 text-sm text-[var(--bad)]">
           {state.error}
@@ -1115,13 +1134,22 @@ export function Ficha({
 
         <button
           type="submit"
+          form="ficha"
           disabled={saving || Boolean(falta) || (!novo && dirty.length === 0)}
-          className="h-10 rounded-[var(--radius)] bg-[var(--accent)] px-5 text-[0.8125rem] font-bold text-[var(--accent-ink)] transition-opacity disabled:opacity-40"
+          className="h-10 rounded-[var(--radius)] bg-[var(--action)] px-5 text-[0.8125rem] font-bold text-[var(--action-ink)] transition-opacity disabled:opacity-40"
         >
           {saving ? 'A guardar…' : novo ? 'Criar ficha' : 'Guardar'}
         </button>
       </div>
-    </form>
+
+      {/* O formulário, reduzido ao que ele é. Fica no fim e escondido:
+          não empurra nada, e um `display:none` não impede um formulário
+          de ser enviado nem os campos dele de viajarem. */}
+      <form id="ficha" action={action} className="hidden">
+        <input type="hidden" name="staff" value={member?.id ?? ''} />
+        <input type="hidden" name="ficha" value={payload} />
+      </form>
+    </div>
   )
 }
 
