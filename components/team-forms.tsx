@@ -231,9 +231,18 @@ export function AbsenceForm({
       ) : null}
 
       {allDay ? (
-        /* As datas emparelham — «31/08/2026» tem sempre a mesma
-           largura, e cabe a meia fila mesmo no telemóvel. */
-        <div className="grid grid-cols-2 items-start gap-3 sm:max-w-md">
+        /*
+          UMA CAIXA DE DATA POR LINHA, NO TELEMÓVEL.
+
+          Tinha-as posto lado a lado a contar com «31/08/2026» ter
+          sempre a mesma largura. Tem — mas a caixa à volta dela não: um
+          `input[type=date]` é um comando do sistema, e o navegador
+          dá-lhe uma largura mínima própria que ignora a que se lhe
+          manda. Duas ao lado uma da outra saíam pela borda fora.
+
+          A partir do `sm` emparelham, que é onde há largura de sobra.
+        */
+        <div className="grid items-start gap-3 sm:max-w-md sm:grid-cols-2">
           <Field label="De" htmlFor="abs-from">
             <Input
               id="abs-from"
@@ -258,7 +267,7 @@ export function AbsenceForm({
           <Field
             label="Até"
             htmlFor="abs-to"
-            hint="Em branco, é só o dia ao lado."
+            hint="Em branco, é só o dia de cima."
           >
             <Input
               id="abs-to"
@@ -283,7 +292,9 @@ export function AbsenceForm({
               required
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-3">
+          {/* Pela mesma razão das datas: uma caixa de hora por linha no
+              telemóvel, lado a lado a partir do `sm`. */}
+          <div className="grid gap-3 sm:flex sm:gap-3">
             <Field label="Das" htmlFor="abs-starts" className="sm:w-28">
               <Input
                 id="abs-starts"

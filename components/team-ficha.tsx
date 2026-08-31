@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState } from 'react'
 import { clsx } from 'clsx'
+import { Pencil } from 'lucide-react'
 import {
   saveFichaAction,
   type TeamState,
@@ -271,6 +272,9 @@ export function Ficha({
   )
 
   const [shown, setShown] = useState(weekUnit)
+  /* Que dia esta aberto para edicao — so no telemovel; a partir do sm
+     as caixas estao sempre a vista e isto nao pinta nada. */
+  const [editar, setEditar] = useState<number | null>(null)
   const [from, setFrom] = useState(today)
 
   // Trocar de loja troca a semana à vista. Fazê-lo aqui, e não num
@@ -698,94 +702,166 @@ export function Ficha({
                 */
                 const fechado =
                   slot.on && !abertura.includes(weekday)
+                const nomeDia = WEEKDAY_NAMES_PT[weekday] ?? ''
+                const aEditar = editar === weekday
+                const mexer = (troca: Partial<WeekSlot>) =>
+                  setWeek((current) =>
+                    current.map((day, index) =>
+                      index === weekday ? { ...day, ...troca } : day,
+                    ),
+                  )
                 return (
                   /*
-                    NO TELEMÓVEL SÃO DUAS LINHAS, E DE PROPÓSITO.
+                    UMA CAIXA DE HORA NUNCA DIVIDE UMA LINHA COM OUTRA.
 
-                    Tentei duas vezes fazer caber o dia e as duas horas
-                    numa linha só, encolhendo as caixas. Não cabe, e a
-                    razão não é a conta: UM `input[type=time]` NÃO
-                    ENCOLHE. O navegador dá-lhe uma largura mínima
-                    própria — o «09:00» mais o relógio que lhe pendura
-                    à direita — e o `width` que se lhe manda de fora é
-                    ignorado por baixo dessa medida. Pedi 92 píxeis e
-                    saíram 125, e as duas caixas empilharam-se dentro da
-                    coluna como o `flex-wrap` manda.
+                    Tentei três vezes fazer caber as duas horas numa
+                    linha de telemóvel: 92 píxeis, 112, «metade do que
+                    houver». Ignoraram as três. Um `input[type=time]`
+                    não é uma caixa de texto — é um comando do sistema,
+                    abre o relógio do telefone, e o navegador dá-lhe uma
+                    largura mínima própria que ignora o `width` que vem
+                    de fora. Enquanto o pai era estreito empilhava-se lá
+                    dentro; com uma linha inteira, transbordava.
 
-                    Então em vez de lutar pela linha, dão-se-lhe duas: o
-                    dia em cima, as horas por baixo, indentadas por
-                    debaixo do nome. A partir do `sm` volta tudo a uma
-                    linha, que é onde há largura para ela.
+                    Qualquer medida que eu escolha é uma aposta contra
+                    um número que é do Safari e que muda de telemóvel
+                    para telemóvel. Então tira-se a aposta do caminho:
 
-                    Isto não depende de nenhuma medida de ecrã: as duas
-                    caixas repartem o que houver.
+                    NO TELEMÓVEL A LINHA FECHADA É SÓ TEXTO — o visto, o
+                    nome e «09:00 → 20:00». Texto não transborda:
+                    encolhe, quebra, adapta-se. Toca-se nela e abre, e
+                    aí cada hora tem a LINHA INTEIRA para ela sozinha,
+                    onde a largura mínima do navegador nunca chega.
+
+                    A PARTIR DO `sm` NADA DISTO ACONTECE: as duas caixas
+                    ficam sempre abertas e lado a lado, como estavam,
+                    porque lá há largura de sobra e um clique por dia
+                    para editar uma semana seria trabalho a mais.
                   */
                   <div
                     key={weekday}
-                    className="flex flex-col gap-1.5 border-b border-[var(--line-soft)] py-2 last:border-0 sm:grid sm:grid-cols-[7rem_1fr] sm:items-center sm:gap-x-3 sm:gap-y-1 sm:py-1.5"
+                    className="flex flex-col gap-2 border-b border-[var(--line-soft)] py-2 last:border-0 sm:grid sm:grid-cols-[7rem_1fr] sm:items-center sm:gap-x-3 sm:gap-y-1 sm:py-1.5"
                   >
-                    <Caixa
-                      on={slot.on}
-                      onClick={() =>
-                        setWeek((current) =>
-                          current.map((day, index) =>
-                            index === weekday ? { ...day, on: !day.on } : day,
-                          ),
-                        )
-                      }
-                      label={WEEKDAY_NAMES_PT[weekday] ?? ''}
-                    />
+                    <div className="flex items-center gap-2.5">
+                      {/*
+                        O VISTO É INDEPENDENTE E FICA DE FORA DO TOQUE
+                        QUE ABRE. Desligar um dia é um gesto, mexer-lhe
+                        nas horas é outro — e um botão dentro de outro
+                        botão não é HTML válido nem coisa que se toque.
+                      */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          mexer({ on: !slot.on })
+                          // Ligar um dia é sempre para lhe dar horas.
+                          setEditar(slot.on ? null : weekday)
+                        }}
+                        aria-pressed={slot.on}
+                        aria-label={nomeDia}
+                        /* A margem negativa devolve o que o
+                           preenchimento tirou: o quadradinho fica no
+                           mesmo sítio, mas o dedo tem 34 px para lhe
+                           acertar em vez de 18. */
+                        className="-m-2 shrink-0 p-2"
+                      >
+                        <span
+                          aria-hidden
+                          className={clsx(
+                            'grid h-[1.1rem] w-[1.1rem] place-items-center rounded-[4px] border-[1.5px] text-[11px] font-bold transition-colors',
+                            slot.on
+                              ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
+                              : 'border-[var(--line)] text-transparent',
+                          )}
+                        >
+                          ✓
+                        </span>
+                      </button>
+
+                      <span
+                        className={clsx(
+                          'text-sm font-semibold',
+                          slot.on
+                            ? 'text-[var(--ink)]'
+                            : 'text-[var(--ink-muted)]',
+                        )}
+                      >
+                        {nomeDia}
+                      </span>
+
+                      {/* O resumo e o lápis só existem no telemóvel: no
+                          monitor as caixas estão sempre à vista. */}
+                      {slot.on && !aEditar ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditar(weekday)}
+                          className="ml-auto flex items-center gap-2 text-[var(--ink)] sm:hidden"
+                        >
+                          <span className="tabular text-sm">
+                            {slot.starts}{' '}
+                            <span className="text-[var(--ink-faint)]">→</span>{' '}
+                            {slot.ends}
+                          </span>
+                          <Pencil className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)]" />
+                        </button>
+                      ) : null}
+
+                      {!slot.on ? (
+                        <span className="ml-auto text-[0.8125rem] text-[var(--ink-faint)] sm:hidden">
+                          Não trabalha
+                        </span>
+                      ) : null}
+                    </div>
+
                     {slot.on ? (
-                      /* Os 28 píxeis da esquerda são a caixa de visto
-                         mais o seu intervalo: põem as horas debaixo do
-                         nome do dia, e não debaixo do quadradinho. */
-                      <div className="flex items-center gap-2 pl-7 sm:pl-0">
-                        <span className="min-w-0 flex-1 sm:w-[7rem] sm:flex-none">
+                      <div
+                        className={clsx(
+                          'flex flex-col gap-2 sm:flex-row sm:items-center',
+                          aEditar ? null : 'max-sm:hidden',
+                        )}
+                      >
+                        <div className="sm:w-[7rem]">
+                          <span className="mb-1 block text-[0.75rem] font-semibold text-[var(--ink-muted)] sm:hidden">
+                            Entra
+                          </span>
                           <Input
                             type="time"
                             value={slot.starts}
-                            aria-label={`Entra — ${WEEKDAY_NAMES_PT[weekday]}`}
-                            onChange={(e) =>
-                              setWeek((current) =>
-                                current.map((day, index) =>
-                                  index === weekday
-                                    ? { ...day, starts: e.target.value }
-                                    : day,
-                                ),
-                              )
-                            }
-                            className="tabular min-w-0"
+                            aria-label={`Entra — ${nomeDia}`}
+                            onChange={(e) => mexer({ starts: e.target.value })}
+                            className="tabular"
                           />
-                        </span>
-                        <span className="shrink-0 text-[var(--ink-faint)]">
+                        </div>
+                        <span className="max-sm:hidden text-[var(--ink-faint)]">
                           →
                         </span>
-                        <span className="min-w-0 flex-1 sm:w-[7rem] sm:flex-none">
+                        <div className="sm:w-[7rem]">
+                          <span className="mb-1 block text-[0.75rem] font-semibold text-[var(--ink-muted)] sm:hidden">
+                            Sai
+                          </span>
                           <Input
                             type="time"
                             value={slot.ends}
-                            aria-label={`Sai — ${WEEKDAY_NAMES_PT[weekday]}`}
-                            onChange={(e) =>
-                              setWeek((current) =>
-                                current.map((day, index) =>
-                                  index === weekday
-                                    ? { ...day, ends: e.target.value }
-                                    : day,
-                                ),
-                              )
-                            }
-                            className="tabular min-w-0"
+                            aria-label={`Sai — ${nomeDia}`}
+                            onChange={(e) => mexer({ ends: e.target.value })}
+                            className="tabular"
                           />
-                        </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditar(null)}
+                          className="self-start pt-1 text-[0.8125rem] font-semibold text-[var(--accent)] sm:hidden"
+                        >
+                          Pronto
+                        </button>
                       </div>
                     ) : (
-                      <span className="pl-7 text-[0.8125rem] text-[var(--ink-faint)] sm:pl-3">
+                      <span className="max-sm:hidden text-[0.8125rem] text-[var(--ink-faint)] sm:pl-3">
                         Não trabalha
                       </span>
                     )}
 
                     {fechado ? (
-                      <p className="pl-7 text-[0.75rem] text-[var(--warn)] sm:col-start-2 sm:pl-3">
+                      <p className="text-[0.75rem] text-[var(--warn)] sm:col-start-2 sm:pl-3">
                         A casa fecha neste dia — este turno não vai dar
                         horas a ninguém.
                       </p>
