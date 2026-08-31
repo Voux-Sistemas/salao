@@ -23,7 +23,6 @@ import {
   saveFicha,
   setPassword,
   setSkill,
-  skillsOf,
   updateMember,
   type AbsenceKind,
   type FichaInput,
@@ -574,12 +573,4 @@ export async function saveFichaAction(
   refresh(result.id)
   if (nasceu) redirect(`/admin/equipe/${result.id}`)
   return { error: null, done: 'Ficha guardada.' }
-}
-
-/** As habilidades de outra pessoa, para o «Copiar de…». */
-export async function copySkillsAction(
-  staffId: string,
-): Promise<{ ids: string[] }> {
-  const actor = await requireManagement()
-  return { ids: await skillsOf(actor, staffId) }
 }

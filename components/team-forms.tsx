@@ -2,7 +2,6 @@
 
 import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { clsx } from 'clsx'
 import { Trash2 } from 'lucide-react'
 import {
   addAbsenceAction,
@@ -62,6 +61,9 @@ function Result({ state }: { state: TeamState }) {
 
 const KINDS = Object.keys(ABSENCE_LABEL) as (keyof typeof ABSENCE_LABEL)[]
 
+/** Os quatro que a base conhece, mais o «Outro» que aterra em bloqueio. */
+type Motivo = keyof typeof ABSENCE_LABEL | 'outro'
+
 /** «quinta, 4 de setembro» — para a frase que lê de volta o que se grava. */
 function porExtenso(iso: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ''
@@ -80,17 +82,17 @@ function porExtenso(iso: string): string {
 }
 
 /**
- * MARCAR UMA AUSÊNCIA — DUAS PERGUNTAS, POR ORDEM.
+ * MARCAR UMA AUSÊNCIA — MOTIVO, QUANDO, E AS DATAS.
  *
  * Eram cinco faixas de comandos permanentes para o que é, quase sempre,
- * «a Ana falta na quinta». E faziam as perguntas ao contrário: «Tipo» e
- * «Loja» — que são sempre Folga e Todas — vinham à frente, e a data,
- * que é a única coisa que muda sempre, vinha em terceiro.
+ * «a Ana falta na quinta». Ficam duas caixinhas em cima e as datas por
+ * baixo — as mesmas caixinhas do resto da casa, e não pastilhas nem
+ * interruptores próprios desta página.
  *
- * O QUE AS PERDIA MESMO ERA O «DIA INTEIRO». É o interruptor que decide
- * se aparece «Até» ou «Das / Às», e vivia POR BAIXO dos campos que
- * troca: preenchia-se tudo, e só depois se descobria o botão que teria
- * mudado o que se acabou de preencher. Aqui sobe para antes deles.
+ * O QUE AS PERDIA MESMO ERA O «DIA INTEIRO». É o comando que decide se
+ * aparece «Até» ou «Das / Às», e vivia POR BAIXO dos campos que troca:
+ * preenchia-se tudo, e só depois se descobria a caixa que teria mudado
+ * o que se acabou de preencher. Aqui está antes deles, onde manda.
  *
  * PARTE DO DIA É UM DIA SÓ. O servidor já só gravava um dia nesse caso
  * — «das 12 às 14, de quinta a domingo» não é uma ausência, são quatro
@@ -115,7 +117,7 @@ export function AbsenceForm({
     EMPTY,
   )
   const [aberto, setAberto] = useState(false)
-  const [kind, setKind] = useState<keyof typeof ABSENCE_LABEL>('day_off')
+  const [motivo, setMotivo] = useState<Motivo>('day_off')
   const [allDay, setAllDay] = useState(true)
   const [from, setFrom] = useState(today)
   const [to, setTo] = useState('')
@@ -156,44 +158,69 @@ export function AbsenceForm({
     >
       <Result state={state} />
       <input type="hidden" name="staff" value={staffId} />
-      <input type="hidden" name="kind" value={kind} />
+      {/*
+        «OUTRO» NÃO É UM TIPO NOVO NA BASE — É UM BLOQUEIO COM NOME.
+
+        A base conhece quatro: folga, férias, formação e bloqueio. O
+        bloqueio é o genérico, o «fecha-me aqui um buraco», e é onde
+        aterra o que não é nenhum dos outros três. O que faz de «Outro»
+        uma resposta útil não é uma linha nova na base, é a razão
+        escrita à mão — e por isso ela passa a ser obrigatória.
+      */}
+      <input
+        type="hidden"
+        name="kind"
+        value={motivo === 'outro' ? 'block' : motivo}
+      />
       {/* O servidor lê `allday === 'on'`: em «parte do dia» o campo não
           vai, que é o mesmo que uma caixa por marcar. */}
       {allDay ? <input type="hidden" name="allday" value="on" /> : null}
 
-      {/* ---- 1 · o que é ---- */}
-      <Passo n={1} titulo="o que é" />
-      <div className="flex flex-wrap gap-2">
-        {KINDS.map((valor) => (
-          <button
-            key={valor}
-            type="button"
-            onClick={() => setKind(valor)}
-            aria-pressed={kind === valor}
-            className={clsx(
-              'rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors',
-              kind === valor
-                ? 'border-[var(--accent)] bg-[var(--accent)] font-semibold text-[var(--accent-ink)]'
-                : 'border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:border-[var(--ink-faint)]',
-            )}
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-3">
+        <Field label="Motivo" htmlFor="abs-kind" className="w-full sm:w-44">
+          <Select
+            id="abs-kind"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value as Motivo)}
           >
-            {ABSENCE_LABEL[valor]}
-          </button>
-        ))}
+            {KINDS.map((valor) => (
+              <option key={valor} value={valor}>
+                {ABSENCE_LABEL[valor]}
+              </option>
+            ))}
+            <option value="outro">Outro…</option>
+          </Select>
+        </Field>
+
+        <Field label="Quando" htmlFor="abs-quando" className="w-full sm:w-44">
+          <Select
+            id="abs-quando"
+            value={allDay ? 'inteiro' : 'parte'}
+            onChange={(e) => setAllDay(e.target.value === 'inteiro')}
+          >
+            <option value="inteiro">Dia inteiro</option>
+            <option value="parte">Só parte do dia</option>
+          </Select>
+        </Field>
       </div>
 
-      {/* ---- 2 · quando ---- */}
-      <div className="pt-1">
-        <Passo n={2} titulo="quando" />
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Comutador on={allDay} onClick={() => setAllDay(true)}>
-          Dia inteiro
-        </Comutador>
-        <Comutador on={!allDay} onClick={() => setAllDay(false)}>
-          Só parte do dia
-        </Comutador>
-      </div>
+      {/* Escolhido «Outro», a razão deixa de ser opcional: sem ela a
+          ausência fica na lista a dizer «Bloqueio» e mais nada, e
+          ninguém se lembra do que era daqui a três semanas. */}
+      {motivo === 'outro' ? (
+        <Field label="Qual" htmlFor="abs-qual" className="max-w-md">
+          <Input
+            id="abs-qual"
+            name="reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={120}
+            autoComplete="off"
+            placeholder="Consulta médica, mudança de casa…"
+            required
+          />
+        </Field>
+      ) : null}
 
       <div className="flex flex-wrap items-end gap-x-3 gap-y-3">
         <Field
@@ -276,19 +303,28 @@ export function AbsenceForm({
       ) : null}
 
       {/*
-        LOJA E MOTIVO ENCOLHEM PARA A RESPOSTA QUE JÁ TÊM.
+        A LOJA E A NOTA ENCOLHEM PARA A RESPOSTA QUE JÁ TÊM.
 
         Dois campos que se usam numa ausência em cada dez não podem
-        gastar uma faixa cada um à frente dos que se usam sempre. Aqui a
-        resposta está escrita — «em todas as lojas, sem motivo escrito»
-        — e quem precisa de outra abre. Fechado continua a ser enviado:
-        o `details` esconde, não desliga.
+        gastar uma faixa cada um à frente dos que se usam sempre. A
+        resposta está escrita — «em todas as lojas, sem nota» — e quem
+        precisa de outra abre. Fechado continua a ser enviado: o
+        `details` esconde, não desliga.
+
+        A NOTA SAI DAQUI QUANDO O MOTIVO É «OUTRO», porque aí ela é a
+        razão da ausência e sobe para o pé do motivo. Só uma das duas
+        existe de cada vez — duas caixas com o mesmo nome enviavam duas
+        respostas para o mesmo campo.
       */}
       <details className="text-[0.8125rem]">
         <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-[var(--ink-faint)] transition-colors hover:text-[var(--ink)] [&::-webkit-details-marker]:hidden">
           <span>
-            {onde.charAt(0).toUpperCase() + onde.slice(1)},{' '}
-            {reason ? `motivo: ${reason}` : 'sem motivo escrito'}.
+            {onde.charAt(0).toUpperCase() + onde.slice(1)}
+            {motivo === 'outro'
+              ? '.'
+              : reason
+                ? `, com nota: ${reason}.`
+                : ', sem nota.'}
           </span>
           <span className="font-semibold text-[var(--accent)]">alterar</span>
         </summary>
@@ -308,17 +344,19 @@ export function AbsenceForm({
               ))}
             </Select>
           </Field>
-          <Field label="Motivo" htmlFor="abs-reason" className="min-w-48 flex-1">
-            <Input
-              id="abs-reason"
-              name="reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              maxLength={120}
-              autoComplete="off"
-              placeholder="Opcional"
-            />
-          </Field>
+          {motivo === 'outro' ? null : (
+            <Field label="Nota" htmlFor="abs-reason" className="min-w-48 flex-1">
+              <Input
+                id="abs-reason"
+                name="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                maxLength={120}
+                autoComplete="off"
+                placeholder="Opcional"
+              />
+            </Field>
+          )}
         </div>
       </details>
 
@@ -336,40 +374,6 @@ export function AbsenceForm({
   )
 }
 
-/** O número do passo, para se ver que são dois e onde vai o segundo. */
-function Passo({ n, titulo }: { n: number; titulo: string }) {
-  return (
-    <p className="text-[0.6875rem] font-bold tracking-[0.12em] text-[var(--accent-strong)] uppercase">
-      {n} · {titulo}
-    </p>
-  )
-}
-
-function Comutador({
-  on,
-  onClick,
-  children,
-}: {
-  on: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      className={clsx(
-        'rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors',
-        on
-          ? 'border-[var(--accent)] bg-[var(--accent)] font-semibold text-[var(--accent-ink)]'
-          : 'border-[var(--line)] bg-[var(--surface-raised)] text-[var(--ink-muted)] hover:border-[var(--ink-faint)]',
-      )}
-    >
-      {children}
-    </button>
-  )
-}
 
 export function RemoveAbsence({
   staffId,

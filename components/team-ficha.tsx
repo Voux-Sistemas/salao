@@ -1,9 +1,8 @@
 'use client'
 
-import { useActionState, useMemo, useState, useTransition } from 'react'
+import { useActionState, useMemo, useState } from 'react'
 import { clsx } from 'clsx'
 import {
-  copySkillsAction,
   saveFichaAction,
   type TeamState,
 } from '@/app/(desk)/admin/equipe/actions'
@@ -15,7 +14,7 @@ import {
   parseMinutes,
   WEEKDAY_NAMES_PT,
 } from '@/lib/time'
-import type { Level, SkillSource } from '@/lib/team'
+import type { Level } from '@/lib/team'
 
 /**
  * A FICHA DE UMA PESSOA — TRÊS CARTÕES E UM BOTÃO.
@@ -208,7 +207,6 @@ export function Ficha({
   roles,
   groups,
   schedule,
-  sources,
   today,
   canGrantNetwork,
   canGrantMaster,
@@ -222,7 +220,6 @@ export function Ficha({
   roles: { role: Level; unitId: string | null }[]
   groups: SkillGroupView[]
   schedule: ScheduleSlice[]
-  sources: SkillSource[]
   today: string
   canGrantNetwork: boolean
   /** Só de dentro do degrau se dá o degrau. */
@@ -321,7 +318,6 @@ export function Ficha({
       .map((g) => g.category),
   )
   const [needle, setNeedle] = useState('')
-  const [copying, copy] = useTransition()
 
   const total = groups.reduce((sum, g) => sum + g.services.length, 0)
 
@@ -674,12 +670,10 @@ export function Ficha({
                 const sai = parseMinutes(slot.ends)
                 const duracao =
                   entra !== null && sai !== null && sai > entra ? sai - entra : 0
-                const posicao = ORDER.indexOf(weekday)
-                const abaixo = ORDER.slice(posicao + 1)
                 return (
                   <div
                     key={weekday}
-                    className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-x-3 gap-y-1 border-b border-[var(--line-soft)] py-1.5 last:border-0"
+                    className="grid grid-cols-[7rem_1fr] items-center gap-x-2 gap-y-1 border-b border-[var(--line-soft)] py-1.5 last:border-0"
                   >
                     <Caixa
                       on={slot.on}
@@ -706,8 +700,15 @@ export function Ficha({
 
                           Numa moldura de largura fixa, o `w-full` de
                           dentro passa a ser exactamente o que se quer.
+
+                          SETE REM E NÃO SEIS. Um campo de hora não tem
+                          só «09:00» lá dentro: tem o relógio que o
+                          navegador lhe pendura à direita, e o `px-3`
+                          que vem do `Input` da casa dos dois lados. Com
+                          seis, o relógio ficava encostado ao número e
+                          lia-se cortado.
                         */}
-                        <span className="block w-[6rem]">
+                        <span className="block w-[7rem]">
                           <Input
                             type="time"
                             value={slot.starts}
@@ -725,7 +726,7 @@ export function Ficha({
                           />
                         </span>
                         <span className="text-[var(--ink-faint)]">→</span>
-                        <span className="block w-[6rem]">
+                        <span className="block w-[7rem]">
                           <Input
                             type="time"
                             value={slot.ends}
@@ -749,43 +750,16 @@ export function Ficha({
                         ) : null}
                       </div>
                     ) : (
-                      <span className="text-[0.8125rem] text-[var(--ink-faint)]">
+                      /* Alinhado com a caixa da hora, e não com a
+                         moldura: as duas coisas ocupam o mesmo sítio na
+                         linha, e o olho desce a coluna sem tropeçar. */
+                      <span className="px-3 text-[0.8125rem] text-[var(--ink-faint)]">
                         Não trabalha
                       </span>
                     )}
 
-                    {/*
-                      COPIAR DAQUI PARA BAIXO — um por linha.
-
-                      Era um botão só, no fundo do cartão, depois dos
-                      catorze campos: chegava tarde para servir, e
-                      copiava a segunda para TODOS os dias, o que não
-                      serve a quem tem o fim-de-semana diferente. Aqui
-                      copia esta linha para as que vêm a seguir, e o
-                      sábado copia-se para o domingo sem tocar na
-                      semana.
-                    */}
-                    {slot.on && abaixo.length > 0 ? (
-                      <button
-                        type="button"
-                        title={`Repetir ${WEEKDAY_NAMES_PT[weekday]} nos dias seguintes`}
-                        onClick={() =>
-                          setWeek((current) =>
-                            current.map((day, index) =>
-                              abaixo.includes(index) ? { ...slot } : day,
-                            ),
-                          )
-                        }
-                        className="rounded-[var(--radius-sm)] px-2 py-1 text-[0.6875rem] font-semibold whitespace-nowrap text-[var(--ink-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] hover:text-[var(--accent-strong)]"
-                      >
-                        ↓ daqui para baixo
-                      </button>
-                    ) : (
-                      <span />
-                    )}
-
                     {fechado ? (
-                      <p className="col-span-2 col-start-2 text-[0.75rem] text-[var(--warn)]">
+                      <p className="col-start-2 px-3 text-[0.75rem] text-[var(--warn)]">
                         A casa fecha neste dia — este turno não vai dar
                         horas a ninguém.
                       </p>
@@ -830,45 +804,12 @@ export function Ficha({
 
       {/* ---------- Serviços ---------- */}
       <Bloco title="Serviços">
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            value={needle}
-            onChange={(e) => setNeedle(e.target.value)}
-            placeholder="Procurar serviço…"
-            className="min-w-48 flex-1"
-            aria-label="Procurar serviço"
-          />
-          {sources.length > 0 ? (
-            <Select
-              value=""
-              disabled={copying}
-              aria-label="Copiar habilidades de outra pessoa"
-              onChange={(e) => {
-                const who = e.target.value
-                if (!who) return
-                e.target.value = ''
-                copy(async () => {
-                  const { ids } = await copySkillsAction(who)
-                  setSkills(new Set(ids))
-                  setOpen(
-                    groups
-                      .filter((g) => g.services.some((s) => ids.includes(s.id)))
-                      .map((g) => g.category),
-                  )
-                })
-              }}
-              className="w-auto min-w-44"
-            >
-              <option value="">Copiar de…</option>
-              {sources.map((who) => (
-                <option key={who.id} value={who.id}>
-                  {who.name} · {who.count} serviços
-                  {who.top ? ` · ${who.top.toLowerCase()}` : ''}
-                </option>
-              ))}
-            </Select>
-          ) : null}
-        </div>
+        <Input
+          value={needle}
+          onChange={(e) => setNeedle(e.target.value)}
+          placeholder="Procurar serviço…"
+          aria-label="Procurar serviço"
+        />
 
         <p className="pb-1 pt-3.5 text-[0.8125rem] text-[var(--ink-muted)]">
           Aparece em{' '}

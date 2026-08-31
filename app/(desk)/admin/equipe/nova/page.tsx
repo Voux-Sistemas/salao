@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { can, requireManagement, unitsFor } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
-import { listSkills, listSkillSources } from '@/lib/team'
+import { listSkills } from '@/lib/team'
 import { today } from '@/lib/time'
 import { openWeekdaysFor } from '@/lib/hours'
 import { Ficha } from '@/components/team-ficha'
@@ -25,9 +25,8 @@ export default async function NovaPessoaPage() {
   if (units.length === 0) redirect('/admin/equipe')
 
   const org = await requireOrg()
-  const [groups, sources, abertura] = await Promise.all([
+  const [groups, abertura] = await Promise.all([
     listSkills(actor.orgId, null),
-    listSkillSources(actor, null),
     openWeekdaysFor(units.map((unit) => unit.id)),
   ])
 
@@ -56,7 +55,6 @@ export default async function NovaPessoaPage() {
         roles={[{ role: 'professional', unitId: null }]}
         groups={groups}
         schedule={[]}
-        sources={sources}
         today={today(org.timezone)}
         canGrantNetwork={actor.orgScope && actor.role !== 'manager'}
         canGrantMaster={can.manageMasters(actor)}

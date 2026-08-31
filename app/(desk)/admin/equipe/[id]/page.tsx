@@ -10,7 +10,6 @@ import {
   listRoles,
   listSchedule,
   listSkills,
-  listSkillSources,
 } from '@/lib/team'
 import {
   addDays,
@@ -62,7 +61,7 @@ export default async function PessoaPage({
   const org = await requireOrg()
   const todayIso = today(org.timezone)
 
-  const [units, roles, memberUnits, skills, schedule, absences, sources] =
+  const [units, roles, memberUnits, skills, schedule, absences] =
     await Promise.all([
       unitsFor(actor),
       listRoles(member.id),
@@ -70,7 +69,6 @@ export default async function PessoaPage({
       listSkills(actor.orgId, member.id),
       listSchedule(member.id, todayIso),
       listAbsences(member.id),
-      listSkillSources(actor, member.id),
     ])
 
   // A escala precisa de saber quando a casa abre, para avisar de um
@@ -186,7 +184,6 @@ export default async function PessoaPage({
           ends_min: row.ends_min,
           is_current: row.is_current,
         }))}
-        sources={sources}
         today={todayIso}
         canGrantNetwork={actor.orgScope && actor.role !== 'manager'}
         canGrantMaster={can.manageMasters(actor)}
