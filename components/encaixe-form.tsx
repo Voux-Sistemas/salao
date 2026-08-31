@@ -84,10 +84,12 @@ export function EncaixeForm({
           <Field label="Nome" htmlFor="encaixe-name">
             <Input id="encaixe-name" name="name" autoComplete="off" required />
           </Field>
-          {/* Opcional aqui pela mesma razão do site: entra alguém à
-              porta a perguntar se dá agora, e ninguém lhe nega a cadeira
-              por não querer dar o número. Sem ele, a ficha nasce «sem
-              contacto» — e a marcação diz isso na agenda. */}
+          {/* OPCIONAL AQUI, E SÓ AQUI. Na montra o número voltou a ser
+              obrigatório — lá não está ninguém a receber a cliente. Aqui
+              está: entra alguém à porta a perguntar se dá agora, e não
+              se lhe nega a cadeira por não querer dar o número, porque
+              quem confirma e avisa está à frente dela. Sem ele, a ficha
+              nasce «sem contacto» — e a marcação diz isso na agenda. */}
           <Field
             label="Telefone (opcional)"
             htmlFor="encaixe-phone"

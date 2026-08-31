@@ -233,17 +233,6 @@ export const pt = {
     nameLabel: 'Nome',
     phoneLabel: 'Telemóvel',
     phoneHint: 'Com indicativo, por exemplo +351 912 345 678',
-    /*
-      O PREÇO DE NÃO DEIXAR O NÚMERO, DITO SEM DRAMA.
-
-      O telemóvel passou a ser opcional porque nem toda a gente o quer
-      dar. Mas quem o deixa em branco tem de saber o que perde: é por
-      ali que a casa confirma a marcação e avisa se houver um imprevisto
-      — uma profissional doente, um atraso de uma hora. Não é uma
-      ameaça, é a verdade do que acontece a seguir.
-    */
-    phoneOptionalWarning:
-      'Sem telemóvel não lhe conseguimos confirmar a marcação nem avisar se houver algum imprevisto.',
     noteLabel: 'Quer deixar alguma observação?',
     notePlaceholder: 'Alergias, preferências, o que quiser dizer-nos.',
     submit: 'Confirmar marcação',
@@ -266,6 +255,7 @@ export const pt = {
     unitClosed: 'A loja está fechada nesse horário.',
     nameRequired: 'Diga-nos o seu nome.',
     phoneInvalid: 'Esse número não parece válido.',
+    phoneRequired: 'Precisamos do seu telemóvel para lhe confirmar a marcação.',
     tooMany: 'Demasiados pedidos seguidos. Espere um pouco, por favor.',
     generic: 'Alguma coisa correu mal. Tente outra vez.',
   },

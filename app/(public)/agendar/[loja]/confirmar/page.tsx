@@ -188,7 +188,6 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
             name: dict.funnel.nameLabel,
             phone: dict.funnel.phoneLabel,
             phoneHint: dict.funnel.phoneHint,
-            phoneWarning: dict.funnel.phoneOptionalWarning,
             note: dict.funnel.noteLabel,
             notePlaceholder: dict.funnel.notePlaceholder,
             optional: dict.common.optional,

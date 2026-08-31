@@ -194,8 +194,6 @@ export const en: Dictionary = {
     nameLabel: 'Name',
     phoneLabel: 'Mobile',
     phoneHint: 'With country code, for example +351 912 345 678',
-    phoneOptionalWarning:
-      'Without a phone number we cannot confirm your booking or let you know if anything changes.',
     noteLabel: 'Anything you would like us to know?',
     notePlaceholder: 'Allergies, preferences, anything at all.',
     submit: 'Confirm booking',
@@ -218,6 +216,7 @@ export const en: Dictionary = {
     unitClosed: 'The salon is closed at that time.',
     nameRequired: 'Please tell us your name.',
     phoneInvalid: 'That number does not look right.',
+    phoneRequired: 'We need your mobile number to confirm the booking.',
     tooMany: 'Too many requests in a row. Please wait a moment.',
     generic: 'Something went wrong. Please try again.',
   },

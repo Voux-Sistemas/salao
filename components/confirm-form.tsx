@@ -10,7 +10,6 @@ export type ConfirmLabels = {
   name: string
   phone: string
   phoneHint: string
-  phoneWarning: string
   note: string
   notePlaceholder: string
   optional: string
@@ -60,26 +59,30 @@ export function ConfirmForm({
       </Field>
 
       {/*
-        O TELEMÓVEL DEIXA DE SER OBRIGATÓRIO.
+        NA MONTRA O TELEMÓVEL VOLTA A SER OBRIGATÓRIO.
 
-        Nem toda a gente quer dar o número para marcar um brushing, e a
-        casa prefere a marcação sem número à marcação que não se fez.
+        Foi opcional dos dois lados durante uns dias, e a dona da casa
+        veio dizer onde é que os dois lados diferem: ao BALCÃO
+        está lá alguém — a colaboradora vê a cliente, sabe o nome dela,
+        e se for preciso grita-lhe pela porta. Aqui não está ninguém.
+        Uma marcação feita às onze da noite por um nome sem número é uma
+        cadeira reservada a quem a casa não consegue chamar: não se
+        confirma, não se avisa de um atraso, e se a profissional
+        adoecer a cliente vem à rua para nada.
 
-        Mas o campo não fica só com um «(opcional)» ao lado: por baixo
-        vai a frase que diz o que se perde — é por ali que a casa
-        confirma e avisa se houver imprevisto. Quem escolher não deixar
-        o número escolhe com a conta feita, que é diferente de escolher
-        por distracção.
+        Por isso o campo pede o número, e o balcão continua a poder
+        marcar sem ele — ver o comentário do encaixe-form.tsx.
+
+        Porque é que se pede, está dito no subtítulo da página: para a
+        identificar e para lhe falar pelo WhatsApp. Não se repete aqui.
       */}
-      <Field
-        label={`${labels.phone} (${labels.optional})`}
-        htmlFor="phone"
-        hint={labels.phoneHint}
-      >
-        <PhoneInput id="phone" name="phone" defaultValue={defaultPhone} />
-        <p className="mt-1.5 text-[0.75rem] leading-relaxed text-[var(--warn)]">
-          {labels.phoneWarning}
-        </p>
+      <Field label={labels.phone} htmlFor="phone" hint={labels.phoneHint}>
+        <PhoneInput
+          id="phone"
+          name="phone"
+          required
+          defaultValue={defaultPhone}
+        />
       </Field>
 
       <Field label={labels.note} htmlFor="note" hint={labels.optional}>

@@ -33,20 +33,33 @@ export async function bookAction(
   if (!name) return { error: dict.errors.nameRequired }
 
   /*
-    O TELEMÓVEL É OPCIONAL — MAS SE VIER, TEM DE PRESTAR.
+    NA MONTRA O TELEMÓVEL É OBRIGATÓRIO — E QUEM O EXIGE É ESTA LINHA.
 
-    Nem toda a gente quer deixar o número para marcar um brushing, e a
-    casa prefere a marcação sem número à marcação que não se fez. O que
-    não se aceita é um número a meio: um «912» escrito à pressa é pior
-    do que campo nenhum, porque a casa fica a julgar que pode avisar.
+    Foi opcional dos dois lados durante uns dias. A dona da casa veio
+    dizer onde é que os dois lados diferem: ao BALCÃO está lá alguém —
+    a colaboradora vê a cliente, fala com ela, e se for preciso
+    chama-a pela porta fora. Aqui não está ninguém. Uma marcação feita
+    às onze da noite por um nome sem número é uma cadeira reservada a
+    quem a casa não consegue chamar: não se confirma, não se avisa de
+    um atraso, e se a profissional adoecer a cliente vem à rua a um
+    salão fechado.
 
-    Em branco vale NULO até à base: é assim que a ficha fica «sem
-    contacto», em vez de ficar com uma identidade vazia que colidia com
-    a seguinte.
+    O «required» do campo é uma cortesia do navegador — poupa uma ida
+    ao servidor e mostra o aviso onde o dedo está. Não é uma regra:
+    desliga-se com uma linha na consola, e uma marcação chega por HTTP
+    como qualquer outra coisa. A regra é esta.
+
+    A COLUNA NA BASE CONTINUA A ACEITAR NULO, e continua a ser preciso:
+    é por ali que o balcão marca para quem entra à porta sem querer dar
+    o número. O que muda é quem pode usar essa porta — ver o comentário
+    do campo em components/encaixe-form.tsx.
+
+    E «a meio» não presta: um «912» escrito à pressa é pior do que campo
+    nenhum, porque a casa fica a julgar que pode avisar.
   */
-  const escrito = phoneRaw.trim()
-  const phone = escrito ? normalisePhone(escrito) : null
-  if (phone !== null && phone.replace(/\D/g, '').length < 9) {
+  const phone = normalisePhone(phoneRaw.trim())
+  if (!phone) return { error: dict.errors.phoneRequired }
+  if (phone.replace(/\D/g, '').length < 9) {
     return { error: dict.errors.phoneInvalid }
   }
 

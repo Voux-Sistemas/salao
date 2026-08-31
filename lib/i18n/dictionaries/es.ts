@@ -194,8 +194,6 @@ export const es: Dictionary = {
     nameLabel: 'Nombre',
     phoneLabel: 'Móvil',
     phoneHint: 'Con prefijo, por ejemplo +34 612 345 678',
-    phoneOptionalWarning:
-      'Sin teléfono no podemos confirmarle la cita ni avisarle si surge algún imprevisto.',
     noteLabel: '¿Quieres dejarnos alguna nota?',
     notePlaceholder: 'Alergias, preferencias, lo que quieras contarnos.',
     submit: 'Confirmar reserva',
@@ -218,6 +216,7 @@ export const es: Dictionary = {
     unitClosed: 'El centro está cerrado a esa hora.',
     nameRequired: 'Dinos tu nombre.',
     phoneInvalid: 'Ese número no parece válido.',
+    phoneRequired: 'Necesitamos tu móvil para confirmarte la reserva.',
     tooMany: 'Demasiadas peticiones seguidas. Espera un momento, por favor.',
     generic: 'Algo ha salido mal. Inténtalo otra vez.',
   },
