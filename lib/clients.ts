@@ -29,7 +29,27 @@ export type ClientRow = {
   preferred_unit_name: string | null
   visits: number
   next_at: Date | null
+  /** O nome guardado é só dígitos, ou está vazio. Ver `SEM_NOME`. */
+  no_name: boolean
 }
+
+/**
+ * UMA FICHA CUJO NOME É UM NÚMERO NÃO TEM NOME.
+ *
+ * Quando a cliente marca sem escrever como se chama, a ficha nasce com
+ * o que houver — e o que há é o telefone. Ficava a ler-se «+351 913 362
+ * 196» na coluna do nome, com o número repetido ao lado, e como os
+ * dígitos ordenam antes das letras eram as PRIMEIRAS de toda a lista:
+ * a primeira coisa que alguém via ao abrir Clientes.
+ *
+ * Isto reconhece-as — só espaços, dígitos e a pontuação de um número —
+ * para a lista lhes poder chamar «Sem nome» e as mandar para o fim.
+ *
+ * Sem barras invertidas de propósito: dentro de um literal de template
+ * de JavaScript, `\s` perde a barra pelo caminho e o padrão deixa de
+ * ser o que aqui está escrito.
+ */
+const SEM_NOME = `^[ +()0-9.-]*$`
 
 export type ClientDetail = ClientRow & {
   org_id: string
@@ -99,6 +119,7 @@ export async function searchClients(
       select c.id, c.name, c.phone, c.email, c.language, c.tags,
              c.no_show_count, c.first_visit_at, c.last_visit_at,
              u.name as preferred_unit_name,
+             coalesce(c.name, '') ~ ${SEM_NOME} as no_name,
              (select count(*)::int from appointment a
                where a.client_id = c.id and a.status = 'completed') as visits,
              (select min(a.starts_at) from appointment a
@@ -109,7 +130,9 @@ export async function searchClients(
         from client c
         left join unit u on u.id = c.preferred_unit_id
        where ${where()}
-       order by c.name
+       -- As sem nome vão para o fim: ordenadas pelo nome, os dígitos
+       -- vinham antes das letras e abriam a lista.
+       order by coalesce(c.name, '') ~ ${SEM_NOME}, c.name
        limit ${LIST_LIMIT} offset ${offset}
     `,
     sql<{ total: number }[]>`
@@ -147,6 +170,7 @@ export async function getClient(
            c.is_active, c.created_at,
            u.name as preferred_unit_name,
            s.name as preferred_staff_name,
+           coalesce(c.name, '') ~ ${SEM_NOME} as no_name,
            (select count(*)::int from appointment a
              where a.client_id = c.id and a.status = 'completed') as visits,
            (select min(a.starts_at) from appointment a
