@@ -189,8 +189,9 @@ export function AbsenceForm({
         Estas duas estiveram lado a lado e o «Só parte do dia» saía
         cortado ao meio: uma caixinha de escolha não encolhe o texto,
         corta-o. As datas e as horas estiveram lado a lado e saíam pela
-        borda fora: uma caixa de data ou de hora é um comando do sistema
-        e tem uma largura mínima própria que ignora a que se lhe manda.
+        borda fora — não por causa delas, como cheguei a escrever aqui,
+        mas por causa do `box-sizing` que faltava a todos os campos da
+        casa; ver o `box-border` no `ui.tsx`.
 
         A regra passou a ser a mesma para todas, e é a única que aguenta
         qualquer telemóvel: uma por linha até ao `sm`, e só a partir daí

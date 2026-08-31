@@ -720,22 +720,19 @@ export function Ficha({
 
                     Tentei três vezes fazer caber as duas horas numa
                     linha de telemóvel: 92 píxeis, 112, «metade do que
-                    houver». Ignoraram as três. Um `input[type=time]`
-                    não é uma caixa de texto — é um comando do sistema,
-                    abre o relógio do telefone, e o navegador dá-lhe uma
-                    largura mínima própria que ignora o `width` que vem
-                    de fora. Enquanto o pai era estreito empilhava-se lá
-                    dentro; com uma linha inteira, transbordava.
+                    houver». Ignoraram as três, e cheguei a escrever
+                    aqui que a culpa era de uma largura mínima do
+                    Safari. NÃO ERA. Era a caixa a somar o preenchimento
+                    à largura em vez de o incluir nela — ver o
+                    `box-border` no `ui.tsx`, que é onde isso ficou
+                    resolvido para a casa toda.
 
-                    Qualquer medida que eu escolha é uma aposta contra
-                    um número que é do Safari e que muda de telemóvel
-                    para telemóvel. Então tira-se a aposta do caminho:
-
-                    NO TELEMÓVEL A LINHA FECHADA É SÓ TEXTO — o visto, o
-                    nome e «09:00 → 20:00». Texto não transborda:
-                    encolhe, quebra, adapta-se. Toca-se nela e abre, e
-                    aí cada hora tem a LINHA INTEIRA para ela sozinha,
-                    onde a largura mínima do navegador nunca chega.
+                    O DESENHO FICA COMO ESTÁ, E POR MÉRITO PRÓPRIO. A
+                    linha fechada ser só texto — o visto, o nome e
+                    «09:00 → 20:00» — deixa ler a semana inteira de uma
+                    vez sem tocar em nada, que é ao que se vem. E uma
+                    caixa sozinha na linha continua a ser a forma que
+                    não depende de medida nenhuma.
 
                     A PARTIR DO `sm` NADA DISTO ACONTECE: as duas caixas
                     ficam sempre abertas e lado a lado, como estavam,

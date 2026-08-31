@@ -211,8 +211,33 @@ export function Field({
   A caixa continua com 44 px de altura no telemóvel: encolhe a letra,
   não o alvo do polegar.
 */
+/*
+  `box-border` — A LINHA QUE FALTAVA, E QUE EXPLICA TUDO O RESTO.
+
+  Passei uma tarde a mexer em larguras de campos que não obedeciam.
+  Pedia 92 píxeis e saíam 118. Pedia «a largura da moldura» e saíam 26
+  píxeis para lá dela. Cheguei a escrever que um `input[type=time]` tem
+  uma largura mínima do navegador e que era preciso desenhar à volta
+  disso. NÃO ERA VERDADE.
+
+  Os dois transbordos que se viam no telemóvel — o painel da escala e a
+  caixa das ausências, com molduras de preenchimento diferente — mediam
+  EXACTAMENTE O MESMO: 26 píxeis. Vinte e quatro do `px-3` dos dois
+  lados, mais dois da moldura. Uma caixa que soma o preenchimento à
+  largura em vez de o incluir nela é uma caixa em `content-box`.
+
+  O `box-sizing: border-box` da casa está escrito em `@layer base`, no
+  selector `*`, que é a prioridade mais baixa que existe. Bastou alguma
+  regra do navegador do iPhone chegar-lhe à frente para estes campos
+  ficarem de fora — e ficaram, mas só eles, o que fez isto parecer um
+  capricho dos campos de data e hora quando era da casa toda.
+
+  Escrito aqui, o `box-border` entra na camada das utilidades, que ganha
+  à base. Não é um remendo destes campos: é a regra a chegar onde já
+  devia ter chegado.
+*/
 const CONTROL =
-  'w-full bg-[var(--surface-raised)] border border-[var(--line)] rounded-[var(--radius)] px-3 ' +
+  'box-border w-full bg-[var(--surface-raised)] border border-[var(--line)] rounded-[var(--radius)] px-3 ' +
   'text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] ' +
   'transition-[border-color,box-shadow] duration-300 focus:outline-none focus:border-[var(--accent)] ' +
   'focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_18%,transparent)]'
