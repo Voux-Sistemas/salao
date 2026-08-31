@@ -383,6 +383,43 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* ---------------------------------------------------------------------
+   O DEDO QUE ROLA NÃO ESTÁ A CARREGAR EM NADA.
+
+   Ao pousar o dedo para rolar, o Safari do iPhone acende o elemento que
+   se tocou — um rectângulo cinzento-azulado que segue a borda da caixa
+   — e, se o dedo demora um instante antes de arrastar, começa a marcar
+   o texto. Ao balcão isso lê-se como a página a «pegar» nas bordas dos
+   cartões à medida que se rola, e não é engano nenhum de quem o vê: é
+   o telefone a adivinhar um toque onde só houve um arrastar.
+
+   Num sítio onde se lê, esse comportamento é útil e fica. Aqui não se
+   lê: aqui carrega-se. Tira-se a luz do toque em todo o lado, e a
+   marcação de texto SÓ nas peças em que ela nunca serviu — botões,
+   ligações, rótulos, cabeçalhos de coluna, os números do calendário.
+
+   O QUE SE COPIA CONTINUA A COPIAR-SE. Nomes de clientes, telefones,
+   moradas, notas: é texto normal, e continua a marcar-se com o dedo
+   como sempre. É por isso que isto é uma lista de peças e não um `*`.
+   --------------------------------------------------------------------- */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, a, label, summary, [role='button'], th, legend) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* E DEVOLVE-SE ONDE SE ESCREVE. O `user-select` herda-se: um campo
+   dentro de um rótulo apanhava o «não» do pai e deixava de se poder
+   marcar o que lá estava escrito para o corrigir. Escrito depois, com a
+   mesma especificidade nula, ganha por ser o último. */
+:where(input, textarea) {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
 ::selection {
   background: var(--gold);
   color: #191407;
