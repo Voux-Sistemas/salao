@@ -84,26 +84,29 @@ export function PassarPastilha({
 
   return (
     /*
-      `relative` para o menu se pendurar, e a camada sobe QUANDO ABRE.
+      A CAMADA SOBE QUANDO ABRE, e o menu pendura-se na LINHA, não na
+      pastilha.
 
       A pastilha precisa de estar acima da folha invisível que cobre a
-      linha e abre a marcação — daí o `z-10`. Mas o menu nasce dentro
-      dessa camada, e uma camada não sobe acima do que está fora dela:
-      as pastilhas das linhas seguintes, que são z-10 e vêm depois no
-      documento, pintavam por cima do menu aberto. Não era transparência
-      nenhuma — eram os elementos de outras linhas a atravessá-lo.
+      linha e abre a marcação — daí o `z-10`. Aberta sobe a `z-50`, para
+      passar à frente das pastilhas das linhas seguintes.
 
-      Aberta, a pastilha sobe e leva o menu com ela.
+      `sm:relative` E NÃO `relative`: a partir do `sm` o menu pendura-se
+      na pastilha, que é onde há espaço para ele à direita. No telemóvel
+      a pastilha NÃO é âncora, e o menu vai buscar a âncora mais acima —
+      o `<li>` da linha, que é `relative`. Assim abre debaixo da linha em
+      que se tocou, com a largura dela.
 
-      E SOBE A `z-50`, NÃO A `z-40`. Com 40 empatava com a barra do
-      fundo do telemóvel, que também é 40 — e num empate ganha quem vem
-      depois no documento, que é sempre a barra. O `z-50` que a folha
-      tem por dentro não a salvava: uma camada filha nunca sai da
-      camada do pai. Era por isso que a última pessoa da lista aparecia
-      cortada pela barra, e que o véu não a escurecia.
+      DUAS TENTATIVAS ANTES DESTA ERAM UMA FOLHA PRESA AO FUNDO DO ECRÃ.
+      Era mais fácil de posicionar e resolvia a largura — e estava
+      errada por duas razões que só se veem a usar: aparecia longe do
+      sítio onde se tinha tocado, e ficava lá agarrada enquanto a lista
+      rolava por trás. Além disso disputava os últimos três centímetros
+      e meio com a barra do fundo, que é `fixed` e vive lá. Um menu que
+      não briga por espaço é melhor do que um menu que ganha a briga.
     */
     <span
-      className={clsx('relative shrink-0', aberto ? 'z-50' : 'z-10')}
+      className={clsx('shrink-0 sm:relative', aberto ? 'z-50' : 'z-10')}
     >
       <button
         type="button"
@@ -133,39 +136,31 @@ export function PassarPastilha({
       {aberto ? (
         <>
           {/*
-            O VÉU — SÓ NO TELEMÓVEL, E FAZ DUAS COISAS.
+            APANHA-TOQUES, E JÁ NÃO É UM VÉU.
 
-            Apaga a lista para a folha se ler sozinha, e fecha ao toque.
-            Sem ele, a única saída era o «Deixar como está» lá no fundo,
-            e quem abrisse por engano ficava preso a procurar botão.
+            Era escuro, para apagar a lista enquanto a folha estava no
+            fundo do ecrã. Com o menu colado à linha não há nada para
+            apagar — o que se está a passar vê-se logo acima dele. Fica
+            transparente, só para que um toque em qualquer sítio feche.
           */}
           <span
             onClick={() => setAberto(false)}
-            className="fixed inset-0 z-40 block bg-[rgba(28,24,21,0.42)] sm:hidden"
+            className="fixed inset-0 z-0 block"
           />
 
           {/*
-            NO TELEMÓVEL É UMA FOLHA ENCOSTADA AO FUNDO, da largura toda
-            menos as margens: sem ancoragem, sem posicionamento, sem
-            contas. É a lição do dia — quando o espaço é pouco, dá-se a
-            largura toda em vez de a disputar.
+            O MENU DEBAIXO DA LINHA.
 
-            A partir do `sm` volta a ser o menu pendurado da pastilha,
-            que é o que a casa usa em todo o lado e que lá cabe.
+            No telemóvel abre da largura da linha, encostado às margens
+            dela — a âncora é o `<li>`, não a pastilha. A partir do `sm`
+            pendura-se da pastilha, à direita, que é onde há espaço.
 
-            O FUNDO NÃO É O FUNDO DO ECRÃ. O iPhone tem a barra do
-            indicador por baixo de tudo, e uma folha encostada a três
-            píxeis ficava com a última linha debaixo dela. O `env()`
-            devolve zero em quem não tem indicador, portanto a conta
-            serve os dois casos sem os distinguir.
-
-            E TEM TECTO. Numa equipa grande a lista era mais alta do
-            que o ecrã e crescia para cima, para fora — a folha é que
-            manda na altura, e o miolo é que rola. O cabeçalho diz de
-            quem é a marcação e o «deixar como está» é a saída: nenhum
-            dos dois pode fugir com a rolagem.
+            TEM TECTO E O MIOLO ROLA. Numa equipa grande a lista é mais
+            alta do que o que sobra do ecrã; o cabeçalho diz de quem é a
+            marcação e o «deixar como está» é a saída, e nenhum dos dois
+            pode fugir com a rolagem.
           */}
-          <span className="max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] max-sm:z-50 max-sm:max-h-[80vh] sm:absolute sm:top-full sm:right-0 sm:mt-1.5 sm:w-[16rem] sm:max-h-[70vh] flex flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_22px_50px_-18px_rgba(28,24,21,0.5)]">
+          <span className="max-sm:absolute max-sm:inset-x-3 max-sm:top-full max-sm:mt-1 max-sm:max-h-[60vh] sm:absolute sm:top-full sm:right-0 sm:mt-1.5 sm:w-[16rem] sm:max-h-[70vh] relative z-10 flex flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_22px_50px_-18px_rgba(28,24,21,0.5)]">
             {/*
               A FOLHA DIZ O QUE SE ESTÁ A PASSAR. Com a lista tapada por
               trás, sem isto deixa de haver maneira de confirmar em qual
@@ -326,11 +321,16 @@ export function PassarTodas({
 
       {aberto ? (
         <>
+          {/* Transparente: o menu abre colado à faixa, e não há nada
+              para apagar por trás. Só fecha ao toque de fora. */}
           <span
             onClick={() => setAberto(false)}
-            className="fixed inset-0 z-40 block bg-[rgba(28,24,21,0.42)] sm:hidden"
+            className="fixed inset-0 z-0 block"
           />
-          <div className="max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] max-sm:z-50 max-sm:max-h-[80vh] sm:absolute sm:top-full sm:right-4 sm:mt-1 sm:w-[15rem] sm:max-h-[70vh] flex flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_22px_50px_-18px_rgba(28,24,21,0.5)]">
+          {/* Esta faixa já é `relative`, por isso a âncora é ela nos dois
+              tamanhos: da largura toda no telemóvel, pendurada à direita
+              a partir do `sm`. */}
+          <div className="max-sm:inset-x-3 max-sm:mt-1 max-sm:max-h-[60vh] sm:right-4 sm:mt-1 sm:w-[15rem] sm:max-h-[70vh] absolute top-full z-10 flex flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_22px_50px_-18px_rgba(28,24,21,0.5)]">
             <p className="shrink-0 border-b border-[var(--line-soft)] px-4 py-3 text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
               Passar as {quantas} a
             </p>
