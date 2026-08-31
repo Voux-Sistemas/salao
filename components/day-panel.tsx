@@ -1,14 +1,15 @@
 import Link from 'next/link'
+import clsx from 'clsx'
 import { sql } from '@/lib/db'
 import type { Org, Unit } from '@/lib/org'
 import type { Actor } from '@/lib/auth/actor'
-import { can } from '@/lib/auth/actor'
 import { DAY_PARAM, TIME_PARAM } from '@/lib/cart'
 import { formatCents } from '@/lib/money'
 import { openingWindows } from '@/lib/hours'
 import { receitaDaMarcacao } from '@/lib/dashboard'
+import { ocupacaoDaSemana } from '@/lib/ocupacao'
+import { PainelNumeros } from '@/components/painel-numeros'
 import {
-  addDays,
   dayEnd,
   dayStart,
   formatDayLong,
@@ -43,11 +44,20 @@ import { shortName } from '@/lib/text'
  * manhã ou às sete da tarde, e o tempo que falta na que está a decorrer
  * mostra-se por dentro da própria linha.
  *
- * Três blocos: o dia, o mês, e o que precisa de mão. O recorte é o das
- * lojas a que esta pessoa tem acesso.
+ * DOIS SEPARADORES, E A AGENDA ABRE PRIMEIRO.
  *
- * As fronteiras de dia e de mês contam-se no fuso da rede; cada loja
- * mostra as suas horas no fuso dela.
+ * A página tinha o dia numa coluna de dois terços e os números do mês
+ * ao lado — e com duas casas, a segunda ficava fora do ecrã: abria-se o
+ * painel e via-se metade do salão.
+ *
+ * A agenda passa a levar a página toda, uma coluna por casa. Os números
+ * mudam-se para o separador ao lado, onde têm espaço para dizer mais do
+ * que um total: a ocupação, o mapa das horas que sobram, e as clientes
+ * que voltam ou não voltam.
+ *
+ * O recorte é o das lojas a que esta pessoa tem acesso. As fronteiras
+ * de dia contam-se no fuso da rede; cada loja mostra as suas horas no
+ * fuso dela.
  */
 
 /** Abaixo disto não é folga, é a volta entre duas clientes. */
@@ -70,8 +80,6 @@ type ApptRow = {
 }
 
 type MoneyRow = { unit_id: string; revenue_cents: number }
-type MonthRow = { current_cents: number; previous_cents: number }
-type DailyRow = { day: string; cents: number }
 
 /** Uma linha da agenda: ou é uma marcação, ou é o vazio entre duas. */
 type Slot =
@@ -82,10 +90,12 @@ export async function DayPanel({
   actor,
   org,
   units,
+  vista = 'agenda',
 }: {
   actor: Actor
   org: Org
   units: Unit[]
+  vista?: Vista
 }) {
   if (units.length === 0) {
     return (
@@ -102,25 +112,37 @@ export async function DayPanel({
   const now = new Date()
   const day = today(tz, now)
 
+  /*
+    OS NÚMEROS SAEM DAQUI ANTES DAS CONSULTAS DO DIA.
+
+    Quem abre os números não quer o livro de hoje, e o livro de hoje são
+    seis consultas — a lista, o dinheiro por loja, o mês, o dia a dia do
+    mês e o horário de cada casa. Ramificar depois de as fazer era
+    pagá-las para as deitar fora.
+  */
+  if (vista === 'numeros') {
+    return (
+      <Moldura day={day} tz={tz} vista={vista}>
+        <PainelNumeros org={org} units={units} />
+      </Moldura>
+    )
+  }
+
   const dayFrom = dayStart(day, tz)
   const dayTo = dayEnd(day, tz)
 
-  const monthStart: IsoDay = `${day.slice(0, 7)}-01`
-  const dayOfMonth = Number(day.slice(8, 10))
-  const previousMonthStart = previousMonth(monthStart)
-  // Compara-se período com período: do dia 1 até ao mesmo dia do mês.
-  // Com o tecto no fim do mês anterior: a 30 de março, «o mesmo dia» de
-  // fevereiro transbordava para 2 de março e os primeiros dias do mês
-  // corrente contavam nas duas somas ao mesmo tempo.
-  const previousSameDay = addDays(previousMonthStart, dayOfMonth - 1)
-  const previousCutRaw = dayEnd(previousSameDay, tz)
-  const currentMonthFrom = dayStart(monthStart, tz)
-  const previousCut =
-    previousCutRaw < currentMonthFrom ? previousCutRaw : currentMonthFrom
+  /*
+    O MÊS SAIU DAQUI.
 
+    Este ficheiro tinha a conta do mês corrente contra o mesmo período
+    do anterior, com o cuidado do dia 31 e tudo — e agora vive nos
+    Números, onde o `monthKpis` já a fazia para a Gestão. Duas contas
+    parecidas em dois sítios acabam sempre por divergir; ficou a que já
+    tinha dono.
+  */
   const ids = units.map((u) => u.id)
 
-  const [appts, money, monthRows, dailyRows, windows] =
+  const [appts, money, windows, ocupacao] =
     await Promise.all([
       /*
        * O DIA INTEIRO, E NÃO SÓ O QUE FALTA.
@@ -176,39 +198,22 @@ export async function DayPanel({
         where u.id = any(${ids}::uuid[])
       `,
 
-      sql<MonthRow[]>`
-        select
-          coalesce(sum(${receitaDaMarcacao()}) filter (
-            where a.starts_at >= ${dayStart(monthStart, tz)}
-              and a.starts_at < ${dayTo}
-          ), 0)::int as current_cents,
-          coalesce(sum(${receitaDaMarcacao()}) filter (
-            where a.starts_at >= ${dayStart(previousMonthStart, tz)}
-              and a.starts_at < ${previousCut}
-          ), 0)::int as previous_cents
-        from appointment a
-        where a.unit_id = any(${ids}::uuid[]) and a.status = 'completed'
-      `,
-
-      sql<DailyRow[]>`
-        select
-          to_char((a.starts_at at time zone ${tz})::date, 'YYYY-MM-DD') as day,
-          sum(${receitaDaMarcacao()})::int as cents
-        from appointment a
-        where a.unit_id = any(${ids}::uuid[])
-          and a.status = 'completed'
-          and a.starts_at >= ${dayStart(monthStart, tz)}
-          and a.starts_at < ${dayTo}
-        group by 1
-        order by 1
-      `,
-
       // O horário de hoje, loja a loja — é o que dá princípio e fim à
       // agenda, e sem ele uma folga não sabe onde acaba.
       Promise.all(units.map((u) => openingWindows(u.id, day))),
+
+      /* A ocupação de hoje. Traz a semana inteira porque é uma consulta
+         só de qualquer maneira, e daqui só se lê a coluna de hoje. */
+      ocupacaoDaSemana(org.id, tz, day),
     ])
 
-  const revenueBy = new Map(money.map((r) => [r.unit_id, r.revenue_cents]))
+  /* O que a casa tem para vender hoje e ainda não vendeu: a escala,
+     menos as ausências, menos o que já está marcado por cima. */
+  const hojeOcupado = ocupacao.find((d) => d.day === day)
+  const porVender = hojeOcupado
+    ? Math.max(0, hojeOcupado.escalado - hojeOcupado.vendido)
+    : 0
+
   // `windows` vem pela ordem de `units` — passa a mapa para que quem o
   // lê não dependa de a lista continuar na mesma ordem.
   const windowsBy = new Map(units.map((u, i) => [u.id, windows[i] ?? []]))
@@ -227,44 +232,17 @@ export async function DayPanel({
     entrou: money.reduce((sum, r) => sum + r.revenue_cents, 0),
   }
 
-  const month = monthRows[0] ?? { current_cents: 0, previous_cents: 0 }
   const currency = org.currency
-  const daily = fillMonth(monthStart, dayOfMonth, dailyRows)
 
   // As casas com gente hoje ganham cartão; as paradas dizem-no numa
   // linha. Um cartão vazio por loja fechada era meio ecrã de nada.
   const abertas = units.filter((u) => (apptsBy.get(u.id)?.length ?? 0) > 0)
   const paradas = units.filter((u) => (apptsBy.get(u.id)?.length ?? 0) === 0)
 
-  /*
-    «A TRATAR» FICOU COM UMA LINHA SÓ.
-
-    Eram duas — as marcações por confirmar e as comissões por pagar — e
-    havia aqui um cuidado por causa da segunda: a gerente não tratava de
-    comissões, e um cartão com uma linha que ela não podia ver abria-se
-    vazio. As comissões saíram e o cuidado saiu com elas.
-
-    O cartão continua a esconder-se quando não há nada: um «A tratar»
-    sem nada dentro é uma pergunta a que já se respondeu.
-  */
-  const tratar = totals.porConfirmar > 0
-
   return (
-    <div className="mx-auto max-w-[110rem] space-y-4 px-4 py-6 sm:px-6 sm:py-8">
-      <header className="surge flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <div>
-          <h1 className="display text-[1.75rem] leading-none text-[var(--ink)]">
-            Hoje
-          </h1>
-          <span aria-hidden className="fio-casa mt-3" />
-        </div>
-        <p className="tabular text-[0.8125rem] text-[var(--ink-muted)]">
-          {formatDayLong(day, tz)}
-        </p>
-      </header>
-
+    <Moldura day={day} tz={tz} vista={vista}>
       {/* ---------------------------------------------------- HOJE --- */}
-      <section aria-label="O dia" className="surge surge-1 space-y-3">
+      <section aria-label="O dia" className="space-y-3">
         {/*
           TRÊS NÚMEROS NUMA FITA, E NÃO TRÊS CARTÕES.
 
@@ -294,6 +272,28 @@ export async function DayPanel({
             {formatCents(totals.entrou, currency)}
           </span>
 
+          {/*
+            A TERCEIRA CONTA É A HORA VAZIA.
+
+            Marcações e euros já cá estavam. O que faltava era o que a
+            casa tem para vender hoje e ainda não vendeu — a agenda
+            di-lo dentro de cada buraco, «3 h 15 livres», uma linha de
+            cada vez, e nunca o total.
+          */}
+          {porVender > 0 ? (
+            <>
+              <Ponto />
+              <span className="flex items-baseline gap-1.5">
+                <span className="metric text-[1rem] text-[var(--accent)]">
+                  {formatDuration(porVender)}
+                </span>
+                <span className="text-[0.75rem] text-[var(--ink-muted)]">
+                  por vender
+                </span>
+              </span>
+            </>
+          ) : null}
+
           {totals.faltas > 0 ? (
             <>
               <Ponto />
@@ -315,132 +315,135 @@ export async function DayPanel({
           ) : null}
         </Card>
 
-        <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <div className="min-w-0 space-y-3">
-            {abertas.length === 0 ? (
-              <Card className="px-4 py-8">
-                <Empty
-                  title="Dia sem marcações"
-                  hint="Nada no livro para hoje, em nenhuma das casas."
-                />
-              </Card>
-            ) : (
-              abertas.map((unit) => (
-                <AgendaCard
-                  key={unit.id}
-                  unit={unit}
-                  rows={apptsBy.get(unit.id) ?? []}
-                  windows={windowsBy.get(unit.id) ?? []}
-                  day={day}
-                  now={now}
-                  currency={currency}
-                  soloTitle={units.length === 1}
-                />
-              ))
-            )}
+        {/*
+          AS CASAS LADO A LADO, E A COLUNA DA DIREITA SAIU.
 
-            {paradas.length > 0 ? (
-              <p className="px-1 text-[0.8125rem] text-[var(--ink-faint)]">
-                {paradas.map((u) => u.name).join(' · ')} ·{' '}
-                {paradas.length === 1 ? 'dia sem marcações' : 'dias sem marcações'}
-              </p>
-            ) : null}
-          </div>
+          As lojas empilhavam-se numa coluna de dois terços, com os
+          números do mês ao lado — e a segunda casa ficava fora do ecrã.
+          Abria-se o painel e via-se metade do salão.
 
-          <div className="min-w-0 space-y-3">
-            {units.length > 1 ? (
-              <Card className="overflow-hidden">
-                <SectionTitle>Por loja</SectionTitle>
-                <ul className="divide-y divide-[var(--line-soft)]">
-                  {units.map((unit) => {
-                    const lista = apptsBy.get(unit.id) ?? []
-                    return (
-                      <li key={unit.id} className="px-4 py-3">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <Link
-                            href={`/agenda/${unit.slug}`}
-                            className="truncate text-sm font-medium text-[var(--ink)] transition-colors hover:text-[var(--accent)]"
-                          >
-                            {unit.name}
-                          </Link>
-                          <span className="tabular shrink-0 text-[0.8125rem] font-semibold text-[var(--ink)]">
-                            {formatCents(revenueBy.get(unit.id) ?? 0, currency)}
-                          </span>
-                        </div>
-                        <p className="tabular mt-1 text-[0.75rem] text-[var(--ink-faint)]">
-                          {lista.length === 0
-                            ? 'Dia sem marcações.'
-                            : `${lista.length} marcaç${lista.length === 1 ? 'ão' : 'ões'} · ${
-                                lista.filter((a) => a.status === 'completed').length
-                              } feita${
-                                lista.filter((a) => a.status === 'completed')
-                                  .length === 1
-                                  ? ''
-                                  : 's'
-                              }`}
-                        </p>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </Card>
-            ) : null}
-
-            {/* ------------------------------------------- O MÊS --- */}
-            <Card className="px-4 py-4">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-[0.8125rem] font-medium text-[var(--ink-muted)]">
-                  O mês, até hoje
-                </p>
-                <p className="text-[0.75rem] text-[var(--ink-faint)]">
-                  {monthName(day, tz)} · dias 1 a {dayOfMonth}
-                </p>
-              </div>
-              <div className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                <span className="metric text-[1.5rem] text-[var(--ink)]">
-                  {formatCents(month.current_cents, currency)}
-                </span>
-                <Variacao
-                  current={month.current_cents}
-                  previous={month.previous_cents}
-                />
-              </div>
-              <p className="mt-1.5 text-[0.75rem] text-[var(--ink-faint)]">
-                {month.previous_cents > 0
-                  ? `${formatCents(month.previous_cents, currency)} em ${monthName(previousMonthStart, tz)}, no mesmo período`
-                  : 'Sem mês anterior para comparar.'}
-              </p>
-              {/* A forma do mês só a partir do tablet: no telemóvel a
-                  tira serve para dizer o número, e mais uma fila de
-                  barras era mais um ecrã a rolar. */}
-              <div className="mt-3 hidden sm:block">
-                <MonthChart daily={daily} currency={currency} timezone={tz} />
-              </div>
+          Os números mudaram-se para o separador ao lado, onde têm
+          espaço para dizer mais do que um total. Aqui fica o livro, e o
+          livro leva a página toda: uma coluna por casa a partir do
+          `lg`, empilhadas antes disso.
+        */}
+        <div
+          className={clsx(
+            'grid items-start gap-3',
+            abertas.length > 1 && 'lg:grid-cols-2',
+          )}
+        >
+          {abertas.length === 0 ? (
+            <Card className="px-4 py-8">
+              <Empty
+                title="Dia sem marcações"
+                hint="Nada no livro para hoje, em nenhuma das casas."
+              />
             </Card>
-
-            {/* ----------------------------------------- A TRATAR --- */}
-            {tratar ? (
-              <Card className="overflow-hidden">
-                <SectionTitle>A tratar</SectionTitle>
-                <ul className="divide-y divide-[var(--line-soft)]">
-                  {totals.porConfirmar > 0 ? (
-                    <li className="px-4 py-3">
-                      <p className="text-[0.8125rem] font-medium text-[var(--ink)]">
-                        {totals.porConfirmar} marcaç
-                        {totals.porConfirmar === 1 ? 'ão' : 'ões'} por confirmar
-                      </p>
-                      <p className="mt-0.5 text-[0.75rem] text-[var(--ink-faint)]">
-                        Ainda hoje, na lista ao lado.
-                      </p>
-                    </li>
-                  ) : null}
-                </ul>
-              </Card>
-            ) : null}
-          </div>
+          ) : (
+            abertas.map((unit) => (
+              <AgendaCard
+                key={unit.id}
+                unit={unit}
+                rows={apptsBy.get(unit.id) ?? []}
+                windows={windowsBy.get(unit.id) ?? []}
+                day={day}
+                now={now}
+                currency={currency}
+                soloTitle={units.length === 1}
+              />
+            ))
+          )}
         </div>
+
+        {paradas.length > 0 ? (
+          <p className="px-1 text-[0.8125rem] text-[var(--ink-faint)]">
+            {paradas.map((u) => u.name).join(' · ')} ·{' '}
+            {paradas.length === 1 ? 'dia sem marcações' : 'dias sem marcações'}
+          </p>
+        ) : null}
       </section>
+    </Moldura>
+  )
+}
+
+// ---------------------------------------------------------------------
+// A moldura: o título, o dia, e os dois separadores
+// ---------------------------------------------------------------------
+
+export type Vista = 'agenda' | 'numeros'
+
+/**
+ * O QUE OS DOIS SEPARADORES TÊM EM COMUM.
+ *
+ * São ligações, não botões: a vista vive no endereço, e por isso o
+ * botão de trás volta a ela e um atalho guardado abre onde se deixou.
+ * Sem estado do lado do cliente, sem código a correr no telemóvel.
+ */
+function Moldura({
+  day,
+  tz,
+  vista,
+  children,
+}: {
+  day: IsoDay
+  tz: string
+  vista: Vista
+  children: React.ReactNode
+}) {
+  return (
+    <div className="mx-auto max-w-[110rem] space-y-4 px-4 py-6 sm:px-6 sm:py-8">
+      <header className="surge flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <div>
+          <h1 className="display text-[1.75rem] leading-none text-[var(--ink)]">
+            Hoje
+          </h1>
+          <span aria-hidden className="fio-casa mt-3" />
+        </div>
+        <p className="tabular text-[0.8125rem] text-[var(--ink-muted)]">
+          {formatDayLong(day, tz)}
+        </p>
+      </header>
+
+      <nav
+        aria-label="Vista"
+        className="surge surge-1 inline-flex gap-[3px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] p-[3px]"
+      >
+        <Separador href="/" activo={vista === 'agenda'}>
+          Agenda
+        </Separador>
+        <Separador href="/?v=numeros" activo={vista === 'numeros'}>
+          Números
+        </Separador>
+      </nav>
+
+      <div className="surge surge-1">{children}</div>
     </div>
+  )
+}
+
+function Separador({
+  href,
+  activo,
+  children,
+}: {
+  href: string
+  activo: boolean
+  children: string
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={activo ? 'page' : undefined}
+      className={clsx(
+        'inline-flex items-center rounded-[var(--radius-sm)] px-4 py-1.5 text-[0.8125rem] transition-colors',
+        activo
+          ? 'bg-[var(--surface-raised)] font-semibold text-[var(--ink)] shadow-[0_1px_3px_rgba(28,25,23,0.1)]'
+          : 'font-medium text-[var(--ink-muted)] hover:text-[var(--ink)]',
+      )}
+    >
+      {children}
+    </Link>
   )
 }
 
@@ -750,14 +753,6 @@ function Ponto() {
   )
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="panel-title border-b border-[var(--line-soft)] px-4 py-3">
-      {children}
-    </p>
-  )
-}
-
 // ---------------------------------------------------------------------
 // As contas do dia
 // ---------------------------------------------------------------------
@@ -854,122 +849,3 @@ function merge(spans: [number, number][]): [number, number][] {
   return out
 }
 
-// ---------------------------------------------------------------------
-// Contas de calendário e de texto
-// ---------------------------------------------------------------------
-
-function previousMonth(monthStart: IsoDay): IsoDay {
-  const year = Number(monthStart.slice(0, 4))
-  const month = Number(monthStart.slice(5, 7))
-  return month === 1
-    ? `${year - 1}-12-01`
-    : `${year}-${String(month - 1).padStart(2, '0')}-01`
-}
-
-function monthName(day: IsoDay, timezone: string): string {
-  return new Intl.DateTimeFormat('pt-PT', {
-    month: 'long',
-    timeZone: timezone,
-  }).format(dayStart(day, timezone))
-}
-
-/** Os dias do mês até hoje, com zeros nos dias sem dinheiro. */
-function fillMonth(
-  monthStart: IsoDay,
-  days: number,
-  rows: DailyRow[],
-): DailyRow[] {
-  const found = new Map(rows.map((r) => [r.day, r.cents]))
-  return Array.from({ length: days }, (_, i) => {
-    const day = addDays(monthStart, i)
-    return { day, cents: found.get(day) ?? 0 }
-  })
-}
-
-/**
- * A variação em três caracteres, na pastilha ao lado do número. A frase
- * inteira («face ao mês anterior») repetia a linha de baixo, que já diz
- * de que mês se está a falar.
- */
-function Variacao({
-  current,
-  previous,
-}: {
-  current: number
-  previous: number
-}) {
-  if (previous === 0) {
-    return current > 0 ? (
-      <span className="text-[0.75rem] text-[var(--ink-faint)]">
-        sem comparação
-      </span>
-    ) : null
-  }
-
-  const percent = Math.round(((current - previous) / previous) * 100)
-  const bom = current >= previous
-  const cor = bom ? 'var(--ok)' : 'var(--bad)'
-
-  return (
-    <span
-      className="tabular inline-flex rounded-full px-1.5 py-[0.1875rem] text-[0.75rem] font-bold leading-none"
-      style={{
-        color: cor,
-        background: `color-mix(in srgb, ${cor} 12%, transparent)`,
-      }}
-    >
-      {percent > 0 ? '+' : ''}
-      {percent}%
-    </span>
-  )
-}
-
-/**
- * Um gráfico de barras sem biblioteca nenhuma: são divs com altura em
- * percentagem. Serve o propósito — ver a forma do mês.
- *
- * O dia de hoje vai na segunda cor: é o único que ainda não fechou, e
- * ficar mais baixo do que os outros não quer dizer mau dia — quer dizer
- * meio-dia. Sem isso, a última barra mentia todas as manhãs.
- */
-function MonthChart({
-  daily,
-  currency,
-  timezone,
-}: {
-  daily: DailyRow[]
-  currency: string
-  timezone: string
-}) {
-  const peak = Math.max(1, ...daily.map((d) => d.cents))
-  const ultimo = daily.length - 1
-
-  return (
-    <div className="flex h-20 items-end gap-[3px] border-b border-[var(--line-soft)] pb-px">
-      {daily.map((d, i) => (
-        <div
-          key={d.day}
-          className="group relative flex-1"
-          title={`${d.day.slice(8)} · ${formatCents(d.cents, currency)}`}
-        >
-          <div
-            className="cresce w-full rounded-t-[3px] transition-opacity group-hover:opacity-70"
-            style={{
-              height: `${Math.round((d.cents / peak) * 72)}px`,
-              minHeight: d.cents > 0 ? '3px' : '2px',
-              background: i === ultimo ? 'var(--gold)' : 'var(--accent)',
-              opacity: d.cents > 0 ? 1 : 0.14,
-              // Uma vaga da esquerda para a direita, e não trinta e um
-              // saltos ao mesmo tempo: doze milésimos por dia chega para
-              // se ler como uma varredura e acaba antes de incomodar.
-              ['--atraso' as string]: `${i * 12}ms`,
-            }}
-          />
-        </div>
-      ))}
-      <span className="sr-only">
-        Faturação diária do mês, no fuso {timezone}.
-      </span>
-    </div>
-  )
-}

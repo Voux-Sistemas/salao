@@ -13,7 +13,11 @@ export const dynamic = 'force-dynamic'
  * do dia para quem tem. A profissional não tem painel — cai na agenda
  * dela, que é a casa dela.
  */
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ v?: string }>
+}) {
   // As duas perguntas não dependem uma da outra — quem é a casa e quem
   // está à porta — por isso partem juntas. Em série custavam duas
   // esperas de oceano para não decidir nada entre elas.
@@ -34,9 +38,15 @@ export default async function Home() {
 
   const units = await unitsFor(actor)
 
+  /* O separador vive no endereço e não no navegador: assim volta-se a
+     ele com o botão de trás, e um atalho guardado abre onde se deixou.
+     Qualquer outro valor cai na agenda, que é o que se quer ver. */
+  const { v } = await searchParams
+  const vista = v === 'numeros' ? 'numeros' : 'agenda'
+
   return (
     <DeskChrome>
-      <DayPanel actor={actor} org={org} units={units} />
+      <DayPanel actor={actor} org={org} units={units} vista={vista} />
     </DeskChrome>
   )
 }

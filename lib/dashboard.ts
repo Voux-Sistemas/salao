@@ -399,6 +399,68 @@ export async function staffProduction(
 }
 
 // ---------------------------------------------------------------------
+// As clientes — quem chegou, quem voltou, quem sumiu
+// ---------------------------------------------------------------------
+
+export type Clientela = {
+  /** Vieram este mês pela primeira vez de sempre. */
+  novas: number
+  /** Vieram este mês, e já cá tinham vindo antes. */
+  voltaram: number
+  /** Já vieram alguma vez, e a última foi há mais de 90 dias. */
+  sumiram: number
+}
+
+/**
+ * UM SALÃO VIVE DE QUEM VOLTA.
+ *
+ * A faturação de um mês não diz se a casa está a crescer ou a gastar as
+ * clientes que já tinha. Vinte marcações de vinte pessoas diferentes e
+ * vinte marcações de dez que voltaram valem o mesmo em euros e são
+ * negócios opostos.
+ *
+ * TRÊS CONTAS, E A TERCEIRA É A QUE DÁ TRABALHO. Novas e voltaram são
+ * para ver. As que sumiram são para agir: têm nome, têm telefone, e uma
+ * mensagem traz metade delas de volta.
+ *
+ * NOVENTA DIAS é o corte, e é um palpite honesto: uma cliente de
+ * coloração some ao fim de dois meses, uma de corte ao fim de quatro.
+ * Se a casa disser que é outro número, muda-se aqui.
+ *
+ * Conta-se pelas CONCLUÍDAS, como tudo o resto neste ficheiro: uma
+ * marcação que ninguém deu por feita não é uma visita.
+ */
+export async function clientela(
+  orgId: string,
+  timezone: string,
+): Promise<Clientela> {
+  const now = today(timezone)
+  const mesFrom = dayStart(`${now.slice(0, 7)}-01` as IsoDay, timezone)
+  const sumiuAntesDe = dayStart(addDays(now, -90), timezone)
+
+  const rows = await sql<Clientela[]>`
+    with visitas as (
+      select a.client_id,
+             min(a.starts_at) as primeira,
+             max(a.starts_at) as ultima,
+             max(a.starts_at) filter (where a.starts_at >= ${mesFrom}) as no_mes
+        from appointment a
+       where a.org_id = ${orgId} and a.status = 'completed'
+       group by a.client_id
+    )
+    select
+      count(*) filter (where primeira >= ${mesFrom})::int as novas,
+      count(*) filter (
+        where no_mes is not null and primeira < ${mesFrom}
+      )::int as voltaram,
+      count(*) filter (where ultima < ${sumiuAntesDe})::int as sumiram
+      from visitas
+  `
+
+  return rows[0] ?? { novas: 0, voltaram: 0, sumiram: 0 }
+}
+
+// ---------------------------------------------------------------------
 // Hoje, casa a casa
 // ---------------------------------------------------------------------
 
