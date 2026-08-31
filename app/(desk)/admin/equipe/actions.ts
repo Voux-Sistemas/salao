@@ -470,7 +470,7 @@ export async function addShiftAction(
   const days = String(form.get('days') ?? '')
     .split(',')
     .map((d) => d.trim())
-    .filter((d) => /^d{4}-d{2}-d{2}$/.test(d))
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
   if (days.length === 0) return { error: 'Diga o dia.' }
 
   const startsMin = parseMinutes(String(form.get('starts') ?? ''))
