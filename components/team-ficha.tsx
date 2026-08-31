@@ -9,7 +9,6 @@ import {
 import { Field, Input, Select, Textarea } from '@/components/ui'
 import { PhoneInput } from '@/components/phone-input'
 import {
-  formatDuration,
   formatMinutes,
   parseMinutes,
   WEEKDAY_NAMES_PT,
@@ -142,17 +141,19 @@ function weekOf(rows: ScheduleSlice[], unitId: string): WeekSlot[] {
  * segunda a sexta», dois viram «sábado e domingo», um fica sozinho. Os
  * dias em que não trabalha não se dizem — dizer o que não há é ruído
  * numa frase que já tem de caber numa linha.
+ *
+ * E NÃO CONTA HORAS. Contava — «55 h» ao lado da frase, «11 h» ao lado
+ * de cada dia. Saíram as duas: era a mesma conta dita sete vezes, e no
+ * telemóvel eram elas que não deixavam a linha do dia caber. A pergunta
+ * que se faz nesta página não é «quantas horas faz» — é «que dias
+ * faz», e isso a frase responde.
  */
-function lerSemana(week: WeekSlot[]): { frase: string; minutos: number } {
+function lerSemana(week: WeekSlot[]): string {
   const trocos: { dias: number[]; starts: string; ends: string }[] = []
-  let minutos = 0
 
   for (const weekday of ORDER) {
     const slot = week[weekday]
     if (!slot?.on) continue
-    const inicio = parseMinutes(slot.starts)
-    const fim = parseMinutes(slot.ends)
-    if (inicio !== null && fim !== null && fim > inicio) minutos += fim - inicio
 
     const ultimo = trocos[trocos.length - 1]
     // Só se junta ao troço anterior se ELE acabar no dia imediatamente
@@ -171,7 +172,7 @@ function lerSemana(week: WeekSlot[]): { frase: string; minutos: number } {
   const nome = (weekday: number) =>
     (WEEKDAY_NAMES_PT[weekday] ?? '').toLowerCase()
 
-  const frase = trocos
+  return trocos
     .map((troco) => {
       const primeiro = troco.dias[0] ?? 0
       const ultimo = troco.dias[troco.dias.length - 1] ?? 0
@@ -184,8 +185,6 @@ function lerSemana(week: WeekSlot[]): { frase: string; minutos: number } {
       return `${quais} das ${troco.starts} às ${troco.ends}`
     })
     .join(' · ')
-
-  return { frase, minutos }
 }
 
 function sameWeek(a: WeekSlot[], b: WeekSlot[]): boolean {
@@ -438,8 +437,24 @@ export function Ficha({
         </p>
       ) : null}
 
-      {/* ---------- Colaborador ---------- */}
-      <Bloco title="Colaborador">
+      {/*
+        ---------- A pessoa ----------
+
+        NOVE CAMPOS EM COLUNA NÃO SÃO UM CARTÃO, SÃO UM MURO.
+
+        No monitor eram duas colunas e passavam despercebidos. No
+        telemóvel colapsam para uma, e cada campo traz rótulo, caixa de
+        44 px e uma dica de duas linhas: mil e sessenta píxeis — quase
+        três ecrãs — antes de se chegar à escala, que é ao que se vem.
+
+        E oito dos nove escrevem-se UMA VEZ NA VIDA. Ficam à vista os
+        três que se mexem, e o resto dobra-se.
+
+        «A PESSOA» E NÃO «COLABORADOR». A casa diz «profissional» em
+        todo o lado, mas «Profissional» é também um dos papéis desta
+        mesma página — como título confundia-se com ele.
+      */}
+      <Bloco title="A pessoa">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nome" htmlFor="f-name">
             <Input
@@ -448,39 +463,6 @@ export function Ficha({
               onChange={(e) => setName(e.target.value)}
               maxLength={120}
               required
-            />
-          </Field>
-
-          <Field
-            label="Nome público"
-            htmlFor="f-alias"
-            hint="O que a cliente vê no site. Em branco, vê o nome de cima."
-          >
-            <Input
-              id="f-alias"
-              value={alias}
-              onChange={(e) => setAlias(e.target.value)}
-              maxLength={80}
-              autoComplete="off"
-            />
-          </Field>
-
-          {/* A ENTRADA E O TELEFONE SÃO COISAS DIFERENTES.
-              O telefone é para falar com a pessoa — muda de operadora,
-              muda de país. O usuário é dela e não muda. */}
-          <Field
-            label="Usuário"
-            htmlFor="f-login"
-            hint="Como entra no sistema. Deixe vazio para entrar pelo telefone."
-          >
-            <Input
-              id="f-login"
-              value={login}
-              onChange={(e) => setLogin(e.target.value)}
-              maxLength={40}
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="ariadna"
             />
           </Field>
 
@@ -522,75 +504,131 @@ export function Ficha({
             </Select>
           </Field>
 
-          <Field
-            label="Onde manda"
-            htmlFor="f-scope"
-            hint={
-              level === 'professional'
-                ? 'Uma profissional não manda em loja nenhuma.'
-                : 'Sem loja, o papel vale a rede toda.'
-            }
-          >
-            <Select
-              id="f-scope"
-              value={scope}
-              disabled={self || level !== 'manager'}
-              onChange={(e) => setScope(e.target.value)}
+          {/*
+            «ONDE MANDA» SÓ EXISTE PARA QUEM MANDA.
+
+            Estava sempre lá, e desligado para toda a gente menos as
+            gerentes — um comando morto a gastar uma fila e a fazer a
+            pessoa perguntar-se porque é que não lhe pega. Fica ao pé
+            do papel, que é quem o convoca, e some quando o papel muda.
+          */}
+          {level === 'manager' ? (
+            <Field
+              label="Onde manda"
+              htmlFor="f-scope"
+              hint="Sem loja, o papel vale a rede toda."
             >
-              {canGrantNetwork ? <option value="">Rede toda</option> : null}
-              {units.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field
-            label="E-mail"
-            htmlFor="f-email"
-            hint="Opcional. Serve para recuperar a palavra-passe."
-          >
-            <Input
-              id="f-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="off"
-            />
-          </Field>
-
-          <Field
-            label="Cor na agenda"
-            htmlFor="f-colour"
-            hint="É como se distingue à distância numa coluna cheia."
-          >
-            <input
-              id="f-colour"
-              type="color"
-              value={colour}
-              onChange={(e) => setColour(e.target.value)}
-              className="h-11 w-20 cursor-pointer rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] p-1 sm:h-10"
-            />
-          </Field>
+              <Select
+                id="f-scope"
+                value={scope}
+                disabled={self}
+                onChange={(e) => setScope(e.target.value)}
+              >
+                {canGrantNetwork ? <option value="">Rede toda</option> : null}
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : null}
         </div>
 
-        <Faixa title="O que a cliente vê no site">
-          <Textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            maxLength={280}
-            rows={2}
-            placeholder="Uma linha ou duas. Fica visível à cliente."
-          />
-          <Caixa
-            on={online}
-            onClick={() => setOnline(!online)}
-            label="Aceita marcação online"
-            hint="Desligado, deixa de aparecer no funil público — mas continua a receber marcações feitas ao balcão."
-          />
-        </Faixa>
+        {/* A dobra diz o que tem lá dentro: um «Mais detalhes» sozinho
+            não se abre, porque ninguém abre uma gaveta sem saber o que
+            lá está. */}
+        <details className="mt-4 border-t border-[var(--line-soft)] pt-3">
+          <summary className="inline-flex cursor-pointer list-none flex-wrap items-center gap-x-1.5 text-[0.8125rem] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--accent-strong)] [&::-webkit-details-marker]:hidden">
+            Mais detalhes
+            <span className="font-normal text-[var(--ink-faint)]">
+              — nome público, usuário, e-mail, cor, biografia
+            </span>
+          </summary>
 
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Nome público"
+              htmlFor="f-alias"
+              hint="O que a cliente vê no site. Em branco, vê o nome de cima."
+            >
+              <Input
+                id="f-alias"
+                value={alias}
+                onChange={(e) => setAlias(e.target.value)}
+                maxLength={80}
+                autoComplete="off"
+              />
+            </Field>
+
+            {/* A ENTRADA E O TELEFONE SÃO COISAS DIFERENTES.
+                O telefone é para falar com a pessoa — muda de operadora,
+                muda de país. O usuário é dela e não muda. */}
+            <Field
+              label="Usuário"
+              htmlFor="f-login"
+              hint="Como entra no sistema. Deixe vazio para entrar pelo telefone."
+            >
+              <Input
+                id="f-login"
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                maxLength={40}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="ariadna"
+              />
+            </Field>
+
+            <Field
+              label="E-mail"
+              htmlFor="f-email"
+              hint="Opcional. Serve para recuperar a palavra-passe."
+            >
+              <Input
+                id="f-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="off"
+              />
+            </Field>
+
+            <Field
+              label="Cor na agenda"
+              htmlFor="f-colour"
+              hint="É como se distingue à distância numa coluna cheia."
+            >
+              <input
+                id="f-colour"
+                type="color"
+                value={colour}
+                onChange={(e) => setColour(e.target.value)}
+                className="h-11 w-20 cursor-pointer rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] p-1 sm:h-10"
+              />
+            </Field>
+          </div>
+
+          <Faixa title="O que a cliente vê no site">
+            <Textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              maxLength={280}
+              rows={2}
+              placeholder="Uma linha ou duas. Fica visível à cliente."
+            />
+            <Caixa
+              on={online}
+              onClick={() => setOnline(!online)}
+              label="Aceita marcação online"
+              hint="Desligado, deixa de aparecer no funil público — mas continua a receber marcações feitas ao balcão."
+            />
+          </Faixa>
+        </details>
+
+        {/* A palavra-passe fica FORA da dobra: o aviso do topo da página
+            manda cá quem não a tem, e o que se vem buscar não pode estar
+            atrás de uma gaveta. */}
         {aside?.password ? (
           <Faixa title="Palavra-passe">{aside.password}</Faixa>
         ) : null}
@@ -640,19 +678,13 @@ export function Ficha({
 
               É a resposta à pergunta que se faz ao sair desta página, e
               que as sete linhas de campos não davam sem se lerem uma a
-              uma. As horas da semana à direita, porque é o número que
-              se compara entre pessoas.
+              uma. Só texto: o total de horas ao lado estava escrito
+              como a outra ponta de uma barra e, sem largura para as
+              duas, trepava para o meio da frase.
             */}
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <p className="flex-1 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)] first-letter:uppercase">
-                {semana.frase || 'Sem nenhum dia ligado nesta loja.'}
-              </p>
-              {semana.minutos > 0 ? (
-                <p className="tabular shrink-0 text-[0.8125rem] text-[var(--ink-faint)]">
-                  {formatDuration(semana.minutos)}
-                </p>
-              ) : null}
-            </div>
+            <p className="text-[0.8125rem] leading-relaxed text-[var(--ink-muted)] first-letter:uppercase">
+              {semana || 'Sem nenhum dia ligado nesta loja.'}
+            </p>
 
             <div>
               {ORDER.map((weekday) => {
@@ -666,14 +698,23 @@ export function Ficha({
                 */
                 const fechado =
                   slot.on && !abertura.includes(weekday)
-                const entra = parseMinutes(slot.starts)
-                const sai = parseMinutes(slot.ends)
-                const duracao =
-                  entra !== null && sai !== null && sai > entra ? sai - entra : 0
                 return (
+                  /*
+                    A LINHA TEM DE CABER EM 318 PÍXEIS.
+
+                    É o que sobra de um telemóvel de 390 depois das
+                    margens da página (16 de cada lado) e do cartão (20).
+                    Com a coluna do dia a 112 e duas caixas de 112, a
+                    conta dava 254 para 198 disponíveis: faltavam 56, e
+                    o `flex-wrap` fazia o que lhe mandaram — empilhava.
+
+                    Encolhida — 96 para o dia, 92 para cada caixa — dá
+                    208 para 214. Cabe numa linha só, e o telemóvel
+                    deixa de precisar de um desenho diferente.
+                  */
                   <div
                     key={weekday}
-                    className="grid grid-cols-[7rem_1fr] items-center gap-x-2 gap-y-1 border-b border-[var(--line-soft)] py-1.5 last:border-0"
+                    className="grid grid-cols-[6rem_1fr] items-center gap-x-2 gap-y-1 border-b border-[var(--line-soft)] py-1.5 last:border-0 sm:grid-cols-[7rem_1fr] sm:gap-x-3"
                   >
                     <Caixa
                       on={slot.on}
@@ -708,7 +749,7 @@ export function Ficha({
                           seis, o relógio ficava encostado ao número e
                           lia-se cortado.
                         */}
-                        <span className="block w-[7rem]">
+                        <span className="block w-[5.75rem] sm:w-[7rem]">
                           <Input
                             type="time"
                             value={slot.starts}
@@ -726,7 +767,7 @@ export function Ficha({
                           />
                         </span>
                         <span className="text-[var(--ink-faint)]">→</span>
-                        <span className="block w-[7rem]">
+                        <span className="block w-[5.75rem] sm:w-[7rem]">
                           <Input
                             type="time"
                             value={slot.ends}
@@ -743,11 +784,6 @@ export function Ficha({
                             className="tabular"
                           />
                         </span>
-                        {duracao > 0 ? (
-                          <span className="tabular text-[0.6875rem] text-[var(--ink-faint)]">
-                            {formatDuration(duracao)}
-                          </span>
-                        ) : null}
                       </div>
                     ) : (
                       /* Alinhado com a caixa da hora, e não com a

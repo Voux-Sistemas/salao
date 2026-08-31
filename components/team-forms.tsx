@@ -176,8 +176,16 @@ export function AbsenceForm({
           vai, que é o mesmo que uma caixa por marcar. */}
       {allDay ? <input type="hidden" name="allday" value="on" /> : null}
 
-      <div className="flex flex-wrap items-end gap-x-3 gap-y-3">
-        <Field label="Motivo" htmlFor="abs-kind" className="w-full sm:w-44">
+      {/*
+        DUAS A DUAS, E NÃO EM ESCADA.
+
+        Quatro caixas de largura inteira empilhadas num telemóvel são
+        quatro degraus e trezentos píxeis de rolo para uma folga. Estas
+        são todas curtas — cabem duas por fila mesmo em 318 píxeis, que
+        é o que sobra de um ecrã de 390 depois das margens.
+      */}
+      <div className="grid grid-cols-2 items-end gap-3 sm:max-w-md">
+        <Field label="Motivo" htmlFor="abs-kind">
           <Select
             id="abs-kind"
             value={motivo}
@@ -192,7 +200,7 @@ export function AbsenceForm({
           </Select>
         </Field>
 
-        <Field label="Quando" htmlFor="abs-quando" className="w-full sm:w-44">
+        <Field label="Quando" htmlFor="abs-quando">
           <Select
             id="abs-quando"
             value={allDay ? 'inteiro' : 'parte'}
@@ -222,25 +230,34 @@ export function AbsenceForm({
         </Field>
       ) : null}
 
-      <div className="flex flex-wrap items-end gap-x-3 gap-y-3">
-        <Field
-          label={allDay ? 'De' : 'No dia'}
-          htmlFor="abs-from"
-          className="w-full sm:w-40"
-        >
-          <Input
-            id="abs-from"
-            name="from"
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="tabular"
-            required
-          />
-        </Field>
+      {allDay ? (
+        <div className="grid grid-cols-2 items-start gap-3 sm:max-w-md">
+          <Field label="De" htmlFor="abs-from">
+            <Input
+              id="abs-from"
+              name="from"
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="tabular"
+              required
+            />
+          </Field>
 
-        {allDay ? (
-          <Field label="Até" htmlFor="abs-to" className="w-full sm:w-40">
+          {/*
+            O «ATÉ» TEM DE DIZER QUE PODE FICAR VAZIO.
+
+            Uma caixa em branco do tamanho da do lado parece obrigatória
+            — e não é: sem ela a ausência é de um dia só. Uma caixa de
+            data nativa não aceita texto de exemplo lá dentro (o
+            navegador põe lá o «dd/mm/aaaa» dele e não larga), por isso
+            a resposta vai por baixo, onde as outras dicas da casa vão.
+          */}
+          <Field
+            label="Até"
+            htmlFor="abs-to"
+            hint="Em branco, é só o dia ao lado."
+          >
             <Input
               id="abs-to"
               name="to"
@@ -250,9 +267,22 @@ export function AbsenceForm({
               className="tabular"
             />
           </Field>
-        ) : (
-          <>
-            <Field label="Das" htmlFor="abs-starts" className="w-28">
+        </div>
+      ) : (
+        <div className="space-y-3 sm:flex sm:max-w-md sm:items-end sm:gap-3 sm:space-y-0">
+          <Field label="No dia" htmlFor="abs-from" className="sm:w-40">
+            <Input
+              id="abs-from"
+              name="from"
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="tabular"
+              required
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-3">
+            <Field label="Das" htmlFor="abs-starts" className="sm:w-28">
               <Input
                 id="abs-starts"
                 name="starts"
@@ -263,7 +293,7 @@ export function AbsenceForm({
                 required
               />
             </Field>
-            <Field label="Às" htmlFor="abs-ends" className="w-28">
+            <Field label="Às" htmlFor="abs-ends" className="sm:w-28">
               <Input
                 id="abs-ends"
                 name="ends"
@@ -274,9 +304,9 @@ export function AbsenceForm({
                 required
               />
             </Field>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {/*
         A FRASE QUE LÊ DE VOLTA O QUE SE VAI GRAVAR.
