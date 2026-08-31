@@ -1,10 +1,9 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { ArrowUpRight, Scissors, Store, Users, Wallet } from 'lucide-react'
+import { ArrowUpRight, Scissors, Store, Users } from 'lucide-react'
 import { can, requireManagement, type Actor } from '@/lib/auth/actor'
 import { sql } from '@/lib/db'
 import {
-  commissionStandings,
   kpiTrends,
   monthKpis,
   revenueByDay,
@@ -42,7 +41,6 @@ type Counts = {
   units: number
   services: number
   staff: number
-  pending_cents: number
 }
 
 /** O que há em cada separador, em número — para se saber por onde ir. */
@@ -57,32 +55,29 @@ async function counts(actor: Actor): Promise<Counts> {
                 select 1 from staff_unit su
                  where su.staff_id = s.id
                    and su.unit_id = any(${actor.unitIds}::uuid[])
-              ))) as staff,
-      (select coalesce(sum(amount_cents), 0)::int from commission_entry
-        where org_id = ${actor.orgId} and status = 'pending') as pending_cents
+              ))) as staff
   `
-  return rows[0] ?? { units: 0, services: 0, staff: 0, pending_cents: 0 }
+  return rows[0] ?? { units: 0, services: 0, staff: 0 }
 }
 
 export default async function AdminPage() {
   const actor = await requireManagement()
 
   // A gerente não vê as contas da rede — vê as portas por onde pode ir.
-  if (!can.manageCommissions(actor)) {
+  if (!can.seeNetworkNumbers(actor)) {
     return <ManagerTiles actor={actor} />
   }
 
   const org = await requireOrg()
   const tz = org.timezone
 
-  const [history, trends, kpis, services, team, standings, unitsToday, total] =
+  const [history, trends, kpis, services, team, unitsToday, total] =
     await Promise.all([
       revenueByDay(actor.orgId, tz),
       kpiTrends(actor.orgId, tz),
       monthKpis(actor.orgId, tz),
       topServices(actor.orgId, tz, 8),
       staffProduction(actor.orgId, tz),
-      commissionStandings(actor.orgId),
       todayByUnit(actor.orgId, tz),
       counts(actor),
     ])
@@ -131,10 +126,6 @@ export default async function AdminPage() {
   // Oito serviços em duas colunas: a lista fica com quatro linhas de
   // altura em vez de oito, e vê-se toda de uma vez.
   const half = Math.ceil(services.length / 2)
-
-  const pendingStaff = standings.filter((s) => s.pending_cents > 0)
-  const pendingTotal = pendingStaff.reduce((sum, s) => sum + s.pending_cents, 0)
-  const paidTotal = standings.reduce((sum, s) => sum + s.paid_cents, 0)
 
   return (
     <div className="space-y-7">
@@ -353,7 +344,10 @@ export default async function AdminPage() {
       {/* --- de onde vem o dinheiro: quem o traz e o que se vende ---- */}
       <section aria-label="De onde vem o dinheiro">
         <PanelHead title="De onde vem o dinheiro" />
-        <div className="grid gap-4 lg:grid-cols-2">
+        {/* Eram dois cartões lado a lado, e as comissões eram o segundo.
+            Sozinho numa grelha de duas colunas, este ficava a meio ecrã
+            com o resto em branco — um buraco com a forma exacta do que
+            saiu. Ocupa a largura toda, como o dos serviços aqui abaixo. */}
         <Card className="min-w-0 px-5 py-5 sm:px-6">
           <PanelHead
             title="Produção por colaborador"
@@ -375,60 +369,6 @@ export default async function AdminPage() {
             />
           )}
         </Card>
-
-        <Card className="flex min-w-0 flex-col px-5 py-5 sm:px-6">
-          <div className="mb-4 flex items-baseline justify-between gap-4">
-            <h2 className="panel-title">Comissões por pagar</h2>
-            <Link
-              href="/admin/comissoes"
-              className="shrink-0 text-[0.8125rem] font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-strong)]"
-            >
-              Tratar →
-            </Link>
-          </div>
-          {pendingStaff.length === 0 ? (
-            <Empty
-              title="Tudo em dia"
-              hint="Nenhuma comissão à espera de pagamento."
-            />
-          ) : (
-            <>
-              <ul className="flex-1 divide-y divide-[var(--line-soft)]">
-                {pendingStaff.map((row) => (
-                  <li
-                    key={row.staff_id}
-                    className="flex items-baseline justify-between gap-4 py-2.5"
-                  >
-                    <span className="min-w-0 truncate text-sm text-[var(--ink)]">
-                      {row.name}
-                      <span className="ml-2 text-[0.75rem] text-[var(--ink-faint)]">
-                        {row.pending_entries} linha
-                        {row.pending_entries === 1 ? '' : 's'}
-                      </span>
-                    </span>
-                    <span className="tabular shrink-0 text-sm text-[var(--ink)]">
-                      {formatCents(row.pending_cents)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3 flex items-baseline justify-between gap-4 border-t border-[var(--line)] pt-3">
-                <span className="text-[0.8125rem] text-[var(--ink-muted)]">
-                  Total por pagar
-                  {paidTotal > 0 ? (
-                    <span className="ml-2 text-[0.75rem] text-[var(--ink-faint)]">
-                      · já pagas {formatCents(paidTotal)}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="metric shrink-0 text-base text-[var(--ink)]">
-                  {formatCents(pendingTotal)}
-                </span>
-              </div>
-            </>
-          )}
-        </Card>
-        </div>
 
         {/* Fica DENTRO desta secção de propósito: sozinho lá em baixo,
             aparecia debaixo do título de cima e lia-se como se os
@@ -482,7 +422,7 @@ export default async function AdminPage() {
       {/* --- as portas da gestão ------------------------------------ */}
       <section aria-label="Gerir">
         <PanelHead title="Gerir" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Tile
             href="/admin/unidades"
             icon={Store}
@@ -503,17 +443,6 @@ export default async function AdminPage() {
             title="Equipa"
             value={`${total.staff} pessoa${total.staff === 1 ? '' : 's'}`}
             hint="Papéis, lojas, habilidades e ausências."
-          />
-          <Tile
-            href="/admin/comissoes"
-            icon={Wallet}
-            title="Comissões"
-            value={
-              total.pending_cents > 0
-                ? formatCents(total.pending_cents)
-                : 'Tudo em dia'
-            }
-            hint="Fechar o que está à espera de pagamento."
           />
         </div>
       </section>
@@ -756,9 +685,9 @@ async function ManagerTiles({ actor }: { actor: Actor }) {
 
 /**
  * A porta para uma secção da gestão. O glifo é o que a torna encontrável
- * de relance numa fila de quatro — antes eram quatro rectângulos de
- * texto iguais, e escolhia-se a ler. A seta acende ao passar por cima:
- * diz que se vai daqui para outro sítio, e não que se abre aqui mesmo.
+ * de relance numa fila — eram rectângulos de texto iguais, e escolhia-se
+ * a ler. A seta acende ao passar por cima: diz que se vai daqui para
+ * outro sítio, e não que se abre aqui mesmo.
  */
 function Tile({
   href,

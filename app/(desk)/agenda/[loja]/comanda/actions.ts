@@ -123,7 +123,7 @@ export async function removePaymentAction(
 }
 
 /**
- * Fechar é o gatilho das comissões. Depois disto não entram mais
+ * Fechar dá a conta por arrumada: depois disto não entram mais
  * pagamentos nem descontos.
  */
 export async function closeComandaAction(

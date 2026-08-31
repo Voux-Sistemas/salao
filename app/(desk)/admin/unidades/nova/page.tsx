@@ -11,8 +11,8 @@ export const metadata: Metadata = { title: 'Nova loja' }
  * seguir, dentro dela.
  */
 export default async function NovaUnidadePage() {
-  // Abrir uma loja arrasta catálogo, equipa, horários, comissões e caixa
-  // atrás dela. Não é gerir o salão, é mudar a forma do sistema.
+  // Abrir uma loja arrasta catálogo, equipa, horários e contas atrás
+  // dela. Não é gerir o salão, é mudar a forma do sistema.
   await requireMaster()
   const org = await requireOrg()
 

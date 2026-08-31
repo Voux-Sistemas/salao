@@ -15,9 +15,9 @@ import {
  * AS CONTAS DO PAINEL DA DONA.
  *
  * Só leitura, só agregação. Tudo o que aqui se soma já foi decidido
- * noutro sítio — o pagamento no balcão, a comissão no fecho da comanda.
- * As datas vivem em UTC na base; a fronteira de "dia" e de "mês" é
- * sempre traçada no fuso da loja, nunca no do servidor.
+ * noutro sítio — o pagamento no balcão, o fecho da comanda. As datas
+ * vivem em UTC na base; a fronteira de "dia" e de "mês" é sempre
+ * traçada no fuso da loja, nunca no do servidor.
  */
 
 // ---------------------------------------------------------------------
@@ -330,11 +330,9 @@ export type StaffProduction = {
 }
 
 /**
- * A outra cara das comissões: ali vê-se o que se deve a cada uma, aqui
- * o que cada uma trouxe. Conta-se pelo preço congelado de cada serviço,
- * atribuído a quem o fez — uma marcação com duas profissionais conta
- * para as duas, cada uma pela sua parte, que é como a comissão também
- * se calcula.
+ * O que cada uma trouxe. Conta-se pelo preço congelado de cada serviço,
+ * atribuído a quem o fez — uma marcação com duas colaboradoras conta
+ * para as duas, cada uma pela sua parte.
  */
 export async function staffProduction(
   orgId: string,
@@ -359,67 +357,6 @@ export async function staffProduction(
      group by i.staff_id, s.name
      order by revenue_cents desc, s.name
      limit ${limit}
-  `
-}
-
-// ---------------------------------------------------------------------
-// Comissões — o que espera e o que já foi
-// ---------------------------------------------------------------------
-
-export type CommissionStanding = {
-  staff_id: string
-  name: string
-  pending_cents: Cents
-  pending_entries: number
-  paid_cents: Cents
-}
-
-/** Por profissional: o que está por pagar e o que já se pagou. */
-export async function commissionStandings(
-  orgId: string,
-): Promise<CommissionStanding[]> {
-  return sql<CommissionStanding[]>`
-    select e.staff_id, s.name,
-           coalesce(sum(e.amount_cents) filter (where e.status = 'pending'), 0)::int as pending_cents,
-           count(*) filter (where e.status = 'pending')::int as pending_entries,
-           coalesce(sum(e.amount_cents) filter (where e.status = 'paid'), 0)::int as paid_cents
-      from commission_entry e
-      join staff s on s.id = e.staff_id
-     where e.org_id = ${orgId}
-     group by e.staff_id, s.name
-     order by pending_cents desc, s.name
-  `
-}
-
-export type PendingCommissionRow = {
-  staff_id: string
-  name: string
-  entries: number
-  base_cents: Cents
-  total_cents: Cents
-  /** Percentagens congeladas nas entradas: iguais ou um intervalo. */
-  percent_min: string
-  percent_max: string
-  oldest_at: Date
-}
-
-/** A tabela do ecrã de comissões: base, percentagem congelada e valor. */
-export async function pendingCommissionTable(
-  orgId: string,
-): Promise<PendingCommissionRow[]> {
-  return sql<PendingCommissionRow[]>`
-    select e.staff_id, s.name,
-           count(*)::int as entries,
-           sum(e.base_cents)::int as base_cents,
-           sum(e.amount_cents)::int as total_cents,
-           min(e.percent)::text as percent_min,
-           max(e.percent)::text as percent_max,
-           min(e.generated_at) as oldest_at
-      from commission_entry e
-      join staff s on s.id = e.staff_id
-     where e.org_id = ${orgId} and e.status = 'pending'
-     group by e.staff_id, s.name
-     order by total_cents desc, s.name
   `
 }
 

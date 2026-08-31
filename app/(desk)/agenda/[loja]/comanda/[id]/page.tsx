@@ -26,17 +26,6 @@ import { isUuid } from '@/lib/id'
 
 export const metadata: Metadata = { title: 'Comanda' }
 
-
-type CommissionRow = {
-  id: string
-  staff_name: string
-  service_name: string
-  base_cents: number
-  percent: string
-  amount_cents: number
-  status: 'pending' | 'paid'
-}
-
 /**
  * O ECRÃ DO FECHO. Não há comanda separada — a comanda é a marcação.
  * Aqui só se acrescentam três coisas: desconto, pagamentos e o fecho.
@@ -71,8 +60,6 @@ export default async function ComandaPage({
     payments,
   )
   const closed = appointment.closed_at !== null
-  const commissions = closed ? await loadCommissions(appointment.id) : []
-  const commissionTotal = commissions.reduce((s, c) => s + c.amount_cents, 0)
 
   // Para o talão: quanto entrou por cada método.
   const methodTotals = new Map<keyof typeof PAYMENT_METHOD_LABEL, number>()
@@ -245,55 +232,6 @@ export default async function ComandaPage({
               </Card>
             )}
           </section>
-
-          {/* --- comissões geradas ---------------------------------- */}
-          {closed ? (
-            <section>
-              <SectionTitle>Comissões geradas</SectionTitle>
-              {commissions.length === 0 ? (
-                <Empty
-                  title="Nenhuma"
-                  hint="Não há regra de comissão para estes serviços — e não haver regra não é o mesmo que zero por cento."
-                />
-              ) : (
-                <Card className="divide-y divide-[var(--line-soft)]">
-                  {commissions.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-baseline gap-3 px-4 py-2.5"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-[var(--ink)]">
-                          {entry.staff_name}
-                        </span>
-                        <span className="block truncate text-[0.75rem] text-[var(--ink-muted)]">
-                          {entry.service_name} ·{' '}
-                          <span className="tabular">
-                            {formatCents(entry.base_cents)} ×{' '}
-                            {Number(entry.percent)}%
-                          </span>
-                        </span>
-                      </span>
-                      <Badge tone={entry.status === 'paid' ? 'ok' : 'neutral'}>
-                        {entry.status === 'paid' ? 'Paga' : 'Por pagar'}
-                      </Badge>
-                      <span className="tabular shrink-0 text-sm text-[var(--ink)]">
-                        {formatCents(entry.amount_cents)}
-                      </span>
-                    </div>
-                  ))}
-                  <div className="flex items-baseline justify-between bg-[var(--surface-2)] px-4 py-2.5">
-                    <span className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--ink-muted)]">
-                      Total
-                    </span>
-                    <span className="tabular text-sm text-[var(--ink)]">
-                      {formatCents(commissionTotal)}
-                    </span>
-                  </div>
-                </Card>
-              )}
-            </section>
-          ) : null}
         </div>
 
         {/* --- o talão ---------------------------------------------- */}
@@ -374,8 +312,7 @@ export default async function ComandaPage({
                     Fechada às {formatTime(appointment.closed_at, tz)}
                   </p>
                   <p className="mt-1 text-[0.75rem] leading-relaxed text-[var(--ink-muted)]">
-                    As comissões já foram geradas e o dinheiro vivo já entrou
-                    na caixa.
+                    Não entram mais pagamentos nem descontos.
                   </p>
                 </div>
               ) : (
@@ -426,17 +363,6 @@ function Line({
   )
 }
 
-async function loadCommissions(appointmentId: string): Promise<CommissionRow[]> {
-  return sql<CommissionRow[]>`
-    select e.id, s.name as staff_name, i.service_name,
-           e.base_cents, e.percent, e.amount_cents, e.status
-      from commission_entry e
-      join staff s on s.id = e.staff_id
-      join appointment_item i on i.id = e.appointment_item_id
-     where e.appointment_id = ${appointmentId}
-     order by i.sort_order, i.starts_at
-  `
-}
 
 function capitalise(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)

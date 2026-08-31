@@ -70,7 +70,6 @@ type ApptRow = {
 type MoneyRow = { unit_id: string; revenue_cents: number }
 type MonthRow = { current_cents: number; previous_cents: number }
 type DailyRow = { day: string; cents: number }
-type PendingRow = { cents: number; entries: number }
 
 /** Uma linha da agenda: ou é uma marcação, ou é o vazio entre duas. */
 type Slot =
@@ -119,7 +118,7 @@ export async function DayPanel({
 
   const ids = units.map((u) => u.id)
 
-  const [appts, money, monthRows, dailyRows, pendingRows, windows] =
+  const [appts, money, monthRows, dailyRows, windows] =
     await Promise.all([
       /*
        * O DIA INTEIRO, E NÃO SÓ O QUE FALTA.
@@ -158,9 +157,9 @@ export async function DayPanel({
       `,
 
       /*
-       * O dinheiro do dia conta-se pelo que ENTROU na gaveta, e não
-       * pelo que as marcações de hoje valem: é o mesmo número que a
-       * Caixa mostra, e tem de bater certo com ela.
+       * O dinheiro do dia conta-se pelo que FOI RECEBIDO, e não pelo
+       * que as marcações de hoje valem. Uma marcação por fechar não é
+       * dinheiro, e uma comanda fechada ontem e paga hoje é.
        */
       sql<MoneyRow[]>`
         select
@@ -200,14 +199,6 @@ export async function DayPanel({
         order by 1
       `,
 
-      sql<PendingRow[]>`
-        select
-          coalesce(sum(amount_cents), 0)::int as cents,
-          count(*)::int as entries
-        from commission_entry
-        where unit_id = any(${ids}::uuid[]) and status = 'pending'
-      `,
-
       // O horário de hoje, loja a loja — é o que dá princípio e fim à
       // agenda, e sem ele uma folga não sabe onde acaba.
       Promise.all(units.map((u) => openingWindows(u.id, day))),
@@ -233,7 +224,6 @@ export async function DayPanel({
   }
 
   const month = monthRows[0] ?? { current_cents: 0, previous_cents: 0 }
-  const pending = pendingRows[0] ?? { cents: 0, entries: 0 }
   const currency = org.currency
   const daily = fillMonth(monthStart, dayOfMonth, dailyRows)
 
@@ -242,10 +232,18 @@ export async function DayPanel({
   const abertas = units.filter((u) => (apptsBy.get(u.id)?.length ?? 0) > 0)
   const paradas = units.filter((u) => (apptsBy.get(u.id)?.length ?? 0) === 0)
 
-  // A gerente não trata de comissões — e um cartão «A tratar» com uma
-  // linha que ela não pode ver ficava vazio de propósito nenhum.
-  const verComissoes = pending.entries > 0 && can.manageCommissions(actor)
-  const tratar = totals.porConfirmar > 0 || verComissoes
+  /*
+    «A TRATAR» FICOU COM UMA LINHA SÓ.
+
+    Eram duas — as marcações por confirmar e as comissões por pagar — e
+    havia aqui um cuidado por causa da segunda: a gerente não tratava de
+    comissões, e um cartão com uma linha que ela não podia ver abria-se
+    vazio. As comissões saíram e o cuidado saiu com elas.
+
+    O cartão continua a esconder-se quando não há nada: um «A tratar»
+    sem nada dentro é uma pergunta a que já se respondeu.
+  */
+  const tratar = totals.porConfirmar > 0
 
   return (
     <div className="mx-auto max-w-[110rem] space-y-4 px-4 py-6 sm:px-6 sm:py-8">
@@ -430,27 +428,6 @@ export async function DayPanel({
                       <p className="mt-0.5 text-[0.75rem] text-[var(--ink-faint)]">
                         Ainda hoje, na lista ao lado.
                       </p>
-                    </li>
-                  ) : null}
-                  {verComissoes ? (
-                    <li>
-                      <Link
-                        href="/admin/comissoes"
-                        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--surface-sunken)]"
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[0.8125rem] font-medium text-[var(--ink)]">
-                            Comissões por pagar
-                          </span>
-                          <span className="block text-[0.75rem] text-[var(--ink-faint)]">
-                            {pending.entries} linha
-                            {pending.entries === 1 ? '' : 's'}
-                          </span>
-                        </span>
-                        <span className="tabular shrink-0 text-[0.8125rem] font-semibold text-[var(--ink)]">
-                          {formatCents(pending.cents, currency)}
-                        </span>
-                      </Link>
                     </li>
                   ) : null}
                 </ul>

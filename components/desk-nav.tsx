@@ -276,7 +276,7 @@ export function DeskNav({
          parece o que é — uma fila que continua.
 
       2. PÁRA SEMPRE NUM SEPARADOR INTEIRO. Com `snap`, o dedo larga e a
-         fila encaixa: nunca fica um «Comissõe» a meio da palavra, que é
+         fila encaixa: nunca fica um «Unidade» a meio da palavra, que é
          o que se via.
 
       3. DESVANECE-SE NAS DUAS PONTAS. Dezasseis píxeis de máscara em

@@ -187,8 +187,8 @@ export function RemovePayment({
 }
 
 /**
- * Fechar gera as comissões e lança o dinheiro na caixa. Não se desfaz —
- * por isso pergunta-se duas vezes.
+ * Fechar dá a conta desta cliente por arrumada. Não se desfaz — por
+ * isso pergunta-se duas vezes.
  */
 export function CloseComanda({
   appointmentId,
@@ -226,9 +226,7 @@ export function CloseComanda({
         <form action={action} className="space-y-2.5">
           <input type="hidden" name="appointment" value={appointmentId} />
           <p className="text-[0.75rem] leading-relaxed text-[var(--ink-muted)]">
-            Ao fechar geram-se as comissões e o dinheiro vivo entra na
-            caixa. Depois disto não se acrescentam pagamentos nem
-            descontos.
+            Depois disto não se acrescentam pagamentos nem descontos.
           </p>
           <Submit label="Fechar mesmo" size="lg" className="w-full" />
           <Button

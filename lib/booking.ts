@@ -480,14 +480,13 @@ export function nextStatuses(from: Status): Status[] {
  * nenhum. Se deixasse, não estava apagada.
  *
  * O QUE VAI ATRÁS, POR CASCATA DA BASE: os serviços da marcação, os
- * blocos que prendiam as horas das profissionais, os blocos de recurso,
- * o registo das mensagens enviadas e as linhas de comissão.
+ * blocos que prendiam as horas das colaboradoras, os blocos de recurso
+ * e o registo das mensagens enviadas.
  *
  * E É POR ISSO QUE O DINHEIRO TRAVA. A tabela «payment» também está
  * ligada com «on delete cascade»: apagar uma marcação paga apagaria os
- * pagamentos dela em silêncio — e o movimento de caixa, esse, sobrevive
- * com a ligação a nulo, portanto o dinheiro ficava na caixa sem se
- * saber de onde veio. A verificação corre DENTRO da transação, com a
+ * pagamentos dela em silêncio, e o dinheiro recebido desaparecia das
+ * contas sem deixar rasto. A verificação corre DENTRO da transação, com a
  * linha travada, para que ninguém consiga cobrar entre a pergunta e a
  * resposta.
  */
@@ -701,8 +700,8 @@ export async function rescheduleAppointment(input: {
         // horário que a nova vai ocupar. O `closed_at` volta a ser
         // lido AQUI, com a linha presa: a leitura lá de cima é de
         // antes da fila, e entre uma e outra a comanda pode ter sido
-        // fechada — cancelar uma comanda fechada e paga desarrumava a
-        // caixa e as comissões já lançadas.
+        // fechada — cancelar uma comanda fechada e paga desarrumava
+        // contas que já estavam feitas.
         const locked = await tx<{ status: Status; closed_at: Date | null }[]>`
           select status, closed_at from appointment
            where id = ${previous.id} for update
@@ -778,8 +777,8 @@ export async function rescheduleAppointment(input: {
         /*
          * O DINHEIRO MUDA-SE COM A CLIENTE. Um sinal pago ao balcão
          * fica agarrado à marcação — e uma marcação cancelada nunca
-         * fecha comanda, por isso um pagamento deixado na antiga não
-         * entrava na caixa nem gerava comissão, e a nova nascia «por
+         * fecha comanda, por isso um pagamento deixado na antiga ficava
+         * preso a uma conta que já não se fecha, e a nova nascia «por
          * pagar» como se o dinheiro não existisse. Os pagamentos
          * seguem para a marcação nova; o registo de onde e quando
          * entraram (unit_id, received_at) fica como estava.

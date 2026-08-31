@@ -1,6 +1,6 @@
 import 'server-only'
 import { sql } from '@/lib/db'
-import { distributeProportionally, type Cents } from '@/lib/money'
+import type { Cents } from '@/lib/money'
 import type { PaymentMethod } from '@/lib/status'
 
 /**
@@ -9,11 +9,10 @@ import type { PaymentMethod } from '@/lib/status'
  *
  * Fechar acrescenta três coisas: o desconto (no máximo um, com motivo e
  * autor), os pagamentos (uma linha por método) e o fecho — que trava
- * novos pagamentos e é o GATILHO DAS COMISSÕES.
+ * novos pagamentos e dá a conta por arrumada.
  *
- * O desconto não mexe no preço congelado dos itens: é abatido por cima
- * e, para a comissão, RATEADO PROPORCIONALMENTE pelos itens sem perder
- * cêntimos.
+ * O desconto não mexe no preço congelado dos itens: é abatido por cima,
+ * e o que se recebeu fica registado pagamento a pagamento.
  */
 
 export type ComandaTotals = {
@@ -118,8 +117,7 @@ export async function setDiscount(input: {
 
 /**
  * Uma linha por método, porque uma visita pode ser meia em cartão e
- * meia em dinheiro. O dinheiro entra na caixa por si — mas só quando a
- * comanda fecha, que é quando o dia se acerta.
+ * meia em dinheiro. É por aqui que se sabe quanto entrou e como.
  */
 export async function addPayment(input: {
   appointmentId: string
@@ -178,28 +176,30 @@ export async function removePayment(input: {
 // ---------------------------------------------------------------------
 
 export type CloseResult =
-  | { ok: true; commissionCents: Cents }
+  | { ok: true }
   | {
       ok: false
       reason: 'not_found' | 'closed' | 'unpaid' | 'cancelled'
     }
 
-type ItemRow = {
-  id: string
-  staff_id: string
-  service_id: string
-  price_cents: number
-}
+type ItemRow = { price_cents: number }
 
 /**
- * Fechar trava novos pagamentos e descontos e gera as comissões item a
- * item. Tudo numa transação: ou é tudo ou não é nada.
+ * Fechar trava novos pagamentos e descontos: a partir daqui a conta
+ * desta cliente é história. Tudo numa transação.
  *
- * Houve aqui um terceiro trabalho: lançar o dinheiro vivo na gaveta, e
- * recusar o fecho se a gaveta do dia não estivesse aberta. A casa não
- * usa gaveta — conta o dinheiro à maneira dela — e o que restava era um
- * fecho que barrava por causa de um registo que ninguém abria. A
- * comanda continua a dizer quanto foi em dinheiro: está nos pagamentos.
+ * FAZIA MAIS DUAS COISAS, E JÁ NÃO FAZ NENHUMA.
+ *
+ * Lançava o dinheiro vivo na gaveta, e recusava o fecho se a gaveta do
+ * dia não estivesse aberta — a casa não usa gaveta, e o que restava era
+ * um fecho barrado por um registo que ninguém abria.
+ *
+ * E gerava as comissões item a item, com a percentagem congelada. A
+ * casa também não as usa: quem paga a equipa faz essa conta fora daqui.
+ * Sem o ecrã que as mostrava e as pagava, continuar a gerá-las era
+ * escrever linhas que ninguém voltava a ler.
+ *
+ * O que se pagou e como está tudo nos pagamentos, que ficam.
  */
 export async function closeComanda(input: {
   appointmentId: string
@@ -209,14 +209,12 @@ export async function closeComanda(input: {
     const rows = await tx<
       {
         id: string
-        org_id: string
-        unit_id: string
         status: string
         closed_at: Date | null
         discount_cents: number
       }[]
     >`
-      select a.id, a.org_id, a.unit_id, a.status, a.closed_at, a.discount_cents
+      select a.id, a.status, a.closed_at, a.discount_cents
         from appointment a
        where a.id = ${input.appointmentId}
          for update
@@ -233,14 +231,13 @@ export async function closeComanda(input: {
     }
 
     const items = await tx<ItemRow[]>`
-      select id, staff_id, service_id, price_cents
+      select price_cents
         from appointment_item
        where appointment_id = ${appointment.id}
-       order by sort_order, starts_at
     `
 
-    const payments = await tx<{ id: string; method: string; amount_cents: number }[]>`
-      select id, method, amount_cents from payment
+    const payments = await tx<{ amount_cents: number }[]>`
+      select amount_cents from payment
        where appointment_id = ${appointment.id}
     `
 
@@ -249,51 +246,12 @@ export async function closeComanda(input: {
     const paid = payments.reduce((sum, p) => sum + p.amount_cents, 0)
     if (paid < due) return { ok: false, reason: 'unpaid' } as CloseResult
 
-    // --- comissões --------------------------------------------------
-    // O desconto rateia-se proporcionalmente pelos itens ANTES de
-    // aplicar a percentagem, e o rateio não perde cêntimos.
-    const shares = distributeProportionally(
-      Math.min(appointment.discount_cents, itemsCents),
-      items.map((i) => i.price_cents),
-    )
-
-    let commissionTotal = 0
-    for (const [index, item] of items.entries()) {
-      const percentRows = await tx<{ percent: string | null }[]>`
-        select effective_commission_percent(
-          ${appointment.org_id}::uuid, ${item.staff_id}::uuid, ${item.service_id}::uuid
-        ) as percent
-      `
-      const raw = percentRows[0]?.percent
-      // Sem regra nenhuma não se gera entrada — zero não é o mesmo que
-      // "a casa não definiu".
-      if (raw === null || raw === undefined) continue
-
-      const percent = Number(raw)
-      const share = shares[index] ?? 0
-      const base = Math.max(0, item.price_cents - share)
-      // Arredonda-se ao cêntimo, meia unidade para cima.
-      const amount = Math.round((base * percent) / 100)
-      commissionTotal += amount
-
-      await tx`
-        insert into commission_entry
-          (org_id, unit_id, appointment_id, appointment_item_id, staff_id,
-           item_price_cents, discount_share_cents, base_cents, percent, amount_cents)
-        values
-          (${appointment.org_id}, ${appointment.unit_id}, ${appointment.id},
-           ${item.id}, ${item.staff_id},
-           ${item.price_cents}, ${share}, ${base}, ${percent}, ${amount})
-        on conflict (appointment_item_id) do nothing
-      `
-    }
-
     await tx`
       update appointment
          set closed_at = now(), closed_by_staff_id = ${input.byStaffId}
        where id = ${appointment.id}
     `
 
-    return { ok: true, commissionCents: commissionTotal } as CloseResult
+    return { ok: true } as CloseResult
   })
 }

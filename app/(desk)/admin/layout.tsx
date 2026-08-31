@@ -3,9 +3,9 @@ import { can, requireManagement } from '@/lib/auth/actor'
 import { DeskNav, type NavItem } from '@/components/desk-nav'
 
 /**
- * GESTÃO: Unidades · Serviços · Comissões · Equipa.
+ * GESTÃO: Unidades · Serviços · Equipa.
  *
- * As três primeiras são da dona — são decisões de rede. A Equipa
+ * As duas primeiras são da dona — são decisões de rede. A Equipa
  * também a gerente pode mexer, mas só nas lojas dela. O que a pessoa
  * não pode gerir nem sequer aparece. A raiz (/admin) é o painel: a
  * rede em números antes de qualquer decisão.
@@ -32,9 +32,6 @@ export default async function AdminLayout({
   }
   if (can.manageCatalog(actor)) {
     tabs.push({ href: '/admin/servicos', label: 'Serviços' })
-  }
-  if (can.manageCommissions(actor)) {
-    tabs.push({ href: '/admin/comissoes', label: 'Comissões' })
   }
   if (can.manageTeam(actor)) {
     tabs.push({ href: '/admin/equipe', label: 'Equipa' })

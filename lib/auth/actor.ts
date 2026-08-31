@@ -11,13 +11,12 @@ import { getUnitBySlug, type Unit } from '@/lib/org'
  *   master        quem monta o sistema. Tudo o que a dona faz, mais o
  *                 que muda a forma do sistema: abrir e fechar unidades.
  *   owner         a dona. A casa dela toda — equipa, catálogo, preços,
- *                 comissões, caixa, agenda das duas lojas. Não abre nem
- *                 fecha unidades, porque isso não é gerir o salão, é
- *                 mudar o sistema.
+ *                 agenda das duas lojas. Não abre nem fecha unidades,
+ *                 porque isso não é gerir o salão, é mudar o sistema.
  *   manager       o mesmo que a dona, limitado às lojas onde tem o
- *                 papel. Não vê o catálogo da rede nem as comissões.
+ *                 papel. Não vê o catálogo da rede nem as contas dela.
  *   professional  vê só a agenda dela e as marcações onde é ela quem
- *                 atende. Não vê caixa, nem clientes, nem gestão.
+ *                 atende. Não vê clientes nem gestão.
  *
  * Um papel guarda-se com uma loja associada; SEM LOJA ASSOCIADA
  * SIGNIFICA "A REDE TODA".
@@ -139,7 +138,7 @@ export function homeFor(actor: Actor): string {
   return actor.role === 'professional' ? '/agenda' : '/'
 }
 
-/** Painel, caixa, clientes, gestão: tudo acima de profissional. */
+/** Painel, clientes, gestão: tudo acima de profissional. */
 export async function requireManagement(): Promise<Actor> {
   const actor = await requireActor()
   if (actor.role === 'professional') redirect('/agenda')
@@ -153,14 +152,14 @@ export async function requireManagement(): Promise<Actor> {
  * a profissional não lhes chegava — via a agenda dela e não lhe podia
  * tocar. Mas escrever uma marcação é o trabalho dela: é ela que tem a
  * cliente à frente, e é a ela que a cliente pergunta se dá para
- * amanhã. O painel, a caixa e a ficha das clientes continuam onde
- * estavam; o que abre é o livro de marcações.
+ * amanhã. O painel e a ficha das clientes continuam onde estavam; o que
+ * abre é o livro de marcações.
  */
 export async function requireBooking(): Promise<Actor> {
   return requireActor()
 }
 
-/** Catálogo, unidades e comissões são escopo rede — só a dona. */
+/** Catálogo e unidades são escopo rede — só a dona. */
 export async function requireOrgScope(): Promise<Actor> {
   const actor = await requireManagement()
   if (!actor.orgScope || actor.role === 'manager') notFound()
@@ -263,10 +262,16 @@ export const can = {
   manageUnits: (a: Actor) => a.orgScope && a.role !== 'manager',
   /* ABRIR E FECHAR LOJAS NÃO É GERIR O SALÃO, É MUDAR A FORMA DO
      SISTEMA. Uma loja a mais arrasta catálogo, equipa, horários,
-     comissões e caixa atrás dela; uma loja a menos leva tudo isso com
+     e as contas atrás dela; uma loja a menos leva tudo isso com
      ela. Fica de quem monta o sistema, não de quem o usa. */
   createUnits: (a: Actor) => a.role === 'master',
-  manageCommissions: (a: Actor) => a.orgScope && a.role !== 'manager',
+  /* Chamava-se `manageCommissions` e fazia dois trabalhos: abria o
+     separador das comissões e decidia quem vê as CONTAS DA REDE — o
+     painel inteiro, contra os quatro atalhos que a gerente recebe. As
+     comissões saíram; o segundo trabalho não tinha nada que ver com
+     elas e ficou com o nome certo. A regra é a mesma: quem vê a rede
+     toda é quem manda nela. */
+  seeNetworkNumbers: (a: Actor) => a.orgScope && a.role !== 'manager',
   /* ENCAIXAR É TRABALHO DE QUEM ESTÁ AO BALCÃO, e ao balcão está quem
      atende. A profissional é quem tem a cliente à frente a perguntar
      «e amanhã, dá?» — mandá-la chamar a dona para isso era pôr um

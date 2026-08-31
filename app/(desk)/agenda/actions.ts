@@ -173,12 +173,12 @@ export async function passarAction(
   }
 
   /*
-    UMA MARCAÇÃO FECHADA NÃO SE PASSA. O dinheiro já foi contado e a
-    comissão já tem dono: mudar a mão agora reescrevia um mês que já
-    fechou. Se foi engano, desfaz-se o fecho primeiro.
+    UMA MARCAÇÃO FECHADA NÃO SE PASSA. A conta já está feita e o
+    trabalho já tem dono: mudar a mão agora reescrevia o que já ficou
+    registado. Se foi engano, desfaz-se o fecho primeiro.
   */
   if (appointment.closed_at) {
-    return { error: 'Esta já foi fechada na caixa. Não se passa depois disso.' }
+    return { error: 'Esta comanda já foi fechada. Não se passa depois disso.' }
   }
 
   /* Quem recebe tem de ser da casa, da loja, e saber fazer tudo o que
