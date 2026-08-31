@@ -66,6 +66,7 @@ export type FichaMember = {
   bio: string | null
   display_color: string
   accepts_online_booking: boolean
+  is_placeholder: boolean
 }
 
 export type UnitOption = {
@@ -98,6 +99,7 @@ const NEW_MEMBER: FichaMember = {
   bio: null,
   display_color: '#C6A96B',
   accepts_online_booking: true,
+  is_placeholder: false,
 }
 
 function emptyWeek(): WeekSlot[] {
@@ -260,6 +262,7 @@ export function Ficha({
   const [bio, setBio] = useState(start.bio ?? '')
   const [colour, setColour] = useState(start.display_color)
   const [online, setOnline] = useState(start.accepts_online_booking)
+  const [cadeira, setCadeira] = useState(start.is_placeholder)
 
   const first = roles[0]
   const [level, setLevel] = useState<Level>(first?.role ?? 'professional')
@@ -380,7 +383,8 @@ export function Ficha({
     email !== (start.email ?? '') ||
     bio !== (start.bio ?? '') ||
     colour !== start.display_color ||
-    online !== start.accepts_online_booking
+    online !== start.accepts_online_booking ||
+    cadeira !== start.is_placeholder
   ) {
     dirty.push('a ficha')
   }
@@ -412,6 +416,7 @@ export function Ficha({
       bio,
       displayColor: colour,
       acceptsOnline: online,
+      isPlaceholder: cadeira,
     },
     unitIds: mine,
     // Uma profissional não manda em loja nenhuma: o papel dela guarda-se
@@ -681,6 +686,28 @@ export function Ficha({
               onClick={() => setOnline(!online)}
               label="Aceita marcação online"
               hint="Desligado, deixa de aparecer no funil público — mas continua a receber marcações feitas ao balcão."
+            />
+          </Faixa>
+
+          {/*
+            UMA CADEIRA NÃO É UMA PESSOA.
+
+            Ao domingo a casa vende horas antes de saber quem as vai
+            fazer: cria-se um perfil por cadeira, dá-se-lhe as
+            habilidades e uma escala de domingo, e reparte-se depois.
+            Isto é o que faz o sistema saber que aquele perfil não é
+            gente — a agenda mostra o trabalho dele como «por atribuir»,
+            e o dia ganha o «passar todas a…».
+
+            Fica aqui dentro, na gaveta, porque se marca uma vez na vida
+            de um perfil e nunca mais.
+          */}
+          <Faixa title="O que este perfil é">
+            <Caixa
+              on={cadeira}
+              onClick={() => setCadeira(!cadeira)}
+              label="É uma cadeira, não uma pessoa"
+              hint="Existe só para segurar horas até se saber quem as faz. A agenda mostra o trabalho dele como «por atribuir»."
             />
           </Faixa>
         </details>

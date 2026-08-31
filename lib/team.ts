@@ -154,6 +154,7 @@ export type Member = {
   avatar_url: string | null
   display_color: string
   accepts_online_booking: boolean
+  is_placeholder: boolean
   is_active: boolean
   sort_order: number
   has_password: boolean
@@ -167,7 +168,8 @@ export async function getMember(
   const rows = await sql<Member[]>`
     select s.id, s.org_id, s.name, s.public_alias, s.login, s.phone, s.email,
            s.bio, s.avatar_url,
-           s.display_color, s.accepts_online_booking, s.is_active,
+           s.display_color, s.accepts_online_booking, s.is_placeholder,
+           s.is_active,
            s.sort_order,
            s.password_hash is not null as has_password
       from staff s
@@ -191,6 +193,12 @@ export type MemberInput = {
   bio: string | null
   displayColor: string
   acceptsOnline: boolean
+  /**
+   * Não é gente — é uma cadeira. Um perfil que existe para segurar
+   * horas até se saber quem as faz. A agenda mostra o trabalho dele
+   * como «por atribuir».
+   */
+  isPlaceholder: boolean
 }
 
 export type MemberResult =
@@ -233,13 +241,14 @@ export async function createMember(
       const rows = await tx<{ id: string }[]>`
         insert into staff
           (org_id, name, public_alias, login, phone, email, bio,
-           display_color, accepts_online_booking, sort_order)
+           display_color, accepts_online_booking, is_placeholder, sort_order)
         values
           (${actor.orgId}, ${input.name.trim()}, ${input.publicAlias},
            ${input.login},
            ${input.phone.trim()},
            ${input.email}, ${input.bio}, ${input.displayColor},
            ${input.acceptsOnline},
+           ${input.isPlaceholder},
            (select coalesce(max(sort_order), 0) + 1 from staff
              where org_id = ${actor.orgId}))
         returning id
@@ -284,7 +293,8 @@ export async function updateMember(
              email = ${input.email},
              bio = ${input.bio},
              display_color = ${input.displayColor},
-             accepts_online_booking = ${input.acceptsOnline}
+             accepts_online_booking = ${input.acceptsOnline},
+             is_placeholder = ${input.isPlaceholder}
        where s.id = ${id} and ${reach(actor)}
       returning s.id
     `
@@ -1136,11 +1146,12 @@ export async function saveFicha(
         const rows = await tx<{ id: string }[]>`
           insert into staff
             (org_id, name, public_alias, login, phone, email, bio,
-             display_color, accepts_online_booking, sort_order)
+             display_color, accepts_online_booking, is_placeholder, sort_order)
           values
             (${actor.orgId}, ${member.name.trim()}, ${member.publicAlias},
              ${member.login}, ${member.phone.trim()}, ${member.email},
              ${member.bio}, ${member.displayColor}, ${member.acceptsOnline},
+             ${member.isPlaceholder},
              (select coalesce(max(sort_order), 0) + 1 from staff
                where org_id = ${actor.orgId}))
           returning id
@@ -1158,7 +1169,8 @@ export async function saveFicha(
                  email = ${member.email},
                  bio = ${member.bio},
                  display_color = ${member.displayColor},
-                 accepts_online_booking = ${member.acceptsOnline}
+                 accepts_online_booking = ${member.acceptsOnline},
+                 is_placeholder = ${member.isPlaceholder}
            where id = ${staffId} and org_id = ${actor.orgId}
         `
       }

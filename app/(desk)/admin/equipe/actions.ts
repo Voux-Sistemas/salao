@@ -85,6 +85,7 @@ function memberFrom(form: FormData): MemberInput {
     bio: text('bio'),
     displayColor: String(form.get('color') ?? '').trim() || '#D9C08A',
     acceptsOnline: form.get('online') === 'on',
+    isPlaceholder: form.get('cadeira') === 'on',
   }
 }
 
@@ -616,6 +617,7 @@ function parseFicha(raw: string): FichaInput | null {
     bio: orNull(m.bio),
     displayColor: text(m.displayColor) || '#C6A96B',
     acceptsOnline: m.acceptsOnline !== false,
+    isPlaceholder: m.isPlaceholder === true,
   }
 
   const roles: { role: Level; unitId: string | null }[] = []

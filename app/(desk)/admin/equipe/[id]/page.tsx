@@ -173,6 +173,7 @@ export default async function PessoaPage({
           bio: member.bio,
           display_color: member.display_color,
           accepts_online_booking: member.accepts_online_booking,
+          is_placeholder: member.is_placeholder,
         }}
         units={options}
         memberUnits={memberUnits}

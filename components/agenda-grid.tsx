@@ -9,7 +9,7 @@ import { formatCents } from '@/lib/money'
 import { STATUS_LABEL, type Tone } from '@/lib/status'
 import { initial, shortName } from '@/lib/text'
 import { Empty } from '@/components/ui'
-import { PassarPastilha } from '@/components/passar-pastilha'
+import { PassarPastilha, PassarTodas } from '@/components/passar-pastilha'
 import { Monogram } from '@/components/brand'
 import { IconCheck } from '@/components/desk-icons'
 
@@ -925,6 +925,17 @@ export function AgendaList({
   const mostrarQuem = trabalham.length > 1
   const nomes = new Map(agenda.columns.map((c) => [c.staffId, c.name]))
 
+  /*
+    QUEM NÃO É GENTE. Os perfis-cadeira seguram as horas do domingo até
+    se saber quem as faz; o trabalho deles lê-se «por atribuir» e não
+    com um nome, e é o que a lista conta na linha de cima para dizer
+    quanto falta repartir.
+  */
+  const cadeiras = new Set(
+    agenda.columns.filter((c) => c.placeholder).map((c) => c.staffId),
+  )
+
+
   const gaps = casaLivre(agenda)
 
   if (cards.length === 0) {
@@ -943,6 +954,10 @@ export function AgendaList({
       endMin: gap.end,
     })),
   ].sort((a, b) => a.startMin - b.startMin)
+
+  const porAtribuir = rows.filter(
+    (r) => r.kind === 'card' && cadeiras.has(r.card.staffId),
+  ).length
 
   /*
     O AGORA CAI QUASE SEMPRE DENTRO DE UM VAZIO — E ENTÃO SÃO A MESMA
@@ -968,7 +983,33 @@ export function AgendaList({
     nowMin !== null && idxAgoraNoVazio === -1 && idxAgora === -1
 
   return (
-    <ol className="bg-[var(--surface-raised)]">
+    <div className="bg-[var(--surface-raised)]">
+      {/*
+        A LINHA DO DIA, E SÓ COM DUAS OU MAIS.
+
+        Com uma marcação por repartir, a pastilha da própria linha é
+        mais curta do que qualquer atalho. Com quatro — o domingo em que
+        foi uma pessoa só — é um toque contra quatro.
+      */}
+      {porAtribuir > 1 ? (
+        <PassarTodas
+          quantas={porAtribuir}
+          marcacoes={[
+            ...new Set(
+              rows
+                .filter(
+                  (r) => r.kind === 'card' && cadeiras.has(r.card.staffId),
+                )
+                .map((r) => (r as { card: DayCard }).card.appointmentId),
+            ),
+          ]}
+          candidatos={agenda.columns
+            .filter((c) => !c.placeholder && !c.offDuty)
+            .map((c) => ({ staffId: c.staffId, name: c.name }))}
+        />
+      ) : null}
+
+      <ol>
       {rows.map((row, index) => {
         if (row.kind === 'gap') {
           return (
@@ -1198,6 +1239,7 @@ export function AgendaList({
                       appointmentId={card.appointmentId}
                       cor={colors[card.staffId] ?? 'var(--gold)'}
                       nome={nomes.get(card.staffId) ?? ''}
+                      semDono={cadeiras.has(card.staffId)}
                       candidatos={agenda.handover[card.appointmentId] ?? []}
                     />
                   ) : null}
@@ -1236,7 +1278,8 @@ export function AgendaList({
           </p>
         </li>
       ) : null}
-    </ol>
+      </ol>
+    </div>
   )
 }
 

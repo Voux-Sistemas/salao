@@ -237,6 +237,68 @@ export async function passarAction(
 }
 
 /**
+ * PASSAR TODAS AS DE UM DIA — o gesto do domingo.
+ *
+ * Ao domingo a casa vende horas antes de saber quem as vai fazer: as
+ * marcações entram numa CADEIRA — um perfil que existe só para as
+ * segurar — e ficam por repartir. O caso mais comum é também o mais
+ * aborrecido de fazer à mão: foi uma pessoa só, e as quatro marcações
+ * são dela.
+ *
+ * É O CONTRÁRIO DO «TUDO OU NADA» do turno extra, e de propósito. Ali
+ * marcavam-se doze sábados de uma vez e ficar com nove sem saber quais
+ * era pior do que ficar com zero. Aqui cada marcação é uma coisa em si:
+ * se uma chocar, as outras devem passar à mesma — e diz-se quantas
+ * foram e quantas ficaram.
+ */
+export async function passarTodasAction(
+  _previous: DeskState,
+  form: FormData,
+): Promise<DeskState> {
+  const actor = await requireActor()
+  const paraId = String(form.get('para') ?? '')
+  const ids = String(form.get('marcacoes') ?? '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
+  if (!paraId || ids.length === 0) return { error: 'Escolha para quem.' }
+
+  let passadas = 0
+  let ficaram = 0
+  let ultimoErro: string | null = null
+
+  for (const id of ids) {
+    const um = new FormData()
+    um.set('appointment', id)
+    um.set('para', paraId)
+    const r = await passarAction(EMPTY_DESK, um)
+    if (r.error) {
+      ficaram += 1
+      ultimoErro = r.error
+    } else {
+      passadas += 1
+    }
+  }
+
+  void actor
+  if (passadas === 0) {
+    return { error: ultimoErro ?? 'Não consegui passar nenhuma.' }
+  }
+  if (ficaram > 0) {
+    return {
+      error: null,
+      done: `${passadas} passadas, ${ficaram} ficaram — essas trata-se uma a uma.`,
+    }
+  }
+  return {
+    error: null,
+    done: passadas === 1 ? 'Passada.' : `${passadas} passadas.`,
+  }
+}
+
+const EMPTY_DESK: DeskState = { error: null, done: null }
+
+/**
  * Os botões do estado seguinte. Cada mudança fica registada com quem a
  * fez, quando e porquê — e cancelar apaga os blocos.
  */

@@ -40,6 +40,12 @@ export type AgendaColumn = {
    * menos espaço — ver `folgas` em `loadAgendaDay`.
    */
   offDuty: boolean
+  /**
+   * NÃO É GENTE — é uma cadeira. Um perfil que existe para segurar
+   * horas ao domingo até se saber quem as vai fazer. A lista mostra o
+   * trabalho dele como «por atribuir», e não com um nome.
+   */
+  placeholder: boolean
 }
 
 export type AgendaBlock = {
@@ -107,6 +113,7 @@ type StaffRow = {
   name: string
   avatar_url: string | null
   sort_order: number
+  is_placeholder: boolean
 }
 
 type AbsenceRow = {
@@ -280,7 +287,7 @@ export async function loadAgendaDay(
     ids.length === 0
       ? Promise.resolve([] as StaffRow[])
       : sql<StaffRow[]>`
-          select id, name, avatar_url, sort_order
+          select id, name, avatar_url, sort_order, is_placeholder
             from staff
            where id = any(${ids}::uuid[])
            order by sort_order, name
@@ -326,6 +333,7 @@ export async function loadAgendaDay(
       trabalha hoje — a coluna é inteira, como sempre foi.
     */
     offDuty: !dutyIds.has(s.id),
+    placeholder: s.is_placeholder,
   }))
 
   const blocks: AgendaBlock[] = blockRows.map((r) => ({
@@ -440,7 +448,9 @@ async function quemPodePegar(
   const saidas: Record<string, Candidate[]> = {}
   for (const [appointmentId, j] of marcacoes) {
     const dono = blocks.find((b) => b.appointmentId === appointmentId)?.staffId
-    saidas[appointmentId] = columns.map((col) => {
+    saidas[appointmentId] = columns
+      .filter((col) => !col.placeholder)
+      .map((col) => {
       if (col.staffId === dono) {
         return { staffId: col.staffId, name: col.name, ok: false, why: 'agora' }
       }

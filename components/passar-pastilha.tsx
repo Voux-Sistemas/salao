@@ -3,7 +3,11 @@
 import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import clsx from 'clsx'
-import { passarAction, type DeskState } from '@/app/(desk)/agenda/actions'
+import {
+  passarAction,
+  passarTodasAction,
+  type DeskState,
+} from '@/app/(desk)/agenda/actions'
 import type { Candidate } from '@/lib/agenda'
 import { shortName } from '@/lib/text'
 
@@ -151,5 +155,92 @@ function Linha({ nome, why }: { nome: string; why: string }) {
         {pending ? 'a passar…' : why}
       </span>
     </button>
+  )
+}
+
+/**
+ * A LINHA DO DIA — «passar todas a…».
+ *
+ * O caso mais comum do domingo é também o mais aborrecido de fazer à
+ * mão: foi uma pessoa só, e as quatro marcações são dela. Um toque
+ * resolve o dia; as que chocarem ficam, e a frase diz quantas.
+ *
+ * Só aparece quando há mais do que uma por repartir. Com uma, a
+ * pastilha da própria linha é mais curta.
+ */
+export function PassarTodas({
+  marcacoes,
+  quantas,
+  candidatos,
+}: {
+  /** Os identificadores das marcações que estão numa cadeira. */
+  marcacoes: string[]
+  quantas: number
+  /** Quem está de serviço hoje e é gente. */
+  candidatos: { staffId: string; name: string }[]
+}) {
+  const [state, action] = useActionState<DeskState, FormData>(
+    passarTodasAction,
+    EMPTY,
+  )
+  const [aberto, setAberto] = useState(false)
+
+  const [visto, setVisto] = useState<string | null>(null)
+  if (state.done && state.done !== visto) {
+    setVisto(state.done)
+    setAberto(false)
+  }
+
+  return (
+    <div className="relative flex flex-wrap items-center gap-2 border-b border-[color-mix(in_srgb,var(--house-deep)_22%,transparent)] bg-[color-mix(in_srgb,var(--house-deep)_7%,transparent)] px-4 py-2.5 text-[0.8125rem] text-[var(--house-deep)]">
+      <span>
+        <strong className="font-bold">{quantas} marcações</strong> por atribuir
+      </span>
+
+      {candidatos.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setAberto((x) => !x)}
+          aria-expanded={aberto}
+          className="ml-auto rounded-full border border-[color-mix(in_srgb,var(--house-deep)_40%,transparent)] bg-[var(--surface-raised)] px-3 py-1 text-[0.75rem] font-bold"
+        >
+          passar todas a… ▾
+        </button>
+      ) : null}
+
+      {state.done ? (
+        <span className="w-full text-[0.75rem] text-[var(--ok)]">
+          {state.done}
+        </span>
+      ) : null}
+      {state.error ? (
+        <span className="w-full text-[0.75rem] text-[var(--bad)]">
+          {state.error}
+        </span>
+      ) : null}
+
+      {aberto ? (
+        <div className="absolute top-full right-4 z-30 mt-1 w-[14rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-soft)]">
+          {candidatos.map((quem) => (
+            <form key={quem.staffId} action={action}>
+              <input type="hidden" name="para" value={quem.staffId} />
+              <input
+                type="hidden"
+                name="marcacoes"
+                value={marcacoes.join(',')}
+              />
+              <Linha nome={quem.name} why={`${quantas}`} />
+            </form>
+          ))}
+          <button
+            type="button"
+            onClick={() => setAberto(false)}
+            className="block w-full border-t border-[var(--line-soft)] px-3 py-2 text-center text-[0.75rem] text-[var(--ink-faint)]"
+          >
+            Deixar como está
+          </button>
+        </div>
+      ) : null}
+    </div>
   )
 }
