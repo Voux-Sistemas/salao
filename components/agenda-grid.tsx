@@ -9,7 +9,11 @@ import { formatCents } from '@/lib/money'
 import { STATUS_LABEL, type Tone } from '@/lib/status'
 import { initial, shortName } from '@/lib/text'
 import { Empty } from '@/components/ui'
-import { PassarPastilha, PassarTodas } from '@/components/passar-pastilha'
+import {
+  PassarLinha,
+  PassarPastilha,
+  PassarTodas,
+} from '@/components/passar-pastilha'
 import { Monogram } from '@/components/brand'
 import { IconCheck } from '@/components/desk-icons'
 
@@ -1070,6 +1074,24 @@ export function AgendaList({
           >
             {index === idxAgora ? <NowRule nowMin={nowMin!} /> : null}
             {/*
+              A LINHA SEGURA O ESTADO DO MENU DE PASSAR.
+
+              A pastilha vive no meio do conteúdo da linha e o menu tem
+              de vir DEPOIS dele, para empurrar as linhas de baixo em vez
+              de flutuar por cima delas. Como este ficheiro é servidor e
+              não pode segurar estado, quem o segura é esta moldura — e a
+              pastilha vai buscá-lo lá dentro, pelo contexto.
+            */}
+            <PassarLinha
+              appointmentId={card.appointmentId}
+              cliente={card.clientName}
+              quando={`${formatMinutes(card.startMin)} → ${formatMinutes(card.endMin)}`}
+              servicos={card.services}
+              candidatos={
+                mostrarQuem ? (agenda.handover[card.appointmentId] ?? []) : []
+              }
+            >
+            {/*
               A LIGAÇÃO DEIXA DE ENVOLVER A LINHA E PASSA A COBRI-LA.
 
               Enquanto ela era a moldura, tudo o que estivesse dentro era
@@ -1240,14 +1262,9 @@ export function AgendaList({
                   */}
                   {mostrarQuem ? (
                     <PassarPastilha
-                      appointmentId={card.appointmentId}
                       cor={colors[card.staffId] ?? 'var(--gold)'}
-                      nome={nomes.get(card.staffId) ?? ''}
+                      nome={shortName(nomes.get(card.staffId) ?? '')}
                       semDono={cadeiras.has(card.staffId)}
-                      cliente={card.clientName}
-                      quando={`${formatMinutes(card.startMin)} → ${formatMinutes(card.endMin)}`}
-                      servicos={card.services}
-                      candidatos={agenda.handover[card.appointmentId] ?? []}
                     />
                   ) : null}
                   {/* A confirmação enviada fica, mas sem a palavra: o
@@ -1263,15 +1280,16 @@ export function AgendaList({
               </span>
             </div>
 
-            <Link
-              href={hrefFor(card.appointmentId)}
-              scroll={false}
-              aria-current={
-                selectedId === card.appointmentId ? 'true' : undefined
-              }
-              aria-label={`Abrir a marcação de ${card.clientName}`}
-              className="absolute inset-0 z-0"
-            />
+              <Link
+                href={hrefFor(card.appointmentId)}
+                scroll={false}
+                aria-current={
+                  selectedId === card.appointmentId ? 'true' : undefined
+                }
+                aria-label={`Abrir a marcação de ${card.clientName}`}
+                className="absolute inset-0 z-0"
+              />
+            </PassarLinha>
           </li>
         )
       })}
