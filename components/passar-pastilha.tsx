@@ -93,10 +93,17 @@ export function PassarPastilha({
       documento, pintavam por cima do menu aberto. Não era transparência
       nenhuma — eram os elementos de outras linhas a atravessá-lo.
 
-      Aberta, a pastilha sobe a `z-40` e leva o menu com ela.
+      Aberta, a pastilha sobe e leva o menu com ela.
+
+      E SOBE A `z-50`, NÃO A `z-40`. Com 40 empatava com a barra do
+      fundo do telemóvel, que também é 40 — e num empate ganha quem vem
+      depois no documento, que é sempre a barra. O `z-50` que a folha
+      tem por dentro não a salvava: uma camada filha nunca sai da
+      camada do pai. Era por isso que a última pessoa da lista aparecia
+      cortada pela barra, e que o véu não a escurecia.
     */
     <span
-      className={clsx('relative shrink-0', aberto ? 'z-40' : 'z-10')}
+      className={clsx('relative shrink-0', aberto ? 'z-50' : 'z-10')}
     >
       <button
         type="button"
@@ -145,15 +152,27 @@ export function PassarPastilha({
 
             A partir do `sm` volta a ser o menu pendurado da pastilha,
             que é o que a casa usa em todo o lado e que lá cabe.
+
+            O FUNDO NÃO É O FUNDO DO ECRÃ. O iPhone tem a barra do
+            indicador por baixo de tudo, e uma folha encostada a três
+            píxeis ficava com a última linha debaixo dela. O `env()`
+            devolve zero em quem não tem indicador, portanto a conta
+            serve os dois casos sem os distinguir.
+
+            E TEM TECTO. Numa equipa grande a lista era mais alta do
+            que o ecrã e crescia para cima, para fora — a folha é que
+            manda na altura, e o miolo é que rola. O cabeçalho diz de
+            quem é a marcação e o «deixar como está» é a saída: nenhum
+            dos dois pode fugir com a rolagem.
           */}
-          <span className="max-sm:fixed max-sm:inset-x-3 max-sm:bottom-3 max-sm:z-50 sm:absolute sm:top-full sm:right-0 sm:mt-1.5 sm:w-[16rem] block overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_22px_50px_-18px_rgba(28,24,21,0.5)]">
+          <span className="max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] max-sm:z-50 max-sm:max-h-[80vh] sm:absolute sm:top-full sm:right-0 sm:mt-1.5 sm:w-[16rem] sm:max-h-[70vh] flex flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_22px_50px_-18px_rgba(28,24,21,0.5)]">
             {/*
               A FOLHA DIZ O QUE SE ESTÁ A PASSAR. Com a lista tapada por
               trás, sem isto deixa de haver maneira de confirmar em qual
               das linhas se tocou — e é o género de engano que só se
               descobre no dia seguinte.
             */}
-            <span className="block border-b border-[var(--line-soft)] px-4 py-3">
+            <span className="block shrink-0 border-b border-[var(--line-soft)] px-4 py-3">
               <span className="block text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
                 Passar a
               </span>
@@ -166,11 +185,15 @@ export function PassarPastilha({
             </span>
 
             {state.error ? (
-              <span className="block border-b border-[var(--line-soft)] px-4 py-2 text-[0.75rem] leading-relaxed text-[var(--bad)]">
+              <span className="block shrink-0 border-b border-[var(--line-soft)] px-4 py-2 text-[0.75rem] leading-relaxed text-[var(--bad)]">
                 {state.error}
               </span>
             ) : null}
 
+            {/* O `min-h-0` é o que deixa isto encolher dentro do flex —
+                sem ele a caixa recusa-se a ser menor do que o conteúdo e
+                a folha volta a crescer para fora do ecrã. */}
+            <span className="block min-h-0 flex-1 overflow-y-auto">
             {ordenados.map((quem) =>
               quem.ok ? (
                 <form key={quem.staffId} action={action}>
@@ -199,11 +222,12 @@ export function PassarPastilha({
                 </span>
               ),
             )}
+            </span>
 
             <button
               type="button"
               onClick={() => setAberto(false)}
-              className="block w-full border-t border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--ink)_3%,transparent)] px-4 py-3 text-center text-[0.8125rem] font-semibold text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
+              className="block w-full shrink-0 border-t border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--ink)_3%,transparent)] px-4 py-3 text-center text-[0.8125rem] font-semibold text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
             >
               Deixar como está
             </button>
@@ -268,7 +292,10 @@ export function PassarTodas({
     <div
       className={clsx(
         'relative flex flex-wrap items-center gap-2 border-b border-[color-mix(in_srgb,var(--house-deep)_22%,transparent)] bg-[color-mix(in_srgb,var(--house-deep)_7%,transparent)] px-4 py-2.5 text-[0.8125rem] text-[var(--house-deep)]',
-        aberto ? 'z-40' : 'z-10',
+        // `z-50` pela mesma razão da pastilha: com 40 empata com a
+        // barra do fundo e perde o desempate, que é a ordem no
+        // documento.
+        aberto ? 'z-50' : 'z-10',
       )}
     >
       <span>
@@ -303,25 +330,27 @@ export function PassarTodas({
             onClick={() => setAberto(false)}
             className="fixed inset-0 z-40 block bg-[rgba(28,24,21,0.42)] sm:hidden"
           />
-          <div className="max-sm:fixed max-sm:inset-x-3 max-sm:bottom-3 max-sm:z-50 sm:absolute sm:top-full sm:right-4 sm:mt-1 sm:w-[15rem] overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_22px_50px_-18px_rgba(28,24,21,0.5)]">
-            <p className="border-b border-[var(--line-soft)] px-4 py-3 text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
+          <div className="max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] max-sm:z-50 max-sm:max-h-[80vh] sm:absolute sm:top-full sm:right-4 sm:mt-1 sm:w-[15rem] sm:max-h-[70vh] flex flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[0_22px_50px_-18px_rgba(28,24,21,0.5)]">
+            <p className="shrink-0 border-b border-[var(--line-soft)] px-4 py-3 text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
               Passar as {quantas} a
             </p>
-            {candidatos.map((quem) => (
-              <form key={quem.staffId} action={action}>
-                <input type="hidden" name="para" value={quem.staffId} />
-                <input
-                  type="hidden"
-                  name="marcacoes"
-                  value={marcacoes.join(',')}
-                />
-                <Linha nome={quem.name} why={`${quantas}`} />
-              </form>
-            ))}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {candidatos.map((quem) => (
+                <form key={quem.staffId} action={action}>
+                  <input type="hidden" name="para" value={quem.staffId} />
+                  <input
+                    type="hidden"
+                    name="marcacoes"
+                    value={marcacoes.join(',')}
+                  />
+                  <Linha nome={quem.name} why={`${quantas}`} />
+                </form>
+              ))}
+            </div>
             <button
               type="button"
               onClick={() => setAberto(false)}
-              className="block w-full border-t border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--ink)_3%,transparent)] px-4 py-3 text-center text-[0.8125rem] font-semibold text-[var(--ink-muted)]"
+              className="block w-full shrink-0 border-t border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--ink)_3%,transparent)] px-4 py-3 text-center text-[0.8125rem] font-semibold text-[var(--ink-muted)]"
             >
               Deixar como está
             </button>
