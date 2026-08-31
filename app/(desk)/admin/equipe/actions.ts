@@ -9,6 +9,7 @@ import { requireOrg } from '@/lib/org'
 import {
   addAbsence,
   addRole,
+  addShift,
   attachUnit,
   closeSchedule,
   createMember,
@@ -19,6 +20,7 @@ import {
   reactivateMember,
   removeAbsence,
   removeRole,
+  removeShift,
   removeSchedule,
   saveFicha,
   setPassword,
@@ -442,6 +444,77 @@ export async function addAbsenceAction(
     }
   }
   return { error: null, done: 'Ausência marcada.' }
+}
+
+/*
+  MARCAR UM TURNO EXTRA — O CONTRÁRIO DE MARCAR UMA AUSÊNCIA.
+
+  Aceita VÁRIAS DATAS de uma vez, separadas por vírgula: é o que faz
+  «um sábado por mês» ser doze linhas escritas numa sentada em vez de
+  doze visitas a esta página ao longo do ano.
+
+  E é tudo ou nada. Se uma das doze chocar com um turno que já lá está,
+  a base rebenta a transacção inteira e não fica nenhuma — porque ficar
+  com nove e não saber quais é pior do que ficar com zero.
+*/
+export async function addShiftAction(
+  _previous: TeamState,
+  form: FormData,
+): Promise<TeamState> {
+  const found = await reach(String(form.get('staff') ?? ''))
+  if (!found) return GONE
+
+  const unitId = String(form.get('unit') ?? '').trim()
+  if (!unitId) return { error: 'Escolha a loja.' }
+
+  const days = String(form.get('days') ?? '')
+    .split(',')
+    .map((d) => d.trim())
+    .filter((d) => /^d{4}-d{2}-d{2}$/.test(d))
+  if (days.length === 0) return { error: 'Diga o dia.' }
+
+  const startsMin = parseMinutes(String(form.get('starts') ?? ''))
+  const endsMin = parseMinutes(String(form.get('ends') ?? ''))
+  if (startsMin === null || endsMin === null) {
+    return { error: 'As horas escrevem-se como 09:00.' }
+  }
+  if (endsMin <= startsMin) return { error: 'A hora de fim é antes do início.' }
+
+  const result = await addShift(found.actor, found.member.id, {
+    unitId,
+    days,
+    startsMin,
+    endsMin,
+  })
+  if (!result.ok) {
+    return {
+      error:
+        result.reason === 'overlap'
+          ? 'Já há um turno nessa hora — nenhum dos dias foi marcado.'
+          : result.reason === 'forbidden'
+            ? 'Essa pessoa não trabalha nessa loja.'
+            : result.reason === 'invalid'
+              ? 'O fim é antes do início.'
+              : 'Essa pessoa não existe.',
+    }
+  }
+
+  refresh(found.member.id)
+  return {
+    error: null,
+    done:
+      result.marcados === 1
+        ? 'Turno marcado.'
+        : `${result.marcados} turnos marcados.`,
+  }
+}
+
+export async function removeShiftAction(form: FormData): Promise<void> {
+  const found = await reach(String(form.get('staff') ?? ''))
+  if (!found) return
+  const id = String(form.get('id') ?? '')
+  if (id) await removeShift(found.actor, found.member.id, id)
+  refresh(found.member.id)
 }
 
 export async function removeAbsenceAction(form: FormData): Promise<void> {

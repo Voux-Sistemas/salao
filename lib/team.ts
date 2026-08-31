@@ -873,6 +873,124 @@ export async function removeAbsence(
 }
 
 // ---------------------------------------------------------------------
+// TURNOS EXTRA — O CONTRÁRIO DA AUSÊNCIA
+//
+// A ausência fecha um dia que a escala semanal abria. O turno extra
+// abre um dia que ela não abria. São as duas metades do mesmo par, e a
+// casa só tinha uma: dar um sábado por mês a alguém obrigava a escalá-la
+// a TODOS os sábados e depois a marcar folga nos três que não faz.
+//
+// Uma linha por DATA, e não uma regra que se repete — a razão está
+// escrita na migração `20260831120000_turno_extra.sql`.
+// ---------------------------------------------------------------------
+
+export type ShiftRow = {
+  id: string
+  unit_id: string
+  unit_name: string
+  day: string
+  starts_min: number
+  ends_min: number
+  author: string | null
+}
+
+/**
+ * Os turnos extra desta pessoa. Os que já passaram continuam a ver-se
+ * por uns tempos — quem vem à ficha em novembro quer poder confirmar o
+ * sábado de outubro sem sair daqui.
+ */
+export async function listShifts(staffId: string): Promise<ShiftRow[]> {
+  return sql<ShiftRow[]>`
+    select s.id, s.unit_id, u.name as unit_name,
+           to_char(s.day, 'YYYY-MM-DD') as day,
+           s.starts_min, s.ends_min,
+           author.name as author
+      from staff_shift s
+      join unit u on u.id = s.unit_id
+      left join staff author on author.id = s.created_by
+     where s.staff_id = ${staffId}
+       and s.day >= current_date - 60
+     order by s.day, s.starts_min
+     limit 60
+  `
+}
+
+export type ShiftInput = {
+  unitId: string
+  /** Uma ou várias datas — «um sábado por mês» marca-se de uma vez. */
+  days: string[]
+  startsMin: number
+  endsMin: number
+}
+
+export type ShiftResult =
+  | { ok: true; marcados: number }
+  | { ok: false; reason: 'forbidden' | 'not_found' | 'invalid' | 'overlap' }
+
+export async function addShift(
+  actor: Actor,
+  staffId: string,
+  input: ShiftInput,
+): Promise<ShiftResult> {
+  if (input.endsMin <= input.startsMin) return { ok: false, reason: 'invalid' }
+  if (input.days.length === 0) return { ok: false, reason: 'invalid' }
+  if (!canSeeUnit(actor, input.unitId)) return { ok: false, reason: 'forbidden' }
+
+  const member = await getMember(actor, staffId)
+  if (!member) return { ok: false, reason: 'not_found' }
+
+  /*
+    UM TURNO NUMA LOJA ONDE ELA NÃO TRABALHA NÃO DÁ HORA NENHUMA.
+    O motor pergunta primeiro quem pertence à loja e só depois quem
+    está escalado; sem a pertença, a linha ficava na base a não servir
+    para nada e ninguém perceberia porquê.
+  */
+  const pertence = await sql<{ ok: boolean }[]>`
+    select true as ok
+      from staff_unit
+     where staff_id = ${staffId} and unit_id = ${input.unitId}
+  `
+  if (pertence.length === 0) return { ok: false, reason: 'forbidden' }
+
+  try {
+    /*
+      TUDO OU NADA. Marcar doze sábados e ficar com nove porque o décimo
+      chocava com outro turno é pior do que não marcar nenhum: quem
+      escreveu não sabe quais entraram. A restrição de exclusão da base
+      rebenta a transacção inteira, e o erro volta como «overlap».
+    */
+    await sql.begin(async (tx) => {
+      for (const day of input.days) {
+        await tx`
+          insert into staff_shift
+            (staff_id, unit_id, day, starts_min, ends_min, created_by)
+          values
+            (${staffId}, ${input.unitId}, ${day}::date,
+             ${input.startsMin}, ${input.endsMin}, ${actor.id})
+        `
+      }
+    })
+  } catch {
+    return { ok: false, reason: 'overlap' }
+  }
+
+  return { ok: true, marcados: input.days.length }
+}
+
+export async function removeShift(
+  actor: Actor,
+  staffId: string,
+  id: string,
+): Promise<boolean> {
+  const member = await getMember(actor, staffId)
+  if (!member) return false
+  await sql`
+    delete from staff_shift where id = ${id} and staff_id = ${staffId}
+  `
+  return true
+}
+
+// ---------------------------------------------------------------------
 // A FICHA INTEIRA, NUM GRAVAR SÓ
 //
 // Até aqui cada pedaço da ficha tinha a sua acção e o seu botão: o

@@ -145,6 +145,14 @@ export async function loadAgendaWeek(
          and ss.valid_from <= dias.on_date
          and (ss.valid_to is null or ss.valid_to >= dias.on_date)
        where (${only}::uuid is null or ss.staff_id = ${only}::uuid)
+      -- Os turnos extra entram pela data, e não pelo dia da semana.
+      union all
+      select to_char(sh.day, 'YYYY-MM-DD') as day,
+             sh.staff_id, sh.starts_min, sh.ends_min
+        from staff_shift sh
+       where sh.unit_id = ${unit.id}
+         and sh.day between ${from}::date and ${to}::date
+         and (${only}::uuid is null or sh.staff_id = ${only}::uuid)
     `,
 
     /*

@@ -5,9 +5,11 @@ import { useFormStatus } from 'react-dom'
 import { Trash2 } from 'lucide-react'
 import {
   addAbsenceAction,
+  addShiftAction,
   deactivateMemberAction,
   reactivateMemberAction,
   removeAbsenceAction,
+  removeShiftAction,
   setPasswordAction,
   type TeamState,
 } from '@/app/(desk)/admin/equipe/actions'
@@ -463,6 +465,211 @@ export function RemoveAbsence({
       <input type="hidden" name="staff" value={staffId} />
       <input type="hidden" name="id" value={id} />
       <IconSubmit label="Apagar ausência" />
+    </form>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Turnos extra
+// ---------------------------------------------------------------------
+
+/**
+ * MARCAR UM TURNO EXTRA.
+ *
+ * É a gémea da ausência, ao contrário: em vez de fechar um dia que a
+ * semana abria, abre um dia que ela não abria. Alguém que faz de
+ * segunda a sexta e vai fazer um sábado por mês marca-se aqui.
+ *
+ * NÃO TEM «MOTIVO». Uma ausência pode ser folga, férias ou formação, e
+ * a diferença conta para quem lê a agenda. Um turno extra é sempre a
+ * mesma coisa: a pessoa vem trabalhar. Um campo com uma resposta só não
+ * é uma pergunta.
+ *
+ * E ACEITA VÁRIOS DIAS. «Um sábado por mês» são doze datas — marcá-las
+ * uma a uma ao longo do ano é doze visitas a esta página, e onze
+ * esquecimentos. Aqui juntam-se todas e vão de uma vez, tudo ou nada.
+ */
+export function ShiftForm({
+  staffId,
+  units,
+  today,
+}: {
+  staffId: string
+  /** Só as lojas onde ela trabalha: nas outras o turno não daria hora. */
+  units: UnitOption[]
+  today: string
+}) {
+  const [state, action] = useActionState<TeamState, FormData>(
+    addShiftAction,
+    EMPTY,
+  )
+  const [aberto, setAberto] = useState(false)
+  const [unit, setUnit] = useState(units[0]?.id ?? '')
+  const [dias, setDias] = useState<string[]>([today])
+  const [starts, setStarts] = useState('09:00')
+  const [ends, setEnds] = useState('13:00')
+
+  const [visto, setVisto] = useState<string | null>(null)
+  if (state.done && state.done !== visto) {
+    setVisto(state.done)
+    setAberto(false)
+    setDias([today])
+  }
+
+  if (!aberto) {
+    return (
+      <div className="space-y-3">
+        <Result state={state} />
+        {units.length === 0 ? (
+          <p className="text-[0.75rem] text-[var(--ink-faint)]">
+            Primeiro a loja: um turno extra marca-se numa loja onde a
+            pessoa trabalha.
+          </p>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setAberto(true)}
+          >
+            + Marcar turno extra
+          </Button>
+        )}
+      </div>
+    )
+  }
+
+  const validos = dias.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+  const nomeLoja = units.find((u) => u.id === unit)?.name ?? ''
+
+  return (
+    <form
+      action={action}
+      className="space-y-3 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] bg-[color-mix(in_srgb,var(--accent)_5%,transparent)] p-4"
+    >
+      <Result state={state} />
+      <input type="hidden" name="staff" value={staffId} />
+      {/* As datas viajam numa linha só, separadas por vírgula: o
+          servidor parte-a e valida cada uma. */}
+      <input type="hidden" name="days" value={validos.join(',')} />
+
+      <Field label="Loja" htmlFor="turno-unit" className="sm:max-w-[16rem]">
+        <Select
+          id="turno-unit"
+          name="unit"
+          value={unit}
+          onChange={(e) => setUnit(e.target.value)}
+        >
+          {units.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      {dias.map((dia, i) => (
+        <div key={i} className="flex items-end gap-2">
+          <Field
+            label={i === 0 ? 'No dia' : `E também`}
+            htmlFor={`turno-dia-${i}`}
+            className="flex-1 sm:max-w-[13rem]"
+          >
+            <Input
+              id={`turno-dia-${i}`}
+              type="date"
+              value={dia}
+              onChange={(e) =>
+                setDias((atuais) =>
+                  atuais.map((d, j) => (j === i ? e.target.value : d)),
+                )
+              }
+              className="tabular"
+              required
+            />
+          </Field>
+          {i > 0 ? (
+            <button
+              type="button"
+              aria-label="Tirar este dia"
+              onClick={() =>
+                setDias((atuais) => atuais.filter((_, j) => j !== i))
+              }
+              className="mb-1 p-2 text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
+            >
+              <Trash2 size={14} />
+            </button>
+          ) : null}
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => setDias((atuais) => [...atuais, ''])}
+        className="text-[0.8125rem] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--accent-strong)]"
+      >
+        + e mais um dia
+      </button>
+
+      <div className="grid gap-3 sm:flex sm:max-w-md sm:gap-3">
+        <Field label="Das" htmlFor="turno-starts" className="sm:w-28">
+          <Input
+            id="turno-starts"
+            name="starts"
+            type="time"
+            value={starts}
+            onChange={(e) => setStarts(e.target.value)}
+            className="tabular"
+            required
+          />
+        </Field>
+        <Field label="Às" htmlFor="turno-ends" className="sm:w-28">
+          <Input
+            id="turno-ends"
+            name="ends"
+            type="time"
+            value={ends}
+            onChange={(e) => setEnds(e.target.value)}
+            className="tabular"
+            required
+          />
+        </Field>
+      </div>
+
+      {/* Lê de volta o que se vai gravar, como no formulário da
+          ausência: é o que apanha o engano de dedo numa data. */}
+      {validos.length > 0 ? (
+        <p className="rounded-[var(--radius-sm)] bg-[color-mix(in_srgb,var(--accent)_9%,transparent)] px-3 py-2 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+          Trabalha{' '}
+          <strong className="font-semibold text-[var(--accent-strong)]">
+            das {starts} às {ends}
+          </strong>{' '}
+          {validos.length === 1
+            ? `de ${porExtenso(validos[0] ?? '')}`
+            : `em ${validos.length} dias`}
+          {nomeLoja ? `, em ${nomeLoja}` : ''} — além da semana dela.
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-3 pt-1">
+        <Submit label="Marcar turno" />
+        <button
+          type="button"
+          onClick={() => setAberto(false)}
+          className="text-[0.8125rem] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink)]"
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
+  )
+}
+
+export function RemoveShift({ staffId, id }: { staffId: string; id: string }) {
+  return (
+    <form action={removeShiftAction}>
+      <input type="hidden" name="staff" value={staffId} />
+      <input type="hidden" name="id" value={id} />
+      <IconSubmit label="Apagar turno extra" />
     </form>
   )
 }

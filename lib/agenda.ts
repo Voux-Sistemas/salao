@@ -165,6 +165,9 @@ export async function loadAgendaDay(
   const [opening, scheduleRows, blockRows] = await Promise.all([
     openingWindows(unit.id, day),
 
+    /* Semana + turnos extra: a grelha tem de mostrar a coluna de quem
+       veio fazer um sábado avulso, senão o trabalho dela não tem onde
+       assentar. */
     sql<ScheduleRow[]>`
       select staff_id, starts_min, ends_min
         from staff_schedule
@@ -172,6 +175,12 @@ export async function loadAgendaDay(
          and weekday = ${weekdayOf(day)}
          and valid_from <= ${day}::date
          and (valid_to is null or valid_to >= ${day}::date)
+         and (${only}::uuid is null or staff_id = ${only}::uuid)
+      union all
+      select staff_id, starts_min, ends_min
+        from staff_shift
+       where unit_id = ${unit.id}
+         and day = ${day}::date
          and (${only}::uuid is null or staff_id = ${only}::uuid)
     `,
 

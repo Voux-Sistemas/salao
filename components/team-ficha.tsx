@@ -237,6 +237,8 @@ export function Ficha({
   aside?: {
     password?: React.ReactNode
     passwordMeta?: string
+    shifts?: React.ReactNode
+    shiftsMeta?: string
     absences?: React.ReactNode
     absencesMeta?: string
   }
@@ -957,6 +959,24 @@ export function Ficha({
             ) : null}
           </Faixa>
         )}
+
+        {/*
+          AS DUAS EXCEPÇÕES À SEMANA, LADO A LADO.
+
+          O turno extra abre um dia que a semana não abria; a ausência
+          fecha um que ela abria. São as duas metades do mesmo par, e
+          por isso vivem no mesmo cartão, uma a seguir à outra — quem
+          vem cá mexer numa costuma estar a pensar na outra.
+
+          O extra vem primeiro porque é o que se marca a olhar para a
+          frente; a ausência é quase sempre uma resposta a alguma coisa
+          que aconteceu.
+        */}
+        {aside?.shifts ? (
+          <Faixa title="Turnos extra" meta={aside.shiftsMeta}>
+            {aside.shifts}
+          </Faixa>
+        ) : null}
 
         {aside?.absences ? (
           <Faixa title="Ausências" meta={aside.absencesMeta}>

@@ -9,15 +9,18 @@ import {
   listMemberUnits,
   listRoles,
   listSchedule,
+  listShifts,
   listSkills,
 } from '@/lib/team'
 import {
   addDays,
   dayStart,
   formatDayLong,
+  formatMinutes,
   formatTime,
   isoDay,
   today,
+  type IsoDay,
 } from '@/lib/time'
 import { openWeekdaysFor } from '@/lib/hours'
 import {
@@ -25,6 +28,8 @@ import {
   MemberExit,
   PasswordForm,
   RemoveAbsence,
+  RemoveShift,
+  ShiftForm,
 } from '@/components/team-forms'
 import { Ficha } from '@/components/team-ficha'
 import { BackLink } from '@/components/gestao-panel'
@@ -60,7 +65,7 @@ export default async function PessoaPage({
   const org = await requireOrg()
   const todayIso = today(org.timezone)
 
-  const [units, roles, memberUnits, skills, schedule, absences] =
+  const [units, roles, memberUnits, skills, schedule, absences, shifts] =
     await Promise.all([
       unitsFor(actor),
       listRoles(member.id),
@@ -68,6 +73,7 @@ export default async function PessoaPage({
       listSkills(actor.orgId, member.id),
       listSchedule(member.id, todayIso),
       listAbsences(member.id),
+      listShifts(member.id),
     ])
 
   // A escala precisa de saber quando a casa abre, para avisar de um
@@ -191,6 +197,57 @@ export default async function PessoaPage({
               staffId={member.id}
               hasPassword={member.has_password}
             />
+          ),
+          /*
+            OS TURNOS EXTRA — as lojas que se oferecem são só aquelas
+            onde ela trabalha. Um turno numa loja a que ela não pertence
+            não daria hora nenhuma: o motor pergunta primeiro quem é da
+            casa e só depois quem está escalado.
+          */
+          shiftsMeta:
+            shifts.length === 0
+              ? 'nenhum'
+              : shifts.length === 1
+                ? '1 marcado'
+                : `${shifts.length} marcados`,
+          shifts: (
+            <div className="space-y-3">
+              {shifts.length > 0 ? (
+                <div className="divide-y divide-[var(--line-soft)] border-b border-[var(--line-soft)]">
+                  {shifts.map((row) => (
+                    <div
+                      key={row.id}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5"
+                    >
+                      <Badge>Extra</Badge>
+                      <span className="tabular shrink-0 text-[0.8125rem] text-[var(--ink)]">
+                        {formatDayLong(row.day as IsoDay, org.timezone)}
+                        <span className="text-[var(--ink-faint)]"> · </span>
+                        {formatMinutes(row.starts_min)} →{' '}
+                        {formatMinutes(row.ends_min)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[0.75rem] text-[var(--ink-muted)]">
+                          {row.unit_name}
+                        </p>
+                      </div>
+                      <RemoveShift staffId={member.id} id={row.id} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[0.75rem] text-[var(--ink-faint)]">
+                  Nenhum. Um turno extra abre um dia que a semana dela não
+                  abria — um sábado por mês, um domingo, uma tarde.
+                </p>
+              )}
+
+              <ShiftForm
+                staffId={member.id}
+                units={options.filter((unit) => mine.includes(unit.id))}
+                today={todayIso}
+              />
+            </div>
           ),
           absencesMeta:
             absences.length === 0

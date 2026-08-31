@@ -270,7 +270,18 @@ export async function loadDayContext(
 
   const [scheduleRows, absenceRows, blockRows, pricingRows, requirementRows, resourceRows, resourceBlockRows] =
     await Promise.all([
-      // A escala tem vigência: só conta a que vigora neste dia.
+      /*
+        A ESCALA DO DIA SÃO DUAS FONTES SOMADAS.
+
+        A semana, que se repete e tem vigência — só conta a que vigora
+        neste dia — mais os TURNOS EXTRA, que são linhas marcadas numa
+        data e não numa regra. É assim que alguém que faz de segunda a
+        sexta pode fazer um sábado por mês sem se escalar a todos os
+        sábados e depois desmarcar três.
+
+        As ausências continuam a descontar por cima das duas, mais
+        abaixo: semana + extras − ausências.
+      */
       db<{ staff_id: string; starts_min: number; ends_min: number }[]>`
         select staff_id, starts_min, ends_min
           from staff_schedule
@@ -279,6 +290,12 @@ export async function loadDayContext(
            and staff_id = any(${staffIds}::uuid[])
            and valid_from <= ${day}::date
            and (valid_to is null or valid_to >= ${day}::date)
+        union all
+        select staff_id, starts_min, ends_min
+          from staff_shift
+         where unit_id = ${unit.id}
+           and day = ${day}::date
+           and staff_id = any(${staffIds}::uuid[])
       `,
       db<{ staff_id: string; starts_at: Date; ends_at: Date }[]>`
         select staff_id, starts_at, ends_at
@@ -923,6 +940,7 @@ export async function staffForDay(
   const windowEnd = new Date(dayStart(addDays(day, 1), unit.timezone).getTime() + 12 * 3_600_000)
 
   const [scheduleRows, absenceRows, blockRows] = await Promise.all([
+    /* Semana + extras, como no motor acima. */
     sql<{ staff_id: string; starts_min: number; ends_min: number }[]>`
       select staff_id, starts_min, ends_min
         from staff_schedule
@@ -931,6 +949,12 @@ export async function staffForDay(
          and staff_id = any(${staffIds}::uuid[])
          and valid_from <= ${day}::date
          and (valid_to is null or valid_to >= ${day}::date)
+      union all
+      select staff_id, starts_min, ends_min
+        from staff_shift
+       where unit_id = ${unit.id}
+         and day = ${day}::date
+         and staff_id = any(${staffIds}::uuid[])
     `,
     sql<{ staff_id: string; starts_at: Date; ends_at: Date }[]>`
       select staff_id, starts_at, ends_at
