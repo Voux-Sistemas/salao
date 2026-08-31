@@ -102,8 +102,10 @@ export type Candidate = {
   name: string
   /** Falso: aparece apagada, com a razão à direita. */
   ok: boolean
-  /** «agora», «ocupada às 14:00», «não faz coloração», «fora do turno». */
+  /** «é quem faz», «livre», «ocupada às 14:00», «não faz». */
   why: string
+  /** É quem já a faz. Vem primeiro na lista, e acesa. */
+  atual?: boolean
 }
 
 type ScheduleRow = { staff_id: string; starts_min: number; ends_min: number }
@@ -452,7 +454,13 @@ async function quemPodePegar(
       .filter((col) => !col.placeholder)
       .map((col) => {
       if (col.staffId === dono) {
-        return { staffId: col.staffId, name: col.name, ok: false, why: 'agora' }
+        return {
+          staffId: col.staffId,
+          name: col.name,
+          ok: false,
+          why: 'é quem faz',
+          atual: true,
+        }
       }
 
       const dela = sabe.get(col.staffId) ?? new Set<string>()

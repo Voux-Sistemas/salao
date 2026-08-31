@@ -1240,6 +1240,9 @@ export function AgendaList({
                       cor={colors[card.staffId] ?? 'var(--gold)'}
                       nome={nomes.get(card.staffId) ?? ''}
                       semDono={cadeiras.has(card.staffId)}
+                      cliente={card.clientName}
+                      quando={`${formatMinutes(card.startMin)} → ${formatMinutes(card.endMin)}`}
+                      servicos={card.services}
                       candidatos={agenda.handover[card.appointmentId] ?? []}
                     />
                   ) : null}
