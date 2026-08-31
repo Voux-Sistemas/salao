@@ -925,7 +925,10 @@ export type ShiftInput = {
 
 export type ShiftResult =
   | { ok: true; marcados: number }
-  | { ok: false; reason: 'forbidden' | 'not_found' | 'invalid' | 'overlap' }
+  | {
+      ok: false
+      reason: 'forbidden' | 'not_found' | 'invalid' | 'overlap' | 'falhou'
+    }
 
 export async function addShift(
   actor: Actor,
@@ -957,7 +960,7 @@ export async function addShift(
       TUDO OU NADA. Marcar doze sábados e ficar com nove porque o décimo
       chocava com outro turno é pior do que não marcar nenhum: quem
       escreveu não sabe quais entraram. A restrição de exclusão da base
-      rebenta a transacção inteira, e o erro volta como «overlap».
+      rebenta a transacção inteira, e nenhum fica.
     */
     await sql.begin(async (tx) => {
       for (const day of input.days) {
@@ -970,8 +973,25 @@ export async function addShift(
         `
       }
     })
-  } catch {
-    return { ok: false, reason: 'overlap' }
+  } catch (erro) {
+    /*
+      UM `catch` QUE ENGOLE TUDO MENTE.
+
+      Estava escrito `catch { return overlap }`: qualquer falha —
+      a tabela não existir, uma coluna trocada, a ligação cair — saía ao
+      ecrã como «já há um turno nessa hora». Quem lesse isso ia procurar
+      um turno que não existe, e a causa verdadeira não deixava rasto
+      em lado nenhum.
+
+      Agora só o choque de horários é choque de horários: o Postgres
+      chama-lhe 23P01, `exclusion_violation`, e é o código da restrição
+      que esta tabela tem. Tudo o resto volta como «não consegui», e
+      fica escrito nos registos do servidor com o erro por inteiro.
+    */
+    const codigo = (erro as { code?: string } | null)?.code
+    if (codigo === '23P01') return { ok: false, reason: 'overlap' }
+    console.error('[turno extra] a gravar falhou:', erro)
+    return { ok: false, reason: 'falhou' }
   }
 
   return { ok: true, marcados: input.days.length }

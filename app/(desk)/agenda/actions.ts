@@ -135,6 +135,108 @@ const STATUSES: Status[] = [
 ]
 
 /**
+ * PASSAR A MARCAÇÃO A OUTRA PESSOA.
+ *
+ * Não é a cliente que muda de mãos — a ficha dela não se toca, e a
+ * preferência dela também não. O que muda de mãos é O TRABALHO: os
+ * serviços daquela marcação, naquele dia, passam a ser de outra pessoa.
+ *
+ * A HORA NÃO SE MEXE, o preço não se mexe, e a cliente não é avisada:
+ * para ela não mudou nada — ao domingo nunca soube o nome, e nos outros
+ * dias vai saber quando chegar.
+ *
+ * AS CONDIÇÕES SÃO REVALIDADAS AQUI, e não só no ecrã. O ecrã já só
+ * oferece quem pode, mas um ecrã é uma sugestão: entre o desenho e o
+ * toque pode ter entrado uma marcação em cima. A trava definitiva é a
+ * restrição de exclusão do `staff_block` — duas pessoas não ocupam o
+ * mesmo par (pessoa, hora), e a base recusa-o mesmo que tudo o resto
+ * falhe.
+ */
+export async function passarAction(
+  _previous: DeskState,
+  form: FormData,
+): Promise<DeskState> {
+  const actor = await requireActor()
+  const appointmentId = String(form.get('appointment') ?? '')
+  const paraId = String(form.get('para') ?? '')
+  if (!appointmentId || !paraId) return { error: 'Escolha para quem.' }
+
+  const appointment = await getAppointment(appointmentId)
+  if (!appointment || appointment.org_id !== actor.orgId) {
+    return { error: 'Essa marcação não existe.' }
+  }
+  if (!canSeeUnit(actor, appointment.unit_id)) {
+    return { error: 'Essa marcação não existe.' }
+  }
+  if (!canTouch(actor, appointment)) {
+    return { error: 'Essa marcação não existe.' }
+  }
+
+  /*
+    UMA MARCAÇÃO FECHADA NÃO SE PASSA. O dinheiro já foi contado e a
+    comissão já tem dono: mudar a mão agora reescrevia um mês que já
+    fechou. Se foi engano, desfaz-se o fecho primeiro.
+  */
+  if (appointment.closed_at) {
+    return { error: 'Esta já foi fechada na caixa. Não se passa depois disso.' }
+  }
+
+  /* Quem recebe tem de ser da casa, da loja, e saber fazer tudo o que
+     ali está. A hora livre é a base que a garante. */
+  const podeRows = await sql<{ ok: boolean }[]>`
+    select true as ok
+      from staff s
+      join staff_unit su on su.staff_id = s.id and su.unit_id = ${appointment.unit_id}
+     where s.id = ${paraId}
+       and s.org_id = ${actor.orgId}
+       and s.is_active
+       and not exists (
+         select 1
+           from appointment_item ai
+          where ai.appointment_id = ${appointmentId}
+            and not exists (
+              select 1 from staff_skill k
+               where k.staff_id = s.id and k.service_id = ai.service_id
+            )
+       )
+  `
+  if (podeRows.length === 0) {
+    return { error: 'Essa pessoa não pode ficar com esta marcação.' }
+  }
+
+  try {
+    await sql.begin(async (tx) => {
+      await tx`
+        update appointment_item set staff_id = ${paraId}
+         where appointment_id = ${appointmentId}
+      `
+      await tx`
+        update staff_block sb set staff_id = ${paraId}
+          from appointment_item ai
+         where ai.id = sb.appointment_item_id
+           and ai.appointment_id = ${appointmentId}
+      `
+    })
+  } catch (erro) {
+    const codigo = (erro as { code?: string } | null)?.code
+    // 23P01: a restrição de exclusão do staff_block. Alguém marcou em
+    // cima entretanto, e a base não deixa duas no mesmo sítio.
+    if (codigo === '23P01') {
+      return { error: 'Essa pessoa ficou ocupada nessa hora entretanto.' }
+    }
+    console.error('[passar] a passagem falhou:', erro)
+    return {
+      error: 'Não consegui passar. O erro ficou escrito nos registos do servidor.',
+    }
+  }
+
+  revalidatePath(`/agenda/${appointment.unit_slug}`)
+  revalidatePath(`/avisos/${appointment.unit_slug}`)
+  revalidatePath('/')
+  return { error: null, done: 'Passada.' }
+}
+
+/**
  * Os botões do estado seguinte. Cada mudança fica registada com quem a
  * fez, quando e porquê — e cancelar apaga os blocos.
  */

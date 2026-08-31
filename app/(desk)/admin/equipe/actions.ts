@@ -461,51 +461,80 @@ export async function addShiftAction(
   _previous: TeamState,
   form: FormData,
 ): Promise<TeamState> {
+  /*
+    O `reach` fica FORA do try: ele pode mandar a pessoa para a porta de
+    entrada, e o Next faz isso atirando um erro especial. Apanhá-lo aqui
+    engolia a ida à porta e a pessoa ficava a olhar para um formulário
+    que nunca mais gravava.
+  */
   const found = await reach(String(form.get('staff') ?? ''))
   if (!found) return GONE
 
-  const unitId = String(form.get('unit') ?? '').trim()
-  if (!unitId) return { error: 'Escolha a loja.' }
+  /*
+    NADA NESTA ACÇÃO PODE FALHAR EM SILÊNCIO.
 
-  const days = String(form.get('days') ?? '')
-    .split(',')
-    .map((d) => d.trim())
-    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
-  if (days.length === 0) return { error: 'Diga o dia.' }
+    Uma acção de servidor que ATIRA um erro — em vez de o devolver — não
+    muda nada no ecrã: o botão fica onde estava, sem mensagem, sem a
+    página piscar. Foi exactamente o que se viu aqui, e é o pior sintoma
+    que um sistema pode dar, porque não dá nenhum.
 
-  const startsMin = parseMinutes(String(form.get('starts') ?? ''))
-  const endsMin = parseMinutes(String(form.get('ends') ?? ''))
-  if (startsMin === null || endsMin === null) {
-    return { error: 'As horas escrevem-se como 09:00.' }
-  }
-  if (endsMin <= startsMin) return { error: 'A hora de fim é antes do início.' }
+    Daqui para a frente, o que correr mal volta escrito ao ecrã e fica
+    inteiro nos registos do servidor.
+  */
+  try {
+    const unitId = String(form.get('unit') ?? '').trim()
+    if (!unitId) return { error: 'Escolha a loja.' }
 
-  const result = await addShift(found.actor, found.member.id, {
-    unitId,
-    days,
-    startsMin,
-    endsMin,
-  })
-  if (!result.ok) {
+    const days = String(form.get('days') ?? '')
+      .split(',')
+      .map((d) => d.trim())
+      .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+    if (days.length === 0) return { error: 'Diga o dia.' }
+
+    const startsMin = parseMinutes(String(form.get('starts') ?? ''))
+    const endsMin = parseMinutes(String(form.get('ends') ?? ''))
+    if (startsMin === null || endsMin === null) {
+      return { error: 'As horas escrevem-se como 09:00.' }
+    }
+    if (endsMin <= startsMin) {
+      return { error: 'A hora de fim é antes do início.' }
+    }
+
+    const result = await addShift(found.actor, found.member.id, {
+      unitId,
+      days,
+      startsMin,
+      endsMin,
+    })
+    if (!result.ok) {
+      return {
+        error:
+          result.reason === 'overlap'
+            ? 'Já há um turno nessa hora — nenhum dos dias foi marcado.'
+            : result.reason === 'forbidden'
+              ? 'Essa pessoa não trabalha nessa loja.'
+              : result.reason === 'invalid'
+                ? 'O fim é antes do início.'
+                : result.reason === 'falhou'
+                  ? 'Não consegui gravar. O erro ficou escrito nos registos do servidor.'
+                  : 'Essa pessoa não existe.',
+      }
+    }
+
+    refresh(found.member.id)
+    return {
+      error: null,
+      done:
+        result.marcados === 1
+          ? 'Turno marcado.'
+          : `${result.marcados} turnos marcados.`,
+    }
+  } catch (erro) {
+    console.error('[turno extra] a acção rebentou:', erro)
     return {
       error:
-        result.reason === 'overlap'
-          ? 'Já há um turno nessa hora — nenhum dos dias foi marcado.'
-          : result.reason === 'forbidden'
-            ? 'Essa pessoa não trabalha nessa loja.'
-            : result.reason === 'invalid'
-              ? 'O fim é antes do início.'
-              : 'Essa pessoa não existe.',
+        'Não consegui marcar o turno. O erro ficou escrito nos registos do servidor.',
     }
-  }
-
-  refresh(found.member.id)
-  return {
-    error: null,
-    done:
-      result.marcados === 1
-        ? 'Turno marcado.'
-        : `${result.marcados} turnos marcados.`,
   }
 }
 

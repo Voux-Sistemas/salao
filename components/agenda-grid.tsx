@@ -9,6 +9,7 @@ import { formatCents } from '@/lib/money'
 import { STATUS_LABEL, type Tone } from '@/lib/status'
 import { initial, shortName } from '@/lib/text'
 import { Empty } from '@/components/ui'
+import { PassarPastilha } from '@/components/passar-pastilha'
 import { Monogram } from '@/components/brand'
 import { IconCheck } from '@/components/desk-icons'
 
@@ -1020,15 +1021,24 @@ export function AgendaList({
         return (
           <li
             key={card.appointmentId}
-            className="border-b border-[var(--line-soft)] last:border-b-0"
+            className="relative border-b border-[var(--line-soft)] last:border-b-0"
           >
             {index === idxAgora ? <NowRule nowMin={nowMin!} /> : null}
-            <Link
-              href={hrefFor(card.appointmentId)}
-              scroll={false}
-              aria-current={
-                selectedId === card.appointmentId ? 'true' : undefined
-              }
+            {/*
+              A LIGAÇÃO DEIXA DE ENVOLVER A LINHA E PASSA A COBRI-LA.
+
+              Enquanto ela era a moldura, tudo o que estivesse dentro era
+              parte dela — e um botão dentro de uma ligação não é HTML
+              válido nem coisa que se possa tocar: o toque ia abrir a
+              marcação em vez de fazer o que dizia.
+
+              Agora a linha é uma caixa normal, e a ligação é uma folha
+              transparente por cima dela. Tocar em qualquer sítio abre a
+              marcação, como sempre; o que tiver de receber um toque
+              próprio — a pastilha de quem faz — sobe acima da folha e
+              fica de fora dela.
+            */}
+            <div
               className={clsx(
                 // O mesmo ar nos dois: a linha é a mesma linha.
                 'flex items-stretch gap-3 py-3 pr-4 transition-colors active:bg-[var(--surface-2)]',
@@ -1184,16 +1194,12 @@ export function AgendaList({
                     ninguém que use os dois reconhece o segundo.
                   */}
                   {mostrarQuem ? (
-                    <span className="inline-flex h-5 shrink-0 items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--surface-2)_70%,var(--surface-raised))] px-2 text-[0.6875rem] font-semibold text-[var(--ink-muted)]">
-                      <span
-                        aria-hidden
-                        className="block h-1.5 w-1.5 rounded-full"
-                        style={{
-                          background: colors[card.staffId] ?? 'var(--gold)',
-                        }}
-                      />
-                      {shortName(nomes.get(card.staffId) ?? '')}
-                    </span>
+                    <PassarPastilha
+                      appointmentId={card.appointmentId}
+                      cor={colors[card.staffId] ?? 'var(--gold)'}
+                      nome={nomes.get(card.staffId) ?? ''}
+                      candidatos={agenda.handover[card.appointmentId] ?? []}
+                    />
                   ) : null}
                   {/* A confirmação enviada fica, mas sem a palavra: o
                       visto e o `title` bastam para quem anda a decidir
@@ -1206,7 +1212,17 @@ export function AgendaList({
                   ) : null}
                 </span>
               </span>
-            </Link>
+            </div>
+
+            <Link
+              href={hrefFor(card.appointmentId)}
+              scroll={false}
+              aria-current={
+                selectedId === card.appointmentId ? 'true' : undefined
+              }
+              aria-label={`Abrir a marcação de ${card.clientName}`}
+              className="absolute inset-0 z-0"
+            />
           </li>
         )
       })}

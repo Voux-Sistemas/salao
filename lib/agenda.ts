@@ -7,6 +7,7 @@ import {
   addDays,
   dayStart,
   daysBetween,
+  formatMinutes,
   isoDay,
   minutesOfDay,
   weekdayOf,
@@ -51,6 +52,7 @@ export type AgendaBlock = {
   /** Bloco de ocupação, folgas incluídas. */
   blockStartMin: number
   blockEndMin: number
+  serviceId: string
   serviceName: string
   priceCents: number
   clientId: string
@@ -77,6 +79,25 @@ export type AgendaDay = {
   toMin: number
   columns: AgendaColumn[]
   blocks: AgendaBlock[]
+  /**
+   * PARA QUEM SE PODE PASSAR CADA MARCAÇÃO.
+   *
+   * Vem com o dia e não a pedido: a lista precisa disto em cada linha, e
+   * perguntá-lo linha a linha seriam catorze idas à base para desenhar
+   * um ecrã. Tudo o que é preciso já cá está — a escala de cada uma, os
+   * blocos de todas — e só falta uma consulta: quem sabe fazer o quê.
+   */
+  handover: Record<string, Candidate[]>
+}
+
+/** Uma pessoa a quem se pode (ou não) passar uma marcação. */
+export type Candidate = {
+  staffId: string
+  name: string
+  /** Falso: aparece apagada, com a razão à direita. */
+  ok: boolean
+  /** «agora», «ocupada às 14:00», «não faz coloração», «fora do turno». */
+  why: string
 }
 
 type ScheduleRow = { staff_id: string; starts_min: number; ends_min: number }
@@ -104,6 +125,7 @@ type BlockRow = {
   ends_at: Date
   block_starts_at: Date
   block_ends_at: Date
+  service_id: string
   service_name: string
   price_cents: number
   sort_order: number
@@ -193,6 +215,7 @@ export async function loadAgendaDay(
         ai.ends_at,
         lower(sb.during)     as block_starts_at,
         upper(sb.during)     as block_ends_at,
+        ai.service_id,
         ai.service_name,
         ai.price_cents,
         ai.sort_order,
@@ -313,6 +336,7 @@ export async function loadAgendaDay(
     endMin: localMinutes(r.ends_at, day, tz),
     blockStartMin: localMinutes(r.block_starts_at, day, tz),
     blockEndMin: localMinutes(r.block_ends_at, day, tz),
+    serviceId: r.service_id,
     serviceName: r.service_name,
     priceCents: r.price_cents,
     clientId: r.client_id,
@@ -332,8 +356,146 @@ export async function loadAgendaDay(
   }))
 
   const { fromMin, toMin } = extent(openingIntervals, columns, blocks)
+  const handover = await quemPodePegar(columns, blocks)
 
-  return { unit, day, opening: openingIntervals, fromMin, toMin, columns, blocks }
+  return {
+    unit,
+    day,
+    opening: openingIntervals,
+    fromMin,
+    toMin,
+    columns,
+    blocks,
+    handover,
+  }
+}
+
+/**
+ * PARA QUEM SE PODE PASSAR CADA MARCAÇÃO DESTE DIA.
+ *
+ * Três condições, e são as mesmas que o motor usa para deixar marcar —
+ * não se inventa aqui uma regra nova:
+ *
+ *   · sabe fazer TODOS os serviços daquela marcação;
+ *   · a escala dela cobre a marcação inteira, do princípio ao fim;
+ *   · não tem nada seu naquelas horas.
+ *
+ * QUEM NÃO PODE APARECE À MESMA, apagada e com a razão escrita. Uma
+ * lista curta sem explicação parece uma avaria — quem a lê fica sem
+ * saber se o sistema se enganou ou se a colega está mesmo ocupada.
+ *
+ * Uma consulta só, e para o dia inteiro: perguntar por linha seriam
+ * catorze idas à base para desenhar um ecrã.
+ */
+async function quemPodePegar(
+  columns: AgendaColumn[],
+  blocks: AgendaBlock[],
+): Promise<Record<string, Candidate[]>> {
+  if (blocks.length === 0 || columns.length === 0) return {}
+
+  /* A marcação é o conjunto dos seus itens: os serviços todos, e o
+     intervalo do primeiro ao último — folgas incluídas, que é o que
+     ocupa a agenda de verdade. */
+  type Junta = { services: Set<string>; start: number; end: number }
+  const marcacoes = new Map<string, Junta>()
+  for (const b of blocks) {
+    const j = marcacoes.get(b.appointmentId)
+    if (j) {
+      j.services.add(b.serviceId)
+      j.start = Math.min(j.start, b.blockStartMin)
+      j.end = Math.max(j.end, b.blockEndMin)
+    } else {
+      marcacoes.set(b.appointmentId, {
+        services: new Set([b.serviceId]),
+        start: b.blockStartMin,
+        end: b.blockEndMin,
+      })
+    }
+  }
+
+  const staffIds = columns.map((c) => c.staffId)
+  const serviceIds = [...new Set(blocks.map((b) => b.serviceId))]
+  const skillRows = await sql<{ staff_id: string; service_id: string }[]>`
+    select staff_id, service_id
+      from staff_skill
+     where staff_id = any(${staffIds}::uuid[])
+       and service_id = any(${serviceIds}::uuid[])
+  `
+  const sabe = new Map<string, Set<string>>()
+  for (const r of skillRows) {
+    const set = sabe.get(r.staff_id) ?? new Set<string>()
+    set.add(r.service_id)
+    sabe.set(r.staff_id, set)
+  }
+
+  /* O que cada uma já tem em cima, para saber quem está livre. */
+  const ocupada = new Map<string, Interval[]>()
+  for (const b of blocks) {
+    const list = ocupada.get(b.staffId) ?? []
+    list.push({ start: b.blockStartMin, end: b.blockEndMin })
+    ocupada.set(b.staffId, list)
+  }
+
+
+  const saidas: Record<string, Candidate[]> = {}
+  for (const [appointmentId, j] of marcacoes) {
+    const dono = blocks.find((b) => b.appointmentId === appointmentId)?.staffId
+    saidas[appointmentId] = columns.map((col) => {
+      if (col.staffId === dono) {
+        return { staffId: col.staffId, name: col.name, ok: false, why: 'agora' }
+      }
+
+      const dela = sabe.get(col.staffId) ?? new Set<string>()
+      const faltam = [...j.services].filter((s) => !dela.has(s))
+      if (faltam.length > 0) {
+        return {
+          staffId: col.staffId,
+          name: col.name,
+          ok: false,
+          why: 'não faz',
+        }
+      }
+
+      const cobre = col.schedule.some(
+        (w) => w.start <= j.start && j.end <= w.end,
+      )
+      if (!cobre) {
+        return {
+          staffId: col.staffId,
+          name: col.name,
+          ok: false,
+          why: 'fora do turno',
+        }
+      }
+
+      /* O que ela já tem em cima naquelas horas. */
+      const seus = ocupada.get(col.staffId) ?? []
+      const choca = seus.some((o) => o.start < j.end && j.start < o.end)
+      if (choca) {
+        return {
+          staffId: col.staffId,
+          name: col.name,
+          ok: false,
+          why: `ocupada às ${formatMinutes(j.start)}`,
+        }
+      }
+
+      const ausente = col.absences.some(
+        (a) => a.start < j.end && j.start < a.end,
+      )
+      if (ausente) {
+        return {
+          staffId: col.staffId,
+          name: col.name,
+          ok: false,
+          why: 'ausente',
+        }
+      }
+
+      return { staffId: col.staffId, name: col.name, ok: true, why: 'livre' }
+    })
+  }
+  return saidas
 }
 
 /**
