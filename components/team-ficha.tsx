@@ -813,13 +813,34 @@ export function Ficha({
                     </div>
 
                     {slot.on ? (
+                      /*
+                        ABERTO, ISTO É UM PAINEL — E TEM DE PARECER UM.
+
+                        Estava a ser dois rótulos e duas caixas soltos
+                        entre as linhas dos outros dias, sem princípio
+                        nem fim: não se via onde é que aquilo começava,
+                        nem a que dia pertencia. Ganha moldura, fundo e
+                        um recuo por debaixo do nome do dia.
+
+                        A moldura é toda em `max-sm:` porque no monitor
+                        isto não é um painel nenhum — é a segunda coluna
+                        da linha, sempre à vista e sem caixa à volta.
+
+                        E AS CAIXAS TÊM TECTO. Sozinhas numa linha
+                        esticavam-se aos 286 píxeis do cartão para
+                        mostrar «09:00»: onze rem chegam, e o que sobra
+                        é ar em vez de vazio. É tecto e não largura — se
+                        algum telemóvel quiser dar-lhes mais do que
+                        isso, dá, e continua a caber.
+                      */
                       <div
                         className={clsx(
                           'flex flex-col gap-2 sm:flex-row sm:items-center',
+                          'max-sm:ml-7 max-sm:gap-2.5 max-sm:rounded-[var(--radius)] max-sm:border max-sm:border-[color-mix(in_srgb,var(--accent)_28%,transparent)] max-sm:bg-[color-mix(in_srgb,var(--accent)_5%,transparent)] max-sm:p-3',
                           aEditar ? null : 'max-sm:hidden',
                         )}
                       >
-                        <div className="sm:w-[7rem]">
+                        <div className="max-sm:max-w-[11rem] sm:w-[7rem]">
                           <span className="mb-1 block text-[0.75rem] font-semibold text-[var(--ink-muted)] sm:hidden">
                             Entra
                           </span>
@@ -834,7 +855,7 @@ export function Ficha({
                         <span className="max-sm:hidden text-[var(--ink-faint)]">
                           →
                         </span>
-                        <div className="sm:w-[7rem]">
+                        <div className="max-sm:max-w-[11rem] sm:w-[7rem]">
                           <span className="mb-1 block text-[0.75rem] font-semibold text-[var(--ink-muted)] sm:hidden">
                             Sai
                           </span>
@@ -846,10 +867,13 @@ export function Ficha({
                             className="tabular"
                           />
                         </div>
+                        {/* Um botão, e não uma palavra azul solta: é o
+                            que fecha o painel, e tem de se ver que se
+                            carrega nele. */}
                         <button
                           type="button"
                           onClick={() => setEditar(null)}
-                          className="self-start pt-1 text-[0.8125rem] font-semibold text-[var(--accent)] sm:hidden"
+                          className="self-start rounded-[var(--radius-sm)] border border-[color-mix(in_srgb,var(--accent)_40%,transparent)] px-3 py-1.5 text-[0.8125rem] font-semibold text-[var(--accent)] sm:hidden"
                         >
                           Pronto
                         </button>

@@ -177,12 +177,18 @@ export function AbsenceForm({
       {allDay ? <input type="hidden" name="allday" value="on" /> : null}
 
       {/*
-        ESTAS DUAS FICAM EM COLUNA NO TELEMÓVEL.
+        UMA COISA POR LINHA NO TELEMÓVEL — TODAS, SEM EXCEPÇÃO.
 
-        Tinha-as posto lado a lado, e o «Só parte do dia» saía cortado
-        ao meio — uma caixinha de escolha não encolhe o texto, corta-o.
-        As datas emparelham (ver abaixo) porque «31/08/2026» é sempre do
-        mesmo tamanho e cabe; as palavras não são, e por isso não cabem.
+        Estas duas estiveram lado a lado e o «Só parte do dia» saía
+        cortado ao meio: uma caixinha de escolha não encolhe o texto,
+        corta-o. As datas e as horas estiveram lado a lado e saíam pela
+        borda fora: uma caixa de data ou de hora é um comando do sistema
+        e tem uma largura mínima própria que ignora a que se lhe manda.
+
+        A regra passou a ser a mesma para todas, e é a única que aguenta
+        qualquer telemóvel: uma por linha até ao `sm`, e só a partir daí
+        emparelham. O que lhes falta é tecto, não largura — ver os
+        `max-sm:max-w` mais abaixo.
       */}
       <div className="grid items-end gap-3 sm:max-w-md sm:grid-cols-2">
         <Field label="Motivo" htmlFor="abs-kind">
@@ -232,18 +238,19 @@ export function AbsenceForm({
 
       {allDay ? (
         /*
-          UMA CAIXA DE DATA POR LINHA, NO TELEMÓVEL.
+          O TECTO DE TREZE REM.
 
-          Tinha-as posto lado a lado a contar com «31/08/2026» ter
-          sempre a mesma largura. Tem — mas a caixa à volta dela não: um
-          `input[type=date]` é um comando do sistema, e o navegador
-          dá-lhe uma largura mínima própria que ignora a que se lhe
-          manda. Duas ao lado uma da outra saíam pela borda fora.
+          Uma caixa sozinha numa linha esticava-se aos 286 píxeis do
+          cartão para mostrar «31/08/2026», e uma escada de caixas
+          enormes lê-se pior do que a escada que veio substituir. Treze
+          rem chegam, e o que sobra passa a ser ar em vez de vazio.
 
-          A partir do `sm` emparelham, que é onde há largura de sobra.
+          É TECTO E NÃO LARGURA: se algum telemóvel quiser dar-lhe mais
+          do que isso — e é ele que manda nessa medida, não eu — dá, e
+          continua a caber porque não tem ninguém ao lado.
         */
         <div className="grid items-start gap-3 sm:max-w-md sm:grid-cols-2">
-          <Field label="De" htmlFor="abs-from">
+          <Field label="De" htmlFor="abs-from" className="max-sm:max-w-[13rem]">
             <Input
               id="abs-from"
               name="from"
@@ -281,7 +288,7 @@ export function AbsenceForm({
         </div>
       ) : (
         <div className="space-y-3 sm:flex sm:max-w-md sm:items-end sm:gap-3 sm:space-y-0">
-          <Field label="No dia" htmlFor="abs-from" className="sm:w-40">
+          <Field label="No dia" htmlFor="abs-from" className="max-sm:max-w-[13rem] sm:w-40">
             <Input
               id="abs-from"
               name="from"
@@ -295,7 +302,7 @@ export function AbsenceForm({
           {/* Pela mesma razão das datas: uma caixa de hora por linha no
               telemóvel, lado a lado a partir do `sm`. */}
           <div className="grid gap-3 sm:flex sm:gap-3">
-            <Field label="Das" htmlFor="abs-starts" className="sm:w-28">
+            <Field label="Das" htmlFor="abs-starts" className="max-sm:max-w-[11rem] sm:w-28">
               <Input
                 id="abs-starts"
                 name="starts"
@@ -306,7 +313,7 @@ export function AbsenceForm({
                 required
               />
             </Field>
-            <Field label="Às" htmlFor="abs-ends" className="sm:w-28">
+            <Field label="Às" htmlFor="abs-ends" className="max-sm:max-w-[11rem] sm:w-28">
               <Input
                 id="abs-ends"
                 name="ends"
