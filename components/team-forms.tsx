@@ -64,6 +64,9 @@ const KINDS = Object.keys(ABSENCE_LABEL) as (keyof typeof ABSENCE_LABEL)[]
 /** Os quatro que a base conhece, mais o «Outro» que aterra em bloqueio. */
 type Motivo = keyof typeof ABSENCE_LABEL | 'outro'
 
+/** As três formas de faltar. Cada uma pede campos diferentes. */
+type Quando = 'inteiro' | 'parte' | 'varios'
+
 /** «quinta, 4 de setembro» — para a frase que lê de volta o que se grava. */
 function porExtenso(iso: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ''
@@ -94,10 +97,10 @@ function porExtenso(iso: string): string {
  * preenchia-se tudo, e só depois se descobria a caixa que teria mudado
  * o que se acabou de preencher. Aqui está antes deles, onde manda.
  *
- * PARTE DO DIA É UM DIA SÓ. O servidor já só gravava um dia nesse caso
- * — «das 12 às 14, de quinta a domingo» não é uma ausência, são quatro
- * — mas o campo continuava a chamar-se «De», e um «De» sem «Até» faz
- * esperar um intervalo. Passa a chamar-se «No dia».
+ * E NUNCA HÁ UMA CAIXA VAZIA. O «Quando» tem três respostas — um dia
+ * inteiro, só parte de um dia, vários dias seguidos — e cada uma mostra
+ * apenas os campos que se preenchem mesmo. Não há «Até» em branco à
+ * espera, nem nota de rodapé a explicar que pode ficar assim.
  *
  * E O FORMULÁRIO FECHA-SE. O bloco chama-se «Ausências» e a lista do
  * que já está marcado é a razão de se vir aqui; ela fica à vista, e
@@ -118,9 +121,9 @@ export function AbsenceForm({
   )
   const [aberto, setAberto] = useState(false)
   const [motivo, setMotivo] = useState<Motivo>('day_off')
-  const [allDay, setAllDay] = useState(true)
+  const [quando, setQuando] = useState<Quando>('inteiro')
   const [from, setFrom] = useState(today)
-  const [to, setTo] = useState('')
+  const [to, setTo] = useState(today)
   const [starts, setStarts] = useState('12:00')
   const [ends, setEnds] = useState('14:00')
   const [unit, setUnit] = useState('')
@@ -149,7 +152,9 @@ export function AbsenceForm({
   const nomeLoja = units.find((u) => u.id === unit)?.name
   const onde = nomeLoja ? `só em ${nomeLoja}` : 'em todas as lojas'
   const dia = porExtenso(from)
-  const ate = allDay && to && to !== from ? porExtenso(to) : null
+  /* O intervalo só existe em «vários dias», e só se o fim for depois
+     do princípio — uma data mal escrita não vira frase. */
+  const ate = quando === 'varios' && to > from ? porExtenso(to) : null
 
   return (
     <form
@@ -172,9 +177,11 @@ export function AbsenceForm({
         name="kind"
         value={motivo === 'outro' ? 'block' : motivo}
       />
-      {/* O servidor lê `allday === 'on'`: em «parte do dia» o campo não
-          vai, que é o mesmo que uma caixa por marcar. */}
-      {allDay ? <input type="hidden" name="allday" value="on" /> : null}
+      {/* O servidor lê `allday === 'on'`: só em «parte de um dia» é que
+          o campo não vai, que é o mesmo que uma caixa por marcar. */}
+      {quando === 'parte' ? null : (
+        <input type="hidden" name="allday" value="on" />
+      )}
 
       {/*
         UMA COISA POR LINHA NO TELEMÓVEL — TODAS, SEM EXCEPÇÃO.
@@ -214,11 +221,12 @@ export function AbsenceForm({
         <Field label="Quando" htmlFor="abs-quando">
           <Select
             id="abs-quando"
-            value={allDay ? 'inteiro' : 'parte'}
-            onChange={(e) => setAllDay(e.target.value === 'inteiro')}
+            value={quando}
+            onChange={(e) => setQuando(e.target.value as Quando)}
           >
-            <option value="inteiro">Dia inteiro</option>
-            <option value="parte">Só parte do dia</option>
+            <option value="inteiro">Um dia inteiro</option>
+            <option value="parte">Só parte de um dia</option>
+            <option value="varios">Vários dias seguidos</option>
           </Select>
         </Field>
       </div>
@@ -241,9 +249,30 @@ export function AbsenceForm({
         </Field>
       ) : null}
 
-      {allDay ? (
-        /* Uma por linha no telemóvel, as duas com a largura da caixa
-           que as contém; emparelham a partir do `sm`. */
+      {/*
+        NUNCA UMA CAIXA VAZIA. É ISTO QUE RESOLVE O PROBLEMA DE VEZ.
+
+        Havia um «Até» sempre à vista, quase sempre em branco, com uma
+        nota por baixo a explicar que podia ficar assim. Passei três
+        passagens a mexer-lhe na largura, e a largura nunca foi o
+        problema: o problema é uma caixa que está lá e não se preenche.
+        Vazia parece um erro ou um campo obrigatório por preencher, e
+        nenhuma medida a conserta.
+
+        A resposta é o «Quando» ter TRÊS respostas em vez de duas, e
+        cada uma mostrar só os campos que se preenchem mesmo:
+
+          um dia inteiro      →  No dia
+          só parte de um dia  →  No dia · Das · Às
+          vários dias         →  De · Até     (as duas obrigatórias)
+
+        Nenhum ecrã tem uma caixa por preencher, e a nota de rodapé
+        desaparece com ela — deixou de haver o que explicar.
+
+        O SERVIDOR JÁ ACEITAVA ISTO SEM MUDAR NADA: `to` em falta vale
+        `from`, que é exactamente o que «um dia inteiro» quer dizer.
+      */}
+      {quando === 'varios' ? (
         <div className="grid items-start gap-3 sm:max-w-md sm:grid-cols-2">
           <Field label="De" htmlFor="abs-from">
             <Input
@@ -256,21 +285,7 @@ export function AbsenceForm({
               required
             />
           </Field>
-
-          {/*
-            O «ATÉ» TEM DE DIZER QUE PODE FICAR VAZIO.
-
-            Uma caixa em branco do tamanho da do lado parece obrigatória
-            — e não é: sem ela a ausência é de um dia só. Uma caixa de
-            data nativa não aceita texto de exemplo lá dentro (o
-            navegador põe lá o «dd/mm/aaaa» dele e não larga), por isso
-            a resposta vai por baixo, onde as outras dicas da casa vão.
-          */}
-          <Field
-            label="Até"
-            htmlFor="abs-to"
-            hint="Em branco, é só o dia de cima."
-          >
+          <Field label="Até" htmlFor="abs-to">
             <Input
               id="abs-to"
               name="to"
@@ -278,6 +293,21 @@ export function AbsenceForm({
               value={to}
               onChange={(e) => setTo(e.target.value)}
               className="tabular"
+              required
+            />
+          </Field>
+        </div>
+      ) : quando === 'inteiro' ? (
+        <div className="sm:max-w-[13rem]">
+          <Field label="No dia" htmlFor="abs-from">
+            <Input
+              id="abs-from"
+              name="from"
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="tabular"
+              required
             />
           </Field>
         </div>
@@ -294,8 +324,8 @@ export function AbsenceForm({
               required
             />
           </Field>
-          {/* Pela mesma razão das datas: uma caixa de hora por linha no
-              telemóvel, lado a lado a partir do `sm`. */}
+          {/* Uma caixa de hora por linha no telemóvel, lado a lado a
+              partir do `sm`. */}
           <div className="grid gap-3 sm:flex sm:gap-3">
             <Field label="Das" htmlFor="abs-starts" className="sm:w-28">
               <Input
@@ -326,24 +356,24 @@ export function AbsenceForm({
       {/*
         A FRASE QUE LÊ DE VOLTA O QUE SE VAI GRAVAR.
 
-        Substitui as duas notas de rodapé que explicavam o que os campos
-        deviam dizer sozinhos («Até em branco: só esse dia»). E apanha o
-        engano de dedo numa data — o único erro que este formulário
-        produz e que nenhuma validação apanha, porque 04/09 e 04/10 são
-        as duas datas boas.
+        Apanha o engano de dedo numa data — o único erro que este
+        formulário produz e que nenhuma validação apanha, porque 04/09 e
+        04/10 são as duas datas boas. E lê o dia da semana por extenso,
+        que é onde o engano salta à vista: ninguém marca folga a uma
+        segunda quando queria a quinta.
       */}
       {dia ? (
         <p className="rounded-[var(--radius-sm)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] px-3 py-2 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
           Falta{' '}
           <strong className="font-semibold text-[var(--accent-strong)]">
-            {allDay
-              ? ate
+            {quando === 'parte'
+              ? `das ${starts} às ${ends}`
+              : ate
                 ? `de ${dia} a ${ate}`
-                : 'o dia inteiro'
-              : `das ${starts} às ${ends}`}
+                : 'o dia inteiro'}
           </strong>
-          {allDay && ate ? '' : ` de ${dia}`}.
-          {allDay ? '' : ' Continua disponível o resto do dia.'}
+          {ate ? '' : ` de ${dia}`}.
+          {quando === 'parte' ? ' Continua disponível o resto do dia.' : ''}
         </p>
       ) : null}
 
