@@ -226,8 +226,20 @@ export function Ficha({
   canGrantMaster: boolean
   /** A ficha de quem a está a abrir. O papel próprio não se mexe. */
   self?: boolean
-  /** O que vive dentro do cartão da escala mas grava na hora: ausências. */
-  aside?: { password?: React.ReactNode; absences?: React.ReactNode }
+  /**
+   * O que vive dentro do cartão da escala mas grava na hora: ausências.
+   *
+   * As contagens vêm de fora porque quem as sabe é a página: aqui só
+   * chega o pedaço de ecrã já montado. São elas que põem o «definida» e
+   * o «nenhuma» à direita do título da secção, e poupam a linha que ia
+   * dizer o mesmo por baixo.
+   */
+  aside?: {
+    password?: React.ReactNode
+    passwordMeta?: string
+    absences?: React.ReactNode
+    absencesMeta?: string
+  }
 }) {
   const [state, action, saving] = useActionState<TeamState, FormData>(
     saveFichaAction,
@@ -543,14 +555,20 @@ export function Ficha({
           ) : null}
         </div>
 
-        {/* A dobra diz o que tem lá dentro: um «Mais detalhes» sozinho
-            não se abre, porque ninguém abre uma gaveta sem saber o que
-            lá está. */}
+        {/*
+          A DOBRA PERDE A LISTA DO QUE TEM DENTRO.
+
+          Escrevi «— nome público, usuário, e-mail, cor, biografia» para
+          ninguém abrir uma gaveta às cegas. Mas cinco palavras cinzentas
+          por baixo de uma ligação pesam mais do que a gaveta que
+          anunciam, e num telemóvel gastavam duas linhas para dizer o que
+          um toque mostra. Fica a ligação e a seta.
+        */}
         <details className="mt-4 border-t border-[var(--line-soft)] pt-3">
-          <summary className="inline-flex cursor-pointer list-none flex-wrap items-center gap-x-1.5 text-[0.8125rem] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--accent-strong)] [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between text-[0.8125rem] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--accent-strong)] [&::-webkit-details-marker]:hidden">
             Mais detalhes
-            <span className="font-normal text-[var(--ink-faint)]">
-              — nome público, usuário, e-mail, cor, biografia
+            <span aria-hidden className="text-[var(--ink-faint)]">
+              ›
             </span>
           </summary>
 
@@ -638,7 +656,9 @@ export function Ficha({
             manda cá quem não a tem, e o que se vem buscar não pode estar
             atrás de uma gaveta. */}
         {aside?.password ? (
-          <Faixa title="Palavra-passe">{aside.password}</Faixa>
+          <Faixa title="Palavra-passe" meta={aside.passwordMeta}>
+            {aside.password}
+          </Faixa>
         ) : null}
       </Bloco>
 
@@ -927,7 +947,9 @@ export function Ficha({
         )}
 
         {aside?.absences ? (
-          <Faixa title="Ausências">{aside.absences}</Faixa>
+          <Faixa title="Ausências" meta={aside.absencesMeta}>
+            {aside.absences}
+          </Faixa>
         ) : null}
       </Bloco>
 
@@ -1075,24 +1097,68 @@ export function Ficha({
 // As peças pequenas
 // ---------------------------------------------------------------------
 
+/*
+  UM LIMITE POR CARTÃO, E NÃO DOIS.
+
+  Tinha moldura E sombra. Duas maneiras de dizer «isto acaba aqui» ao
+  mesmo tempo é o que faz um ecrã parecer barato: a moldura desenha uma
+  caixa, a sombra levanta-a do papel, e as duas juntas anulam-se — fica
+  a parecer um autocolante.
+
+  Fica a sombra, mais funda e mais aberta do que a da casa, e o raio
+  sobe de dez para doze. O cartão passa a assentar no papel em vez de
+  estar recortado nele.
+*/
 function Bloco({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-soft)]">
-      <h3 className="display px-5 pt-4 text-base text-[var(--ink)] sm:px-6 sm:text-lg">
+    <section className="overflow-hidden rounded-xl bg-[var(--surface-raised)] shadow-[0_1px_1px_rgba(46,38,28,0.04),0_14px_34px_-26px_rgba(46,38,28,0.45)]">
+      {/*
+        O TÍTULO GANHA PESO, NÃO OURO.
+
+        Cheguei a pôr-lhe um fio de ouro por baixo, como o do «Gestão».
+        Está errado, e o próprio sistema o diz: o ouro do balcão é UM SÓ
+        TRAÇO, por baixo do título da página, e é isso que o torna uma
+        assinatura. Repetido em cada cartão, deixava de assinar nada.
+      */}
+      <h3 className="px-5 pt-4 text-[0.9375rem] font-bold tracking-[-0.01em] text-[var(--ink)] sm:px-6 sm:text-base">
         {title}
       </h3>
-      <div className="px-5 pb-5 pt-4 sm:px-6">{children}</div>
+      <div className="px-5 pt-4 pb-5 sm:px-6">{children}</div>
     </section>
   )
 }
 
-/** Uma divisória dentro do cartão: outro assunto, mesma conversa. */
-function Faixa({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * Uma divisória dentro do cartão: outro assunto, mesma conversa.
+ *
+ * O TÍTULO DEIXA DE SER UM VERSALETE CINZENTO. Estava a onze píxeis, em
+ * maiúsculas espaçadas e no cinzento das legendas — lia-se DEPOIS do
+ * que vinha por baixo dele, quando é ele que devia dizer o que aí vem.
+ * Passa a treze, em maiúscula só na primeira letra e na tinta do texto.
+ *
+ * E QUANDO HÁ UM NÚMERO PARA DAR, ELE VAI À DIREITA: «nenhuma»,
+ * «definida». O título passa a dizer duas coisas em vez de uma, e
+ * poupa-se a linha que ia dizer a segunda.
+ */
+function Faixa({
+  title,
+  meta,
+  children,
+}: {
+  title: string
+  meta?: string
+  children: React.ReactNode
+}) {
   return (
     <div className="-mx-5 mt-5 border-t border-[var(--line-soft)] px-5 pt-4 sm:-mx-6 sm:px-6">
-      <p className="mb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.11em] text-[var(--ink-faint)]">
-        {title}
-      </p>
+      <div className="mb-3 flex items-baseline gap-3">
+        <p className="text-[0.8125rem] font-bold text-[var(--ink)]">{title}</p>
+        {meta ? (
+          <p className="ml-auto text-[0.75rem] text-[var(--ink-faint)]">
+            {meta}
+          </p>
+        ) : null}
+      </div>
       <div className="space-y-3">{children}</div>
     </div>
   )

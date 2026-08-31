@@ -150,8 +150,34 @@
   --ink: #1C1815;
   --ink-muted: #5E574E;
   --ink-faint: #938B7F;
-  --accent: #2B51C9;
-  --accent-strong: #1C3893;
+  /* ---------------------------------------------------------------
+     O BALCÃO TEM UMA COR SÓ, E É A DA CASA.
+
+     Era `#2B51C9` — o azul das ligações da internet. Genérico por
+     definição, porque é o que toda a gente usa: estava em cada visto,
+     em cada ligação, no separador aberto e no botão principal, e era
+     a peça que fazia isto parecer um formulário administrativo em vez
+     de uma ferramenta deste salão.
+
+     E havia DUAS cores a mandar ao mesmo tempo. A pastilha da barra
+     de baixo é dourada; tudo o resto era azul. Dois acentos a
+     competir é o que nenhum sistema caro tem.
+
+     Agora é um: o ouro do logótipo, que já comandava a barra, passa a
+     comandar tudo. Não é uma paleta nova — é deixar de contradizer a
+     que já existe.
+
+     E É O OURO ESCURO, NÃO O CLARO. O `#A9884C` do monograma dá 2,6
+     para 1 sobre o papel: chega para um símbolo grande, não chega
+     para um rótulo de dez píxeis nem para letra branca por cima. Este
+     dá 5,5 para 1 como texto e 6,4 com branco por cima — serve nas
+     duas posições, que é o que um acento tem de fazer.
+
+     PARA VOLTAR AO AZUL são estes dois valores e mais nada:
+     `#24365F` e `#16233F` dão o azul-tinta que também foi desenhado.
+     --------------------------------------------------------------- */
+  --accent: #6E5729;
+  --accent-strong: #4E3C1C;
   --accent-ink: #FFFFFF;
   /* Não é ouro nenhum: é a segunda série. O nome do token é estrutural
      — «a outra cor» — e cada pele decide qual é. */

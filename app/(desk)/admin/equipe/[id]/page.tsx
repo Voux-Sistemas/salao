@@ -29,7 +29,6 @@ import {
 import { Ficha } from '@/components/team-ficha'
 import { BackLink } from '@/components/gestao-panel'
 import { Badge, Divider } from '@/components/ui'
-import { formatPhone } from '@/lib/text'
 import { isUuid } from '@/lib/id'
 
 export const metadata: Metadata = { title: 'Ficha' }
@@ -102,18 +101,6 @@ export default async function PessoaPage({
   else if (current.length === 0) gaps.push('escala')
   if (member.accepts_online_booking && skillCount === 0) gaps.push('serviços')
 
-  const resumo = [
-    mine.length > 0
-      ? options
-          .filter((unit) => mine.includes(unit.id))
-          .map((unit) => unit.name)
-          .join(' · ')
-      : null,
-    skillCount > 0
-      ? `${skillCount} ${skillCount === 1 ? 'serviço' : 'serviços'}`
-      : null,
-  ].filter(Boolean)
-
   return (
     <div className="max-w-3xl space-y-5">
       <div>
@@ -142,16 +129,24 @@ export default async function PessoaPage({
             ))}
             {member.is_active ? null : <Badge tone="bad">Saiu</Badge>}
           </div>
-          <p className="tabular text-sm text-[var(--ink-muted)]">
-            {formatPhone(member.phone)}
-          </p>
         </div>
 
-        {resumo.length > 0 ? (
-          <p className="mt-1.5 text-[0.8125rem] text-[var(--ink-muted)]">
-            {resumo.join(' · ')}
-          </p>
-        ) : null}
+        {/*
+          A CABEÇA DIZ QUEM É, E MAIS NADA.
+
+          Tinha quatro linhas: o voltar, o nome com o papel, o telefone e
+          «Valongo · Maia · 35 serviços». Não era informação a mais — era
+          a MESMA informação duas vezes, e é isso que baralha.
+
+          O telefone aparecia outra vez vinte píxeis abaixo, no campo
+          «Telefone». As lojas estão no cartão da Escala, com a semana
+          inteira ao lado; os serviços estão no cartão dos Serviços, que
+          diz «aparece em 35 dos 68» — mais devagar e melhor do que um
+          número solto aqui em cima.
+
+          Ficam o nome e o papel: é o que se precisa de saber para ter a
+          certeza de que se está na ficha certa.
+        */}
 
         {gaps.length > 0 ? (
           <p className="mt-3 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_8%,transparent)] px-3 py-2 text-[0.8125rem] text-[var(--warn)]">
@@ -190,12 +185,19 @@ export default async function PessoaPage({
         self={member.id === actor.id}
         aside={{
           /* Acontecimentos, não campos: gravam na hora. */
+          passwordMeta: member.has_password ? 'definida' : 'por definir',
           password: (
             <PasswordForm
               staffId={member.id}
               hasPassword={member.has_password}
             />
           ),
+          absencesMeta:
+            absences.length === 0
+              ? 'nenhuma'
+              : absences.length === 1
+                ? '1 marcada'
+                : `${absences.length} marcadas`,
           /*
             A LISTA PRIMEIRO, O FORMULÁRIO DEPOIS.
 
