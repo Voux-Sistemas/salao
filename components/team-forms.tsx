@@ -187,8 +187,13 @@ export function AbsenceForm({
 
         A regra passou a ser a mesma para todas, e é a única que aguenta
         qualquer telemóvel: uma por linha até ao `sm`, e só a partir daí
-        emparelham. O que lhes falta é tecto, não largura — ver os
-        `max-sm:max-w` mais abaixo.
+        emparelham.
+
+        E TODAS COM A MESMA LARGURA — a da caixa que as contém. Cheguei
+        a pôr tectos diferentes em cada uma («13 rem para as datas, 11
+        para as horas») e o resultado foi um formulário em degraus, com
+        cada campo a acabar num sítio. Simetria vale mais do que a
+        largura ideal de cada campo visto sozinho.
       */}
       <div className="grid items-end gap-3 sm:max-w-md sm:grid-cols-2">
         <Field label="Motivo" htmlFor="abs-kind">
@@ -237,20 +242,10 @@ export function AbsenceForm({
       ) : null}
 
       {allDay ? (
-        /*
-          O TECTO DE TREZE REM.
-
-          Uma caixa sozinha numa linha esticava-se aos 286 píxeis do
-          cartão para mostrar «31/08/2026», e uma escada de caixas
-          enormes lê-se pior do que a escada que veio substituir. Treze
-          rem chegam, e o que sobra passa a ser ar em vez de vazio.
-
-          É TECTO E NÃO LARGURA: se algum telemóvel quiser dar-lhe mais
-          do que isso — e é ele que manda nessa medida, não eu — dá, e
-          continua a caber porque não tem ninguém ao lado.
-        */
+        /* Uma por linha no telemóvel, as duas com a largura da caixa
+           que as contém; emparelham a partir do `sm`. */
         <div className="grid items-start gap-3 sm:max-w-md sm:grid-cols-2">
-          <Field label="De" htmlFor="abs-from" className="max-sm:max-w-[13rem]">
+          <Field label="De" htmlFor="abs-from">
             <Input
               id="abs-from"
               name="from"
@@ -288,7 +283,7 @@ export function AbsenceForm({
         </div>
       ) : (
         <div className="space-y-3 sm:flex sm:max-w-md sm:items-end sm:gap-3 sm:space-y-0">
-          <Field label="No dia" htmlFor="abs-from" className="max-sm:max-w-[13rem] sm:w-40">
+          <Field label="No dia" htmlFor="abs-from" className="sm:w-40">
             <Input
               id="abs-from"
               name="from"
@@ -302,7 +297,7 @@ export function AbsenceForm({
           {/* Pela mesma razão das datas: uma caixa de hora por linha no
               telemóvel, lado a lado a partir do `sm`. */}
           <div className="grid gap-3 sm:flex sm:gap-3">
-            <Field label="Das" htmlFor="abs-starts" className="max-sm:max-w-[11rem] sm:w-28">
+            <Field label="Das" htmlFor="abs-starts" className="sm:w-28">
               <Input
                 id="abs-starts"
                 name="starts"
@@ -313,7 +308,7 @@ export function AbsenceForm({
                 required
               />
             </Field>
-            <Field label="Às" htmlFor="abs-ends" className="max-sm:max-w-[11rem] sm:w-28">
+            <Field label="Às" htmlFor="abs-ends" className="sm:w-28">
               <Input
                 id="abs-ends"
                 name="ends"

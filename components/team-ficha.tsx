@@ -819,28 +819,30 @@ export function Ficha({
                         Estava a ser dois rótulos e duas caixas soltos
                         entre as linhas dos outros dias, sem princípio
                         nem fim: não se via onde é que aquilo começava,
-                        nem a que dia pertencia. Ganha moldura, fundo e
-                        um recuo por debaixo do nome do dia.
+                        nem a que dia pertencia. Ganha moldura e fundo.
 
                         A moldura é toda em `max-sm:` porque no monitor
                         isto não é um painel nenhum — é a segunda coluna
                         da linha, sempre à vista e sem caixa à volta.
 
-                        E AS CAIXAS TÊM TECTO. Sozinhas numa linha
-                        esticavam-se aos 286 píxeis do cartão para
-                        mostrar «09:00»: onze rem chegam, e o que sobra
-                        é ar em vez de vazio. É tecto e não largura — se
-                        algum telemóvel quiser dar-lhes mais do que
-                        isso, dá, e continua a caber.
+                        E AS DUAS CAIXAS ENCHEM-NA. Cheguei a pôr-lhes
+                        um tecto de onze rem para não parecerem grandes
+                        de mais, e ficaram encostadas à esquerda de um
+                        painel mais largo do que elas — que é pior do
+                        que serem grandes. Dentro de uma moldura, uma
+                        caixa que a enche está certa; uma que sobra pela
+                        metade parece um erro. O painel também deixou de
+                        levar recuo: alinha com as linhas dos outros
+                        dias, e o que o prende ao dia é a moldura.
                       */
                       <div
                         className={clsx(
                           'flex flex-col gap-2 sm:flex-row sm:items-center',
-                          'max-sm:ml-7 max-sm:gap-2.5 max-sm:rounded-[var(--radius)] max-sm:border max-sm:border-[color-mix(in_srgb,var(--accent)_28%,transparent)] max-sm:bg-[color-mix(in_srgb,var(--accent)_5%,transparent)] max-sm:p-3',
+                          'max-sm:gap-2.5 max-sm:rounded-[var(--radius)] max-sm:border max-sm:border-[color-mix(in_srgb,var(--accent)_28%,transparent)] max-sm:bg-[color-mix(in_srgb,var(--accent)_5%,transparent)] max-sm:p-3',
                           aEditar ? null : 'max-sm:hidden',
                         )}
                       >
-                        <div className="max-sm:max-w-[11rem] sm:w-[7rem]">
+                        <div className="sm:w-[7rem]">
                           <span className="mb-1 block text-[0.75rem] font-semibold text-[var(--ink-muted)] sm:hidden">
                             Entra
                           </span>
@@ -855,7 +857,7 @@ export function Ficha({
                         <span className="max-sm:hidden text-[var(--ink-faint)]">
                           →
                         </span>
-                        <div className="max-sm:max-w-[11rem] sm:w-[7rem]">
+                        <div className="sm:w-[7rem]">
                           <span className="mb-1 block text-[0.75rem] font-semibold text-[var(--ink-muted)] sm:hidden">
                             Sai
                           </span>
