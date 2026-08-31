@@ -48,18 +48,30 @@ export async function PainelNumeros({
   const tz = org.timezone
   const day = today(tz)
 
+  /*
+    CADA CONTA CAI SOZINHA.
+
+    A ocupação, o mapa e a clientela são consultas novas, e uma consulta
+    nova falha contra dados que nunca viu — um fuso que não esperava,
+    uma escala sem vigência, uma tabela vazia. Sem isto, qualquer uma
+    delas levava a página inteira ao ecrã de «alguma coisa correu mal»,
+    e com ela a agenda do dia, que não tem culpa nenhuma.
+
+    O que falha diz-se no sítio dele e o erro verdadeiro vai para o
+    registo do servidor, com nome — é por lá que se descobre qual.
+  */
   const [semana, mapa, kpis, clientes, equipa, hoje] = await Promise.all([
-    ocupacaoDaSemana(org.id, tz, day),
-    mapaDasHoras(org.id, tz, 6, day),
-    monthKpis(org.id, tz),
-    clientela(org.id, tz),
-    staffProduction(org.id, tz, 6),
-    todayByUnit(org.id, tz),
+    seguro('ocupação da semana', () => ocupacaoDaSemana(org.id, tz, day), null),
+    seguro('mapa das horas', () => mapaDasHoras(org.id, tz, 6, day), null),
+    seguro('indicadores do mês', () => monthKpis(org.id, tz), null),
+    seguro('clientela', () => clientela(org.id, tz), null),
+    seguro('produção da equipa', () => staffProduction(org.id, tz, 6), null),
+    seguro('hoje por loja', () => todayByUnit(org.id, tz), null),
   ])
 
-  const total = somar(semana)
-  const ocupacao = percentagem(total)
-  const porVender = Math.max(0, total.escalado - total.vendido)
+  const total = semana ? somar(semana) : null
+  const ocupacao = total ? percentagem(total) : null
+  const porVender = total ? Math.max(0, total.escalado - total.vendido) : null
 
   return (
     <div className="space-y-4">
@@ -68,31 +80,47 @@ export async function PainelNumeros({
         <Numero
           label="Ocupação, esta semana"
           value={ocupacao === null ? '—' : `${ocupacao}%`}
-          hint={ocupacao === null ? 'sem escala esta semana' : 'das horas escaladas'}
+          hint={
+            semana === null
+              ? 'não foi possível calcular'
+              : ocupacao === null
+                ? 'sem escala esta semana'
+                : 'das horas escaladas'
+          }
           forte
         />
         <Numero
           label="Horas por vender"
-          value={formatDuration(porVender)}
-          hint={`de ${formatDuration(total.escalado)} escaladas`}
+          value={porVender === null ? '—' : formatDuration(porVender)}
+          hint={
+            total ? `de ${formatDuration(total.escalado)} escaladas` : undefined
+          }
         />
         <Numero
           label={`Faturação, ${mesDe(day)}`}
-          value={formatCents(kpis.current.revenue_cents, org.currency)}
+          value={
+            kpis ? formatCents(kpis.current.revenue_cents, org.currency) : '—'
+          }
           hint={
-            kpis.previous.revenue_cents > 0
-              ? `${formatCents(kpis.previous.revenue_cents, org.currency)} no mês anterior`
-              : 'sem mês anterior para comparar'
+            !kpis
+              ? 'não foi possível calcular'
+              : kpis.previous.revenue_cents > 0
+                ? `${formatCents(kpis.previous.revenue_cents, org.currency)} no mês anterior`
+                : 'sem mês anterior para comparar'
           }
         />
         <Numero
           label="Ticket médio"
           value={
-            kpis.current.avg_ticket_cents !== null
+            kpis?.current.avg_ticket_cents != null
               ? formatCents(kpis.current.avg_ticket_cents, org.currency)
               : '—'
           }
-          hint={`${kpis.current.completed} marcaç${kpis.current.completed === 1 ? 'ão' : 'ões'} feita${kpis.current.completed === 1 ? '' : 's'}`}
+          hint={
+            kpis
+              ? `${kpis.current.completed} marcaç${kpis.current.completed === 1 ? 'ão' : 'ões'} feita${kpis.current.completed === 1 ? '' : 's'}`
+              : undefined
+          }
         />
       </div>
 
@@ -100,17 +128,21 @@ export async function PainelNumeros({
         {/* -------------------------------------- ocupação --- */}
         <Card className="overflow-hidden">
           <Titulo>Ocupação, dia a dia</Titulo>
-          <div className="space-y-2 px-4 py-4">
-            {semana.map((dia) => (
-              <BarraDoDia key={dia.day} dia={dia} />
-            ))}
-          </div>
+          {semana === null ? (
+            <Falhou o="a ocupação" />
+          ) : (
+            <div className="space-y-2 px-4 py-4">
+              {semana.map((dia) => (
+                <BarraDoDia key={dia.day} dia={dia} />
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* -------------------------------------- o mapa --- */}
         <Card className="overflow-hidden">
           <Titulo aside="últimas 6 semanas">As horas que sobram</Titulo>
-          <Mapa casas={mapa} />
+          {mapa === null ? <Falhou o="o mapa" /> : <Mapa casas={mapa} />}
         </Card>
       </div>
 
@@ -118,18 +150,27 @@ export async function PainelNumeros({
         {/* -------------------------------------- clientes --- */}
         <Card className="overflow-hidden">
           <Titulo aside={mesDe(day)}>As clientes</Titulo>
+          {clientes === null ? <Falhou o="a conta das clientes" /> : null}
           <div className="grid grid-cols-3 gap-px bg-[var(--line-soft)]">
-            <Numero label="Novas" value={String(clientes.novas)} pequeno />
-            <Numero label="Voltaram" value={String(clientes.voltaram)} pequeno />
+            <Numero
+              label="Novas"
+              value={clientes ? String(clientes.novas) : '—'}
+              pequeno
+            />
+            <Numero
+              label="Voltaram"
+              value={clientes ? String(clientes.voltaram) : '—'}
+              pequeno
+            />
             <Numero
               label="Sem voltar"
-              value={String(clientes.sumiram)}
+              value={clientes ? String(clientes.sumiram) : '—'}
               hint="há mais de 3 meses"
               pequeno
               aviso
             />
           </div>
-          {clientes.sumiram > 0 ? (
+          {clientes && clientes.sumiram > 0 ? (
             <Link
               href="/clientes"
               className="flex items-center gap-3 border-t border-[var(--line-soft)] px-4 py-3 text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:bg-[var(--surface-2)]"
@@ -147,7 +188,9 @@ export async function PainelNumeros({
         {/* -------------------------------------- produção --- */}
         <Card className="overflow-hidden">
           <Titulo aside="6 semanas">Quem trouxe quanto</Titulo>
-          {equipa.length === 0 ? (
+          {equipa === null ? (
+            <Falhou o="a produção" />
+          ) : equipa.length === 0 ? (
             <div className="px-4 py-6">
               <Empty
                 title="Ainda sem histórico"
@@ -175,7 +218,7 @@ export async function PainelNumeros({
         <Card className="overflow-hidden">
           <Titulo aside="hoje">Por loja</Titulo>
           <ul className="divide-y divide-[var(--line-soft)]">
-            {hoje.map((casa) => (
+            {(hoje ?? []).map((casa) => (
               <li key={casa.unit_id}>
                 <Link
                   href={`/agenda/${casa.slug}`}
@@ -207,6 +250,40 @@ export async function PainelNumeros({
 // ---------------------------------------------------------------------
 // As peças
 // ---------------------------------------------------------------------
+
+/**
+ * Corre uma conta e, se ela rebentar, devolve o nulo em vez de deixar
+ * a excepção subir.
+ *
+ * O erro verdadeiro vai para o registo do servidor COM NOME. Sem o
+ * nome, um `console.error` no meio de seis contas paralelas não diz
+ * qual delas foi — e é a primeira coisa que se quer saber.
+ *
+ * Isto não é para esconder problemas: é para que um problema numa
+ * conta não leve as outras cinco e a agenda do dia com ele.
+ */
+async function seguro<T>(
+  nome: string,
+  correr: () => Promise<T>,
+  vazio: T | null,
+): Promise<T | null> {
+  try {
+    return await correr()
+  } catch (erro) {
+    console.error(`[hoje] ${nome} falhou`, erro)
+    return vazio
+  }
+}
+
+/** O buraco que uma conta falhada deixa, dito por palavras. */
+function Falhou({ o }: { o: string }) {
+  return (
+    <p className="px-4 py-4 text-[0.8125rem] leading-relaxed text-[var(--warn)]">
+      Não foi possível calcular {o} agora. O resto da página não depende
+      disto.
+    </p>
+  )
+}
 
 function Titulo({
   children,

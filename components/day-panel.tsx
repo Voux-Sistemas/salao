@@ -181,14 +181,24 @@ export async function DayPanel({
       `,
 
 
-      /* A ocupação de hoje. Traz a semana inteira porque é uma consulta
-         só de qualquer maneira, e daqui só se lê a coluna de hoje. */
-      ocupacaoDaSemana(org.id, tz, day),
+      /*
+        A ocupação de hoje. Traz a semana inteira porque é uma consulta
+        só de qualquer maneira, e daqui só se lê a coluna de hoje.
+
+        APANHADA À PARTE: é a conta mais nova da casa, e a agenda do dia
+        — que é para o que se vem aqui — não pode ir abaixo por causa
+        dela. Falhando, a fita fica sem a terceira conta e o erro
+        verdadeiro fica no registo do servidor.
+      */
+      ocupacaoDaSemana(org.id, tz, day).catch((erro: unknown) => {
+        console.error('[hoje] ocupação do dia falhou', erro)
+        return null
+      }),
     ])
 
   /* O que a casa tem para vender hoje e ainda não vendeu: a escala,
      menos as ausências, menos o que já está marcado por cima. */
-  const hojeOcupado = ocupacao.find((d) => d.day === day)
+  const hojeOcupado = ocupacao?.find((d) => d.day === day)
   const porVender = hojeOcupado
     ? Math.max(0, hojeOcupado.escalado - hojeOcupado.vendido)
     : 0
