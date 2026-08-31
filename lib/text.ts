@@ -128,3 +128,23 @@ export function safePhotoUrl(input: string | null | undefined): string | null {
   }
   return null
 }
+
+/**
+ * UM NOME SEM UMA ÚNICA LETRA NÃO É UM NOME.
+ *
+ * Quando a cliente marca sem escrever como se chama, a ficha nasce com
+ * o que houver — e o que há é o telefone. A lista de Clientes já lhe
+ * chama «Sem nome»; o painel de Hoje mostrava o número cru, e a mesma
+ * pessoa aparecia com dois nomes conforme o ecrã.
+ *
+ * ESTE É O GÉMEO EM JAVASCRIPT do `SEM_LETRAS` de `lib/clients.ts`, que
+ * faz a mesma pergunta em SQL para poder ordenar por ela. São dois
+ * porque são duas línguas — mas são a mesma regra, e se uma mudar a
+ * outra tem de mudar com ela.
+ *
+ * `\p{L}` conhece acentos e alfabetos que não o nosso, tal como o
+ * `[[:alpha:]]` do Postgres.
+ */
+export function semNome(name: string | null | undefined): boolean {
+  return !/\p{L}/u.test(name ?? '')
+}

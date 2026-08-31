@@ -38,11 +38,17 @@ export default async function Home({
 
   const units = await unitsFor(actor)
 
-  /* O separador vive no endereço e não no navegador: assim volta-se a
-     ele com o botão de trás, e um atalho guardado abre onde se deixou.
-     Qualquer outro valor cai na agenda, que é o que se quer ver. */
+  /*
+    O separador vive no endereço e não no navegador: assim volta-se a
+    ele com o botão de trás, e um atalho guardado abre onde se deixou.
+
+    OS NÚMEROS SÃO O QUE ABRE. A agenda a sério tem porta própria na
+    coluna da esquerda e é onde se trabalha o dia; o que esta página
+    tem para dizer de único são as contas. Qualquer outro valor cai
+    neles.
+  */
   const { v } = await searchParams
-  const vista = v === 'numeros' ? 'numeros' : 'agenda'
+  const vista = v === 'agenda' ? 'agenda' : 'numeros'
 
   return (
     <DeskChrome>
