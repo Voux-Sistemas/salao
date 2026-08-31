@@ -12,7 +12,14 @@ import {
   listSkills,
   listSkillSources,
 } from '@/lib/team'
-import { formatDateTime, today } from '@/lib/time'
+import {
+  addDays,
+  dayStart,
+  formatDayLong,
+  formatTime,
+  isoDay,
+  today,
+} from '@/lib/time'
 import { openWeekdaysFor } from '@/lib/hours'
 import {
   AbsenceForm,
@@ -192,30 +199,69 @@ export default async function PessoaPage({
               hasPassword={member.has_password}
             />
           ),
+          /*
+            A LISTA PRIMEIRO, O FORMULÁRIO DEPOIS.
+
+            O bloco chama-se «Ausências» e abria com cinco faixas de
+            campos, com o que já estava marcado escondido atrás delas.
+            Mas quem abre esta ficha vem quase sempre ver se a pessoa
+            tem férias marcadas — não vem marcar umas. A lista é o
+            assunto; marcar é uma coisa que se faz de vez em quando, e
+            por isso é um botão.
+          */
           absences: (
             <div className="space-y-3">
-              <AbsenceForm
-                staffId={member.id}
-                units={options}
-                today={todayIso}
-              />
               {absences.length > 0 ? (
-                <div className="divide-y divide-[var(--line-soft)] border-t border-[var(--line-soft)]">
+                <div className="divide-y divide-[var(--line-soft)] border-b border-[var(--line-soft)]">
                   {absences.map((row) => {
                     const timezone =
                       (row.unit_id ? timezones.get(row.unit_id) : null) ??
                       org.timezone
+                    /*
+                      «DIA INTEIRO» EM VEZ DE 00:00 → 00:00.
+
+                      Uma ausência de dia inteiro guarda-se do princípio
+                      de um dia ao princípio do seguinte, e lida à letra
+                      dava «04 de setembro, 00:00 → 05 de setembro,
+                      00:00» — duas horas falsas e um dia a mais. Aqui
+                      lê-se pelo que é: um dia, ou um intervalo de dias.
+                    */
+                    const primeiro = isoDay(row.starts_at, timezone)
+                    /* O fim é exclusivo — a meia-noite do dia seguinte —,
+                       por isso o último dia da ausência é o anterior. */
+                    const ultimo = addDays(isoDay(row.ends_at, timezone), -1)
+                    const inteiro =
+                      row.starts_at.getTime() ===
+                        dayStart(primeiro, timezone).getTime() &&
+                      row.ends_at.getTime() ===
+                        dayStart(addDays(ultimo, 1), timezone).getTime()
                     return (
                       <div
                         key={row.id}
                         className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5"
                       >
-                        <Badge className="w-24 justify-center">
-                          {ABSENCE_LABEL[row.kind]}
-                        </Badge>
+                        <Badge>{ABSENCE_LABEL[row.kind]}</Badge>
                         <span className="tabular shrink-0 text-[0.8125rem] text-[var(--ink)]">
-                          {formatDateTime(row.starts_at, timezone)} →{' '}
-                          {formatDateTime(row.ends_at, timezone)}
+                          {inteiro ? (
+                            <>
+                              {formatDayLong(primeiro, timezone)}
+                              {ultimo !== primeiro ? (
+                                <> → {formatDayLong(ultimo, timezone)}</>
+                              ) : (
+                                <span className="text-[var(--ink-faint)]">
+                                  {' '}
+                                  · dia inteiro
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              {formatDayLong(primeiro, timezone)}
+                              <span className="text-[var(--ink-faint)]"> · </span>
+                              {formatTime(row.starts_at, timezone)} →{' '}
+                              {formatTime(row.ends_at, timezone)}
+                            </>
+                          )}
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[0.75rem] text-[var(--ink-muted)]">
@@ -230,10 +276,16 @@ export default async function PessoaPage({
                 </div>
               ) : (
                 <p className="text-[0.75rem] text-[var(--ink-faint)]">
-                  Nada marcado. Fecha o horário, mas não desmarca ninguém —
-                  isso trata-se na agenda.
+                  Nada marcado. Uma ausência fecha o horário, mas não
+                  desmarca ninguém — isso trata-se na agenda.
                 </p>
               )}
+
+              <AbsenceForm
+                staffId={member.id}
+                units={options}
+                today={todayIso}
+              />
             </div>
           ),
         }}

@@ -9,7 +9,12 @@ import {
 } from '@/app/(desk)/admin/equipe/actions'
 import { Field, Input, Select, Textarea } from '@/components/ui'
 import { PhoneInput } from '@/components/phone-input'
-import { formatMinutes, parseMinutes, WEEKDAY_NAMES_PT } from '@/lib/time'
+import {
+  formatDuration,
+  formatMinutes,
+  parseMinutes,
+  WEEKDAY_NAMES_PT,
+} from '@/lib/time'
 import type { Level, SkillSource } from '@/lib/team'
 
 /**
@@ -126,6 +131,64 @@ function weekOf(rows: ScheduleSlice[], unitId: string): WeekSlot[] {
   return week
 }
 
+/**
+ * A SEMANA LIDA EM VOZ ALTA.
+ *
+ * Sete linhas de campos respondem «que horas faz à quarta?». Não
+ * respondem «então ela faz as tardes e os fins-de-semana inteiros?» —
+ * que é a pergunta que se faz ao sair desta página, e que obrigava a
+ * ler as sete linhas uma a uma para a responder.
+ *
+ * Junta dias SEGUIDOS com o mesmo horário: três ou mais viram «de
+ * segunda a sexta», dois viram «sábado e domingo», um fica sozinho. Os
+ * dias em que não trabalha não se dizem — dizer o que não há é ruído
+ * numa frase que já tem de caber numa linha.
+ */
+function lerSemana(week: WeekSlot[]): { frase: string; minutos: number } {
+  const trocos: { dias: number[]; starts: string; ends: string }[] = []
+  let minutos = 0
+
+  for (const weekday of ORDER) {
+    const slot = week[weekday]
+    if (!slot?.on) continue
+    const inicio = parseMinutes(slot.starts)
+    const fim = parseMinutes(slot.ends)
+    if (inicio !== null && fim !== null && fim > inicio) minutos += fim - inicio
+
+    const ultimo = trocos[trocos.length - 1]
+    // Só se junta ao troço anterior se ELE acabar no dia imediatamente
+    // antes deste: uma segunda e uma quarta com o mesmo horário não são
+    // «de segunda a quarta», e escrevê-lo assim era mentir.
+    const seguido =
+      ultimo &&
+      ultimo.starts === slot.starts &&
+      ultimo.ends === slot.ends &&
+      ORDER.indexOf(ultimo.dias[ultimo.dias.length - 1] ?? -1) ===
+        ORDER.indexOf(weekday) - 1
+    if (seguido) ultimo.dias.push(weekday)
+    else trocos.push({ dias: [weekday], starts: slot.starts, ends: slot.ends })
+  }
+
+  const nome = (weekday: number) =>
+    (WEEKDAY_NAMES_PT[weekday] ?? '').toLowerCase()
+
+  const frase = trocos
+    .map((troco) => {
+      const primeiro = troco.dias[0] ?? 0
+      const ultimo = troco.dias[troco.dias.length - 1] ?? 0
+      const quais =
+        troco.dias.length === 1
+          ? nome(primeiro)
+          : troco.dias.length === 2
+            ? `${nome(primeiro)} e ${nome(ultimo)}`
+            : `de ${nome(primeiro)} a ${nome(ultimo)}`
+      return `${quais} das ${troco.starts} às ${troco.ends}`
+    })
+    .join(' · ')
+
+  return { frase, minutos }
+}
+
 function sameWeek(a: WeekSlot[], b: WeekSlot[]): boolean {
   return a.every((slot, index) => {
     const other = b[index]
@@ -222,6 +285,25 @@ export function Ficha({
   }
 
   const weekChanged = !sameWeek(week, base)
+
+  /*
+    UM EIXO SÓ: A LOJA ESCOLHE-SE, E DEPOIS DIZ-SE SE TRABALHA LÁ.
+
+    Havia dois comandos parecidos para coisas diferentes, e era isso que
+    baralhava. As pastilhas «Valongo | Maia» não escolhiam qual se
+    estava a ver — LIGAVAM E DESLIGAVAM a loja, e podiam estar as duas
+    acesas. Por baixo delas havia uma segunda caixinha, escondida, que
+    era essa sim a escolher qual a semana a editar, e que só aparecia
+    quando a pessoa trabalhava em duas lojas.
+
+    Agora a caixinha escolhe a loja — todas na lista, trabalhe lá ou
+    não — e a pertença é uma caixa de verificação normal com o nome da
+    loja escrito por extenso. Onde ela trabalha continua a ler-se de
+    relance no cabeçalho da ficha, que já diz «Valongo · Maia».
+  */
+  const lojaActual = units.find((unit) => unit.id === weekUnit)
+  const trabalhaAqui = mine.includes(weekUnit)
+  const semana = lerSemana(week)
 
   // --- o que sabe fazer ----------------------------------------------
   const started = useMemo(() => {
@@ -520,62 +602,61 @@ export function Ficha({
 
       {/* ---------- Escala ---------- */}
       <Bloco title="Escala">
-        <div className="flex flex-wrap gap-2">
-          {units.map((unit) => {
-            const on = mine.includes(unit.id)
-            return (
-              <button
-                key={unit.id}
-                type="button"
-                onClick={() =>
-                  setMine((current) =>
-                    on
-                      ? current.filter((id) => id !== unit.id)
-                      : [...current, unit.id],
-                  )
-                }
-                className={clsx(
-                  'rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors',
-                  on
-                    ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] font-semibold text-[var(--accent-strong)]'
-                    : 'border-[var(--line)] text-[var(--ink-muted)] hover:border-[var(--ink-faint)]',
-                )}
-              >
-                {on ? '✓ ' : ''}
+        <Field label="Loja" htmlFor="f-loja" className="max-w-[16rem]">
+          <Select
+            id="f-loja"
+            value={weekUnit}
+            onChange={(e) => setWeekUnit(e.target.value)}
+          >
+            {units.map((unit) => (
+              <option key={unit.id} value={unit.id}>
                 {unit.name}
-              </button>
-            )
-          })}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <div className="mt-4">
+          <Caixa
+            on={trabalhaAqui}
+            onClick={() =>
+              setMine((current) =>
+                trabalhaAqui
+                  ? current.filter((id) => id !== weekUnit)
+                  : [...current, weekUnit],
+              )
+            }
+            label={`Trabalha ${lojaActual?.name ? `em ${lojaActual.name}` : 'nesta loja'}`}
+            hint="Sem isto não entra na agenda desta loja nem no funil."
+          />
         </div>
 
-        {mine.length === 0 ? (
-          <p className="mt-4 text-[0.8125rem] text-[var(--ink-faint)]">
-            Primeiro a loja, depois a escala. Sem loja, não aparece em agenda
-            nenhuma.
+        {!trabalhaAqui ? (
+          <p className="mt-4 rounded-[var(--radius)] border border-dashed border-[var(--line)] px-4 py-5 text-center text-[0.8125rem] leading-relaxed text-[var(--ink-faint)]">
+            Não trabalha {lojaActual?.name ? `em ${lojaActual.name}` : 'aqui'}.
+            <br />
+            Ligue a caixa acima para lhe dar uma semana nesta loja.
           </p>
         ) : (
-          <Faixa
-            title={
-              mine.length > 1
-                ? 'A semana'
-                : `A semana em ${units.find((u) => u.id === weekUnit)?.name ?? ''}`
-            }
-          >
-            {mine.length > 1 ? (
-              <Select
-                value={weekUnit}
-                onChange={(e) => setWeekUnit(e.target.value)}
-                className="mb-3 max-w-[16rem]"
-              >
-                {units
-                  .filter((unit) => mine.includes(unit.id))
-                  .map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </option>
-                  ))}
-              </Select>
-            ) : null}
+          <Faixa title={`A semana em ${lojaActual?.name ?? ''}`}>
+            {/*
+              O RESUMO ANTES DAS LINHAS.
+
+              É a resposta à pergunta que se faz ao sair desta página, e
+              que as sete linhas de campos não davam sem se lerem uma a
+              uma. As horas da semana à direita, porque é o número que
+              se compara entre pessoas.
+            */}
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <p className="flex-1 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)] first-letter:uppercase">
+                {semana.frase || 'Sem nenhum dia ligado nesta loja.'}
+              </p>
+              {semana.minutos > 0 ? (
+                <p className="tabular shrink-0 text-[0.8125rem] text-[var(--ink-faint)]">
+                  {formatDuration(semana.minutos)}
+                </p>
+              ) : null}
+            </div>
 
             <div>
               {ORDER.map((weekday) => {
@@ -589,10 +670,16 @@ export function Ficha({
                 */
                 const fechado =
                   slot.on && !abertura.includes(weekday)
+                const entra = parseMinutes(slot.starts)
+                const sai = parseMinutes(slot.ends)
+                const duracao =
+                  entra !== null && sai !== null && sai > entra ? sai - entra : 0
+                const posicao = ORDER.indexOf(weekday)
+                const abaixo = ORDER.slice(posicao + 1)
                 return (
                   <div
                     key={weekday}
-                    className="grid grid-cols-[7.5rem_1fr] items-center gap-3 border-b border-[var(--line-soft)] py-2 last:border-0"
+                    className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-x-3 gap-y-1 border-b border-[var(--line-soft)] py-1.5 last:border-0"
                   >
                     <Caixa
                       on={slot.on}
@@ -607,45 +694,98 @@ export function Ficha({
                     />
                     {slot.on ? (
                       <div className="flex flex-wrap items-center gap-2">
-                        <Input
-                          type="time"
-                          value={slot.starts}
-                          aria-label={`Entra — ${WEEKDAY_NAMES_PT[weekday]}`}
-                          onChange={(e) =>
-                            setWeek((current) =>
-                              current.map((day, index) =>
-                                index === weekday
-                                  ? { ...day, starts: e.target.value }
-                                  : day,
-                              ),
-                            )
-                          }
-                          className="tabular w-28"
-                        />
+                        {/*
+                          A LARGURA VEM DE FORA, E TEM DE VIR.
+
+                          Estas caixas foram escritas com `w-28` e saíam
+                          com a largura toda, empilhadas — o `Input` da
+                          casa traz `w-full` por dentro, e o Tailwind 4
+                          escreve o `.w-full` DEPOIS do `.w-28`. Ganha o
+                          último, e o que aqui se pedia perdia-se. É a
+                          mesma armadilha do `hidden sm:inline-flex`.
+
+                          Numa moldura de largura fixa, o `w-full` de
+                          dentro passa a ser exactamente o que se quer.
+                        */}
+                        <span className="block w-[6rem]">
+                          <Input
+                            type="time"
+                            value={slot.starts}
+                            aria-label={`Entra — ${WEEKDAY_NAMES_PT[weekday]}`}
+                            onChange={(e) =>
+                              setWeek((current) =>
+                                current.map((day, index) =>
+                                  index === weekday
+                                    ? { ...day, starts: e.target.value }
+                                    : day,
+                                ),
+                              )
+                            }
+                            className="tabular"
+                          />
+                        </span>
                         <span className="text-[var(--ink-faint)]">→</span>
-                        <Input
-                          type="time"
-                          value={slot.ends}
-                          aria-label={`Sai — ${WEEKDAY_NAMES_PT[weekday]}`}
-                          onChange={(e) =>
-                            setWeek((current) =>
-                              current.map((day, index) =>
-                                index === weekday
-                                  ? { ...day, ends: e.target.value }
-                                  : day,
-                              ),
-                            )
-                          }
-                          className="tabular w-28"
-                        />
+                        <span className="block w-[6rem]">
+                          <Input
+                            type="time"
+                            value={slot.ends}
+                            aria-label={`Sai — ${WEEKDAY_NAMES_PT[weekday]}`}
+                            onChange={(e) =>
+                              setWeek((current) =>
+                                current.map((day, index) =>
+                                  index === weekday
+                                    ? { ...day, ends: e.target.value }
+                                    : day,
+                                ),
+                              )
+                            }
+                            className="tabular"
+                          />
+                        </span>
+                        {duracao > 0 ? (
+                          <span className="tabular text-[0.6875rem] text-[var(--ink-faint)]">
+                            {formatDuration(duracao)}
+                          </span>
+                        ) : null}
                       </div>
                     ) : (
                       <span className="text-[0.8125rem] text-[var(--ink-faint)]">
                         Não trabalha
                       </span>
                     )}
+
+                    {/*
+                      COPIAR DAQUI PARA BAIXO — um por linha.
+
+                      Era um botão só, no fundo do cartão, depois dos
+                      catorze campos: chegava tarde para servir, e
+                      copiava a segunda para TODOS os dias, o que não
+                      serve a quem tem o fim-de-semana diferente. Aqui
+                      copia esta linha para as que vêm a seguir, e o
+                      sábado copia-se para o domingo sem tocar na
+                      semana.
+                    */}
+                    {slot.on && abaixo.length > 0 ? (
+                      <button
+                        type="button"
+                        title={`Repetir ${WEEKDAY_NAMES_PT[weekday]} nos dias seguintes`}
+                        onClick={() =>
+                          setWeek((current) =>
+                            current.map((day, index) =>
+                              abaixo.includes(index) ? { ...slot } : day,
+                            ),
+                          )
+                        }
+                        className="rounded-[var(--radius-sm)] px-2 py-1 text-[0.6875rem] font-semibold whitespace-nowrap text-[var(--ink-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] hover:text-[var(--accent-strong)]"
+                      >
+                        ↓ daqui para baixo
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+
                     {fechado ? (
-                      <p className="col-start-2 text-[0.75rem] text-[var(--warn)]">
+                      <p className="col-span-2 col-start-2 text-[0.75rem] text-[var(--warn)]">
                         A casa fecha neste dia — este turno não vai dar
                         horas a ninguém.
                       </p>
@@ -653,24 +793,6 @@ export function Ficha({
                   </div>
                 )
               })}
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  setWeek((current) => {
-                    const monday = current[1]
-                    if (!monday) return current
-                    return current.map((day, index) =>
-                      index === 0 ? day : { ...monday },
-                    )
-                  })
-                }
-                className="rounded-[var(--radius)] border border-[var(--line)] px-3 py-1.5 text-[0.75rem] font-semibold text-[var(--ink-muted)] hover:border-[var(--ink-faint)]"
-              >
-                Copiar segunda para os outros dias
-              </button>
             </div>
 
             {/* UMA VIGÊNCIA NÃO SE CORRIGE. Mudar a semana fecha a que
