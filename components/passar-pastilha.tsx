@@ -151,10 +151,16 @@ export function PassarLinha({
 
             `z-[45]` de propósito: acima da barra do fundo, que é `z-40`
             e ficaria acesa por cima do escuro, e abaixo da caixa.
+
+            NO MONITOR FICA TRANSPARENTE. Escurecer um ecrã inteiro por
+            causa de uma caixa de dezanove ram é um estrondo para um
+            gesto pequeno — lá a caixa é um menu pendurado, e um menu
+            pendurado não apaga a sala. O que fica é a apanha do toque
+            de fora, que continua a fechar.
           */}
           <span
             onClick={fechar}
-            className="fixed inset-0 z-[45] block bg-[rgba(28,24,21,0.42)]"
+            className="fixed inset-0 z-[45] block bg-[rgba(28,24,21,0.42)] sm:bg-transparent"
           />
 
           {/*
@@ -163,8 +169,16 @@ export function PassarLinha({
             `absolute` contra o `<li>`, que é `relative`: fica colada à
             linha e rola com a lista, em vez de presa ao fundo do ecrã.
             `z-50` para passar à frente do véu e da barra.
+
+            NO TELEMÓVEL VAI DE MARGEM A MARGEM, porque a largura toda
+            são trezentos e sessenta píxeis e não há nada para disputar.
+            NO MONITOR NÃO: esticada por uma lista de mil e quinhentos,
+            os nomes ficavam encostados a um lado e o «é quem faz» ao
+            outro, com um deserto pelo meio e um botão de um palmo.
+            Encolhe para dezanove ram e encosta-se à direita, debaixo da
+            pastilha de onde saiu.
           */}
-          <div className="absolute inset-x-3 top-full z-50 mt-1 overflow-hidden rounded-[12px] bg-[var(--surface-raised)] shadow-[0_18px_44px_-14px_rgba(28,24,21,0.55)]">
+          <div className="absolute inset-x-3 top-full z-50 mt-1 overflow-hidden rounded-[12px] bg-[var(--surface-raised)] shadow-[0_18px_44px_-14px_rgba(28,24,21,0.55)] sm:left-auto sm:right-3 sm:w-[19rem]">
             <div className="flex items-start gap-3 border-b border-[var(--line-soft)] py-3 pl-4 pr-3">
               <span className="min-w-0 flex-1">
                 <span className="block text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
