@@ -1,12 +1,8 @@
 import Link from 'next/link'
 import clsx from 'clsx'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import {
-  addDays,
-  formatMonthYear,
-  formatWeekdayShort,
-  type IsoDay,
-} from '@/lib/time'
+import { grelhaDoMes } from '@/lib/calendario'
+import { addDays, formatMonthYear, type IsoDay } from '@/lib/time'
 
 /**
  * O CALENDÁRIO DO MÊS — o passo do dia, na montra.
@@ -69,42 +65,16 @@ export function MonthCalendar({
   dead: Set<IsoDay>
   labels: { previous: string; next: string; noSlotsHint: string }
 }) {
-  const [ano, mes] = month.split('-').map(Number) as [number, number]
-
-  /*
-    Ao meio-dia UTC de propósito: um «YYYY-MM-DD» lido à meia-noite cai
-    do lado errado do dia em metade dos fusos, e um calendário que começa
-    na coluna errada é pior do que não haver calendário.
-  */
-  const primeiro = `${month.slice(0, 8)}01` as IsoDay
-  const diaDaSemana = new Date(`${primeiro}T12:00:00Z`).getUTCDay()
-  // A semana da casa começa à segunda: domingo (0) vai para o fim.
-  const recuo = (diaDaSemana + 6) % 7
-  const quantos = new Date(Date.UTC(ano, mes, 0)).getUTCDate()
-
-  const dias: IsoDay[] = Array.from(
-    { length: quantos },
-    (_, i) => addDays(primeiro, i) as IsoDay,
-  )
-
-  /*
-    TRÊS LETRAS, E NEM MAIS UMA.
-
-    Os cabeçalhos saem de uma semana real — 2024-01-01 foi segunda — para
-    virem na língua de quem está a ver. Mas o que o sistema chama de
-    «curto» varia com a língua e com o motor: em português vinham nomes
-    inteiros, e «SEGUNDA TERÇA QUARTA» em colunas de quarenta e sete
-    píxeis vem tudo colado. Cortadas às três, «Seg» e «Sáb» leem-se em
-    qualquer caso.
-  */
-  const cabecalhos = Array.from({ length: 7 }, (_, i) =>
-    formatWeekdayShort(addDays('2024-01-01' as IsoDay, i), timezone, language)
-      .replace(/\.$/, '')
-      .slice(0, 3),
+  // A conta da grelha é a mesma dos dois calendários da casa e vive
+  // no `lib/calendario`. O que fica aqui é o desenho da montra.
+  const { primeiro, dias, recuo, cabecalhos } = grelhaDoMes(
+    month,
+    timezone,
+    language,
   )
 
   const mesAnterior = addDays(primeiro, -1)
-  const mesSeguinte = addDays(primeiro, quantos)
+  const mesSeguinte = addDays(primeiro, dias.length)
   const podeRecuar = mesAnterior >= firstDay
   const podeAvancar = mesSeguinte <= lastDay
 

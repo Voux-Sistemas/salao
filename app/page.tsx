@@ -5,7 +5,8 @@ import { PublicChrome } from '@/components/public-chrome'
 import { DeskChrome } from '@/components/desk-chrome'
 import { Showcase } from '@/components/showcase'
 import { DayPanel } from '@/components/day-panel'
-import { lerPeriodo } from '@/lib/periodo'
+import { lerJanela } from '@/lib/periodo'
+import { isValidDay, today, type IsoDay } from '@/lib/time'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +18,13 @@ export const dynamic = 'force-dynamic'
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ v?: string; p?: string }>
+  searchParams: Promise<{
+    v?: string
+    p?: string
+    de?: string
+    ate?: string
+    m?: string
+  }>
 }) {
   // As duas perguntas não dependem uma da outra — quem é a casa e quem
   // está à porta — por isso partem juntas. Em série custavam duas
@@ -49,15 +56,27 @@ export default async function Home({
     neles.
 
     O PERÍODO VIVE NO MESMO SÍTIO, pela mesma razão: um atalho para
-    «/?p=ano» abre no ano, e trocar de janela é uma página nova a que
-    se volta com o botão de trás. Um valor que não seja um dos quatro
-    cai no mês — ver o `lerPeriodo`.
+    «/?p=custom&de=…&ate=…» abre naquele intervalo, e cada toque no
+    calendário é uma página nova a que se volta com o botão de trás.
+    Nada do que vem no endereço é acreditado — o `lerJanela` limpa
+    tudo e, na dúvida, dá o mês.
   */
-  const { v, p } = await searchParams
+  const { v, p, de, ate, m } = await searchParams
   const vista = v === 'agenda' ? 'agenda' : 'numeros'
-  // Vale para os dois separadores mesmo que só um lhe obedeça: assim
-  // ir à agenda e voltar não perde a janela que estava escolhida.
-  const periodo = lerPeriodo(p)
+
+  const hoje = today(org.timezone)
+  const janela = lerJanela({ p, de, ate }, hoje)
+
+  /*
+    QUE MÊS O CALENDÁRIO MOSTRA é uma pergunta à parte do período.
+
+    Ela pode estar a ver agosto e a folhear julho à procura do dia por
+    onde começar — e o período não muda enquanto ela folheia. Sem este
+    parâmetro, cada seta do mês saltava de volta para o mês do intervalo
+    escolhido, e não se conseguia sair dele.
+  */
+  const mesDoCalendario: IsoDay =
+    m && isValidDay(m) ? m : (janela.escolha?.ate ?? hoje)
 
   return (
     <DeskChrome>
@@ -66,7 +85,8 @@ export default async function Home({
         org={org}
         units={units}
         vista={vista}
-        periodo={periodo}
+        janela={janela}
+        mesDoCalendario={mesDoCalendario}
       />
     </DeskChrome>
   )

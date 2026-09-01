@@ -7,8 +7,10 @@ import { formatCents } from '@/lib/money'
 import { receitaDaMarcacao } from '@/lib/dashboard'
 import { ocupacaoDaSemana } from '@/lib/ocupacao'
 import { PainelNumeros } from '@/components/painel-numeros'
-import { PERIODOS, type Periodo } from '@/lib/periodo'
+import { CalendarioPeriodo } from '@/components/calendario-periodo'
+import { PERIODOS, type Janela, type Periodo } from '@/lib/periodo'
 import {
+  addDays,
   dayEnd,
   dayStart,
   formatDayLong,
@@ -75,14 +77,17 @@ export async function DayPanel({
   org,
   units,
   vista = 'numeros',
-  periodo = 'mes',
+  janela,
+  mesDoCalendario,
 }: {
   actor: Actor
   org: Org
   units: Unit[]
   vista?: Vista
   /** Só os Números lhe obedecem; a agenda é sempre o dia de hoje. */
-  periodo?: Periodo
+  janela: Janela
+  /** Que mês o calendário mostra — pode não ser o do período. */
+  mesDoCalendario: IsoDay
 }) {
   if (units.length === 0) {
     return (
@@ -109,8 +114,14 @@ export async function DayPanel({
   */
   if (vista === 'numeros') {
     return (
-      <Moldura day={day} tz={tz} vista={vista} periodo={periodo}>
-        <PainelNumeros org={org} units={units} periodo={periodo} />
+      <Moldura
+        day={day}
+        tz={tz}
+        vista={vista}
+        janela={janela}
+        mesDoCalendario={mesDoCalendario}
+      >
+        <PainelNumeros org={org} units={units} janela={janela} />
       </Moldura>
     )
   }
@@ -230,7 +241,13 @@ export async function DayPanel({
   const paradas = units.filter((u) => (apptsBy.get(u.id)?.length ?? 0) === 0)
 
   return (
-    <Moldura day={day} tz={tz} vista={vista} periodo={periodo}>
+    <Moldura
+      day={day}
+      tz={tz}
+      vista={vista}
+      janela={janela}
+      mesDoCalendario={mesDoCalendario}
+    >
       {/* ---------------------------------------------------- HOJE --- */}
       <section aria-label="O dia" className="space-y-3">
         {/*
@@ -372,13 +389,15 @@ function Moldura({
   day,
   tz,
   vista,
-  periodo,
+  janela,
+  mesDoCalendario,
   children,
 }: {
   day: IsoDay
   tz: string
   vista: Vista
-  periodo: Periodo
+  janela: Janela
+  mesDoCalendario: IsoDay
   children: React.ReactNode
 }) {
   return (
@@ -395,7 +414,7 @@ function Moldura({
         </p>
       </header>
 
-{/*
+      {/*
         A VISTA E O PERÍODO NA MESMA LINHA.
 
         São duas escolhas de natureza diferente — o que se vê e de que
@@ -406,23 +425,45 @@ function Moldura({
         O período só aparece nos Números: a agenda é o dia de hoje e
         não há outro para lhe dar.
       */}
-      <div className="surge surge-1 flex flex-wrap items-center gap-3">
-        <nav
-          aria-label="Vista"
-          className="inline-flex gap-[3px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] p-[3px]"
-        >
-          <Separador href={`/?p=${periodo}`} activo={vista === 'numeros'}>
-            Números
-          </Separador>
-          <Separador
-            href={`/?v=agenda&p=${periodo}`}
-            activo={vista === 'agenda'}
+      <div className="surge surge-1 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <nav
+            aria-label="Vista"
+            className="inline-flex gap-[3px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] p-[3px]"
           >
-            Agenda
-          </Separador>
-        </nav>
+            <Separador href={endereco(janela)} activo={vista === 'numeros'}>
+              Números
+            </Separador>
+            <Separador
+              href={endereco(janela, { v: 'agenda' })}
+              activo={vista === 'agenda'}
+            >
+              Agenda
+            </Separador>
+          </nav>
 
-        {vista === 'numeros' ? <SelectorDePeriodo periodo={periodo} /> : null}
+          {vista === 'numeros' ? <SelectorDePeriodo janela={janela} /> : null}
+        </div>
+
+        {/*
+          O CALENDÁRIO FICA ABERTO ENQUANTO O «PERSONALIZADO» ESTIVER
+          ESCOLHIDO, e não atrás de um segundo toque. É a única coisa que
+          ela veio fazer quando carregou ali; escondê-lo era pôr uma porta
+          à frente de uma porta.
+        */}
+        {vista === 'numeros' && janela.periodo === 'custom' ? (
+          <div className="flex justify-start sm:justify-end">
+            <CalendarioPeriodo
+              mes={mesDoCalendario}
+              escolha={janela.escolha}
+              hoje={day}
+              primeiroPermitido={primeiroPermitido(day)}
+              timezone={tz}
+              hrefDia={(dia) => hrefDoDia(janela, dia)}
+              hrefMes={(mes) => endereco(janela, { m: mes })}
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="surge surge-1">{children}</div>
@@ -455,6 +496,80 @@ function Separador({
   )
 }
 
+// ---------------------------------------------------------------------
+// Os endereços do período
+// ---------------------------------------------------------------------
+
+/**
+ * O ENDEREÇO É O ESTADO, e por isso construí-lo tem de ser uma função
+ * só. Estava espalhado por interpolações à mão — `/?p=${periodo}`,
+ * `/?v=agenda&p=${periodo}` — e cada sítio lembrava-se de metade dos
+ * parâmetros: bastava um esquecer o `de` para um toque nos separadores
+ * deitar fora o intervalo que ela tinha acabado de escolher.
+ *
+ * As datas só viajam quando o período é o «Personalizado» — nos outros
+ * são calculadas, e levá-las atrás era sujar o endereço com o que já
+ * não decide nada.
+ */
+function endereco(
+  janela: Janela,
+  extra: { v?: string; p?: Periodo; m?: IsoDay; de?: IsoDay; ate?: IsoDay } = {},
+): string {
+  const q = new URLSearchParams()
+  if (extra.v) q.set('v', extra.v)
+
+  const periodo = extra.p ?? janela.periodo
+  q.set('p', periodo)
+
+  if (periodo === 'custom') {
+    const de = extra.de ?? janela.escolha?.de
+    const ate = extra.ate ?? janela.escolha?.ate
+    if (de && ate) {
+      q.set('de', de)
+      q.set('ate', ate)
+    }
+    if (extra.m) q.set('m', extra.m)
+  }
+
+  return `/?${q.toString()}`
+}
+
+/**
+ * PARA ONDE LEVA UM DIA DO CALENDÁRIO.
+ *
+ * A regra dos dois toques, escrita uma vez: se o que está escolhido é UM
+ * dia, este toque estica-o até aqui; se já é um intervalo — ou se ainda
+ * não há nada — este toque recomeça. Não há estado escondido nenhum, e é
+ * isso que faz o botão de trás desfazer toque a toque.
+ *
+ * As pontas ordenam-se aqui e voltam a ser ordenadas no `lerJanela`.
+ * Não é desconfiança do próprio código: o endereço é escrito à mão por
+ * quem quiser, e quem lê texto de fora não pode acreditar em ninguém.
+ */
+function hrefDoDia(janela: Janela, dia: IsoDay): string {
+  const escolha = janela.escolha
+  const esticar = escolha != null && escolha.de === escolha.ate
+
+  if (!esticar) {
+    return endereco(janela, { p: 'custom', de: dia, ate: dia, m: dia })
+  }
+
+  const outro = escolha.de
+  const de = dia < outro ? dia : outro
+  const ate = dia < outro ? outro : dia
+  return endereco(janela, { p: 'custom', de, ate, m: dia })
+}
+
+/**
+ * O mais atrás que o calendário deixa ir — dois anos, o mesmo tecto que
+ * o `lib/periodo` impõe às contas. Deixar a seta recuar para além do
+ * que o intervalo aceita era convidá-la a escolher o que ia ser
+ * silenciosamente encolhido a seguir.
+ */
+function primeiroPermitido(hoje: IsoDay): IsoDay {
+  return addDays(hoje, -730)
+}
+
 /**
  * O SELECTOR DE PERÍODO.
  *
@@ -471,12 +586,21 @@ function Separador({
  * `<details>`, que abre e fecha sozinho — e fecha ao navegar, porque
  * a página é outra.
  *
+ * O «PERSONALIZADO» MUDA DE NOME QUANDO ESTÁ ESCOLHIDO: passa a dizer o
+ * intervalo, «12/08 – 31/08». A pastilha activa de um selector tem de
+ * dizer o que está a ver, e «Personalizado» não diz nada.
+ *
  * O `summary` leva o marcador desligado de duas maneiras porque os
  * navegadores não concordam em nenhuma: o `list-none` chega ao Firefox
  * e ao Chrome moderno, o pseudo-elemento ao Safari e ao Chrome velho.
  */
-function SelectorDePeriodo({ periodo }: { periodo: Periodo }) {
-  const actual = PERIODOS.find((p) => p.valor === periodo) ?? PERIODOS[1]!
+function SelectorDePeriodo({ janela }: { janela: Janela }) {
+  const nomeDe = (valor: Periodo, nome: string) =>
+    valor === 'custom' && janela.periodo === 'custom' && janela.escolha
+      ? janela.rotulo
+      : nome
+
+  const actual = PERIODOS.find((x) => x.valor === janela.periodo) ?? PERIODOS[2]!
 
   return (
     <div className="ml-auto">
@@ -485,48 +609,49 @@ function SelectorDePeriodo({ periodo }: { periodo: Periodo }) {
         aria-label="Período"
         className="hidden gap-[2px] rounded-full border border-[var(--line)] bg-[var(--surface-2)] p-[3px] sm:inline-flex"
       >
-        {PERIODOS.map((p) => (
+        {PERIODOS.map((x) => (
           <Link
-            key={p.valor}
-            href={`/?p=${p.valor}`}
-            aria-current={p.valor === periodo ? 'page' : undefined}
+            key={x.valor}
+            href={endereco(janela, { p: x.valor })}
+            aria-current={x.valor === janela.periodo ? 'page' : undefined}
             className={clsx(
-              'inline-flex items-center rounded-full px-3.5 py-1 text-[0.75rem] transition-colors',
-              p.valor === periodo
+              'tabular inline-flex items-center rounded-full px-3.5 py-1 text-[0.75rem] whitespace-nowrap transition-colors',
+              x.valor === janela.periodo
                 ? 'bg-[var(--action)] font-bold text-[var(--action-ink)]'
                 : 'font-medium text-[var(--ink-muted)] hover:text-[var(--ink)]',
             )}
           >
-            {p.nome}
+            {nomeDe(x.valor, x.nome)}
           </Link>
         ))}
       </nav>
 
       {/* ------------------------------------------ o telemóvel --- */}
       <details className="relative sm:hidden">
-        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface-raised)] px-3 py-1.5 text-[0.75rem] font-semibold text-[var(--ink)] [&::-webkit-details-marker]:hidden">
-          {actual.nome}
+        <summary className="tabular inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface-raised)] px-3 py-1.5 text-[0.75rem] font-semibold whitespace-nowrap text-[var(--ink)] [&::-webkit-details-marker]:hidden">
+          {nomeDe(actual.valor, actual.nome)}
           <span aria-hidden className="text-[0.5rem] text-[var(--ink-faint)]">
             ▼
           </span>
         </summary>
         <nav
           aria-label="Período"
-          className="absolute right-0 top-full z-[45] mt-1 w-[9.5rem] overflow-hidden rounded-[11px] bg-[var(--surface-raised)] shadow-[0_16px_40px_-12px_rgba(28,24,21,0.5)]"
+          className="absolute right-0 top-full z-[45] mt-1 w-[10.5rem] overflow-hidden rounded-[11px] bg-[var(--surface-raised)] shadow-[0_16px_40px_-12px_rgba(28,24,21,0.5)]"
         >
-          {PERIODOS.map((p) => (
+          {PERIODOS.map((x) => (
             <Link
-              key={p.valor}
-              href={`/?p=${p.valor}`}
-              aria-current={p.valor === periodo ? 'page' : undefined}
+              key={x.valor}
+              href={endereco(janela, { p: x.valor })}
+              aria-current={x.valor === janela.periodo ? 'page' : undefined}
               className={clsx(
-                'block border-t border-[var(--line-soft)] px-3.5 py-2.5 text-[0.8125rem] first:border-t-0',
-                p.valor === periodo
+                'tabular block border-t border-[var(--line-soft)] px-3.5 py-2.5 text-[0.8125rem] first:border-t-0',
+                x.valor === janela.periodo
                   ? 'bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] font-bold text-[var(--accent)]'
                   : 'text-[var(--ink)]',
               )}
             >
-              {p.nome}
+              {nomeDe(x.valor, x.nome)}
+              {x.valor === 'custom' && !janela.escolha ? '…' : ''}
             </Link>
           ))}
         </nav>

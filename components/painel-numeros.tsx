@@ -20,7 +20,7 @@ import {
   type DiaDaSemanaOcupado,
   type DiaOcupado,
 } from '@/lib/ocupacao'
-import { janelaDe, type Janela, type Periodo } from '@/lib/periodo'
+import type { Janela } from '@/lib/periodo'
 import { SOURCE_LABEL } from '@/lib/status'
 import { formatCents } from '@/lib/money'
 import { addDays, today, weekdayOf, type IsoDay } from '@/lib/time'
@@ -49,20 +49,29 @@ import { Card, Empty } from '@/components/ui'
  *
  * ENTROU O QUE DÁ DINHEIRO. A casa sabia QUEM trazia quanto e não sabia
  * O QUÊ. A conta já existia; nunca esteve à vista.
+ *
+ * E COM UM DIA SÓ A PÁGINA ENCOLHE. Escolhido o «Hoje», o painel da
+ * ocupação por dia da semana sai: uma barra a dizer «terça 62%» é o
+ * mesmo número da pastilha três centímetros acima, com um cartão
+ * inteiro à volta. O mapa fica, mas muda de pergunta — deixa de ser a
+ * média de oito quintas e passa a dizer QUAIS as horas de hoje que
+ * ainda estão vazias, que é a coisa mais útil da página às dez da
+ * manhã.
  */
 export async function PainelNumeros({
   org,
   units,
-  periodo,
+  janela,
 }: {
   org: Org
   units: Unit[]
-  periodo: Periodo
+  janela: Janela
 }) {
   const tz = org.timezone
   const now = new Date()
   const day = today(tz, now)
-  const janela = janelaDe(periodo, day)
+  // Um dia só não tem dias da semana para comparar — ver o cabeçalho.
+  const umDiaSo = janela.dias === 1
 
   /*
     UMA CONSULTA DE OCUPAÇÃO, TRÊS RESPOSTAS.
@@ -233,24 +242,36 @@ export async function PainelNumeros({
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
         {/* -------------------------------------- ocupação --- */}
-        <Card className="overflow-hidden">
-          <Titulo aside={`média · ${janela.rotulo}`}>
-            Ocupação por dia da semana
-          </Titulo>
-          {ocupacao === null ? (
-            <Falhou o="a ocupação" />
-          ) : (
-            <div className="space-y-2 px-4 py-4">
-              {porDiaDaSemana(doPeriodo).map((dia) => (
-                <BarraDoDia key={dia.weekday} dia={dia} />
-              ))}
-            </div>
-          )}
-        </Card>
+        {umDiaSo ? null : (
+          <Card className="overflow-hidden">
+            <Titulo aside={`média · ${janela.rotulo}`}>
+              Ocupação por dia da semana
+            </Titulo>
+            {ocupacao === null ? (
+              <Falhou o="a ocupação" />
+            ) : (
+              <div className="space-y-2 px-4 py-4">
+                {porDiaDaSemana(doPeriodo)
+                  /*
+                    SÓ OS DIAS QUE A JANELA TEM. Desenhar os sete sempre
+                    deixava seis tracejados a dizer «sem escala» num
+                    período de três dias — o que é mentira: a casa abre à
+                    quarta, só que quarta não está lá dentro.
+                  */
+                  .filter((dia) => dia.escalado > 0 || dia.vendido > 0)
+                  .map((dia) => (
+                    <BarraDoDia key={dia.weekday} dia={dia} />
+                  ))}
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* -------------------------------------- o mapa --- */}
         <Card className="overflow-hidden">
-          <Titulo aside={janela.rotulo}>As horas que sobram</Titulo>
+          <Titulo aside={umDiaSo ? 'o que ainda está por vender' : janela.rotulo}>
+            {umDiaSo ? 'As horas de hoje' : 'As horas que sobram'}
+          </Titulo>
           {mapa === null ? <Falhou o="o mapa" /> : <Mapa casas={mapa} />}
         </Card>
       </div>
