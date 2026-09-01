@@ -2,20 +2,28 @@ import Link from 'next/link'
 import type { Org, Unit } from '@/lib/org'
 import {
   clientela,
-  monthKpis,
+  kpisDoPeriodo,
+  oQueVemAi,
+  origemDasMarcacoes,
   staffProduction,
   todayByUnit,
+  topServices,
 } from '@/lib/dashboard'
 import {
+  diaMaisFraco,
   mapaDasHoras,
-  ocupacaoDaSemana,
+  ocupacaoPorDia,
   percentagem,
+  porDiaDaSemana,
   somar,
   type CasaDoMapa,
+  type DiaDaSemanaOcupado,
   type DiaOcupado,
 } from '@/lib/ocupacao'
+import { janelaDe, type Janela, type Periodo } from '@/lib/periodo'
+import { SOURCE_LABEL } from '@/lib/status'
 import { formatCents } from '@/lib/money'
-import { formatDuration, today } from '@/lib/time'
+import { addDays, today, weekdayOf, type IsoDay } from '@/lib/time'
 import { Card, Empty } from '@/components/ui'
 
 /**
@@ -25,115 +33,216 @@ import { Card, Empty } from '@/components/ui'
  * outra pergunta, a que ninguém faz a meio da manhã mas que decide o
  * mês: como vai a casa.
  *
- * A PRIMEIRA COISA É A OCUPAÇÃO, e é nova. A faturação diz quanto
- * entrou, as marcações dizem quantas foram — nenhuma diz se a casa está
- * cheia. Um dia mau com a equipa toda escalada é falta de clientes; o
- * mesmo dia mau com meia equipa é outra coisa, e até aqui o painel
- * dizia o mesmo nos dois casos.
+ * TUDO OBEDECE AO PERÍODO ESCOLHIDO EM CIMA. Cada painel tinha a sua
+ * janela — a ocupação via a semana, o mapa seis semanas, a faturação o
+ * mês, a equipa outras seis semanas — e nenhum o dizia. Eram quatro
+ * verdades sobre quatro pedaços de tempo diferentes, na mesma página, a
+ * parecerem comparáveis. Agora a janela é uma e escolhe-se.
  *
- * O MAPA DAS HORAS é a mesma pergunta espalhada pela semana: onde é que
- * a casa NUNCA vende. É onde uma promoção vale a pena, e não no sábado
- * de tarde que já está cheio.
+ * O QUE VEM AÍ ESTÁ EM CIMA, e é a única coisa desta página que ainda
+ * se pode mudar. Todo o resto olha para trás.
  *
- * A CLIENTELA é a única parte que dá trabalho para fazer, e não só para
- * ver: as que sumiram têm nome e telefone.
+ * SAÍRAM AS «HORAS POR VENDER». Eram a ocupação ao contrário — 32%
+ * ocupado e 154 h por vender são o mesmo facto duas vezes — e 154 horas
+ * espalhadas por duas casas e sete dias não se decidem. A percentagem
+ * decide-se.
+ *
+ * ENTROU O QUE DÁ DINHEIRO. A casa sabia QUEM trazia quanto e não sabia
+ * O QUÊ. A conta já existia; nunca esteve à vista.
  */
 export async function PainelNumeros({
   org,
   units,
+  periodo,
 }: {
   org: Org
   units: Unit[]
+  periodo: Periodo
 }) {
   const tz = org.timezone
-  const day = today(tz)
+  const now = new Date()
+  const day = today(tz, now)
+  const janela = janelaDe(periodo, day)
 
   /*
-    CADA CONTA CAI SOZINHA.
+    UMA CONSULTA DE OCUPAÇÃO, TRÊS RESPOSTAS.
 
-    A ocupação, o mapa e a clientela são consultas novas, e uma consulta
-    nova falha contra dados que nunca viu — um fuso que não esperava,
-    uma escala sem vigência, uma tabela vazia. Sem isto, qualquer uma
-    delas levava a página inteira ao ecrã de «alguma coisa correu mal»,
-    e com ela a agenda do dia, que não tem culpa nenhuma.
+    Precisa-se dela em três recortes: o período escolhido, o período
+    anterior (para a seta), e os sete dias à frente (para o que vem aí).
+    São todos contíguos — do princípio da janela anterior até uma semana
+    depois de hoje — por isso pedem-se de uma vez e corta-se cá.
 
-    O que falha diz-se no sítio dele e o erro verdadeiro vai para o
-    registo do servidor, com nome — é por lá que se descobre qual.
+    É a consulta mais cara da página: cruza a escala com as ausências e
+    com o trabalho marcado, dia a dia. Fazê-la três vezes para depois
+    somar as mesmas linhas era pagá-la três vezes.
   */
-  const [semana, mapa, kpis, clientes, equipa, hoje] = await Promise.all([
-    seguro('ocupação da semana', () => ocupacaoDaSemana(org.id, tz, day), null),
-    seguro('mapa das horas', () => mapaDasHoras(org.id, tz, 6, day), null),
-    seguro('indicadores do mês', () => monthKpis(org.id, tz), null),
-    seguro('clientela', () => clientela(org.id, tz), null),
-    seguro('produção da equipa', () => staffProduction(org.id, tz, 6), null),
-    seguro('hoje por loja', () => todayByUnit(org.id, tz), null),
-  ])
+  const [ocupacao, mapa, kpis, clientes, equipa, servicos, origens, vem, hoje] =
+    await Promise.all([
+      seguro(
+        'ocupação',
+        () => ocupacaoPorDia(org.id, janela.deAnterior, addDays(day, 6)),
+        null,
+      ),
+      seguro('mapa das horas', () => mapaDasHoras(org.id, janela.de, janela.ate), null),
+      seguro('indicadores', () => kpisDoPeriodo(org.id, tz, janela), null),
+      seguro(
+        'clientela',
+        () => clientela(org.id, tz, janela.de, janela.ate, day),
+        null,
+      ),
+      seguro(
+        'produção da equipa',
+        () => staffProduction(org.id, tz, janela.de, janela.ate, 6),
+        null,
+      ),
+      seguro(
+        'serviços que rendem',
+        () => topServices(org.id, tz, janela.de, janela.ate, 5),
+        null,
+      ),
+      seguro(
+        'origem das marcações',
+        () => origemDasMarcacoes(org.id, tz, janela.de, janela.ate),
+        null,
+      ),
+      seguro('o que vem aí', () => oQueVemAi(org.id, tz, day, now), null),
+      units.length > 1
+        ? seguro('hoje por loja', () => todayByUnit(org.id, tz), null)
+        : Promise.resolve(null),
+    ])
 
-  const total = semana ? somar(semana) : null
-  const ocupacao = total ? percentagem(total) : null
-  const porVender = total ? Math.max(0, total.escalado - total.vendido) : null
+  const dentro = (de: IsoDay, ate: IsoDay) =>
+    (ocupacao ?? []).filter((d) => d.day >= de && d.day <= ate)
+
+  const doPeriodo = dentro(janela.de, janela.ate)
+  const doAnterior = dentro(janela.deAnterior, janela.ateAnterior)
+  /*
+    O dia fraco procura-se a partir de AMANHÃ. Hoje já está a acontecer
+    — dizer à dona que a terça está vazia às seis da tarde não é um
+    aviso, é uma lápide.
+  */
+  const oQueFalta = dentro(addDays(day, 1), addDays(day, 6))
+
+  const total = ocupacao ? somar(doPeriodo) : null
+  const pc = total ? percentagem(total) : null
+  const pcAnterior = ocupacao ? percentagem(somar(doAnterior)) : null
+  const fraco = ocupacao ? diaMaisFraco(oQueFalta) : null
+
+  const currency = org.currency
 
   return (
     <div className="space-y-4">
       {/* ------------------------------------------ os quatro --- */}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius)] border border-[var(--line-soft)] bg-[var(--line-soft)] lg:grid-cols-4">
         <Numero
-          label="Ocupação, esta semana"
-          value={ocupacao === null ? '—' : `${ocupacao}%`}
+          label="Faturação"
+          value={
+            kpis ? formatCents(kpis.atual.revenue_cents, currency) : '—'
+          }
           hint={
-            semana === null
-              ? 'não foi possível calcular'
-              : ocupacao === null
-                ? 'sem escala esta semana'
-                : 'das horas escaladas'
+            !kpis ? (
+              'não foi possível calcular'
+            ) : (
+              <Contra
+                variacao={variacaoRelativa(
+                  kpis.atual.revenue_cents,
+                  kpis.anterior.revenue_cents,
+                )}
+                janela={janela}
+              />
+            )
           }
           forte
         />
+
         <Numero
-          label="Horas por vender"
-          value={porVender === null ? '—' : formatDuration(porVender)}
+          label="Ocupação"
+          value={pc === null ? '—' : `${pc}%`}
           hint={
-            total ? `de ${formatDuration(total.escalado)} escaladas` : undefined
+            ocupacao === null ? (
+              'não foi possível calcular'
+            ) : pc === null ? (
+              'sem escala no período'
+            ) : pcAnterior === null ? (
+              'das horas escaladas'
+            ) : (
+              <Contra
+                variacao={variacaoEmPontos(pc, pcAnterior)}
+                janela={janela}
+              />
+            )
           }
         />
+
+        {/*
+          AS FALTAS PASSAM A TER PREÇO.
+
+          Estavam contadas noutro sítio e uma contagem não decide nada:
+          uma falta de 8 € numa franja e uma de 60 € numa coloração eram
+          «1 falta» as duas. Só aparecem quando há — um zero permanente
+          rouba a linha a quem tem alguma coisa para dizer.
+        */}
         <Numero
-          label={`Faturação, ${mesDe(day)}`}
-          value={
-            kpis ? formatCents(kpis.current.revenue_cents, org.currency) : '—'
-          }
+          label="Marcações feitas"
+          value={kpis ? String(kpis.atual.completed) : '—'}
           hint={
-            !kpis
-              ? 'não foi possível calcular'
-              : kpis.previous.revenue_cents > 0
-                ? `${formatCents(kpis.previous.revenue_cents, org.currency)} no mês anterior`
-                : 'sem mês anterior para comparar'
+            !kpis ? undefined : kpis.atual.no_shows > 0 ? (
+              <span className="font-semibold text-[var(--bad)]">
+                {kpis.atual.no_shows} falta
+                {kpis.atual.no_shows === 1 ? '' : 's'}
+                {kpis.atual.no_show_cents > 0
+                  ? ` · ${formatCents(kpis.atual.no_show_cents, currency)} por cobrar`
+                  : ''}
+              </span>
+            ) : (
+              <Contra
+                variacao={variacaoRelativa(
+                  kpis.atual.completed,
+                  kpis.anterior.completed,
+                )}
+                janela={janela}
+              />
+            )
           }
         />
+
         <Numero
           label="Ticket médio"
           value={
-            kpis?.current.avg_ticket_cents != null
-              ? formatCents(kpis.current.avg_ticket_cents, org.currency)
+            kpis?.atual.avg_ticket_cents != null
+              ? formatCents(kpis.atual.avg_ticket_cents, currency)
               : '—'
           }
           hint={
-            kpis
-              ? `${kpis.current.completed} marcaç${kpis.current.completed === 1 ? 'ão' : 'ões'} feita${kpis.current.completed === 1 ? '' : 's'}`
-              : undefined
+            !kpis ? undefined : (
+              <Contra
+                variacao={variacaoRelativa(
+                  kpis.atual.avg_ticket_cents,
+                  kpis.anterior.avg_ticket_cents,
+                )}
+                janela={janela}
+                senao="por visita concluída"
+              />
+            )
           }
         />
       </div>
 
+      {/* ------------------------------------------ o que vem aí --- */}
+      {vem ? <OQueVemAi vem={vem} fraco={fraco} currency={currency} /> : null}
+
       <div className="grid items-start gap-4 lg:grid-cols-2">
         {/* -------------------------------------- ocupação --- */}
         <Card className="overflow-hidden">
-          <Titulo>Ocupação, dia a dia</Titulo>
-          {semana === null ? (
+          <Titulo aside={`média · ${janela.rotulo}`}>
+            Ocupação por dia da semana
+          </Titulo>
+          {ocupacao === null ? (
             <Falhou o="a ocupação" />
           ) : (
             <div className="space-y-2 px-4 py-4">
-              {semana.map((dia) => (
-                <BarraDoDia key={dia.day} dia={dia} />
+              {porDiaDaSemana(doPeriodo).map((dia) => (
+                <BarraDoDia key={dia.weekday} dia={dia} />
               ))}
             </div>
           )}
@@ -141,15 +250,73 @@ export async function PainelNumeros({
 
         {/* -------------------------------------- o mapa --- */}
         <Card className="overflow-hidden">
-          <Titulo aside="últimas 6 semanas">As horas que sobram</Titulo>
+          <Titulo aside={janela.rotulo}>As horas que sobram</Titulo>
           {mapa === null ? <Falhou o="o mapa" /> : <Mapa casas={mapa} />}
+        </Card>
+      </div>
+
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        {/* -------------------------------------- serviços --- */}
+        <Card className="overflow-hidden">
+          <Titulo aside={janela.rotulo}>O que dá dinheiro</Titulo>
+          {servicos === null ? (
+            <Falhou o="os serviços" />
+          ) : servicos.length === 0 ? (
+            <div className="px-4 py-6">
+              <Empty
+                title="Ainda sem histórico"
+                hint="Assim que houver marcações concluídas, vê-se aqui o que mais rende."
+              />
+            </div>
+          ) : (
+            <div className="px-4 py-3">
+              {servicos.map((s) => (
+                <Barra
+                  key={s.service_name}
+                  nome={s.service_name}
+                  cents={s.revenue_cents}
+                  maximo={servicos[0]?.revenue_cents ?? 0}
+                  currency={currency}
+                  cauda={`${s.times}×`}
+                />
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* -------------------------------------- produção --- */}
+        <Card className="overflow-hidden">
+          <Titulo aside={janela.rotulo}>Quem trouxe quanto</Titulo>
+          {equipa === null ? (
+            <Falhou o="a produção" />
+          ) : equipa.length === 0 ? (
+            <div className="px-4 py-6">
+              <Empty
+                title="Ainda sem histórico"
+                hint="Assim que houver marcações concluídas, vê-se aqui quanto cada uma trouxe."
+              />
+            </div>
+          ) : (
+            <div className="px-4 py-3">
+              {equipa.map((pessoa) => (
+                <Barra
+                  key={pessoa.staff_id}
+                  nome={pessoa.name}
+                  cents={pessoa.revenue_cents}
+                  maximo={equipa[0]?.revenue_cents ?? 0}
+                  currency={currency}
+                  cauda={`${pessoa.times}×`}
+                />
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
         {/* -------------------------------------- clientes --- */}
         <Card className="overflow-hidden">
-          <Titulo aside={mesDe(day)}>As clientes</Titulo>
+          <Titulo aside={janela.rotulo}>As clientes</Titulo>
           {clientes === null ? <Falhou o="a conta das clientes" /> : null}
           <div className="grid grid-cols-3 gap-px bg-[var(--line-soft)]">
             <Numero
@@ -185,30 +352,13 @@ export async function PainelNumeros({
           ) : null}
         </Card>
 
-        {/* -------------------------------------- produção --- */}
+        {/* -------------------------------------- origem --- */}
         <Card className="overflow-hidden">
-          <Titulo aside="6 semanas">Quem trouxe quanto</Titulo>
-          {equipa === null ? (
-            <Falhou o="a produção" />
-          ) : equipa.length === 0 ? (
-            <div className="px-4 py-6">
-              <Empty
-                title="Ainda sem histórico"
-                hint="Assim que houver marcações concluídas, vê-se aqui quanto cada uma trouxe."
-              />
-            </div>
+          <Titulo aside={janela.rotulo}>De onde vêm</Titulo>
+          {origens === null ? (
+            <Falhou o="a origem das marcações" />
           ) : (
-            <div className="px-4 py-3">
-              {equipa.map((pessoa) => (
-                <BarraDaPessoa
-                  key={pessoa.staff_id}
-                  nome={pessoa.name}
-                  cents={pessoa.revenue_cents}
-                  maximo={equipa[0]?.revenue_cents ?? 0}
-                  currency={org.currency}
-                />
-              ))}
-            </div>
+            <DeOndeVem origens={origens} />
           )}
         </Card>
       </div>
@@ -235,7 +385,7 @@ export async function PainelNumeros({
                     </span>
                   </span>
                   <span className="tabular shrink-0 text-[0.8125rem] font-semibold text-[var(--ink)]">
-                    {formatCents(casa.revenue_cents, org.currency)}
+                    {formatCents(casa.revenue_cents, currency)}
                   </span>
                 </Link>
               </li>
@@ -248,6 +398,164 @@ export async function PainelNumeros({
 }
 
 // ---------------------------------------------------------------------
+// O que vem aí
+// ---------------------------------------------------------------------
+
+const DIAS_LONGOS = [
+  'domingo',
+  'segunda',
+  'terça',
+  'quarta',
+  'quinta',
+  'sexta',
+  'sábado',
+]
+
+/**
+ * A FAIXA QUE OLHA PARA A FRENTE.
+ *
+ * Tem cor própria — é a única coisa da página que não é história. Duas
+ * contas e um aviso: quanto está no livro, quanto vale, e qual é o dia
+ * da semana que vem com espaço a mais.
+ *
+ * O AVISO SÓ APARECE QUANDO HÁ ALGUMA COISA A FAZER. Metade da escala
+ * por vender é um dia fraco; abaixo disso a casa está a andar e a
+ * frase seria ruído a fingir de conselho. E um dia sem escala nunca
+ * concorre — ver o `diaMaisFraco`.
+ */
+function OQueVemAi({
+  vem,
+  fraco,
+  currency,
+}: {
+  vem: { marcacoes: number; valor_cents: number }
+  fraco: { dia: DiaOcupado; pc: number } | null
+  currency: string
+}) {
+  const avisar = fraco !== null && fraco.pc < 50
+
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1.5 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--house)_28%,transparent)] bg-[color-mix(in_srgb,var(--house)_10%,var(--surface-raised))] px-4 py-3">
+      <span className="w-full text-[0.625rem] font-bold uppercase tracking-[0.12em] text-[var(--accent)] sm:w-auto">
+        O que vem aí
+      </span>
+
+      <span className="flex items-baseline gap-1.5">
+        <span className="metric text-[1.0625rem] text-[var(--ink)]">
+          {vem.marcacoes}
+        </span>
+        <span className="text-[0.8125rem] text-[var(--ink-muted)]">
+          marcaç{vem.marcacoes === 1 ? 'ão' : 'ões'} nos próximos 7 dias
+        </span>
+      </span>
+
+      <span className="flex items-baseline gap-1.5">
+        <span className="metric text-[1.0625rem] text-[var(--ink)]">
+          {formatCents(vem.valor_cents, currency)}
+        </span>
+        <span className="text-[0.8125rem] text-[var(--ink-muted)]">
+          já no livro
+        </span>
+      </span>
+
+      {avisar ? (
+        <span className="text-[0.8125rem] font-semibold text-[var(--warn)] sm:ml-auto">
+          {DIAS_LONGOS[weekdayOf(fraco.dia.day)]} está a {fraco.pc}% — é aí que
+          há espaço
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------
+// A variação contra o período anterior
+// ---------------------------------------------------------------------
+
+/**
+ * TRÊS RESPOSTAS, E NÃO DUAS.
+ *
+ * «Não mudou nada» e «não há com que comparar» são coisas opostas, e
+ * durante um bocado foram o mesmo `null` aqui — o que fazia o painel
+ * escrever «igual a agosto» num mês em que agosto tinha sido zero e
+ * setembro cinquenta euros. Uma seta a menos é discrição; uma frase
+ * errada é outra coisa.
+ */
+type Variacao =
+  | { tipo: 'muda'; texto: string; sobe: boolean }
+  | { tipo: 'igual' }
+  | { tipo: 'sem-base' }
+
+/**
+ * Quanto mudou, em proporção. Sem base anterior não há proporção
+ * nenhuma — «+∞%» sobre um mês de zero euros não é uma boa notícia, é
+ * uma divisão por zero com ar de conquista.
+ */
+function variacaoRelativa(
+  atual: number | null,
+  anterior: number | null,
+): Variacao {
+  if (atual === null || anterior === null || anterior <= 0) {
+    return { tipo: 'sem-base' }
+  }
+  const delta = (atual - anterior) / anterior
+  const pc = Math.round(Math.abs(delta) * 100)
+  if (pc === 0) return { tipo: 'igual' }
+  return { tipo: 'muda', texto: `${pc}%`, sobe: delta > 0 }
+}
+
+/**
+ * A ocupação já é uma percentagem, e a variação dela conta-se em
+ * PONTOS. «Subiu 20%» sobre 30% é ambíguo — pode ser 36% ou 50% — e
+ * «subiu 6 pontos» não é.
+ */
+function variacaoEmPontos(atual: number, anterior: number): Variacao {
+  const delta = atual - anterior
+  if (delta === 0) return { tipo: 'igual' }
+  return { tipo: 'muda', texto: `${Math.abs(delta)} pts`, sobe: delta > 0 }
+}
+
+/** «▲ 42% vs agosto, até ao dia 12» — a seta e contra o quê. */
+function Contra({
+  variacao,
+  janela,
+  senao,
+}: {
+  variacao: Variacao
+  janela: Janela
+  /** O que dizer quando não há período anterior com que comparar. */
+  senao?: string
+}) {
+  if (variacao.tipo === 'sem-base') {
+    /*
+      O texto por omissao e curto de proposito. O rotulo do periodo
+      anterior traz virgula — «agosto, ate ao dia 1» — e encaixado numa
+      frase dava «sem agosto, ate ao dia 1 para comparar», que se le
+      duas vezes para se perceber. Quem quiser dize-lo melhor no seu
+      caso passa o `senao`.
+    */
+    return <>{senao ?? 'nada com que comparar'}</>
+  }
+  if (variacao.tipo === 'igual') {
+    return <>igual a {janela.rotuloAnterior}</>
+  }
+  return (
+    <>
+      <span
+        className={
+          variacao.sobe
+            ? 'font-bold text-[var(--ok)]'
+            : 'font-bold text-[var(--bad)]'
+        }
+      >
+        {variacao.sobe ? '▲' : '▼'} {variacao.texto}
+      </span>{' '}
+      vs {janela.rotuloAnterior}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------
 // As peças
 // ---------------------------------------------------------------------
 
@@ -256,11 +564,11 @@ export async function PainelNumeros({
  * a excepção subir.
  *
  * O erro verdadeiro vai para o registo do servidor COM NOME. Sem o
- * nome, um `console.error` no meio de seis contas paralelas não diz
+ * nome, um `console.error` no meio de nove contas paralelas não diz
  * qual delas foi — e é a primeira coisa que se quer saber.
  *
  * Isto não é para esconder problemas: é para que um problema numa
- * conta não leve as outras cinco e a agenda do dia com ele.
+ * conta não leve as outras oito e a agenda do dia com ele.
  */
 async function seguro<T>(
   nome: string,
@@ -314,7 +622,7 @@ function Numero({
 }: {
   label: string
   value: string
-  hint?: string
+  hint?: React.ReactNode
   forte?: boolean
   pequeno?: boolean
   aviso?: boolean
@@ -359,11 +667,15 @@ function Numero({
 const DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
 /**
- * Um dia. Sem escala não há barra — há um tracejado a dizer que a casa
- * não abriu, que é diferente de ter aberto e não ter vendido nada.
+ * Um dia da semana, com a média do período.
+ *
+ * Sem escala não há barra — há um tracejado a dizer que a casa não
+ * abriu, que é diferente de ter aberto e não ter vendido nada. E a
+ * cauda com as horas por vender saiu com o resto: dentro de uma média
+ * de oito quintas, «12 h 30» não é tempo nenhum que exista.
  */
-function BarraDoDia({ dia }: { dia: DiaOcupado }) {
-  const nome = DIAS[weekdayDe(dia.day)] ?? ''
+function BarraDoDia({ dia }: { dia: DiaDaSemanaOcupado }) {
+  const nome = DIAS[dia.weekday] ?? ''
   const pc = percentagem(dia)
 
   return (
@@ -391,25 +703,33 @@ function BarraDoDia({ dia }: { dia: DiaOcupado }) {
       <span className="tabular w-9 shrink-0 text-right text-[0.75rem] font-bold text-[var(--ink)]">
         {pc === null ? '—' : `${pc}%`}
       </span>
-      <span className="tabular w-16 shrink-0 text-right text-[0.6875rem] text-[var(--ink-faint)]">
-        {pc === null
-          ? 'fechado'
-          : formatDuration(Math.max(0, dia.escalado - dia.vendido))}
-      </span>
     </div>
   )
 }
 
-function BarraDaPessoa({
+/**
+ * Uma barra de dinheiro — serve os serviços e a equipa.
+ *
+ * A CAUDA («4×») É O QUE FAZ A BARRA DECIDIR ALGUMA COISA. Quatro
+ * colorações a render 180 € e sete brushings a render 110 € são o mesmo
+ * trabalho de mãos e metade do dinheiro; sem o número de vezes ao lado,
+ * as duas barras só diziam qual é a maior.
+ *
+ * No telemóvel a cauda sai: é a coluna que menos decide, e é ela ou o
+ * nome do serviço cortado a meio.
+ */
+function Barra({
   nome,
   cents,
   maximo,
   currency,
+  cauda,
 }: {
   nome: string
   cents: number
   maximo: number
   currency: string
+  cauda?: string
 }) {
   const largura = maximo > 0 ? Math.round((cents / maximo) * 100) : 0
   return (
@@ -426,6 +746,62 @@ function BarraDaPessoa({
       <span className="tabular w-16 shrink-0 text-right text-[0.75rem] font-bold text-[var(--ink-muted)]">
         {formatCents(cents, currency)}
       </span>
+      {cauda ? (
+        <span className="tabular hidden w-10 shrink-0 text-right text-[0.6875rem] text-[var(--ink-faint)] sm:inline">
+          {cauda}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * DE ONDE VÊM AS MARCAÇÕES.
+ *
+ * O site custou dinheiro e esta é a única página que diz se ele
+ * trabalha. A percentagem vai ao lado da contagem porque «9 pelo site»
+ * não se lê sem saber de quantas.
+ */
+function DeOndeVem({
+  origens,
+}: {
+  origens: { source: keyof typeof SOURCE_LABEL; marcacoes: number }[]
+}) {
+  if (origens.length === 0) {
+    return (
+      <div className="px-4 py-6">
+        <Empty
+          title="Ainda sem marcações"
+          hint="Assim que houver marcações no período, vê-se aqui por onde entraram."
+        />
+      </div>
+    )
+  }
+
+  const total = origens.reduce((soma, o) => soma + o.marcacoes, 0)
+  const maximo = origens[0]?.marcacoes ?? 0
+
+  return (
+    <div className="px-4 py-3">
+      {origens.map((o) => (
+        <div key={o.source} className="flex items-center gap-3 py-1.5">
+          <span className="w-24 shrink-0 truncate text-[0.75rem] text-[var(--ink)]">
+            {SOURCE_LABEL[o.source] ?? o.source}
+          </span>
+          <span className="h-4 flex-1 overflow-hidden rounded-[3px] bg-[var(--surface-2)]">
+            <span
+              className="block h-full bg-[color-mix(in_srgb,var(--accent)_55%,transparent)]"
+              style={{
+                width: `${maximo > 0 ? Math.round((o.marcacoes / maximo) * 100) : 0}%`,
+              }}
+            />
+          </span>
+          <span className="tabular w-16 shrink-0 text-right text-[0.75rem] font-bold text-[var(--ink-muted)]">
+            {o.marcacoes} ·{' '}
+            {total > 0 ? Math.round((o.marcacoes / total) * 100) : 0}%
+          </span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -463,9 +839,9 @@ function Mapa({ casas }: { casas: CasaDoMapa[] }) {
   return (
     <div className="overflow-x-auto px-4 py-4">
       <div
-        className="grid min-w-[20rem] gap-[3px]"
+        className="grid min-w-[19rem] gap-[3px]"
         style={{
-          gridTemplateColumns: `2.25rem repeat(${colunas.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `1.75rem repeat(${colunas.length}, minmax(0, 1fr))`,
         }}
       >
         <span />
@@ -534,28 +910,4 @@ function Fragmento({
   children: React.ReactNode
 }) {
   return <>{children}</>
-}
-
-function weekdayDe(day: string): number {
-  const [y, m, d] = day.split('-').map(Number)
-  return new Date(Date.UTC(y ?? 2000, (m ?? 1) - 1, d ?? 1)).getUTCDay()
-}
-
-function mesDe(day: string): string {
-  return (
-    [
-      'janeiro',
-      'fevereiro',
-      'março',
-      'abril',
-      'maio',
-      'junho',
-      'julho',
-      'agosto',
-      'setembro',
-      'outubro',
-      'novembro',
-      'dezembro',
-    ][Number(day.slice(5, 7)) - 1] ?? ''
-  )
 }

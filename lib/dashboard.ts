@@ -1,11 +1,12 @@
 import 'server-only'
 import { sql } from '@/lib/db'
 import type { Cents } from '@/lib/money'
+import type { Source } from '@/lib/booking'
+import type { Janela } from '@/lib/periodo'
 import {
   addDays,
   dayEnd,
   dayStart,
-  isValidDay,
   isoRange,
   today,
   type IsoDay,
@@ -199,7 +200,7 @@ export async function kpiTrends(
 }
 
 // ---------------------------------------------------------------------
-// KPIs do mês — corrente contra anterior
+// Os indicadores da janela — corrente contra anterior
 // ---------------------------------------------------------------------
 
 export type PeriodKpis = {
@@ -210,26 +211,31 @@ export type PeriodKpis = {
   /** no-shows ÷ (concluídas + no-shows); null sem base. */
   no_show_rate: number | null
   no_shows: number
+  /**
+   * O QUE AS FALTAS CUSTARAM.
+   *
+   * Estavam contadas — «1 falta» — e uma contagem não decide nada. Uma
+   * falta é uma hora que a casa tinha vendido e não cobrou, e o que
+   * decide é quanto: uma falta de 8 € numa franja e uma falta de 60 €
+   * numa coloração são o mesmo número e problemas diferentes.
+   *
+   * Vale-se pelo mesmo preço congelado das concluídas. Não é dinheiro
+   * perdido para sempre — a hora podia não ter sido vendida a mais
+   * ninguém — mas é a melhor medida do tamanho do buraco.
+   */
+  no_show_cents: Cents
 }
 
-export type MonthKpis = {
-  /** Primeiro dia do mês corrente (calendário da loja). */
-  current_start: IsoDay
-  /** Primeiro dia do mês anterior. */
-  previous_start: IsoDay
-  current: PeriodKpis
-  /**
-   * O mês anterior cortado à MESMA altura: 21 dias corridos comparam-se
-   * com os primeiros 21 dias de julho, não com julho inteiro — senão
-   * todo o mês a meio parecia estar a cair.
-   */
-  previous: PeriodKpis
+export type KpisDoPeriodo = {
+  atual: PeriodKpis
+  anterior: PeriodKpis
 }
 
 function periodOf(input: {
   revenue: number
   completed: number
   noShows: number
+  noShowCents: number
 }): PeriodKpis {
   const base = input.completed + input.noShows
   return {
@@ -239,35 +245,31 @@ function periodOf(input: {
       input.completed > 0 ? Math.round(input.revenue / input.completed) : null,
     no_show_rate: base > 0 ? input.noShows / base : null,
     no_shows: input.noShows,
+    no_show_cents: input.noShowCents,
   }
 }
 
-export async function monthKpis(
+/**
+ * OS QUATRO NÚMEROS, NA JANELA QUE FOR.
+ *
+ * Era `monthKpis` e só sabia fazer meses. A conta é a mesma para
+ * qualquer par de datas — quem decide qual é o par é o `lib/periodo`,
+ * onde vive a regra de o anterior nunca invadir o corrente.
+ *
+ * UMA CONSULTA PARA OS DOIS PERÍODOS. São dois `filter` sobre a mesma
+ * varredura; em duas consultas era o dobro das idas à base para
+ * responder a metade da pergunta cada uma.
+ */
+export async function kpisDoPeriodo(
   orgId: string,
   timezone: string,
-): Promise<MonthKpis> {
-  const now = today(timezone)
-  const currentStart: IsoDay = `${now.slice(0, 7)}-01`
-  const previousStart: IsoDay = `${addDays(currentStart, -1).slice(0, 7)}-01`
+  janela: Janela,
+): Promise<KpisDoPeriodo> {
+  const curFrom = dayStart(janela.de, timezone)
+  const curTo = dayEnd(janela.ate, timezone)
+  const prevFrom = dayStart(janela.deAnterior, timezone)
+  const prevTo = dayEnd(janela.ateAnterior, timezone)
 
-  const prevFrom = dayStart(previousStart, timezone)
-  const curFrom = dayStart(currentStart, timezone)
-  const curTo = dayEnd(now, timezone)
-
-  // O mesmo dia do mês anterior (fim exclusivo). Se o dia não existir
-  // lá (31 num mês de 30, 29 a 31 em fevereiro), o período homólogo é
-  // o mês anterior INTEIRO. E tem de se perguntar ANTES de construir a
-  // data: o calendário desta casa recusa dias inexistentes com um erro
-  // — não os transborda — e era esse erro que deitava o painel abaixo
-  // a 31 de março.
-  const prevSameDay = `${previousStart.slice(0, 7)}-${now.slice(8, 10)}`
-  const prevCutRaw = isValidDay(prevSameDay)
-    ? dayEnd(prevSameDay, timezone)
-    : curFrom
-  const prevTo = prevCutRaw < curFrom ? prevCutRaw : curFrom
-
-  // Também aqui eram duas consultas — dinheiro numa tabela, contagens
-  // noutra. É a mesma pergunta, e passa a ser feita uma vez só.
   const rows = await sql<
     {
       cur_revenue: number
@@ -276,6 +278,8 @@ export async function monthKpis(
       prev_completed: number
       cur_no_show: number
       prev_no_show: number
+      cur_no_show_cents: number
+      prev_no_show_cents: number
     }[]
   >`
     select
@@ -288,7 +292,13 @@ export async function monthKpis(
       count(*) filter (where a.status = 'completed' and a.starts_at >= ${curFrom})::int as cur_completed,
       count(*) filter (where a.status = 'completed' and a.starts_at < ${prevTo})::int as prev_completed,
       count(*) filter (where a.status = 'no_show' and a.starts_at >= ${curFrom})::int as cur_no_show,
-      count(*) filter (where a.status = 'no_show' and a.starts_at < ${prevTo})::int as prev_no_show
+      count(*) filter (where a.status = 'no_show' and a.starts_at < ${prevTo})::int as prev_no_show,
+      coalesce(sum(${receitaDaMarcacao()}) filter (
+        where a.status = 'no_show' and a.starts_at >= ${curFrom}
+      ), 0)::int as cur_no_show_cents,
+      coalesce(sum(${receitaDaMarcacao()}) filter (
+        where a.status = 'no_show' and a.starts_at < ${prevTo}
+      ), 0)::int as prev_no_show_cents
       from appointment a
      where a.org_id = ${orgId}
        and ((a.starts_at >= ${prevFrom} and a.starts_at < ${prevTo})
@@ -302,26 +312,28 @@ export async function monthKpis(
     prev_completed: 0,
     cur_no_show: 0,
     prev_no_show: 0,
+    cur_no_show_cents: 0,
+    prev_no_show_cents: 0,
   }
 
   return {
-    current_start: currentStart,
-    previous_start: previousStart,
-    current: periodOf({
+    atual: periodOf({
       revenue: row.cur_revenue,
       completed: row.cur_completed,
       noShows: row.cur_no_show,
+      noShowCents: row.cur_no_show_cents,
     }),
-    previous: periodOf({
+    anterior: periodOf({
       revenue: row.prev_revenue,
       completed: row.prev_completed,
       noShows: row.prev_no_show,
+      noShowCents: row.prev_no_show_cents,
     }),
   }
 }
 
 // ---------------------------------------------------------------------
-// Top serviços por receita — janela das mesmas seis semanas
+// O que dá dinheiro — os serviços que mais rendem
 // ---------------------------------------------------------------------
 
 export type TopService = {
@@ -330,14 +342,24 @@ export type TopService = {
   times: number
 }
 
+/**
+ * A casa sabia QUEM trazia quanto e não sabia O QUÊ.
+ *
+ * O número de vezes vai ao lado do valor de propósito: quatro
+ * colorações que rendem 180 € e sete brushings que rendem 110 € são o
+ * mesmo trabalho de mãos e metade do dinheiro. É isso — e não o total
+ * — que diz onde subir um preço, o que promover, e o que talvez não
+ * valha a pena continuar a fazer.
+ */
 export async function topServices(
   orgId: string,
   timezone: string,
+  de: IsoDay,
+  ate: IsoDay,
   limit = 6,
 ): Promise<TopService[]> {
-  const last = today(timezone)
-  const from = dayStart(addDays(last, -41), timezone)
-  const to = dayEnd(last, timezone)
+  const from = dayStart(de, timezone)
+  const to = dayEnd(ate, timezone)
 
   return sql<TopService[]>`
     select i.service_name,
@@ -355,7 +377,7 @@ export async function topServices(
 }
 
 // ---------------------------------------------------------------------
-// Produção da equipa — quem fez quanto, nas mesmas seis semanas
+// Produção da equipa — quem fez quanto
 // ---------------------------------------------------------------------
 
 export type StaffProduction = {
@@ -375,11 +397,12 @@ export type StaffProduction = {
 export async function staffProduction(
   orgId: string,
   timezone: string,
+  de: IsoDay,
+  ate: IsoDay,
   limit = 8,
 ): Promise<StaffProduction[]> {
-  const last = today(timezone)
-  const from = dayStart(addDays(last, -41), timezone)
-  const to = dayEnd(last, timezone)
+  const from = dayStart(de, timezone)
+  const to = dayEnd(ate, timezone)
 
   return sql<StaffProduction[]>`
     select i.staff_id, s.name,
@@ -399,13 +422,103 @@ export async function staffProduction(
 }
 
 // ---------------------------------------------------------------------
+// De onde vêm as marcações
+// ---------------------------------------------------------------------
+
+export type Origem = {
+  source: Source
+  marcacoes: number
+}
+
+/**
+ * DE ONDE VÊM — A PERGUNTA QUE O SITE OBRIGA A FAZER.
+ *
+ * O site é novo e custou dinheiro. Saber se as clientes o usam, ou se
+ * continuam todas a telefonar, é a resposta a se valeu a pena — e a
+ * marcação já guarda a origem desde o primeiro dia, numa coluna que
+ * nunca ninguém leu.
+ *
+ * CONTAM-SE TODAS AS MARCAÇÕES DO PERÍODO, e não só as concluídas.
+ * Aqui a pergunta é por onde a cliente entrou, não o que aconteceu
+ * depois: uma marcação feita pelo site que acabou em falta continua a
+ * ser uma prova de que o site funciona.
+ *
+ * As canceladas ficam de fora — quem cancelou não entrou por lado
+ * nenhum.
+ */
+export async function origemDasMarcacoes(
+  orgId: string,
+  timezone: string,
+  de: IsoDay,
+  ate: IsoDay,
+): Promise<Origem[]> {
+  const from = dayStart(de, timezone)
+  const to = dayEnd(ate, timezone)
+
+  return sql<Origem[]>`
+    select a.source, count(*)::int as marcacoes
+      from appointment a
+     where a.org_id = ${orgId}
+       and a.starts_at >= ${from} and a.starts_at < ${to}
+       and a.status not in ('cancelled_by_client','cancelled_by_salon')
+     group by a.source
+     order by marcacoes desc, a.source
+  `
+}
+
+// ---------------------------------------------------------------------
+// O que vem aí — os próximos sete dias
+// ---------------------------------------------------------------------
+
+export type OQueVemAi = {
+  marcacoes: number
+  /** Quanto vale o que já está no livro, ao preço congelado. */
+  valor_cents: Cents
+}
+
+/**
+ * A ÚNICA COISA DESTA PÁGINA QUE AINDA SE PODE MUDAR.
+ *
+ * Tudo o resto olha para trás: a faturação do mês passou, a ocupação
+ * de ontem passou, as faltas passaram. O livro dos próximos sete dias
+ * é a única conta em que uma decisão de hoje ainda mexe — e por isso
+ * está em cima, antes dos painéis todos.
+ *
+ * DE AGORA EM DIANTE, e não de amanhã: a tarde de hoje ainda conta
+ * para o que há para fazer.
+ *
+ * Conta o que está MARCADO — `booked` e `confirmed`. O que já entrou
+ * em atendimento hoje pertence ao dia, não ao que vem; o que foi
+ * cancelado não vem de todo.
+ */
+export async function oQueVemAi(
+  orgId: string,
+  timezone: string,
+  hoje: IsoDay,
+  agora = new Date(),
+): Promise<OQueVemAi> {
+  const ate = dayEnd(addDays(hoje, 6), timezone)
+
+  const rows = await sql<OQueVemAi[]>`
+    select count(*)::int as marcacoes,
+           coalesce(sum(${receitaDaMarcacao()}), 0)::int as valor_cents
+      from appointment a
+     where a.org_id = ${orgId}
+       and a.status in ('booked','confirmed')
+       and a.starts_at >= ${agora} and a.starts_at < ${ate}
+  `
+
+  return rows[0] ?? { marcacoes: 0, valor_cents: 0 }
+}
+
+// ---------------------------------------------------------------------
 // As clientes — quem chegou, quem voltou, quem sumiu
 // ---------------------------------------------------------------------
 
 export type Clientela = {
-  /** Vieram este mês pela primeira vez de sempre. */
+  /** Vieram no período pela primeira vez de sempre. */
   novas: number
-  /** Vieram este mês, e já cá tinham vindo antes. */
+  /** Vieram no período, e já cá tinham vindo antes. */
   voltaram: number
   /** Já vieram alguma vez, e a última foi há mais de 90 dias. */
   sumiram: number
@@ -414,14 +527,20 @@ export type Clientela = {
 /**
  * UM SALÃO VIVE DE QUEM VOLTA.
  *
- * A faturação de um mês não diz se a casa está a crescer ou a gastar as
- * clientes que já tinha. Vinte marcações de vinte pessoas diferentes e
- * vinte marcações de dez que voltaram valem o mesmo em euros e são
- * negócios opostos.
+ * A faturação de um período não diz se a casa está a crescer ou a
+ * gastar as clientes que já tinha. Vinte marcações de vinte pessoas
+ * diferentes e vinte marcações de dez que voltaram valem o mesmo em
+ * euros e são negócios opostos.
  *
  * TRÊS CONTAS, E A TERCEIRA É A QUE DÁ TRABALHO. Novas e voltaram são
  * para ver. As que sumiram são para agir: têm nome, têm telefone, e uma
  * mensagem traz metade delas de volta.
+ *
+ * AS QUE SUMIRAM NÃO OBEDECEM AO PERÍODO — de propósito. As outras
+ * duas contam o que aconteceu na janela; esta conta um estado de HOJE,
+ * e «quem está sumida» não muda por se estar a olhar para o ano em vez
+ * do mês. Contá-la dentro da janela dava um número que crescia com o
+ * zoom e não com o problema.
  *
  * NOVENTA DIAS é o corte, e é um palpite honesto: uma cliente de
  * coloração some ao fim de dois meses, uma de corte ao fim de quatro.
@@ -433,25 +552,32 @@ export type Clientela = {
 export async function clientela(
   orgId: string,
   timezone: string,
+  de: IsoDay,
+  ate: IsoDay,
+  hoje: IsoDay = today(timezone),
 ): Promise<Clientela> {
-  const now = today(timezone)
-  const mesFrom = dayStart(`${now.slice(0, 7)}-01` as IsoDay, timezone)
-  const sumiuAntesDe = dayStart(addDays(now, -90), timezone)
+  const from = dayStart(de, timezone)
+  const to = dayEnd(ate, timezone)
+  const sumiuAntesDe = dayStart(addDays(hoje, -90), timezone)
 
   const rows = await sql<Clientela[]>`
     with visitas as (
       select a.client_id,
              min(a.starts_at) as primeira,
              max(a.starts_at) as ultima,
-             max(a.starts_at) filter (where a.starts_at >= ${mesFrom}) as no_mes
+             count(*) filter (
+               where a.starts_at >= ${from} and a.starts_at < ${to}
+             ) as no_periodo
         from appointment a
        where a.org_id = ${orgId} and a.status = 'completed'
        group by a.client_id
     )
     select
-      count(*) filter (where primeira >= ${mesFrom})::int as novas,
       count(*) filter (
-        where no_mes is not null and primeira < ${mesFrom}
+        where primeira >= ${from} and primeira < ${to}
+      )::int as novas,
+      count(*) filter (
+        where no_periodo > 0 and primeira < ${from}
       )::int as voltaram,
       count(*) filter (where ultima < ${sumiuAntesDe})::int as sumiram
       from visitas

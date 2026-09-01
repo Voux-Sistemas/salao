@@ -1,6 +1,13 @@
 import 'server-only'
 import { sql } from '@/lib/db'
-import { addDays, isoRange, today, weekdayOf, type IsoDay } from '@/lib/time'
+import {
+  addDays,
+  daysBetween,
+  isoRange,
+  today,
+  weekdayOf,
+  type IsoDay,
+} from '@/lib/time'
 
 /**
  * A OCUPAÇÃO — O NÚMERO QUE FALTAVA À CASA.
@@ -43,19 +50,27 @@ export type Ocupacao = {
 export type DiaOcupado = Ocupacao & { day: IsoDay }
 
 /**
- * Uma semana, dia a dia, a começar na segunda — que é como a escala
- * desta casa se lê em todo o lado.
+ * A OCUPAÇÃO DE UM INTERVALO, DIA A DIA.
+ *
+ * Era `ocupacaoDaSemana` e só sabia fazer a semana corrente. A conta
+ * nunca teve nada de semanal — é uma soma por data — e o painel passou
+ * a poder pedir sete dias, um mês ou um ano. Quem quer a semana pede a
+ * semana; quem quer o que vem aí pede os sete dias à frente, e a mesma
+ * consulta responde às duas.
+ *
+ * OS DIAS SEM ESCALA VÊM NA MESMA, com zeros. Um dia em que a casa não
+ * abriu não é um dia mau — e sem a linha lá, «segunda» calada podia
+ * ser qualquer das duas coisas.
  */
-export async function ocupacaoDaSemana(
+export async function ocupacaoPorDia(
   orgId: string,
-  timezone: string,
-  hoje = today(timezone),
+  de: IsoDay,
+  ate: IsoDay,
 ): Promise<DiaOcupado[]> {
-  const segunda = segundaDe(hoje)
-  const dias = isoRange(segunda, 7)
+  const dias = isoRange(de, daysBetween(de, ate) + 1)
 
   const linhas = await sql<DiaOcupado[]>`
-    ${turnos(orgId, segunda, dias[6]!)}
+    ${turnos(orgId, de, ate)}
     select to_char(j.on_date, 'YYYY-MM-DD') as day,
            greatest(0, sum(
              extract(epoch from (j.fim - j.ini)) / 60 - aus.mins
@@ -87,7 +102,21 @@ export async function ocupacaoDaSemana(
   return dias.map((day) => porDia.get(day) ?? { day, escalado: 0, vendido: 0 })
 }
 
-/** A semana inteira somada — o número grande. */
+/**
+ * A semana corrente, da segunda ao domingo. Uma comodidade sobre o
+ * `ocupacaoPorDia` — a fita de hoje só quer a coluna de hoje, e pedir a
+ * semana inteira custa o mesmo que pedir um dia.
+ */
+export async function ocupacaoDaSemana(
+  orgId: string,
+  timezone: string,
+  hoje = today(timezone),
+): Promise<DiaOcupado[]> {
+  const segunda = segundaDe(hoje)
+  return ocupacaoPorDia(orgId, segunda, addDays(segunda, 6))
+}
+
+/** O intervalo inteiro somado — o número grande. */
 export function somar(dias: readonly Ocupacao[]): Ocupacao {
   return dias.reduce(
     (total, dia) => ({
@@ -98,6 +127,47 @@ export function somar(dias: readonly Ocupacao[]): Ocupacao {
   )
 }
 
+export type DiaDaSemanaOcupado = Ocupacao & {
+  /** 0 = domingo, como o `getDay` e o `extract(dow)`. */
+  weekday: number
+}
+
+/**
+ * A MÉDIA POR DIA DA SEMANA — E PORQUE SUBSTITUIU «ESTA SEMANA».
+ *
+ * O painel mostrava a semana corrente, dia a dia. Uma semana é ruído:
+ * uma quinta a 5% pode ter sido feriado, doença, ou a chuva. Não se
+ * decide nada com ela.
+ *
+ * A mesma barra sobre um mês ou um trimestre passa a dizer outra
+ * coisa: se as quintas estão a 5% em média de oito quintas, isso é a
+ * casa e não o acaso — e é uma decisão à espera de ser tomada.
+ *
+ * SOMA-SE ANTES DE DIVIDIR. Fazer a média das percentagens de cada
+ * quinta daria o mesmo peso a uma quinta com uma pessoa escalada e a
+ * outra com quatro. Somam-se os minutos escalados e os vendidos de
+ * todas as quintas, e divide-se uma vez — é a ocupação verdadeira das
+ * quintas, não a média de umas quantas contas.
+ */
+export function porDiaDaSemana(
+  dias: readonly DiaOcupado[],
+): DiaDaSemanaOcupado[] {
+  const baldes = new Map<number, Ocupacao>()
+  for (const dia of dias) {
+    const d = weekdayOf(dia.day)
+    const balde = baldes.get(d) ?? { escalado: 0, vendido: 0 }
+    balde.escalado += dia.escalado
+    balde.vendido += dia.vendido
+    baldes.set(d, balde)
+  }
+
+  // Segunda primeiro, domingo no fim — a semana da casa.
+  return [1, 2, 3, 4, 5, 6, 0].map((weekday) => ({
+    weekday,
+    ...(baldes.get(weekday) ?? { escalado: 0, vendido: 0 }),
+  }))
+}
+
 /** A percentagem, ou nulo quando não houve escala nenhuma para dividir. */
 export function percentagem(o: Ocupacao): number | null {
   if (o.escalado <= 0) return null
@@ -105,11 +175,40 @@ export function percentagem(o: Ocupacao): number | null {
 }
 
 /**
+ * O DIA MAIS FRACO DO QUE VEM AÍ.
+ *
+ * Não é o dia com menos marcações — é o com menos proporção vendida. A
+ * diferença conta: uma segunda com duas marcações e uma pessoa
+ * escalada está mais cheia do que um sábado com quatro e a equipa
+ * toda, e é no sábado que há o que fazer.
+ *
+ * OS DIAS SEM ESCALA NÃO CONCORREM. Um domingo fechado tem zero
+ * vendido e zero escalado; apontá-lo como o dia fraco era mandar a
+ * dona abrir a casa ao domingo por engano.
+ */
+export function diaMaisFraco(
+  dias: readonly DiaOcupado[],
+): { dia: DiaOcupado; pc: number } | null {
+  let pior: { dia: DiaOcupado; pc: number } | null = null
+  for (const dia of dias) {
+    const pc = percentagem(dia)
+    if (pc === null) continue
+    if (!pior || pc < pior.pc) pior = { dia, pc }
+  }
+  return pior
+}
+
+/**
  * O MAPA DAS HORAS QUE SOBRAM.
  *
- * Seis semanas, uma casa por dia-da-semana e por hora. Diz onde a casa
- * NUNCA vende — e é aí que se põe uma promoção, não no sábado à tarde
- * que já está cheio.
+ * O período escolhido em cima, uma casa por dia-da-semana e por hora.
+ * Diz onde a casa NUNCA vende — e é aí que se põe uma promoção, não no
+ * sábado à tarde que já está cheio.
+ *
+ * Era sempre seis semanas, fosse qual fosse o resto da página. Duas
+ * janelas diferentes no mesmo ecrã são duas verdades que não batem
+ * certo: a ocupação dizia 32% desta semana e o mapa mostrava a mancha
+ * de mês e meio, sem nada a avisar que falavam de tempos diferentes.
  *
  * O turno é cortado hora a hora ANTES de se medir o que lá está
  * marcado: uma coloração das 10:30 às 12:00 conta meia hora nas dez,
@@ -126,15 +225,11 @@ export type CasaDoMapa = {
 
 export async function mapaDasHoras(
   orgId: string,
-  timezone: string,
-  semanas = 6,
-  hoje = today(timezone),
+  de: IsoDay,
+  ate: IsoDay,
 ): Promise<CasaDoMapa[]> {
-  const fim = addDays(segundaDe(hoje), 6)
-  const inicio = addDays(fim, -(semanas * 7) + 1)
-
   return sql<CasaDoMapa[]>`
-    ${turnos(orgId, inicio, fim)},
+    ${turnos(orgId, de, ate)},
     /*
       Cada turno partido pelas horas que atravessa, já aparado às pontas
       dele. Corta-se aqui e não no fim: as contas de ausência e de

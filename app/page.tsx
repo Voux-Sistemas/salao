@@ -5,6 +5,7 @@ import { PublicChrome } from '@/components/public-chrome'
 import { DeskChrome } from '@/components/desk-chrome'
 import { Showcase } from '@/components/showcase'
 import { DayPanel } from '@/components/day-panel'
+import { lerPeriodo } from '@/lib/periodo'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic'
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ v?: string }>
+  searchParams: Promise<{ v?: string; p?: string }>
 }) {
   // As duas perguntas não dependem uma da outra — quem é a casa e quem
   // está à porta — por isso partem juntas. Em série custavam duas
@@ -46,13 +47,27 @@ export default async function Home({
     coluna da esquerda e é onde se trabalha o dia; o que esta página
     tem para dizer de único são as contas. Qualquer outro valor cai
     neles.
+
+    O PERÍODO VIVE NO MESMO SÍTIO, pela mesma razão: um atalho para
+    «/?p=ano» abre no ano, e trocar de janela é uma página nova a que
+    se volta com o botão de trás. Um valor que não seja um dos quatro
+    cai no mês — ver o `lerPeriodo`.
   */
-  const { v } = await searchParams
+  const { v, p } = await searchParams
   const vista = v === 'agenda' ? 'agenda' : 'numeros'
+  // Vale para os dois separadores mesmo que só um lhe obedeça: assim
+  // ir à agenda e voltar não perde a janela que estava escolhida.
+  const periodo = lerPeriodo(p)
 
   return (
     <DeskChrome>
-      <DayPanel actor={actor} org={org} units={units} vista={vista} />
+      <DayPanel
+        actor={actor}
+        org={org}
+        units={units}
+        vista={vista}
+        periodo={periodo}
+      />
     </DeskChrome>
   )
 }

@@ -7,6 +7,7 @@ import { formatCents } from '@/lib/money'
 import { receitaDaMarcacao } from '@/lib/dashboard'
 import { ocupacaoDaSemana } from '@/lib/ocupacao'
 import { PainelNumeros } from '@/components/painel-numeros'
+import { PERIODOS, type Periodo } from '@/lib/periodo'
 import {
   dayEnd,
   dayStart,
@@ -74,11 +75,14 @@ export async function DayPanel({
   org,
   units,
   vista = 'numeros',
+  periodo = 'mes',
 }: {
   actor: Actor
   org: Org
   units: Unit[]
   vista?: Vista
+  /** Só os Números lhe obedecem; a agenda é sempre o dia de hoje. */
+  periodo?: Periodo
 }) {
   if (units.length === 0) {
     return (
@@ -105,8 +109,8 @@ export async function DayPanel({
   */
   if (vista === 'numeros') {
     return (
-      <Moldura day={day} tz={tz} vista={vista}>
-        <PainelNumeros org={org} units={units} />
+      <Moldura day={day} tz={tz} vista={vista} periodo={periodo}>
+        <PainelNumeros org={org} units={units} periodo={periodo} />
       </Moldura>
     )
   }
@@ -226,7 +230,7 @@ export async function DayPanel({
   const paradas = units.filter((u) => (apptsBy.get(u.id)?.length ?? 0) === 0)
 
   return (
-    <Moldura day={day} tz={tz} vista={vista}>
+    <Moldura day={day} tz={tz} vista={vista} periodo={periodo}>
       {/* ---------------------------------------------------- HOJE --- */}
       <section aria-label="O dia" className="space-y-3">
         {/*
@@ -368,11 +372,13 @@ function Moldura({
   day,
   tz,
   vista,
+  periodo,
   children,
 }: {
   day: IsoDay
   tz: string
   vista: Vista
+  periodo: Periodo
   children: React.ReactNode
 }) {
   return (
@@ -389,17 +395,35 @@ function Moldura({
         </p>
       </header>
 
-      <nav
-        aria-label="Vista"
-        className="surge surge-1 inline-flex gap-[3px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] p-[3px]"
-      >
-        <Separador href="/" activo={vista === 'numeros'}>
-          Números
-        </Separador>
-        <Separador href="/?v=agenda" activo={vista === 'agenda'}>
-          Agenda
-        </Separador>
-      </nav>
+{/*
+        A VISTA E O PERÍODO NA MESMA LINHA.
+
+        São duas escolhas de natureza diferente — o que se vê e de que
+        pedaço de tempo — e por isso não se misturam num controlo só.
+        Ficam nas duas pontas da mesma fila, que é o que as faz caber
+        num telemóvel sem roubar uma segunda linha à página.
+
+        O período só aparece nos Números: a agenda é o dia de hoje e
+        não há outro para lhe dar.
+      */}
+      <div className="surge surge-1 flex flex-wrap items-center gap-3">
+        <nav
+          aria-label="Vista"
+          className="inline-flex gap-[3px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] p-[3px]"
+        >
+          <Separador href={`/?p=${periodo}`} activo={vista === 'numeros'}>
+            Números
+          </Separador>
+          <Separador
+            href={`/?v=agenda&p=${periodo}`}
+            activo={vista === 'agenda'}
+          >
+            Agenda
+          </Separador>
+        </nav>
+
+        {vista === 'numeros' ? <SelectorDePeriodo periodo={periodo} /> : null}
+      </div>
 
       <div className="surge surge-1">{children}</div>
     </div>
@@ -428,6 +452,86 @@ function Separador({
     >
       {children}
     </Link>
+  )
+}
+
+/**
+ * O SELECTOR DE PERÍODO.
+ *
+ * DUAS FORMAS PARA O MESMO CONTROLO, e não é preguiça de escolher uma.
+ * No monitor as quatro janelas cabem lado a lado e vêem-se todas de
+ * uma vez, que é o que faz um controlo segmentado valer a pena. Em 390
+ * píxeis, com os separadores ao lado, não cabem — e uma segunda fila de
+ * controlos por cima de uma página que já tem duas custa mais do que
+ * vale. No telemóvel fica uma pastilha que abre.
+ *
+ * SEM UMA LINHA DE JAVASCRIPT. São ligações, como os separadores: a
+ * escolha vive no endereço, o botão de trás desfaz, e um atalho
+ * guardado abre onde se deixou. A pastilha do telemóvel é um
+ * `<details>`, que abre e fecha sozinho — e fecha ao navegar, porque
+ * a página é outra.
+ *
+ * O `summary` leva o marcador desligado de duas maneiras porque os
+ * navegadores não concordam em nenhuma: o `list-none` chega ao Firefox
+ * e ao Chrome moderno, o pseudo-elemento ao Safari e ao Chrome velho.
+ */
+function SelectorDePeriodo({ periodo }: { periodo: Periodo }) {
+  const actual = PERIODOS.find((p) => p.valor === periodo) ?? PERIODOS[1]!
+
+  return (
+    <div className="ml-auto">
+      {/* ------------------------------------------- o monitor --- */}
+      <nav
+        aria-label="Período"
+        className="hidden gap-[2px] rounded-full border border-[var(--line)] bg-[var(--surface-2)] p-[3px] sm:inline-flex"
+      >
+        {PERIODOS.map((p) => (
+          <Link
+            key={p.valor}
+            href={`/?p=${p.valor}`}
+            aria-current={p.valor === periodo ? 'page' : undefined}
+            className={clsx(
+              'inline-flex items-center rounded-full px-3.5 py-1 text-[0.75rem] transition-colors',
+              p.valor === periodo
+                ? 'bg-[var(--action)] font-bold text-[var(--action-ink)]'
+                : 'font-medium text-[var(--ink-muted)] hover:text-[var(--ink)]',
+            )}
+          >
+            {p.nome}
+          </Link>
+        ))}
+      </nav>
+
+      {/* ------------------------------------------ o telemóvel --- */}
+      <details className="relative sm:hidden">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface-raised)] px-3 py-1.5 text-[0.75rem] font-semibold text-[var(--ink)] [&::-webkit-details-marker]:hidden">
+          {actual.nome}
+          <span aria-hidden className="text-[0.5rem] text-[var(--ink-faint)]">
+            ▼
+          </span>
+        </summary>
+        <nav
+          aria-label="Período"
+          className="absolute right-0 top-full z-[45] mt-1 w-[9.5rem] overflow-hidden rounded-[11px] bg-[var(--surface-raised)] shadow-[0_16px_40px_-12px_rgba(28,24,21,0.5)]"
+        >
+          {PERIODOS.map((p) => (
+            <Link
+              key={p.valor}
+              href={`/?p=${p.valor}`}
+              aria-current={p.valor === periodo ? 'page' : undefined}
+              className={clsx(
+                'block border-t border-[var(--line-soft)] px-3.5 py-2.5 text-[0.8125rem] first:border-t-0',
+                p.valor === periodo
+                  ? 'bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] font-bold text-[var(--accent)]'
+                  : 'text-[var(--ink)]',
+              )}
+            >
+              {p.nome}
+            </Link>
+          ))}
+        </nav>
+      </details>
+    </div>
   )
 }
 

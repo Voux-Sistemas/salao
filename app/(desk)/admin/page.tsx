@@ -5,7 +5,7 @@ import { can, requireManagement, type Actor } from '@/lib/auth/actor'
 import { sql } from '@/lib/db'
 import {
   kpiTrends,
-  monthKpis,
+  kpisDoPeriodo,
   revenueByDay,
   staffProduction,
   todayByUnit,
@@ -13,7 +13,9 @@ import {
 } from '@/lib/dashboard'
 import { formatCents } from '@/lib/money'
 import { requireOrg } from '@/lib/org'
+import { janelaDe } from '@/lib/periodo'
 import {
+  addDays,
   dayStart,
   formatDayLong,
   formatDayShort,
@@ -71,13 +73,18 @@ export default async function AdminPage() {
   const org = await requireOrg()
   const tz = org.timezone
 
+  const hoje = today(tz)
+  const mes = janelaDe('mes', hoje)
+  // As mesmas seis semanas de sempre, agora escritas onde se vêem.
+  const seisSemanas = { de: addDays(hoje, -41), ate: hoje }
+
   const [history, trends, kpis, services, team, unitsToday, total] =
     await Promise.all([
       revenueByDay(actor.orgId, tz),
       kpiTrends(actor.orgId, tz),
-      monthKpis(actor.orgId, tz),
-      topServices(actor.orgId, tz, 8),
-      staffProduction(actor.orgId, tz),
+      kpisDoPeriodo(actor.orgId, tz, mes),
+      topServices(actor.orgId, tz, seisSemanas.de, seisSemanas.ate, 8),
+      staffProduction(actor.orgId, tz, seisSemanas.de, seisSemanas.ate),
       todayByUnit(actor.orgId, tz),
       counts(actor),
     ])
@@ -86,7 +93,7 @@ export default async function AdminPage() {
     new Intl.DateTimeFormat('pt-PT', { month: 'long', timeZone: tz }).format(
       dayStart(day, tz),
     )
-  const prevName = monthName(kpis.previous_start)
+  const prevName = monthName(mes.deAnterior)
 
   const chartSeries = history.units.map((unit, i) => ({
     name: unit.name,
@@ -136,7 +143,7 @@ export default async function AdminPage() {
       {/* --- o mês, em quatro números ------------------------------- */}
       <section aria-label="Indicadores do mês">
         <PanelHead
-          title={`${capitalise(monthName(kpis.current_start))} até hoje`}
+          title={`${capitalise(monthName(mes.de))} até hoje`}
           aside={`comparado com igual período de ${prevName}`}
         />
         {/* Dois a dois já no telemóvel: em coluna única, os quatro números
@@ -145,11 +152,11 @@ export default async function AdminPage() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi
             label="Faturação"
-            value={formatCents(kpis.current.revenue_cents)}
+            value={formatCents(kpis.atual.revenue_cents)}
             delta={
               <Delta
-                current={kpis.current.revenue_cents}
-                previous={kpis.previous.revenue_cents || null}
+                current={kpis.atual.revenue_cents}
+                previous={kpis.anterior.revenue_cents || null}
               />
             }
             versus={prevName}
@@ -158,11 +165,11 @@ export default async function AdminPage() {
           />
           <Kpi
             label="Marcações concluídas"
-            value={String(kpis.current.completed)}
+            value={String(kpis.atual.completed)}
             delta={
               <Delta
-                current={kpis.current.completed}
-                previous={kpis.previous.completed || null}
+                current={kpis.atual.completed}
+                previous={kpis.anterior.completed || null}
               />
             }
             versus={prevName}
@@ -172,14 +179,14 @@ export default async function AdminPage() {
           <Kpi
             label="Ticket médio"
             value={
-              kpis.current.avg_ticket_cents !== null
-                ? formatCents(kpis.current.avg_ticket_cents)
+              kpis.atual.avg_ticket_cents !== null
+                ? formatCents(kpis.atual.avg_ticket_cents)
                 : '—'
             }
             delta={
               <Delta
-                current={kpis.current.avg_ticket_cents ?? 0}
-                previous={kpis.previous.avg_ticket_cents}
+                current={kpis.atual.avg_ticket_cents ?? 0}
+                previous={kpis.anterior.avg_ticket_cents}
               />
             }
             versus={prevName}
@@ -188,11 +195,11 @@ export default async function AdminPage() {
           />
           <Kpi
             label="Taxa de no-show"
-            value={formatRate(kpis.current.no_show_rate)}
+            value={formatRate(kpis.atual.no_show_rate)}
             delta={
               <Delta
-                current={kpis.current.no_show_rate ?? 0}
-                previous={kpis.previous.no_show_rate}
+                current={kpis.atual.no_show_rate ?? 0}
+                previous={kpis.anterior.no_show_rate}
                 goodWhenUp={false}
                 points
               />
