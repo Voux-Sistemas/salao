@@ -96,7 +96,7 @@ export default async function BalcaoPage() {
       {/* --------------------------------------------- aparelhos --- */}
       <Panel
         title="Os teus aparelhos"
-        hint="Onde o teu login está aberto. Podes trancar ou terminar qualquer um daqui, mesmo estando longe."
+        hint="Onde o teu login está aberto. Cada um mostra a última agenda que abriu — é o que os distingue. Podes trancar ou terminar qualquer um daqui, mesmo estando longe."
         flush
       >
         {aparelhos.length === 0 ? (
@@ -123,8 +123,18 @@ function Linha({ aparelho }: { aparelho: Aparelho }) {
           {nomeDoAparelho(aparelho.user_agent)}
           {aparelho.esta ? ' · este' : ''}
         </span>
+        {/*
+          «AGENDA DE VALONGO», E NAO «VALONGO».
+
+          Dizia so o nome da loja, e lia-se como o sitio onde o aparelho
+          esta — um computador em Sao Paulo aparecia como estando em
+          Valongo, por ter aberto a agenda de la. Nao e uma coordenada
+          nenhuma: e a ultima agenda que aquele aparelho abriu, e o que
+          serve para o reconhecer entre os outros. A palavra tem de o
+          dizer, senao mente com precisao.
+        */}
         <span className="tabular mt-0.5 block text-[0.75rem] text-[var(--ink-faint)]">
-          {aparelho.unit_name ? `${aparelho.unit_name} · ` : ''}
+          {aparelho.unit_name ? `Agenda de ${aparelho.unit_name} · ` : ''}
           visto {desdeQuando(aparelho.last_seen_at)}
         </span>
       </span>
