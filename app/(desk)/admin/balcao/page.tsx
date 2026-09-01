@@ -35,17 +35,9 @@ export default async function BalcaoPage() {
 
   return (
     <div className="max-w-2xl space-y-5">
-      <div>
-        <h2 className="display text-[1.75rem] leading-tight text-[var(--ink)]">
-          Balcão
-        </h2>
-        <p className="mt-1 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-          Para deixar o teu login aberto num tablet no salão. Neste modo
-          só ficam a agenda, os avisos e as clientes — a Gestão e os
-          números fecham-se, e só voltam a abrir com a tua palavra-passe
-          escrita ali no tablet.
-        </p>
-      </div>
+      <h2 className="display text-[1.75rem] leading-tight text-[var(--ink)]">
+        Balcão
+      </h2>
 
       {/* ---------------------------------------- deixar no balcão --- */}
       <Panel
@@ -68,20 +60,9 @@ export default async function BalcaoPage() {
         }
       >
         {codigo.codigo ? (
-          <>
-            <p className="tabular text-[2rem] font-bold leading-none tracking-[0.16em] text-[var(--ink)]">
-              {codigo.codigo}
-            </p>
-            <p className="mt-3 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-              Põe um aparelho em modo balcão, e <strong>mais nada</strong>.
-              Nunca abre a Gestão nem os números, faça-se o que se fizer com
-              ele — por isso pode andar escrito num papel ao lado do tablet.
-            </p>
-            <p className="mt-2 text-[0.75rem] text-[var(--ink-faint)]">
-              É o mesmo para todos os salões. Se se espalhar, trocas aqui e
-              voltas a escrevê-lo nos tablets.
-            </p>
-          </>
+          <p className="tabular text-[2rem] font-bold leading-none tracking-[0.16em] text-[var(--ink)]">
+            {codigo.codigo}
+          </p>
         ) : (
           <div className="space-y-3">
             <p className="text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
