@@ -175,30 +175,6 @@ export function percentagem(o: Ocupacao): number | null {
 }
 
 /**
- * O DIA MAIS FRACO DO QUE VEM AÍ.
- *
- * Não é o dia com menos marcações — é o com menos proporção vendida. A
- * diferença conta: uma segunda com duas marcações e uma pessoa
- * escalada está mais cheia do que um sábado com quatro e a equipa
- * toda, e é no sábado que há o que fazer.
- *
- * OS DIAS SEM ESCALA NÃO CONCORREM. Um domingo fechado tem zero
- * vendido e zero escalado; apontá-lo como o dia fraco era mandar a
- * dona abrir a casa ao domingo por engano.
- */
-export function diaMaisFraco(
-  dias: readonly DiaOcupado[],
-): { dia: DiaOcupado; pc: number } | null {
-  let pior: { dia: DiaOcupado; pc: number } | null = null
-  for (const dia of dias) {
-    const pc = percentagem(dia)
-    if (pc === null) continue
-    if (!pior || pc < pior.pc) pior = { dia, pc }
-  }
-  return pior
-}
-
-/**
  * O MAPA DAS HORAS QUE SOBRAM.
  *
  * O período escolhido em cima, uma casa por dia-da-semana e por hora.

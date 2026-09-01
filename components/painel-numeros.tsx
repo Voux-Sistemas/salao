@@ -10,7 +10,6 @@ import {
   topServices,
 } from '@/lib/dashboard'
 import {
-  diaMaisFraco,
   mapaDasHoras,
   ocupacaoPorDia,
   percentagem,
@@ -18,12 +17,11 @@ import {
   somar,
   type CasaDoMapa,
   type DiaDaSemanaOcupado,
-  type DiaOcupado,
 } from '@/lib/ocupacao'
 import type { Janela } from '@/lib/periodo'
 import { SOURCE_LABEL } from '@/lib/status'
 import { formatCents } from '@/lib/money'
-import { addDays, today, weekdayOf, type IsoDay } from '@/lib/time'
+import { today, type IsoDay } from '@/lib/time'
 import { Card, Empty } from '@/components/ui'
 
 /**
@@ -74,22 +72,18 @@ export async function PainelNumeros({
   const umDiaSo = janela.dias === 1
 
   /*
-    UMA CONSULTA DE OCUPAÇÃO, TRÊS RESPOSTAS.
+    UMA CONSULTA DE OCUPAÇÃO, DUAS RESPOSTAS.
 
-    Precisa-se dela em três recortes: o período escolhido, o período
-    anterior (para a seta), e os sete dias à frente (para o que vem aí).
-    São todos contíguos — do princípio da janela anterior até uma semana
-    depois de hoje — por isso pedem-se de uma vez e corta-se cá.
-
-    É a consulta mais cara da página: cruza a escala com as ausências e
-    com o trabalho marcado, dia a dia. Fazê-la três vezes para depois
-    somar as mesmas linhas era pagá-la três vezes.
+    Precisa-se dela em dois recortes: o período escolhido e o anterior,
+    para a seta. São contíguos, por isso pedem-se de uma vez e corta-se
+    cá — é a consulta mais cara da página, e fazê-la duas vezes para
+    somar as mesmas linhas era pagá-la a dobrar.
   */
   const [ocupacao, mapa, kpis, clientes, equipa, servicos, origens, vem, hoje] =
     await Promise.all([
       seguro(
         'ocupação',
-        () => ocupacaoPorDia(org.id, janela.deAnterior, addDays(day, 6)),
+        () => ocupacaoPorDia(org.id, janela.deAnterior, janela.ate),
         null,
       ),
       seguro('mapa das horas', () => mapaDasHoras(org.id, janela.de, janela.ate), null),
@@ -125,17 +119,10 @@ export async function PainelNumeros({
 
   const doPeriodo = dentro(janela.de, janela.ate)
   const doAnterior = dentro(janela.deAnterior, janela.ateAnterior)
-  /*
-    O dia fraco procura-se a partir de AMANHÃ. Hoje já está a acontecer
-    — dizer à dona que a terça está vazia às seis da tarde não é um
-    aviso, é uma lápide.
-  */
-  const oQueFalta = dentro(addDays(day, 1), addDays(day, 6))
 
   const total = ocupacao ? somar(doPeriodo) : null
   const pc = total ? percentagem(total) : null
   const pcAnterior = ocupacao ? percentagem(somar(doAnterior)) : null
-  const fraco = ocupacao ? diaMaisFraco(oQueFalta) : null
 
   const currency = org.currency
 
@@ -238,7 +225,7 @@ export async function PainelNumeros({
       </div>
 
       {/* ------------------------------------------ o que vem aí --- */}
-      {vem ? <OQueVemAi vem={vem} fraco={fraco} currency={currency} /> : null}
+      {vem ? <OQueVemAi vem={vem} /> : null}
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
         {/* -------------------------------------- ocupação --- */}
@@ -422,39 +409,27 @@ export async function PainelNumeros({
 // O que vem aí
 // ---------------------------------------------------------------------
 
-const DIAS_LONGOS = [
-  'domingo',
-  'segunda',
-  'terça',
-  'quarta',
-  'quinta',
-  'sexta',
-  'sábado',
-]
-
 /**
  * A FAIXA QUE OLHA PARA A FRENTE.
  *
- * Tem cor própria — é a única coisa da página que não é história. Duas
- * contas e um aviso: quanto está no livro, quanto vale, e qual é o dia
- * da semana que vem com espaço a mais.
+ * Tem cor própria — é a única coisa da página que não é história.
  *
- * O AVISO SÓ APARECE QUANDO HÁ ALGUMA COISA A FAZER. Metade da escala
- * por vender é um dia fraco; abaixo disso a casa está a andar e a
- * frase seria ruído a fingir de conselho. E um dia sem escala nunca
- * concorre — ver o `diaMaisFraco`.
+ * TINHA MAIS DUAS COISAS E SAÍRAM AS DUAS.
+ *
+ * O dinheiro já marcado era uma promessa, não um facto: metade daquilo
+ * ainda desmarca, remarca ou falta, e um euro que se cobra ao lado de
+ * um euro que talvez se cobre são o mesmo algarismo a dizer coisas
+ * diferentes. Numa página onde tudo o resto é dinheiro contado, esse
+ * destoava.
+ *
+ * E o aviso do dia fraco dizia «domingo está a 0% — é aí que há
+ * espaço», num salão que não abre ao domingo. A conta estava certa —
+ * havia escala lá — e o conselho era disparate. Um painel pode mostrar
+ * um número que precisa de contexto; não pode dar uma ordem errada.
+ *
+ * Fica a contagem, que é um facto: quantas pessoas estão à espera.
  */
-function OQueVemAi({
-  vem,
-  fraco,
-  currency,
-}: {
-  vem: { marcacoes: number; valor_cents: number }
-  fraco: { dia: DiaOcupado; pc: number } | null
-  currency: string
-}) {
-  const avisar = fraco !== null && fraco.pc < 50
-
+function OQueVemAi({ vem }: { vem: { marcacoes: number } }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1.5 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--house)_28%,transparent)] bg-[color-mix(in_srgb,var(--house)_10%,var(--surface-raised))] px-4 py-3">
       <span className="w-full text-[0.625rem] font-bold uppercase tracking-[0.12em] text-[var(--accent)] sm:w-auto">
@@ -469,22 +444,6 @@ function OQueVemAi({
           marcaç{vem.marcacoes === 1 ? 'ão' : 'ões'} nos próximos 7 dias
         </span>
       </span>
-
-      <span className="flex items-baseline gap-1.5">
-        <span className="metric text-[1.0625rem] text-[var(--ink)]">
-          {formatCents(vem.valor_cents, currency)}
-        </span>
-        <span className="text-[0.8125rem] text-[var(--ink-muted)]">
-          já no livro
-        </span>
-      </span>
-
-      {avisar ? (
-        <span className="text-[0.8125rem] font-semibold text-[var(--warn)] sm:ml-auto">
-          {DIAS_LONGOS[weekdayOf(fraco.dia.day)]} está a {fraco.pc}% — é aí que
-          há espaço
-        </span>
-      ) : null}
     </div>
   )
 }

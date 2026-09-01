@@ -499,19 +499,19 @@ function endereco(
 /**
  * O SELECTOR DE PERÍODO.
  *
+ * AS SETAS ABRAÇAM O MÊS: `‹ setembro ›`. Estiveram encostadas à
+ * direita, fora do controlo, e assim ninguém as ligava ao mês —
+ * pareciam paginar a página inteira. Uma seta diz para onde anda a
+ * coisa que está entre elas, e por isso têm de a rodear.
+ *
  * DUAS FORMAS PARA O MESMO CONTROLO, e não é preguiça de escolher uma.
  * No monitor as três janelas cabem lado a lado e vêem-se todas de uma
  * vez, que é o que faz um controlo segmentado valer a pena. Em 390
- * píxeis, com os separadores ao lado e as setas do mês, não cabem — e
- * uma segunda fila de controlos por cima de uma página que já tem duas
- * custa mais do que vale. No telemóvel fica uma pastilha que abre.
+ * píxeis, com os separadores ao lado, não cabem — e uma segunda fila de
+ * controlos por cima de uma página que já tem duas custa mais do que
+ * vale. No telemóvel fica uma pastilha que abre, com as setas à volta.
  *
- * AS SETAS FICAM DE FORA DA PASTILHA, nos dois tamanhos. Andar um mês
- * para trás não é escolher um período diferente — é o mesmo período,
- * noutro sítio — e enfiá-las dentro do menu obrigava a dois toques para
- * cada mês, com o menu a fechar-se entre eles.
- *
- * E ANDAM MESMO QUANDO ELA NÃO ESTÁ NO MÊS: um toque na seta troca as
+ * AS SETAS ANDAM MESMO QUANDO ELA NÃO ESTÁ NO MÊS: um toque troca as
  * duas coisas de uma vez, o período passa a ser o mês e o mês é o do
  * lado. Era isso ou desenhá-las apagadas até ela carregar noutro sítio
  * primeiro, que é uma porta à frente de uma porta.
@@ -543,20 +543,37 @@ function SelectorDePeriodo({
     anda para trás. Um selector cujo botão activo diz «Este mês» a
     mostrar agosto está a mentir com todas as letras.
   */
-  const nomeDoMes = mesPorExtenso(mesVisto, hoje)
-  const nomeDe = (valor: Periodo, nome: string) =>
-    valor === 'mes' && mesVisto !== `${hoje.slice(0, 7)}-01` ? nomeDoMes : nome
+  const nomeDoMes =
+    mesVisto === `${hoje.slice(0, 7)}-01`
+      ? 'Este mês'
+      : mesPorExtenso(mesVisto, hoje)
 
-  const actual = PERIODOS.find((x) => x.valor === janela.periodo) ?? PERIODOS[2]!
+  /*
+    As duas setas desenham-se duas vezes — uma por tamanho de ecrã — mas
+    para onde levam decide-se aqui, uma vez. Foi a tentativa de as
+    escrever uma só vez, com `order`, que não funcionou: o invólucro que
+    lhes dá a cor é um item de flex sozinho, e a ordem não atravessa
+    invólucros.
+  */
+  const paraTras = atras ? endereco(janela, { p: 'mes', m: atras }) : null
+  const paraFrente = frente ? endereco(janela, { p: 'mes', m: frente }) : null
+  const rotuloAtras = atras
+    ? `Ver ${mesPorExtenso(atras, hoje)}`
+    : 'Não há mais para trás'
+  const rotuloFrente = frente
+    ? `Ver ${mesPorExtenso(frente, hoje)}`
+    : 'Já está no mês corrente'
+
+  const outros = PERIODOS.filter((x) => x.valor !== 'mes')
 
   return (
-    <div className="ml-auto flex items-center gap-1.5">
+    <div className="ml-auto">
       {/* ------------------------------------------- o monitor --- */}
       <nav
         aria-label="Período"
-        className="hidden gap-[2px] rounded-full border border-[var(--line)] bg-[var(--surface-2)] p-[3px] sm:inline-flex"
+        className="hidden items-center gap-[2px] rounded-full border border-[var(--line)] bg-[var(--surface-2)] p-[3px] sm:inline-flex"
       >
-        {PERIODOS.map((x) => (
+        {outros.map((x) => (
           <Link
             key={x.valor}
             href={endereco(janela, { p: x.valor, m: mesVisto })}
@@ -568,56 +585,84 @@ function SelectorDePeriodo({
                 : 'font-medium text-[var(--ink-muted)] hover:text-[var(--ink)]',
             )}
           >
-            {nomeDe(x.valor, x.nome)}
+            {x.nome}
           </Link>
         ))}
+
+        {/*
+          O MÊS E AS SUAS SETAS SÃO UMA PASTILHA SÓ. Acesa, a mancha
+          escura apanha as três — é o que diz que as setas pertencem
+          àquele nome, e não à página.
+        */}
+        <span
+          className={clsx(
+            'inline-flex items-center rounded-full',
+            noMes && 'bg-[var(--action)]',
+          )}
+        >
+          <SetaDoMes href={paraTras} label={rotuloAtras} aceso={noMes}>
+            <ChevronLeft aria-hidden className="h-3.5 w-3.5" />
+          </SetaDoMes>
+          <Link
+            href={endereco(janela, { p: 'mes', m: mesVisto })}
+            aria-current={noMes ? 'page' : undefined}
+            className={clsx(
+              'inline-flex items-center px-1 text-[0.75rem] whitespace-nowrap transition-colors',
+              noMes
+                ? 'font-bold text-[var(--action-ink)]'
+                : 'font-medium text-[var(--ink-muted)] hover:text-[var(--ink)]',
+            )}
+          >
+            {nomeDoMes}
+          </Link>
+          <SetaDoMes href={paraFrente} label={rotuloFrente} aceso={noMes}>
+            <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+          </SetaDoMes>
+        </span>
       </nav>
 
       {/* ------------------------------------------ o telemóvel --- */}
-      <details className="relative sm:hidden">
-        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface-raised)] px-3 py-1.5 text-[0.75rem] font-semibold whitespace-nowrap text-[var(--ink)] [&::-webkit-details-marker]:hidden">
-          {nomeDe(actual.valor, actual.nome)}
-          <span aria-hidden className="text-[0.5rem] text-[var(--ink-faint)]">
-            ▼
-          </span>
-        </summary>
-        <nav
-          aria-label="Período"
-          className="absolute right-0 top-full z-[45] mt-1 w-[10rem] overflow-hidden rounded-[11px] bg-[var(--surface-raised)] shadow-[0_16px_40px_-12px_rgba(28,24,21,0.5)]"
-        >
-          {PERIODOS.map((x) => (
-            <Link
-              key={x.valor}
-              href={endereco(janela, { p: x.valor, m: mesVisto })}
-              aria-current={x.valor === janela.periodo ? 'page' : undefined}
-              className={clsx(
-                'block border-t border-[var(--line-soft)] px-3.5 py-2.5 text-[0.8125rem] first:border-t-0',
-                x.valor === janela.periodo
-                  ? 'bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] font-bold text-[var(--accent)]'
-                  : 'text-[var(--ink)]',
-              )}
-            >
-              {nomeDe(x.valor, x.nome)}
-            </Link>
-          ))}
-        </nav>
-      </details>
+      <div className="flex items-center gap-0.5 sm:hidden">
+        <SetaDoMes href={paraTras} label={rotuloAtras} aceso={noMes}>
+          <ChevronLeft aria-hidden className="h-3.5 w-3.5" />
+        </SetaDoMes>
 
-      {/* --------------------------------------- as setas do mês --- */}
-      <SetaDoMes
-        href={atras ? endereco(janela, { p: 'mes', m: atras }) : null}
-        label={`Ver ${atras ? mesPorExtenso(atras, hoje) : 'o mês anterior'}`}
-        aceso={noMes}
-      >
-        <ChevronLeft aria-hidden className="h-3.5 w-3.5" />
-      </SetaDoMes>
-      <SetaDoMes
-        href={frente ? endereco(janela, { p: 'mes', m: frente }) : null}
-        label={`Ver ${frente ? mesPorExtenso(frente, hoje) : 'o mês seguinte'}`}
-        aceso={noMes}
-      >
-        <ChevronRight aria-hidden className="h-3.5 w-3.5" />
-      </SetaDoMes>
+        <details className="relative">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface-raised)] px-3 py-1.5 text-[0.75rem] font-semibold whitespace-nowrap text-[var(--ink)] [&::-webkit-details-marker]:hidden">
+            {noMes
+              ? nomeDoMes
+              : (outros.find((x) => x.valor === janela.periodo)?.nome ??
+                'Este mês')}
+            <span aria-hidden className="text-[0.5rem] text-[var(--ink-faint)]">
+              ▼
+            </span>
+          </summary>
+          <nav
+            aria-label="Período"
+            className="absolute right-0 top-full z-[45] mt-1 w-[10rem] overflow-hidden rounded-[11px] bg-[var(--surface-raised)] shadow-[0_16px_40px_-12px_rgba(28,24,21,0.5)]"
+          >
+            {PERIODOS.map((x) => (
+              <Link
+                key={x.valor}
+                href={endereco(janela, { p: x.valor, m: mesVisto })}
+                aria-current={x.valor === janela.periodo ? 'page' : undefined}
+                className={clsx(
+                  'block border-t border-[var(--line-soft)] px-3.5 py-2.5 text-[0.8125rem] first:border-t-0',
+                  x.valor === janela.periodo
+                    ? 'bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] font-bold text-[var(--accent)]'
+                    : 'text-[var(--ink)]',
+                )}
+              >
+                {x.valor === 'mes' ? nomeDoMes : x.nome}
+              </Link>
+            ))}
+          </nav>
+        </details>
+
+        <SetaDoMes href={paraFrente} label={rotuloFrente} aceso={noMes}>
+          <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+        </SetaDoMes>
+      </div>
     </div>
   )
 }
@@ -626,8 +671,11 @@ function SelectorDePeriodo({
  * Uma seta do mês.
  *
  * Sem sítio para onde ir não é ligação nenhuma — a da frente apaga-se
- * no mês corrente, a de trás ao fim de dois anos. E fora do período do
- * mês fica em tinta mais fraca: continua a funcionar, mas não chama.
+ * no mês corrente, a de trás ao fim de dois anos.
+ *
+ * `aceso` diz que ela está por cima da mancha escura da pastilha
+ * activa: aí a tinta é a do papel invertido e o realce ao passar é uma
+ * água branca, porque um cinzento sobre castanho-escuro não se vê.
  */
 function SetaDoMes({
   href,
@@ -641,11 +689,19 @@ function SetaDoMes({
   children: React.ReactNode
 }) {
   const moldura =
-    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--line)]'
+    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full'
 
   if (!href) {
     return (
-      <span aria-hidden className={clsx(moldura, 'opacity-25')}>
+      <span
+        aria-hidden
+        title={label}
+        className={clsx(
+          moldura,
+          'opacity-25',
+          aceso ? 'text-[var(--action-ink)]' : 'text-[var(--ink-faint)]',
+        )}
+      >
         {children}
       </span>
     )
@@ -657,10 +713,10 @@ function SetaDoMes({
       aria-label={label}
       className={clsx(
         moldura,
-        'transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]',
+        'transition-colors',
         aceso
-          ? 'bg-[var(--surface-raised)] text-[var(--ink)]'
-          : 'text-[var(--ink-faint)]',
+          ? 'text-[var(--action-ink)] hover:bg-[rgba(245,242,236,0.16)]'
+          : 'text-[var(--ink-faint)] hover:text-[var(--ink)]',
       )}
     >
       {children}

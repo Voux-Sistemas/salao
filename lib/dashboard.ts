@@ -472,8 +472,6 @@ export async function origemDasMarcacoes(
 
 export type OQueVemAi = {
   marcacoes: number
-  /** Quanto vale o que já está no livro, ao preço congelado. */
-  valor_cents: Cents
 }
 
 /**
@@ -483,6 +481,12 @@ export type OQueVemAi = {
  * de ontem passou, as faltas passaram. O livro dos próximos sete dias
  * é a única conta em que uma decisão de hoje ainda mexe — e por isso
  * está em cima, antes dos painéis todos.
+ *
+ * CONTA PESSOAS, E NÃO EUROS. Chegou a somar quanto valia o que estava
+ * no livro, e saiu: metade daquilo ainda desmarca, remarca ou falta.
+ * Um euro que se cobrou e um euro que talvez se cobre são o mesmo
+ * algarismo a dizer coisas diferentes, e numa página onde tudo o resto
+ * é dinheiro contado esse destoava.
  *
  * DE AGORA EM DIANTE, e não de amanhã: a tarde de hoje ainda conta
  * para o que há para fazer.
@@ -500,15 +504,14 @@ export async function oQueVemAi(
   const ate = dayEnd(addDays(hoje, 6), timezone)
 
   const rows = await sql<OQueVemAi[]>`
-    select count(*)::int as marcacoes,
-           coalesce(sum(${receitaDaMarcacao()}), 0)::int as valor_cents
+    select count(*)::int as marcacoes
       from appointment a
      where a.org_id = ${orgId}
        and a.status in ('booked','confirmed')
        and a.starts_at >= ${agora} and a.starts_at < ${ate}
   `
 
-  return rows[0] ?? { marcacoes: 0, valor_cents: 0 }
+  return rows[0] ?? { marcacoes: 0 }
 }
 
 // ---------------------------------------------------------------------
