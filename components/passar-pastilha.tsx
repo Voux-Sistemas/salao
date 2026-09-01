@@ -10,6 +10,7 @@ import {
   type DeskState,
 } from '@/app/(desk)/agenda/actions'
 import type { Candidate } from '@/lib/agenda'
+import { shortName } from '@/lib/text'
 
 const EMPTY: DeskState = { error: null, done: null }
 
@@ -20,33 +21,37 @@ const EMPTY: DeskState = { error: null, done: null }
  * monitor e no telemóvel — e o que se lhe acrescentou foi função: para
  * mudar quem faz, toca-se em quem faz. Não há botão novo na linha.
  *
- * ONDE É QUE O MENU ABRE — TRÊS TENTATIVAS.
+ * ONDE É QUE A CAIXA ABRE — QUATRO TENTATIVAS ANTES DESTA.
  *
- * A primeira pendurou-o da pastilha, como um menu normal. No telemóvel
+ * A primeira pendurou-a da pastilha, como um menu normal. No telemóvel
  * não cabia à direita e as pastilhas das linhas seguintes atravessavam-
- * -no.
+ * -na.
  *
- * A segunda fez dele uma folha presa ao fundo do ecrã. Resolveu a
- * largura e a leitura, e estava errada por duas razões que só se veem a
- * usar: aparecia longe do sítio onde se tinha tocado, e ficava lá
- * agarrada enquanto a lista rolava por trás. Ainda por cima disputava
- * os últimos centímetros com a barra do fundo, que é `fixed` e vive lá.
+ * A segunda fez dela uma folha presa ao fundo do ecrã, com véu. Lia-se
+ * bem — e aparecia longe do sítio onde se tinha tocado, ficava lá
+ * agarrada enquanto a lista rolava por trás, e disputava os últimos
+ * centímetros com a barra do fundo, que é `fixed` e vive lá.
  *
- * A terceira colou-o à linha, mas a flutuar por cima das seguintes — e
- * ficava a ver-se meia linha por baixo dele, o que se lê como confusão.
+ * A terceira colou-a à linha, a flutuar, e SEM O VÉU. Ficava a ver-se
+ * meia linha a espreitar por baixo dela: confusão.
  *
- * ESTA NÃO FLUTUA: EMPURRA. O menu é uma parte da linha, a seguir ao
- * conteúdo dela, e portanto as linhas de baixo descem para lhe dar
- * lugar. Nada fica por cima de nada, nada fica preso ao ecrã, e a lista
- * rola com o menu lá dentro como se ele sempre tivesse feito parte
- * dela.
+ * A quarta pô-la em flow, a empurrar as linhas de baixo. Nada por cima
+ * de nada — e nada que a destacasse do resto da lista.
  *
- * O PREÇO É ESTA REPARTIÇÃO EM DUAS PEÇAS. A pastilha vive no meio da
- * linha, o menu tem de vir depois dela — e as duas precisam do mesmo
- * estado. A grelha é um componente de servidor e não pode segurá-lo,
- * por isso quem o segura é a `PassarLinha`, que envolve a linha toda, e
- * a pastilha lá dentro vai buscá-lo pelo contexto. É a única maneira de
- * a pastilha ficar onde está e o menu ficar onde deve.
+ * O QUE FAZIA A SEGUNDA PARECER MELHOR ERA O VÉU, NÃO O SÍTIO. Escurecer
+ * a lista é o que faz a caixa parecer uma coisa aberta por cima, em vez
+ * de mais um pedaço de lista. Esta junta as duas metades certas: o véu
+ * da segunda, o sítio da terceira.
+ *
+ * ESCOLHER E TRANSFERIR SÃO DOIS GESTOS. Tocar num nome transferia logo.
+ * Numa lista onde as linhas têm dois dedos de altura e um toque muda a
+ * agenda de duas pessoas, isso é pouco: o toque escolhe, o botão faz.
+ *
+ * O PREÇO É A PEÇA PARTIR-SE EM DUAS. A pastilha vive no meio da linha,
+ * a caixa tem de vir depois dela, e as duas precisam do mesmo estado. A
+ * grelha é um componente de servidor e não pode segurá-lo, por isso quem
+ * o segura é a `PassarLinha`, que envolve a linha toda, e a pastilha lá
+ * dentro vai buscá-lo pelo contexto.
  */
 
 type Estado = {
@@ -65,23 +70,19 @@ const Contexto = createContext<Estado>({
 })
 
 /**
- * Envolve uma linha da agenda. Rende o conteúdo dela e, quando o menu
- * está aberto, o menu por baixo — dentro da mesma linha, a empurrar as
- * seguintes.
+ * Envolve uma linha da agenda: rende o conteúdo dela e, aberta, o véu
+ * e a caixa colada por baixo. A caixa é `absolute` contra o `<li>`, que
+ * já era `relative`. 
  */
 export function PassarLinha({
   appointmentId,
   cliente,
-  quando,
-  servicos,
   candidatos,
   children,
 }: {
   appointmentId: string
-  /** O que o menu diz que se está a passar. */
+  /** O nome que a caixa mostra: é só isso que ela precisa de dizer. */
   cliente: string
-  quando: string
-  servicos: string
   candidatos: Candidate[]
   children: ReactNode
 }) {
@@ -91,15 +92,32 @@ export function PassarLinha({
   )
   const [aberto, setAberto] = useState(false)
 
+  /*
+    ESCOLHER E TRANSFERIR SÃO DOIS GESTOS.
+
+    Tocar num nome transferia logo. Numa lista onde as linhas têm dois
+    dedos de altura e a agenda de duas pessoas muda com o toque, isso é
+    pouco: agora o toque escolhe, e é o botão que faz.
+  */
+  const [escolhido, setEscolhido] = useState<string | null>(null)
+
+  const fechar = () => {
+    setAberto(false)
+    setEscolhido(null)
+  }
+
   /* Passou: o menu fecha-se sozinho. Comparar com o último visto, e não
      com «tem alguma coisa», porque duas passagens dão a mesma frase. */
   const [visto, setVisto] = useState<string | null>(null)
   if (state.done && state.done !== visto) {
     setVisto(state.done)
     setAberto(false)
+    setEscolhido(null)
   }
 
   const temMenu = candidatos.length > 0
+  const nomeEscolhido =
+    candidatos.find((c) => c.staffId === escolhido)?.name ?? null
 
   /*
     QUEM JÁ FAZ VEM PRIMEIRO, e depois quem pode, e por fim quem não
@@ -115,83 +133,95 @@ export function PassarLinha({
     <Contexto.Provider
       value={{
         aberto,
-        alternar: () => setAberto((x) => !x),
-        fechar: () => setAberto(false),
+        alternar: () => (aberto ? fechar() : setAberto(true)),
+        fechar,
         temMenu,
       }}
     >
       {children}
 
       {aberto && temMenu ? (
-        /*
-          `relative z-10` para ficar acima da folha transparente que
-          cobre a linha e abre a marcação — senão um toque numa pessoa
-          abria a ficha em vez de a passar.
+        <>
+          {/*
+            O VÉU. Sem ele a caixa flutuava sobre linhas bem visíveis e
+            via-se meia linha a espreitar por baixo — que é o que se lê
+            como confusão. Escurecer o resto é o que faz a caixa parecer
+            arrumada, e foi por isso que a versão presa ao fundo do ecrã
+            parecia melhor: era o véu, não era o sítio.
 
-          `mx-3 mb-3` em vez de encostar às margens: um menu colado à
-          borda lê-se como outra linha da lista, e este é uma coisa
-          aberta por cima dela.
-        */
-        <div className="relative z-10 mx-3 mb-3 overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-raised)] shadow-[0_10px_30px_-16px_rgba(28,24,21,0.45)]">
-          <div className="border-b border-[var(--line-soft)] px-4 py-3">
-            <p className="text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
-              Passar a
-            </p>
-            <p className="mt-1 text-sm font-bold text-[var(--ink)]">
-              {cliente}
-            </p>
-            <p className="tabular mt-0.5 truncate text-[0.75rem] text-[var(--ink-faint)]">
-              {quando} · {servicos}
-            </p>
-          </div>
+            `z-[45]` de propósito: acima da barra do fundo, que é `z-40`
+            e ficaria acesa por cima do escuro, e abaixo da caixa.
+          */}
+          <span
+            onClick={fechar}
+            className="fixed inset-0 z-[45] block bg-[rgba(28,24,21,0.42)]"
+          />
 
-          {state.error ? (
-            <p className="border-b border-[var(--line-soft)] px-4 py-2 text-[0.75rem] leading-relaxed text-[var(--bad)]">
-              {state.error}
-            </p>
-          ) : null}
+          {/*
+            A CAIXA NASCE DEBAIXO DA LINHA EM QUE SE TOCOU.
 
-          {/* Numa equipa grande a lista é mais alta do que o ecrã: o
-              miolo rola por dentro e o «deixar como está» não foge. */}
-          <div className="max-h-[50vh] overflow-y-auto">
-            {ordenados.map((quem) =>
-              quem.ok ? (
-                <form key={quem.staffId} action={action}>
-                  <input
-                    type="hidden"
-                    name="appointment"
-                    value={appointmentId}
+            `absolute` contra o `<li>`, que é `relative`: fica colada à
+            linha e rola com a lista, em vez de presa ao fundo do ecrã.
+            `z-50` para passar à frente do véu e da barra.
+          */}
+          <div className="absolute inset-x-3 top-full z-50 mt-1 overflow-hidden rounded-[12px] bg-[var(--surface-raised)] shadow-[0_18px_44px_-14px_rgba(28,24,21,0.55)]">
+            <div className="flex items-start gap-3 border-b border-[var(--line-soft)] py-3 pl-4 pr-3">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
+                  Transferir
+                </span>
+                {/*
+                  Só o nome. A hora e o serviço estavam a repetir a linha
+                  que fica logo acima — e com o véu ela continua à vista,
+                  escurecida mas legível.
+                */}
+                <span className="mt-0.5 block truncate text-[0.9375rem] font-bold tracking-[-0.01em] text-[var(--ink)]">
+                  {cliente}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={fechar}
+                aria-label="Fechar"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--ink)_4%,transparent)] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink)]"
+              >
+                <span aria-hidden className="text-base leading-none">
+                  ×
+                </span>
+              </button>
+            </div>
+
+            {state.error ? (
+              <p className="border-b border-[var(--line-soft)] px-4 py-2 text-[0.75rem] leading-relaxed text-[var(--bad)]">
+                {state.error}
+              </p>
+            ) : null}
+
+            <form action={action}>
+              <input type="hidden" name="appointment" value={appointmentId} />
+              <input type="hidden" name="para" value={escolhido ?? ''} />
+
+              <p className="px-4 pb-1 pt-2.5 text-[0.625rem] font-bold tracking-[0.09em] text-[var(--ink-faint)] uppercase">
+                Para
+              </p>
+
+              {/* Numa equipa grande a lista é mais alta do que o ecrã: o
+                  miolo rola por dentro e o botão não foge com ele. */}
+              <div className="max-h-[50vh] overflow-y-auto">
+                {ordenados.map((quem) => (
+                  <Opcao
+                    key={quem.staffId}
+                    quem={quem}
+                    escolhida={escolhido === quem.staffId}
+                    escolher={() => setEscolhido(quem.staffId)}
                   />
-                  <input type="hidden" name="para" value={quem.staffId} />
-                  <Escolha nome={quem.name} why={quem.why} />
-                </form>
-              ) : (
-                <p
-                  key={quem.staffId}
-                  className={clsx(
-                    'flex items-center gap-2 border-t border-[var(--line-soft)] px-4 py-3 text-sm first:border-t-0',
-                    quem.atual
-                      ? 'bg-[color-mix(in_srgb,var(--house-deep)_7%,transparent)] font-bold text-[var(--house-deep)]'
-                      : 'text-[var(--ink-faint)]',
-                  )}
-                >
-                  {quem.name}
-                  <span className="ml-auto text-[0.6875rem] font-normal">
-                    {quem.why}
-                  </span>
-                </p>
-              ),
-            )}
-          </div>
+                ))}
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setAberto(false)}
-            className="block w-full border-t border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--ink)_3%,transparent)] px-4 py-3 text-center text-[0.8125rem] font-semibold text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
-          >
-            Deixar como está
-          </button>
-        </div>
+              <Confirmar nome={nomeEscolhido} />
+            </form>
+          </div>
+        </>
       ) : null}
     </Contexto.Provider>
   )
@@ -260,6 +290,125 @@ export function PassarPastilha({
         </span>
       ) : null}
     </button>
+  )
+}
+
+/**
+ * Uma pessoa na lista.
+ *
+ * SÓ SE ESCOLHE QUEM PODE FICAR COM ISTO. Quem já a faz aparece — é o
+ * que diz de onde a marcação sai — mas transferir para quem já a tem
+ * não faz nada; e quem não sabe fazer o serviço também não se escolhe.
+ * Os dois casos ficam à vista e não recebem toque.
+ */
+function Opcao({
+  quem,
+  escolhida,
+  escolher,
+}: {
+  quem: Candidate
+  escolhida: boolean
+  escolher: () => void
+}) {
+  const podeIr = quem.ok && !quem.atual
+
+  const corpo = (
+    <>
+      <span
+        aria-hidden
+        className={clsx(
+          'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
+          escolhida
+            ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
+            : quem.atual
+              ? 'border-dashed border-[color-mix(in_srgb,var(--accent)_45%,transparent)]'
+              : 'border-[var(--line)]',
+        )}
+      >
+        {escolhida ? (
+          <span className="text-[0.5rem] leading-none">✓</span>
+        ) : null}
+      </span>
+      {quem.name}
+      <span className="ml-auto text-[0.6875rem] font-normal text-[var(--ink-faint)]">
+        {quem.why}
+      </span>
+    </>
+  )
+
+  if (!podeIr) {
+    return (
+      <p
+        className={clsx(
+          'flex items-center gap-2.5 border-t border-[var(--line-soft)] px-4 py-2.5 text-[0.875rem] first:border-t-0',
+          quem.atual ? 'text-[var(--accent)]' : 'text-[var(--ink-faint)]',
+        )}
+      >
+        {corpo}
+      </p>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={escolher}
+      aria-pressed={escolhida}
+      className={clsx(
+        'flex w-full items-center gap-2.5 border-t border-[var(--line-soft)] px-4 py-2.5 text-left text-[0.875rem] text-[var(--ink)] transition-colors first:border-t-0',
+        escolhida
+          ? 'bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] font-bold'
+          : 'hover:bg-[var(--surface-2)]',
+      )}
+    >
+      {corpo}
+    </button>
+  )
+}
+
+/**
+ * O BOTÃO DIZ PARA QUEM VAI.
+ *
+ * Um botão que só diz «Transferir» obriga a olhar para cima outra vez
+ * para confirmar a quem — e é a última coisa que se lê antes de mudar a
+ * agenda de duas pessoas.
+ *
+ * SEM ARTIGO ANTES DO NOME. «Transferir para a Filipa» lê-se melhor, e
+ * parte-se assim que um colaborador for homem. O nome sozinho serve os
+ * dois.
+ */
+function Confirmar({ nome }: { nome: string | null }) {
+  const { pending } = useFormStatus()
+  const pronto = nome !== null && !pending
+
+  /*
+    A MARGEM É DA MOLDURA, NÃO DO BOTÃO.
+
+    Escrevi isto primeiro como `m-3 w-[calc(100%-1.5rem)]` — e em CSS o
+    menos de um `calc` precisa de espaços à volta, senão a regra é
+    inválida e o Tailwind não a emite. O botão ficava sem largura e
+    ninguém dizia porquê. Uma caixa com preenchimento e um botão a cem
+    por cento não tem como falhar.
+  */
+  return (
+    <div className="p-3">
+      <button
+        type="submit"
+        disabled={nome === null || pending}
+        className={clsx(
+          'flex h-10 w-full items-center justify-center rounded-[var(--radius)] text-[0.8125rem] font-bold transition-colors',
+          pronto
+            ? 'bg-[var(--action)] text-[var(--action-ink)] hover:bg-[var(--action-strong)]'
+            : 'bg-[var(--surface-2)] text-[var(--ink-faint)]',
+        )}
+      >
+        {pending
+          ? 'A transferir…'
+          : nome
+            ? `Transferir para ${shortName(nome)}`
+            : 'Transferir'}
+      </button>
+    </div>
   )
 }
 

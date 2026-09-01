@@ -1085,8 +1085,6 @@ export function AgendaList({
             <PassarLinha
               appointmentId={card.appointmentId}
               cliente={card.clientName}
-              quando={`${formatMinutes(card.startMin)} → ${formatMinutes(card.endMin)}`}
-              servicos={card.services}
               candidatos={
                 mostrarQuem ? (agenda.handover[card.appointmentId] ?? []) : []
               }
