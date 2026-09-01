@@ -419,7 +419,22 @@ function Moldura({
         O período só aparece nos Números: a agenda é o dia de hoje e
         não há outro para lhe dar.
       */}
-      <div className="surge surge-1 flex flex-wrap items-center gap-3">
+      {/*
+        A FILA TEM DE ESTAR NUMA CAMADA ACIMA DO QUE VEM A SEGUIR, e o
+        `z-[45]` do menu não chegava para isso.
+
+        O `.surge` anima `transform`. Enquanto anima — e no Safari do
+        telemóvel também depois, porque ele guarda a camada que promoveu
+        — o elemento passa a ser um CONTEXTO DE EMPILHAMENTO. A partir
+        daí o `z-[45]` do menu só compete lá dentro: cá fora, esta fila
+        e o corpo da página são dois irmãos sem `z-index` nenhum, e
+        quem ganha é o que vem depois no documento. O menu abria por
+        baixo dos cartões.
+
+        `relative z-30` põe a fila inteira acima do corpo, e o menu
+        volta a abrir por cima de tudo o que está por baixo dela.
+      */}
+      <div className="surge surge-1 relative z-30 flex flex-wrap items-center gap-3">
         <nav
           aria-label="Vista"
           className="inline-flex gap-[3px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] p-[3px]"
@@ -621,18 +636,30 @@ function SelectorDePeriodo({
         </span>
       </nav>
 
-      {/* ------------------------------------------ o telemóvel --- */}
+      {/*
+        NO TELEMÓVEL AS SETAS SÓ APARECEM NO MÊS.
+
+        A regra é a mesma nos dois tamanhos — uma seta tem de estar
+        encostada a alguma coisa que nomeie um mês — mas dá resultados
+        diferentes porque os controlos são diferentes. No monitor a
+        pastilha do mês está sempre à vista, e por isso as setas também.
+        Aqui só se vê um rótulo de cada vez, o da pastilha; com o «Hoje»
+        escolhido, as setas ficavam à volta da palavra «Hoje» e liam-se
+        como se mudassem o DIA.
+      */}
       <div className="flex items-center gap-0.5 sm:hidden">
-        <SetaDoMes href={paraTras} label={rotuloAtras} aceso={noMes}>
-          <ChevronLeft aria-hidden className="h-3.5 w-3.5" />
-        </SetaDoMes>
+        {noMes ? (
+          <SetaDoMes href={paraTras} label={rotuloAtras} aceso={false}>
+            <ChevronLeft aria-hidden className="h-3.5 w-3.5" />
+          </SetaDoMes>
+        ) : null}
 
         <details className="relative">
           <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface-raised)] px-3 py-1.5 text-[0.75rem] font-semibold whitespace-nowrap text-[var(--ink)] [&::-webkit-details-marker]:hidden">
             {noMes
               ? nomeDoMes
               : (outros.find((x) => x.valor === janela.periodo)?.nome ??
-                'Este mês')}
+                nomeDoMes)}
             <span aria-hidden className="text-[0.5rem] text-[var(--ink-faint)]">
               ▼
             </span>
@@ -659,9 +686,11 @@ function SelectorDePeriodo({
           </nav>
         </details>
 
-        <SetaDoMes href={paraFrente} label={rotuloFrente} aceso={noMes}>
-          <ChevronRight aria-hidden className="h-3.5 w-3.5" />
-        </SetaDoMes>
+        {noMes ? (
+          <SetaDoMes href={paraFrente} label={rotuloFrente} aceso={false}>
+            <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+          </SetaDoMes>
+        ) : null}
       </div>
     </div>
   )
