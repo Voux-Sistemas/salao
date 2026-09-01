@@ -235,6 +235,25 @@ const TONE_INK: Record<Tone, string> = {
   bad: 'text-[var(--bad)]',
 }
 
+/**
+ * ONDE CAI O DIA QUE SE ESTÁ A VER. Ver a `jaPassou`.
+ */
+export type Momento = 'passado' | 'hoje' | 'futuro'
+
+/**
+ * ESTA MARCAÇÃO JÁ ACONTECEU?
+ *
+ * A grelha conta o tempo em minutos locais e não em instantes — é o que
+ * a faz desenhar certo nos domingos de mudança de hora — e por isso não
+ * pode usar o `foiFeita`, que trabalha com datas. É a mesma regra,
+ * escrita na moeda desta casa.
+ */
+function jaPassou(momento: Momento, endMin: number, nowMin: number | null) {
+  if (momento === 'passado') return true
+  if (momento === 'futuro') return false
+  return nowMin !== null && endMin <= nowMin
+}
+
 export function AgendaGrid({
   agenda,
   colors,
@@ -242,6 +261,7 @@ export function AgendaGrid({
   hrefFor,
   encaixeHref,
   nowMin,
+  momento,
 }: {
   agenda: AgendaDay
   /** display_color de cada profissional, por staffId. */
@@ -258,6 +278,14 @@ export function AgendaGrid({
   encaixeHref: ((hm: string) => string) | null
   /** Minutos locais de agora, ou null se o dia mostrado não for hoje. */
   nowMin: number | null
+  /**
+   * Onde é que o dia mostrado cai em relação a hoje.
+   *
+   * O `nowMin` sozinho não chega: é nulo tanto num dia de agosto como
+   * num de outubro, e as marcações de um já aconteceram todas enquanto
+   * as do outro não aconteceram nenhuma.
+   */
+  momento: Momento
 }) {
   const { fromMin, toMin, columns, blocks, opening } = agenda
 
@@ -895,6 +923,7 @@ export function AgendaList({
   hrefFor,
   encaixeHref,
   nowMin,
+  momento,
 }: {
   agenda: AgendaDay
   /** display_color de cada profissional, por staffId. */
@@ -913,6 +942,8 @@ export function AgendaList({
   /** Como na grelha: null para quem só pode ver a agenda. */
   encaixeHref: ((hm: string) => string) | null
   nowMin: number | null
+  /** Ver a `AgendaGrid`: o `nowMin` sozinho não sabe distinguir agosto de outubro. */
+  momento: Momento
 }) {
   const cards = toCards(agenda.blocks)
   /*
@@ -972,6 +1003,36 @@ export function AgendaList({
     há por vender daqui até à próxima cliente. Quando o agora cai mesmo
     entre duas marcações coladas, o fio volta a aparecer sozinho.
   */
+  /*
+    O QUE O DIA FEZ, contado da mesma maneira que a linha se pinta: uma
+    marcação conta quando a hora dela passou. É a soma dos verdes que
+    estão à vista — e por isso não pode vir de uma consulta à parte, que
+    responderia a outra pergunta num instante diferente.
+  */
+  const soma = cards.reduce(
+    (total, card) => {
+      const falhouEsta =
+        card.status === 'no_show' || card.status.startsWith('cancel')
+      if (card.status === 'no_show') {
+        return {
+          ...total,
+          faltas: total.faltas + 1,
+          perdido: total.perdido + card.priceCents,
+        }
+      }
+      if (card.status === 'completed' ||
+          (jaPassou(momento, card.endMin, nowMin) && !falhouEsta)) {
+        return {
+          ...total,
+          cents: total.cents + card.priceCents,
+          feitas: total.feitas + 1,
+        }
+      }
+      return total
+    },
+    { cents: 0, feitas: 0, faltas: 0, perdido: 0 },
+  )
+
   const idxAgoraNoVazio =
     nowMin === null
       ? -1
@@ -1037,7 +1098,7 @@ export function AgendaList({
         const tone = AGENDA_TONE[card.status]
         const falhou =
           card.status === 'no_show' || card.status.startsWith('cancel')
-        const passou = nowMin !== null && card.endMin <= nowMin
+        const passou = jaPassou(momento, card.endMin, nowMin)
 
         /*
           O ESTADO NORMAL CALA-SE.
@@ -1047,25 +1108,21 @@ export function AgendaList({
           de se ler, e continuava a pagar-se em altura. Agora só fala o
           que pede mão.
 
-          · concluída — um visto verde ao pé do preço, sem palavra.
-          · já passou e não foi concluída — «concluir», que é a única
-            coisa que alguém tem de ir fazer ali. Dizia «fechar», da
-            comanda por fechar; a comanda saiu, e concluir passou a ser
-            o gesto que dá a marcação por feita E a faz contar no que a
-            casa faturou nesse dia. Uma hora que passou sem isto é uma
-            hora que não conta.
+          · já passou e correu bem — um visto verde ao pé do preço, sem
+            palavra. Esteve aqui uma pastilha cor de laranja a dizer
+            «concluir»: era um recado a pedir trabalho, repetido em cada
+            linha que passava, e o dinheiro do dia só existia depois de
+            alguém o dar. Agora a hora manda — ver o `foiFeita` — e o
+            visto aparece sozinho.
           · confirmada e ainda por vir — silêncio.
           · tudo o resto (chegou, em atendimento, faltou, cancelada) diz
             o seu nome, porque é excepção.
         */
-        const concluida = card.status === 'completed'
-        const etiqueta = concluida
-          ? null
-          : passou && !falhou
-            ? { texto: 'concluir', tom: 'warn' as Tone }
-            : card.status === 'confirmed'
-              ? null
-              : { texto: STATUS_LABEL[card.status], tom: tone }
+        const feita = card.status === 'completed' || (passou && !falhou)
+        const etiqueta =
+          feita || card.status === 'confirmed'
+            ? null
+            : { texto: STATUS_LABEL[card.status], tom: tone }
 
         return (
           <li
@@ -1194,15 +1251,21 @@ export function AgendaList({
                       {etiqueta.texto}
                     </span>
                   ) : null}
-                  {concluida ? (
+                  {feita ? (
                     <IconCheck
-                      aria-label="Concluída"
+                      aria-label="Feita"
                       className="h-3.5 w-3.5 shrink-0 text-[var(--ok)]"
                     />
                   ) : null}
                   {/* O preço desce as duas coisas, peso e tinta: lê-se
-                      quando se vai cobrar, não antes. */}
-                  <span className="tabular shrink-0 text-[0.8125rem] font-semibold text-[var(--ink-muted)]">
+                      quando se vai cobrar, não antes. Já cobrado, sobe
+                      para o verde — é o que a soma do dia conta. */}
+                  <span
+                    className={clsx(
+                      'tabular shrink-0 text-[0.8125rem] font-semibold',
+                      feita ? 'text-[var(--ok)]' : 'text-[var(--ink-muted)]',
+                    )}
+                  >
                     {formatCents(card.priceCents)}
                   </span>
                 </span>
@@ -1299,6 +1362,23 @@ export function AgendaList({
           <p className="px-4 pb-8 pt-5 text-center text-[0.8125rem] text-[var(--ink-faint)]">
             Nada mais para hoje.
           </p>
+        </li>
+      ) : null}
+
+      {soma.feitas > 0 || soma.faltas > 0 ? (
+        <li className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--ok)_5%,transparent)] px-4 py-3">
+          <span className="metric text-[1.125rem] text-[var(--ok)]">
+            {formatCents(soma.cents)}
+          </span>
+          <span className="text-[0.8125rem] text-[var(--ink-muted)]">
+            {momento === 'hoje' ? 'o dia, até agora' : 'o dia'} ·{' '}
+            {soma.feitas} feita{soma.feitas === 1 ? '' : 's'}
+          </span>
+          {soma.faltas > 0 ? (
+            <span className="ml-auto text-[0.8125rem] font-semibold text-[var(--bad)]">
+              {soma.faltas} não veio · {formatCents(soma.perdido)} por cobrar
+            </span>
+          ) : null}
         </li>
       ) : null}
       </ol>

@@ -13,7 +13,13 @@ import { Ornament } from '@/components/brand'
 // Botões
 // ---------------------------------------------------------------------
 
-type Variant = 'primary' | 'outline' | 'quiet' | 'danger' | 'ok'
+export type Variant =
+  | 'primary'
+  | 'outline'
+  | 'quiet'
+  | 'danger'
+  | 'bad'
+  | 'ok'
 type Size = 'sm' | 'md' | 'lg'
 
 /*
@@ -65,6 +71,16 @@ const VARIANTS: Record<Variant, string> = {
     'hover:bg-[color-mix(in_srgb,var(--ink)_9%,transparent)] hover:text-[var(--ink)]',
   danger:
     'border border-[color-mix(in_srgb,var(--bad)_40%,transparent)] text-[var(--bad)] hover:bg-[color-mix(in_srgb,var(--bad)_10%,transparent)]',
+  /*
+    O IRMÃO CHEIO DO `danger`, pela mesma razão que o `ok` é cheio.
+    Um contorno lê-se como «o outro botão» — e há sítios onde a acção
+    má É a acção provável: numa marcação que já passou, dizer que a
+    cliente não veio é a única coisa que alguém vai lá fazer. A cor
+    passa a dizer qual dos dois é o esperado, e não só que ali há dois.
+  */
+  bad:
+    'sheen bg-[var(--bad)] text-white hover:bg-[color-mix(in_srgb,var(--bad)_84%,black)] ' +
+    'hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]',
   // O irmão do azul, na cor do que corre bem. Nasceu para o botão que
   // avisa a cliente: ao lado de um «Cancelar» vermelho, um contorno
   // neutro não dizia de que lado estava.

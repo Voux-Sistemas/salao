@@ -1,7 +1,7 @@
 import 'server-only'
 import { sql } from '@/lib/db'
 import type { Cents } from '@/lib/money'
-import type { Source } from '@/lib/booking'
+import { marcacaoFeita, type Source } from '@/lib/booking'
 import type { Janela } from '@/lib/periodo'
 import {
   addDays,
@@ -31,10 +31,12 @@ import {
  * painel que depende de um passo que ninguém dá não é um painel, é uma
  * pergunta sem resposta.
  *
- * Passa a somar-se pelo que a marcação VALE, e só quando ela foi dada
- * por CONCLUÍDA. Concluir é o botão que elas já carregam, porque serve
- * para outra coisa de que precisam — saber o que já passou. O dinheiro
- * vem de boleia num gesto que já existe, em vez de pedir um segundo.
+ * Passa a somar-se pelo que a marcação VALE, e conta assim que a HORA
+ * DELA PASSA. Chegou a depender de um botão «Concluir» — que era o
+ * gesto mais barato dos três que esta casa já tirou, e continuava a ser
+ * um gesto: trinta toques por semana, e enquanto ninguém os desse o
+ * dinheiro não existia. Agora marca-se a excepção — quem não veio — e o
+ * resto conta-se sozinho. A regra vive no `marcacaoFeita`.
  *
  * O preço é o congelado de cada item, que é o da altura da marcação e
  * não o da tabela de hoje. O desconto abate-se por marcação (e nunca
@@ -103,7 +105,7 @@ export async function revenueByDay(
         from appointment a
         join unit u on u.id = a.unit_id
        where u.org_id = ${orgId}
-         and a.status = 'completed'
+         and ${marcacaoFeita()}
          and a.starts_at >= ${from} and a.starts_at < ${to}
        group by a.unit_id, day
     `,
@@ -173,9 +175,9 @@ export async function kpiTrends(
   >`
     select to_char(a.starts_at at time zone ${timezone}, 'YYYY-MM-DD') as day,
            coalesce(sum(${receitaDaMarcacao()}) filter (
-             where a.status = 'completed'
+             where ${marcacaoFeita()}
            ), 0)::int as total_cents,
-           count(*) filter (where a.status = 'completed')::int as completed,
+           count(*) filter (where ${marcacaoFeita()})::int as completed,
            count(*) filter (where a.status = 'no_show')::int as no_shows
       from appointment a
      where a.org_id = ${orgId}
@@ -284,13 +286,13 @@ export async function kpisDoPeriodo(
   >`
     select
       coalesce(sum(${receitaDaMarcacao()}) filter (
-        where a.status = 'completed' and a.starts_at >= ${curFrom}
+        where ${marcacaoFeita()} and a.starts_at >= ${curFrom}
       ), 0)::int as cur_revenue,
       coalesce(sum(${receitaDaMarcacao()}) filter (
-        where a.status = 'completed' and a.starts_at < ${prevTo}
+        where ${marcacaoFeita()} and a.starts_at < ${prevTo}
       ), 0)::int as prev_revenue,
-      count(*) filter (where a.status = 'completed' and a.starts_at >= ${curFrom})::int as cur_completed,
-      count(*) filter (where a.status = 'completed' and a.starts_at < ${prevTo})::int as prev_completed,
+      count(*) filter (where ${marcacaoFeita()} and a.starts_at >= ${curFrom})::int as cur_completed,
+      count(*) filter (where ${marcacaoFeita()} and a.starts_at < ${prevTo})::int as prev_completed,
       count(*) filter (where a.status = 'no_show' and a.starts_at >= ${curFrom})::int as cur_no_show,
       count(*) filter (where a.status = 'no_show' and a.starts_at < ${prevTo})::int as prev_no_show,
       coalesce(sum(${receitaDaMarcacao()}) filter (
@@ -368,7 +370,7 @@ export async function topServices(
       from appointment_item i
       join appointment a on a.id = i.appointment_id
      where a.org_id = ${orgId}
-       and a.status = 'completed'
+       and ${marcacaoFeita()}
        and a.starts_at >= ${from} and a.starts_at < ${to}
      group by i.service_name
      order by revenue_cents desc, times desc
@@ -413,7 +415,7 @@ export async function staffProduction(
       join appointment a on a.id = i.appointment_id
       join staff s on s.id = i.staff_id
      where a.org_id = ${orgId}
-       and a.status = 'completed'
+       and ${marcacaoFeita()}
        and a.starts_at >= ${from} and a.starts_at < ${to}
      group by i.staff_id, s.name
      order by revenue_cents desc, s.name
@@ -572,7 +574,7 @@ export async function clientela(
                where a.starts_at >= ${from} and a.starts_at < ${to}
              ) as no_periodo
         from appointment a
-       where a.org_id = ${orgId} and a.status = 'completed'
+       where a.org_id = ${orgId} and ${marcacaoFeita()}
        group by a.client_id
     )
     select
@@ -623,7 +625,7 @@ export async function todayByUnit(
   return sql<UnitToday[]>`
     select u.id as unit_id, u.name, u.slug,
            count(a.id)::int as total,
-           count(a.id) filter (where a.status = 'completed')::int as completed,
+           count(a.id) filter (where ${marcacaoFeita()})::int as completed,
            count(a.id) filter (where a.status in ('booked','confirmed'))::int as upcoming,
            count(a.id) filter (where a.status in ('checked_in','in_service'))::int as active,
            count(a.id) filter (where a.status = 'no_show')::int as no_shows,
@@ -631,7 +633,7 @@ export async function todayByUnit(
              where a.status in ('booked','confirmed') and a.starts_at >= ${now}
            ) as next_at,
            coalesce(sum(${receitaDaMarcacao()}) filter (
-             where a.status = 'completed'
+             where ${marcacaoFeita()}
            ), 0)::int as revenue_cents
       from unit u
       left join appointment a

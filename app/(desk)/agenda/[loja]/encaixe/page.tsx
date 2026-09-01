@@ -24,6 +24,7 @@ import {
   MAX_CART_LINES,
 } from '@/lib/cart'
 import { sql } from '@/lib/db'
+import { marcacaoFeita } from '@/lib/booking'
 import { formatCents } from '@/lib/money'
 import {
   addDays,
@@ -1246,7 +1247,7 @@ async function getClient(
   const rows = await sql<ClientRow[]>`
     select c.id, c.name, c.phone,
            (select count(*) from appointment a
-             where a.client_id = c.id and a.status = 'completed')::int as visits
+             where a.client_id = c.id and ${marcacaoFeita()})::int as visits
       from client c
      where c.id = ${id} and c.org_id = ${orgId}
        and (${ownStaff}::uuid is null or exists (
@@ -1279,7 +1280,7 @@ async function loadClients(
   return sql<ClientRow[]>`
     select c.id, c.name, c.phone,
            (select count(*) from appointment a
-             where a.client_id = c.id and a.status = 'completed')::int as visits
+             where a.client_id = c.id and ${marcacaoFeita()})::int as visits
       from client c
      where c.org_id = ${orgId} and c.is_active
        and (${ownStaff}::uuid is null or exists (

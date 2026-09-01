@@ -5,6 +5,7 @@ import { Search } from 'lucide-react'
 import { requireManagement } from '@/lib/auth/actor'
 import { listTags, searchClients, type ClientRow } from '@/lib/clients'
 import { sql } from '@/lib/db'
+import { marcacaoFeita } from '@/lib/booking'
 import {
   daysBetween,
   formatDayShort,
@@ -136,7 +137,7 @@ export default async function ClientesPage({
           select a.client_id, max(a.starts_at) as last_at
             from appointment a
            where a.client_id = any(${missing}::uuid[])
-             and a.status = 'completed'
+             and ${marcacaoFeita()}
            group by a.client_id
         `
       : []

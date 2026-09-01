@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
+import { foiFeita } from '@/lib/booking'
 import {
   ownStaffId,
   requireActor,
@@ -173,13 +174,13 @@ export async function passarAction(
   }
 
   /*
-    UMA MARCAÇÃO JÁ FEITA NÃO SE PASSA. Travava no fecho da comanda;
-    passa a travar na conclusão, que é o que agora diz que aquilo
-    aconteceu. Quem a fez, fez — mudar a mão depois era reescrever a
+    UMA MARCAÇÃO JÁ FEITA NÃO SE PASSA. Travou no fecho da comanda,
+    depois na conclusão, e agora na hora — que é o que diz que aquilo
+    aconteceu. Quem a fez, fez: mudar a mão depois era reescrever a
     produção de quem esteve lá. Passar é para o que ainda está por vir.
   */
-  if (appointment.status === 'completed') {
-    return { error: 'Esta já foi dada por concluída. Não se passa depois disso.' }
+  if (foiFeita(appointment.status, appointment.ends_at)) {
+    return { error: 'Esta já aconteceu. Não se passa depois disso.' }
   }
 
   /* Quem recebe tem de ser da casa, da loja, e saber fazer tudo o que

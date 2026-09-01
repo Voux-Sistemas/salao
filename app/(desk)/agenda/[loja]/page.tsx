@@ -22,6 +22,7 @@ import {
   AgendaGrid,
   AgendaList,
   larguraMinimaDaGrelha,
+  type Momento,
 } from '@/components/agenda-grid'
 import { AgendaFocus } from '@/components/agenda-focus'
 import { AppointmentPanel } from '@/components/appointment-panel'
@@ -190,6 +191,9 @@ export default async function AgendaDayPage({
   // Relógio de parede, como a régua da grelha — a diferença em
   // milissegundos anda 60 min ao lado nos domingos de mudança de hora.
   const nowMin = isToday ? minutesOfDay(now, unit.timezone) : null
+  // Um dia de agosto e um de outubro têm os dois `nowMin` nulo, e são
+  // coisas opostas: a agenda precisa de saber qual dos dois é.
+  const momento: Momento = isToday ? 'hoje' : day < todayDay ? 'passado' : 'futuro'
 
   /*
     QUEM TRABALHA CONTA-SE À PARTE DE QUEM ESTÁ DE FOLGA.
@@ -825,6 +829,7 @@ export default async function AgendaDayPage({
                   hrefFor={hrefFor}
                   encaixeHref={encaixeHref}
                   nowMin={nowMin}
+                  momento={momento}
                 />
               </div>
             </div>
@@ -836,6 +841,7 @@ export default async function AgendaDayPage({
               hrefFor={hrefFor}
               encaixeHref={encaixeHref}
               nowMin={nowMin}
+              momento={momento}
             />
           )}
         </div>

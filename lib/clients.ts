@@ -1,5 +1,6 @@
 import 'server-only'
 import { sql } from '@/lib/db'
+import { marcacaoFeita } from '@/lib/booking'
 import type { Status } from '@/lib/booking'
 import { isLanguage, type Language } from '@/lib/i18n/config'
 import { normalisePhone } from '@/lib/env'
@@ -72,6 +73,8 @@ export type ClientVisit = {
   unit_name: string
   timezone: string
   starts_at: Date
+  /** A hora de fim decide se ja aconteceu — ver o `foiFeita`. */
+  ends_at: Date
   status: Status
   services: string | null
   staff_names: string | null
@@ -123,7 +126,7 @@ export async function searchClients(
              u.name as preferred_unit_name,
              coalesce(c.name, '') !~ ${SEM_LETRAS} as no_name,
              (select count(*)::int from appointment a
-               where a.client_id = c.id and a.status = 'completed') as visits,
+               where a.client_id = c.id and ${marcacaoFeita()}) as visits,
              (select min(a.starts_at) from appointment a
                where a.client_id = c.id
                  and a.starts_at > now()
@@ -174,7 +177,7 @@ export async function getClient(
            s.name as preferred_staff_name,
            coalesce(c.name, '') !~ ${SEM_LETRAS} as no_name,
            (select count(*)::int from appointment a
-             where a.client_id = c.id and a.status = 'completed') as visits,
+             where a.client_id = c.id and ${marcacaoFeita()}) as visits,
            (select min(a.starts_at) from appointment a
              where a.client_id = c.id
                and a.starts_at > now()
@@ -208,7 +211,7 @@ export async function clientVisits(
 ): Promise<ClientVisit[]> {
   return sql<ClientVisit[]>`
     select a.id as appointment_id, u.slug as unit_slug, u.name as unit_name,
-           u.timezone, a.starts_at, a.status, a.discount_cents,
+           u.timezone, a.starts_at, a.ends_at, a.status, a.discount_cents,
            coalesce((select sum(i.price_cents)::int from appointment_item i
                       where i.appointment_id = a.id), 0) as gross_cents,
            (select string_agg(i.service_name, ' + ' order by i.sort_order)

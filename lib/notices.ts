@@ -1,6 +1,6 @@
 import 'server-only'
 import { sql } from '@/lib/db'
-import type { Status } from '@/lib/booking'
+import { marcacaoFeita, type Status } from '@/lib/booking'
 import type { Language } from '@/lib/i18n/config'
 import type { Unit } from '@/lib/org'
 import { addDays, today } from '@/lib/time'
@@ -70,7 +70,7 @@ export async function countNotices(input: {
 
   const rows = await sql<{ total: number }[]>`
     with vista as (
-      select a.id, a.client_id, a.status, a.starts_at,
+      select a.id, a.client_id, a.status, a.starts_at, a.ends_at,
              (a.starts_at at time zone u.timezone)::date as dia,
              (now() at time zone u.timezone)::date as hoje
         from appointment a
@@ -112,7 +112,12 @@ export async function countNotices(input: {
                              where n.appointment_id = v.id
                                and n.routine = 'reminder_today'))
       + (select count(*) from vista v
-          where v.status = 'completed'
+          where (
+                  v.status = 'completed'
+                  or (v.ends_at <= now()
+                      and v.status not in
+                          ('cancelled_by_client', 'cancelled_by_salon', 'no_show'))
+                )
             and v.dia = v.hoje - 1
             and not exists (select 1 from notification_log n
                              where n.appointment_id = v.id
@@ -213,7 +218,7 @@ export async function loadQueue(
     case 'review':
       return sql<NoticeRow[]>`
         ${base(unit, routine, staffId)}
-          and a.status = 'completed'
+          and ${marcacaoFeita()}
           and (a.starts_at at time zone ${tz})::date = ${yesterday}::date
         order by a.starts_at
         limit ${LIMIT}

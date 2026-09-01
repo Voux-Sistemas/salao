@@ -9,14 +9,13 @@ import {
   transitionAction,
   type DeskState,
 } from '@/app/(desk)/agenda/actions'
-import { Button, Notice } from '@/components/ui'
+import { Button, Notice, type Variant } from '@/components/ui'
 import { IconWhatsApp } from '@/components/desk-icons'
 import type { Status } from '@/lib/booking'
 import type { Routine } from '@/lib/whatsapp'
 
 const EMPTY: DeskState = { error: null, done: null }
 
-type Variant = 'primary' | 'outline' | 'quiet' | 'danger' | 'ok'
 
 /**
  * UMA LINHA DENTRO DE UMA CAIXA.
@@ -131,8 +130,22 @@ export function CancelAction({
   itens,
   podeApagar = false,
   avisoConcluida = false,
+  variant = 'danger',
+  className,
 }: {
   appointmentId: string
+  /**
+   * A cor do botão fechado. Ao lado de um «Não veio» vermelho cheio, um
+   * segundo vermelho pesava o mesmo que o primeiro e desfazia a escada:
+   * o painel de uma marcação passada pede o `quiet`.
+   */
+  variant?: Variant
+  /**
+   * A largura, quando fechado. Aberto ele toma a linha toda — a pergunta
+   * do cancelamento não cabe em meia coluna, e um `basis-full` numa fila
+   * que dobra tira-o de lá sem ninguém ter de saber que ele lá estava.
+   */
+  className?: string
   /**
    * O estado para onde uma desmarcação leva — ou nulo quando já não há
    * nenhum, que é o caso de uma marcação concluída.
@@ -209,7 +222,7 @@ export function CancelAction({
 
   if (!aberto) {
     return (
-      <div className="space-y-2">
+      <div className={clsx('space-y-2', className)}>
         {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
         {/*
           O vermelho vem da variante, não de classes soltas por cima do
@@ -220,7 +233,7 @@ export function CancelAction({
         */}
         <Button
           type="button"
-          variant="danger"
+          variant={variant}
           size="md"
           onClick={() => setPasso(soApagar ? 'apagar' : 'pergunta')}
           className="w-full"

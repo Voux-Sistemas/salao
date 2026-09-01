@@ -11,6 +11,7 @@ import {
   preferenceOptions,
   type ClientVisit,
 } from '@/lib/clients'
+import { foiFeita } from '@/lib/booking'
 import { formatCents } from '@/lib/money'
 import { requireOrg } from '@/lib/org'
 import { STATUS_LABEL, STATUS_TONE } from '@/lib/status'
@@ -84,7 +85,9 @@ export default async function ClientePage({
 
   /* A ficha pode ainda não ter as datas gravadas — o histórico sabe.
      As visitas vêm por ordem descendente; conta só o que foi concluído. */
-  const completed = visits.filter((visit) => visit.status === 'completed')
+  const completed = visits.filter((visit) =>
+    foiFeita(visit.status, visit.ends_at),
+  )
   const lastVisitAt = client.last_visit_at ?? completed[0]?.starts_at ?? null
   const firstVisitAt =
     client.first_visit_at ?? completed[completed.length - 1]?.starts_at ?? null
@@ -437,7 +440,7 @@ function VisitLine({ visit }: { visit: ClientVisit }) {
       <span
         className={clsx(
           'tabular shrink-0 text-sm',
-          visit.status === 'completed'
+          foiFeita(visit.status, visit.ends_at)
             ? 'text-[var(--ink)]'
             : 'text-[var(--ink-faint)]',
         )}

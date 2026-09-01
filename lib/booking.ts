@@ -467,6 +467,70 @@ export function canTransition(from: Status, to: Status): boolean {
   return NEXT[from].includes(to)
 }
 
+// ---------------------------------------------------------------------
+// O que conta como FEITA
+// ---------------------------------------------------------------------
+
+/**
+ * A HORA MANDA — E PORQUE DEIXOU DE HAVER UM BOTÃO.
+ *
+ * Isto contava-se pelo estado `completed`, que alguém tinha de pôr lá
+ * carregando em «Concluir» no fim de cada marcação. Era o terceiro
+ * botão da mesma família: a caixa pedia um gesto que ninguém dava, a
+ * comanda pedia um gesto que ninguém dava, e o «Concluir» sobreviveu
+ * só por ser o mais barato dos três. Continuava a ser trabalho — trinta
+ * toques por semana — e enquanto ninguém o dava, o dinheiro não existia
+ * em lado nenhum: onze marcações e vinte euros no painel de agosto.
+ *
+ * PASSA A MARCAR-SE A EXCEPÇÃO, E NÃO A REGRA. Uma marcação conta como
+ * feita quando a hora dela passou, a não ser que tenha sido cancelada
+ * ou dada como falta. O que a casa tem de fazer à mão passa a ser duas
+ * ou três coisas por mês, em vez de trinta por semana — e são coisas
+ * que já hoje se fazem.
+ *
+ * CONTA NO FIM, E NÃO NO PRINCÍPIO. Uma marcação a decorrer ainda não é
+ * dinheiro: a cliente pode levantar-se e ir embora. Às 10:29 a Susana
+ * não conta; às 10:30 conta.
+ *
+ * O `completed` FICA. Não se apaga nada do que lá está, e uma marcação
+ * dada por concluída antes da hora — ou concluída no tempo em que o
+ * botão existia — continua a contar. O estado deixou de ser a ÚNICA
+ * maneira de uma marcação valer dinheiro; não deixou de ser uma.
+ *
+ * O QUE ISTO CUSTA, dito à séria: o erro passa a ser para cima. Uma
+ * falta que ninguém marque vira dinheiro que o salão não recebeu, e
+ * dizer a uma dona que o mês foi melhor do que foi é pior do que o
+ * contrário. Mas o erro de hoje é de quase cem por cento, e este é da
+ * ordem dos cinco.
+ *
+ * Quem usar isto tem de ter a marcação com o alias `a`.
+ */
+export function marcacaoFeita() {
+  return sql`(
+    a.status = 'completed'
+    or (
+      a.ends_at <= now()
+      and a.status not in ('cancelled_by_client', 'cancelled_by_salon', 'no_show')
+    )
+  )`
+}
+
+/**
+ * O mesmo em JavaScript, para o ecrã — o gémeo do `marcacaoFeita`.
+ *
+ * Duas leituras da mesma regra acabam sempre por divergir, por isso
+ * vivem coladas uma à outra: quem mudar uma vê a outra por baixo.
+ */
+export function foiFeita(
+  status: Status,
+  endsAt: Date,
+  agora: Date = new Date(),
+): boolean {
+  if (status === 'completed') return true
+  if (isCancelled(status) || status === 'no_show') return false
+  return endsAt.getTime() <= agora.getTime()
+}
+
 export function nextStatuses(from: Status): Status[] {
   return NEXT[from]
 }
@@ -507,15 +571,20 @@ export async function deleteAppointment(input: {
   orgId: string
 }): Promise<DeleteResult> {
   return sql.begin(async (tx) => {
-    const rows = await tx<{ status: Status }[]>`
-      select a.status
+    const rows = await tx<{ status: Status; ends_at: Date }[]>`
+      select a.status, a.ends_at
         from appointment a
        where a.id = ${input.appointmentId} and a.org_id = ${input.orgId}
          for update
     `
     const found = rows[0]
     if (!found) return { ok: false, reason: 'not_found' } as const
-    if (found.status === 'completed') {
+    /*
+      O QUE JÁ ACONTECEU NÃO SE APAGA — e a razão é a mesma de sempre,
+      só que a palavra mudou. O que o painel fatura passou a ser a
+      marcação que já passou; apagá-la é apagar a receita do dia.
+    */
+    if (foiFeita(found.status, found.ends_at)) {
       return { ok: false, reason: 'has_money' } as const
     }
 

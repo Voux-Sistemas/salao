@@ -18,6 +18,7 @@ import { AGENDA_TONE } from '@/components/agenda-grid'
 import { IconClose } from '@/components/desk-icons'
 import type { Actor } from '@/lib/auth/actor'
 import { can } from '@/lib/auth/actor'
+import { foiFeita } from '@/lib/booking'
 import { formatPhone } from '@/lib/text'
 
 /**
@@ -37,10 +38,16 @@ import { formatPhone } from '@/lib/text'
  * é por isso que ninguém o faz. Saem os dois botões; o selo lá em cima
  * passa a dizer «Em curso» por conta do relógio.
  *
- * Fica o que precisa mesmo de um dedo, porque o relógio não sabe:
- * concluída, faltou, cancelada. Concluir é o botão grande — e é agora o
- * único toque que há: é ele que dá a marcação por feita E é dele que o
- * painel tira a faturação do dia.
+ * E O «CONCLUIR» SEGUIU O MESMO CAMINHO. Era o último que restava da
+ * família dos gestos que ninguém dá — a caixa, a comanda, e ele — e
+ * sobreviveu por ser o mais barato dos três. Continuava a ser trinta
+ * toques por semana, e enquanto ninguém os desse o dinheiro do painel
+ * não existia. Agora a hora manda: passada a hora, a marcação conta.
+ *
+ * O QUE FICA É A EXCEPÇÃO. Numa marcação que já passou há uma coisa só
+ * que alguém pode precisar de vir dizer, porque o relógio não a sabe: a
+ * cliente não veio. Essa leva a cor cheia; o cancelar fica ao lado, em
+ * papel, porque cancelar o que já aconteceu é raro.
  *
  * «Enviar confirmação» abre o WhatsApp e NÃO muda o estado — mandar a
  * mensagem e a cliente confirmar são dois factos distintos.
@@ -83,7 +90,14 @@ export async function AppointmentPanel({
     (to) => to !== 'checked_in' && to !== 'in_service',
   )
 
-  const podeConcluir = options.includes('completed')
+  /*
+    JÁ ACONTECEU? É a mesma pergunta que as contas fazem, feita com o
+    mesmo gémeo — `foiFeita` é a versão em JavaScript do `marcacaoFeita`
+    que soma o dinheiro. Duas leituras da mesma regra divergem sempre;
+    estas vivem coladas uma à outra.
+  */
+  const feita = foiFeita(appointment.status, appointment.ends_at)
+  const podeFaltar = options.includes('no_show')
   /*
     UMA DESMARCAÇÃO SÓ, EM NOME DO SALÃO.
 
@@ -116,15 +130,16 @@ export async function AppointmentPanel({
     A trava era o dinheiro: uma marcação com pagamento lançado não se
     apagava, porque os pagamentos iam atrás por cascata da base. Sem
     comanda não há pagamentos a lançar — mas a trava faz mais falta
-    agora, não menos: o que o painel fatura passou a SER a marcação
-    concluída. Apagá-la é apagar a receita do dia, e é por isso que
-    passa a ser CONCLUÍDA a palavra que tranca.
+    agora, não menos: o que o painel fatura passou a SER a marcação que
+    já aconteceu. Apagá-la é apagar a receita do dia, e é por isso que
+    a palavra que tranca deixou de ser «concluída» e passou a ser «já
+    passou» — que é a mesma coisa em português mais honesto.
 
     Isto decide o que se DESENHA. Quem manda a sério é a acção do
     servidor, que volta a verificar tudo com a linha travada.
   */
   const dono = actor.role === 'master'
-  const podeApagar = dono && appointment.status !== 'completed'
+  const podeApagar = dono && !feita
 
   /*
     EM CURSO — QUEM O DIZ É O RELÓGIO.
@@ -199,6 +214,16 @@ export async function AppointmentPanel({
             <Badge tone="warn">
               Em curso ·{' '}
               {faltam > 0 ? `faltam ${formatDuration(faltam)}` : 'a terminar'}
+            </Badge>
+          ) : feita && agora >= appointment.ends_at ? (
+            /*
+              O SELO É O ÚNICO SÍTIO QUE EXPLICA A MUDANÇA. Sem a hora
+              lá, quem abre o painel fica sem saber se alguém carregou em
+              alguma coisa — e a resposta é que ninguém carregou, foi o
+              relógio.
+            */
+            <Badge tone="ok">
+              Feita às {formatTime(appointment.ends_at, tz)}
             </Badge>
           ) : (
             <Badge tone={AGENDA_TONE[appointment.status]}>
@@ -295,59 +320,66 @@ export async function AppointmentPanel({
       */}
       <footer className="space-y-2.5 border-t border-[var(--line-soft)] px-5 py-4">
         {/*
-          O RECIBO DE QUE FICOU FEITO.
+          O «ENVIAR CONFIRMAÇÃO» SAI DAS QUE JÁ PASSARAM.
 
-          Ao concluir, o botão azul desaparece e um selo lá em cima muda
-          de palavra — é pouco para quem carregou e está à espera de
-          saber se pegou. Esta linha fica no sítio onde o botão estava, e
-          não é uma mensagem que passa: vem do estado da marcação, e por
-          isso continua lá amanhã.
+          Estava a ocupar o sítio mais visível do painel — um botão verde
+          da altura de um dedo — para avisar de uma hora que já foi. O
+          tamanho do botão passa a dizer se há trabalho ou não: nas que
+          ainda vêm há, e ele fica; nas que passaram não há, e sai.
         */}
-        {appointment.status === 'completed' ? (
-          <Notice tone="ok">Marcação concluída.</Notice>
-        ) : null}
-
-        {podeConcluir ? (
-          <StatusAction
+        {feita ? null : (
+          <SendWhatsApp
             appointmentId={appointment.id}
-            to="completed"
-            label="Concluir"
-            variant="primary"
+            routine="confirm"
+            href={message.href}
+            message={message.text}
+            label="Enviar confirmação"
+            variant="ok"
             size="md"
-            full
+            done={confirmSent}
+            className="w-full"
           />
-        ) : null}
+        )}
 
-        <SendWhatsApp
-          appointmentId={appointment.id}
-          routine="confirm"
-          href={message.href}
-          message={message.text}
-          label="Enviar confirmação"
-          variant="ok"
-          size="md"
-          done={confirmSent}
-          className="w-full"
-        />
+        {/*
+          OS DOIS PEQUENOS, LADO A LADO.
 
-        {/* Há alguma coisa para desmarcar, ou alguma coisa para apagar:
-            numa marcação concluída só a segunda é verdade. */}
-        {cancelTo !== null || podeApagar ? (
-          <CancelAction
-            appointmentId={appointment.id}
-            cancelTo={cancelTo}
-            itens={appointment.items.length}
-            podeApagar={podeApagar}
-            avisoConcluida={dono && appointment.status === 'completed'}
-          />
-        ) : null}
+          `flex-1` divide a fila em duas metades iguais. O cancelar,
+          quando alguém lhe toca, abre uma pergunta que não cabe em meia
+          coluna — e por isso põe `basis-full` em si próprio e a fila,
+          que dobra, manda-o para uma linha só dele.
+        */}
+        {podeFaltar || cancelTo !== null || podeApagar ? (
+          <div className="flex flex-wrap items-start gap-2">
+            {podeFaltar ? (
+              <StatusAction
+                appointmentId={appointment.id}
+                to="no_show"
+                label="Não veio"
+                variant="bad"
+                size="md"
+                full
+                className="min-w-0 flex-1"
+              />
+            ) : null}
 
-        {!podeConcluir && cancelTo === null && !podeApagar ? (
+            {cancelTo !== null || podeApagar ? (
+              <CancelAction
+                appointmentId={appointment.id}
+                cancelTo={cancelTo}
+                itens={appointment.items.length}
+                podeApagar={podeApagar}
+                avisoConcluida={dono && feita}
+                variant={feita ? 'quiet' : 'danger'}
+                className="min-w-0 flex-1"
+              />
+            ) : null}
+          </div>
+        ) : (
           <p className="text-[0.75rem] text-[var(--ink-faint)]">
             Esta marcação já não muda de estado.
           </p>
-        ) : null}
-
+        )}
       </footer>
     </div>
   )

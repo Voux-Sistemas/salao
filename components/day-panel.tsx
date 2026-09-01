@@ -6,6 +6,7 @@ import type { Org, Unit } from '@/lib/org'
 import type { Actor } from '@/lib/auth/actor'
 import { formatCents } from '@/lib/money'
 import { receitaDaMarcacao } from '@/lib/dashboard'
+import { foiFeita, marcacaoFeita } from '@/lib/booking'
 import { ocupacaoDaSemana } from '@/lib/ocupacao'
 import { PainelNumeros } from '@/components/painel-numeros'
 import {
@@ -175,11 +176,12 @@ export async function DayPanel({
       `,
 
       /*
-       * O dinheiro do dia é o que as marcações CONCLUÍDAS valem. Contava-
-       * se pelos pagamentos lançados na comanda, e ninguém tinha tempo
-       * para os lançar: o painel dizia vinte euros num mês de onze
-       * marcações. Agora vem do gesto que elas já fazem — dar a marcação
-       * por concluída.
+       * O dinheiro do dia é o que valem as marcações que JÁ PASSARAM.
+       * Contava-se pelos pagamentos lançados na comanda, e ninguém tinha
+       * tempo para os lançar; depois pelo botão «Concluir», e ninguém
+       * tinha tempo para ele. Agora não depende de gesto nenhum — a
+       * regra vive no `marcacaoFeita`, e o que se marca à mão é quem
+       * não veio.
        */
       sql<MoneyRow[]>`
         select
@@ -188,7 +190,7 @@ export async function DayPanel({
             select sum(${receitaDaMarcacao()})::int
               from appointment a
              where a.unit_id = u.id
-               and a.status = 'completed'
+               and ${marcacaoFeita()}
                and a.starts_at >= ${dayFrom} and a.starts_at < ${dayTo}
           ), 0) as revenue_cents
         from unit u
@@ -227,7 +229,7 @@ export async function DayPanel({
 
   const totals = {
     marcadas: appts.length,
-    feitas: appts.filter((a) => a.status === 'completed').length,
+    feitas: appts.filter((a) => foiFeita(a.status, a.ends_at, now)).length,
     faltas: appts.filter((a) => a.status === 'no_show').length,
     porConfirmar: appts.filter((a) => a.status === 'booked').length,
     entrou: money.reduce((sum, r) => sum + r.revenue_cents, 0),
@@ -840,7 +842,7 @@ function Marcacao({
   now: Date
   currency: string
 }) {
-  const feita = row.status === 'completed'
+  const feita = foiFeita(row.status, row.ends_at, now)
   const passada = feita || row.status === 'no_show'
 
   /* A que está a decorrer é a única que ainda se assinala, e com um fio
