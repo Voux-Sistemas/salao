@@ -52,23 +52,211 @@ export async function createSession(
   })
 }
 
-/** Devolve o id do sujeito, ou null. Renova o last_seen_at. */
-export async function readSession(
+/**
+ * O ESTADO DE UMA SESSÃO, tal como o servidor a vê.
+ *
+ * O `balcao` não é um enfeite do ecrã: é a partir daqui que a página
+ * decide o que a pessoa pode fazer, e é por isso que vive na base de
+ * dados e não num cookie que o navegador possa mexer.
+ */
+export type EstadoDaSessao = {
+  subjectId: string
+  /** Está posta no balcão? */
+  balcao: boolean
+  /** Destrancada pela dona, e ainda dentro do tempo? */
+  elevada: boolean
+  /** Até quando, para a fita poder contar os minutos. */
+  elevadaAte: Date | null
+}
+
+/**
+ * A SESSÃO RENOVA-SE COM O USO — e isto não é comodidade, é o que
+ * impede o tablet de se deitar fora sozinho.
+ *
+ * O prazo era fixo desde o login: catorze dias e acabou, mexesse-se
+ * nele todos os dias ou nenhum. Num tablet deixado num salão isso é uma
+ * bomba-relógio de duas semanas — rebenta com a dona noutro salão, uma
+ * funcionária ao balcão e uma cliente à frente a perguntar se dá para
+ * a semana.
+ *
+ * Empurra-se o fim para a frente na mesma ida à base que já lá ia
+ * marcar o `last_seen_at`. Um aparelho mexido todos os dias nunca
+ * expira; um que ninguém toca durante catorze dias fecha-se, que é o
+ * que se quer.
+ *
+ * O COOKIE FICA PARA TRÁS. Só se pode reescrever um cookie a meio de
+ * uma resposta, e isto lê-se em páginas que já começaram a desenhar. O
+ * cookie leva a validade que tinha no login e a base leva a nova — e
+ * quem manda é a base, porque é ela que a consulta verifica. O que se
+ * perde é o caso raro do navegador deitar fora um cookie que o servidor
+ * ainda aceitaria; entrar outra vez resolve-o.
+ */
+export async function readSessionState(
   subjectType: SubjectType,
-): Promise<string | null> {
+): Promise<EstadoDaSessao | null> {
   const jar = await cookies()
   const token = jar.get(COOKIE[subjectType])?.value
   if (!token) return null
 
-  const rows = await sql<{ subject_id: string }[]>`
+  const rows = await sql<
+    { subject_id: string; balcao: boolean; elevado_ate: Date | null }[]
+  >`
     update session
-       set last_seen_at = now()
+       set last_seen_at = now(),
+           expires_at = now() + make_interval(days => ${TTL_DAYS[subjectType]})
      where token_hash = ${hash(token)}
        and subject_type = ${subjectType}
        and expires_at > now()
-    returning subject_id
+    returning subject_id, balcao_at is not null as balcao, elevado_ate
   `
-  return rows[0]?.subject_id ?? null
+
+  const row = rows[0]
+  if (!row) return null
+
+  const elevada = row.elevado_ate !== null && row.elevado_ate > new Date()
+  return {
+    subjectId: row.subject_id,
+    balcao: row.balcao,
+    elevada,
+    elevadaAte: elevada ? row.elevado_ate : null,
+  }
+}
+
+/** Só o id, para quem não precisa de saber do balcão. */
+export async function readSession(
+  subjectType: SubjectType,
+): Promise<string | null> {
+  return (await readSessionState(subjectType))?.subjectId ?? null
+}
+
+// ---------------------------------------------------------------------
+// O balcão
+// ---------------------------------------------------------------------
+
+/**
+ * Põe ESTA sessão no balcão, ou tira-a de lá.
+ *
+ * Tirar de lá limpa também a elevação: uma sessão que deixou de ser de
+ * balcão não tem nada que guardar meia hora de crédito.
+ */
+export async function marcarBalcao(
+  subjectType: SubjectType,
+  ligado: boolean,
+): Promise<void> {
+  const jar = await cookies()
+  const token = jar.get(COOKIE[subjectType])?.value
+  if (!token) return
+
+  await sql`
+    update session
+       set balcao_at = ${ligado ? sql`now()` : sql`null`},
+           elevado_ate = null
+     where token_hash = ${hash(token)}
+       and subject_type = ${subjectType}
+  `
+}
+
+/**
+ * A dona destrancou este tablet. Meia hora, e volta ao balcão sozinho.
+ *
+ * MEIA HORA É UM PALPITE HONESTO: chega para ver as contas do dia e para
+ * mexer num preço, e não chega para se esquecer do tablet aberto em cima
+ * do balcão até ao fim da tarde.
+ */
+const ELEVACAO_MINUTOS = 30
+
+export async function elevarSessao(subjectType: SubjectType): Promise<void> {
+  const jar = await cookies()
+  const token = jar.get(COOKIE[subjectType])?.value
+  if (!token) return
+
+  await sql`
+    update session
+       set elevado_ate = now() + make_interval(mins => ${ELEVACAO_MINUTOS})
+     where token_hash = ${hash(token)}
+       and subject_type = ${subjectType}
+       and balcao_at is not null
+  `
+}
+
+/** «Voltar já» — desiste do resto do tempo. */
+export async function baixarSessao(subjectType: SubjectType): Promise<void> {
+  const jar = await cookies()
+  const token = jar.get(COOKIE[subjectType])?.value
+  if (!token) return
+
+  await sql`
+    update session set elevado_ate = null
+     where token_hash = ${hash(token)} and subject_type = ${subjectType}
+  `
+}
+
+/**
+ * OS APARELHOS ONDE O LOGIN DELA ESTÁ ABERTO.
+ *
+ * É a lista que lhe deixa trancar um tablet à distância. Trancar sim,
+ * destrancar não: destrancar de longe seria abrir um tablet num salão
+ * onde ela não está, e isso não serve a ninguém.
+ *
+ * A sessão de quem está a ver vem assinalada, para ela não se terminar
+ * a si própria por engano.
+ */
+export type Aparelho = {
+  id: string
+  user_agent: string | null
+  last_seen_at: Date
+  created_at: Date
+  balcao: boolean
+  esta: boolean
+}
+
+export async function aparelhosDe(
+  subjectType: SubjectType,
+  subjectId: string,
+): Promise<Aparelho[]> {
+  const jar = await cookies()
+  const token = jar.get(COOKIE[subjectType])?.value
+
+  return sql<Aparelho[]>`
+    select id, user_agent, last_seen_at, created_at,
+           balcao_at is not null as balcao,
+           token_hash = ${token ? hash(token) : ''} as esta
+      from session
+     where subject_type = ${subjectType}
+       and subject_id = ${subjectId}
+       and expires_at > now()
+     order by last_seen_at desc
+  `
+}
+
+/** Tranca um aparelho à distância, pelo id. Nunca destranca. */
+export async function trancarAparelho(
+  subjectType: SubjectType,
+  subjectId: string,
+  sessionId: string,
+): Promise<void> {
+  await sql`
+    update session
+       set balcao_at = coalesce(balcao_at, now()),
+           elevado_ate = null
+     where id = ${sessionId}
+       and subject_type = ${subjectType}
+       and subject_id = ${subjectId}
+  `
+}
+
+/** Termina um aparelho à distância. */
+export async function terminarAparelho(
+  subjectType: SubjectType,
+  subjectId: string,
+  sessionId: string,
+): Promise<void> {
+  await sql`
+    delete from session
+     where id = ${sessionId}
+       and subject_type = ${subjectType}
+       and subject_id = ${subjectId}
+  `
 }
 
 export async function destroySession(subjectType: SubjectType): Promise<void> {

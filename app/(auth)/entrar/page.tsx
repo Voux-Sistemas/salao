@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { getActor, homeFor } from '@/lib/auth/actor'
 import { ownerExists } from '@/lib/auth/setup'
 import { SignInForm } from '@/components/auth-forms'
+import { BalcaoCodeForm } from '@/components/balcao-entrar'
 
 export const metadata: Metadata = {
   title: 'Entrar',
@@ -27,6 +28,21 @@ export default async function SignInPage() {
 
       <div className="mt-9">
         <SignInForm />
+      </div>
+
+      {/*
+        A PORTA DE SERVIÇO.
+
+        Para o dia em que o tablet do salão se desligar com a dona noutro
+        sítio. O código põe o aparelho em modo balcão e MAIS NADA — nunca
+        a Gestão, nunca os números — e é por isso que pode andar escrito
+        num papel ao lado dele.
+
+        Fica debaixo do «Entrar» e não ao lado: quem entra aqui todos os
+        dias é a equipa com a sua palavra-passe, e isto é a excepção.
+      */}
+      <div className="mt-8 border-t border-[var(--line-soft)] pt-6">
+        <BalcaoCodeForm />
       </div>
 
       {/* Um segundo bloco da largura toda debaixo do «Entrar» punha as

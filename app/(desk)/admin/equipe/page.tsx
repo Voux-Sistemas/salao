@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Plus } from 'lucide-react'
-import { requireManagement, unitsFor } from '@/lib/auth/actor'
+import { requireGestao, unitsFor } from '@/lib/auth/actor'
 import { LEVEL_LABEL } from '@/lib/status'
 import { listTeam } from '@/lib/team'
 import { PageIntro, Panel, TableHeader } from '@/components/gestao-panel'
@@ -19,7 +19,7 @@ const COLS = 'sm:grid-cols-[minmax(0,1fr)_7rem_11rem_7.5rem]'
  * que é a mesma resposta que se dá a quem não existe.
  */
 export default async function EquipePage() {
-  const actor = await requireManagement()
+  const actor = await requireGestao()
   const [team, units] = await Promise.all([
     listTeam(actor, true),
     unitsFor(actor),

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import { can, requireManagement, unitsFor } from '@/lib/auth/actor'
+import { can, requireGestao, unitsFor } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { listSkills } from '@/lib/team'
 import { today } from '@/lib/time'
@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: 'Nova pessoa' }
  * lojas, o papel, a escala e as habilidades numa transacção só.
  */
 export default async function NovaPessoaPage() {
-  const actor = await requireManagement()
+  const actor = await requireGestao()
   const units = await unitsFor(actor)
   if (units.length === 0) redirect('/admin/equipe')
 

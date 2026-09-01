@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { can, requireManagement, unitsFor } from '@/lib/auth/actor'
+import { can, requireGestao, unitsFor } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { ABSENCE_LABEL, LEVEL_LABEL } from '@/lib/status'
 import {
@@ -55,7 +55,7 @@ export default async function PessoaPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const actor = await requireManagement()
+  const actor = await requireGestao()
   const { id } = await params
   if (!isUuid(id)) notFound()
 

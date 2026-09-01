@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ArrowUpRight, Scissors, Store, Users } from 'lucide-react'
-import { can, requireManagement, type Actor } from '@/lib/auth/actor'
+import { can, requireGestao, type Actor } from '@/lib/auth/actor'
 import { sql } from '@/lib/db'
 import {
   kpiTrends,
@@ -63,7 +63,7 @@ async function counts(actor: Actor): Promise<Counts> {
 }
 
 export default async function AdminPage() {
-  const actor = await requireManagement()
+  const actor = await requireGestao()
 
   // A gerente não vê as contas da rede — vê as portas por onde pode ir.
   if (!can.seeNetworkNumbers(actor)) {

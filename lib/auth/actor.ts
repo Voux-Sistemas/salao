@@ -2,7 +2,7 @@ import 'server-only'
 import { cache } from 'react'
 import { notFound, redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
-import { readSession } from '@/lib/auth/session'
+import { readSessionState } from '@/lib/auth/session'
 import { getUnitBySlug, type Unit } from '@/lib/org'
 
 /**
@@ -45,6 +45,26 @@ export type Actor = {
   orgScope: boolean
   /** Lojas a que tem acesso quando não é escopo rede. */
   unitIds: string[]
+  /**
+   * ESTE APARELHO ESTÁ NO BALCÃO.
+   *
+   * A dona deixa o login dela aberto num tablet em cada salão, para as
+   * funcionárias marcarem, e quase nunca lá está. A marca vive na linha
+   * da SESSÃO — por aparelho, não por conta — e é lida aqui, à entrada
+   * de tudo.
+   *
+   * O QUE ISTO FECHA ESTÁ NO `can`, E EM MAIS LADO NENHUM. Foi de
+   * propósito: os portões já existiam todos para separar a profissional
+   * da dona, e bastou ensiná-los a olhar também para aqui. Um cadeado
+   * espalhado por trinta páginas esquece-se numa; um portão só, não.
+   *
+   * Enquanto ela estiver com a sessão ELEVADA — escreveu a palavra-passe
+   * ali no tablet — isto é falso, e ela é ela outra vez. Meia hora
+   * depois volta a ser verdade sozinho.
+   */
+  balcao: boolean
+  /** Até quando dura a elevação, para a fita poder contar. */
+  elevadaAte: Date | null
 }
 
 type ActorRow = {
@@ -60,8 +80,9 @@ type ActorRow = {
 }
 
 export const getActor = cache(async (): Promise<Actor | null> => {
-  const staffId = await readSession('staff')
-  if (!staffId) return null
+  const sessao = await readSessionState('staff')
+  if (!sessao) return null
+  const staffId = sessao.subjectId
 
   const rows = await sql<ActorRow[]>`
     select
@@ -117,6 +138,13 @@ export const getActor = cache(async (): Promise<Actor | null> => {
     role,
     orgScope: ACIMA_DA_LOJA.includes(role) || row.has_org_scope,
     unitIds: row.unit_ids ?? [],
+    /*
+      Elevada é ela outra vez. É a única coisa que desliga o balcão, e
+      dura meia hora contada pela base — não por nada que o navegador
+      possa dizer.
+    */
+    balcao: sessao.balcao && !sessao.elevada,
+    elevadaAte: sessao.elevadaAte,
   }
 })
 
@@ -146,6 +174,29 @@ export async function requireManagement(): Promise<Actor> {
 }
 
 /**
+ * A GESTÃO — e o que o balcão não abre.
+ *
+ * A diferença entre isto e um cadeado no ecrã está toda aqui: quem
+ * escreve «/admin» na barra bate nisto, e as acções do servidor por trás
+ * das páginas batem nisto também. Não há botão escondido nenhum.
+ *
+ * PORQUE NÃO ENTROU NO `requireManagement`: esse guarda também as
+ * clientes, e as clientes ficam abertas no balcão de propósito — quem
+ * atende precisa da ficha de quem tem à frente. Um portão que servisse
+ * os dois teria de mentir a um deles.
+ *
+ * Manda para uma página que EXPLICA, em vez de um `notFound`. Do outro
+ * lado está quase sempre a própria dona, que se esqueceu de ter deixado
+ * aquele tablet no balcão; um 404 mandava-a pensar que o sistema estava
+ * partido em vez de trancado por ela.
+ */
+export async function requireGestao(): Promise<Actor> {
+  const actor = await requireManagement()
+  if (actor.balcao) redirect('/balcao')
+  return actor
+}
+
+/**
  * MARCAR NÃO É GERIR.
  *
  * O encaixe e a remarcação viviam atrás do portão da gestão, e por isso
@@ -162,6 +213,7 @@ export async function requireBooking(): Promise<Actor> {
 /** Catálogo e unidades são escopo rede — só a dona. */
 export async function requireOrgScope(): Promise<Actor> {
   const actor = await requireManagement()
+  if (actor.balcao) redirect('/balcao')
   if (!actor.orgScope || actor.role === 'manager') notFound()
   return actor
 }
@@ -244,40 +296,61 @@ export async function unitsFor(actor: Actor): Promise<Unit[]> {
 // O que cada degrau pode
 // ---------------------------------------------------------------------
 
+/**
+ * O QUE CADA UM PODE — E O BALCÃO PASSA POR AQUI.
+ *
+ * Um tablet no balcão é a sessão da DONA, e por isso o papel dela diz
+ * «master» e diria que sim a tudo. Quem o trava é o `a.balcao`, e trava-o
+ * AQUI e em mais lado nenhum: os portões já existiam todos para separar
+ * a profissional da dona, e bastou ensiná-los a olhar também para isto.
+ *
+ * SE ACRESCENTARES UM PORTÃO, COMEÇA-O POR `!a.balcao &&`. Os três que
+ * NÃO o levam — clientes, avisos e encaixar — são o trabalho do balcão,
+ * e estão comentados um a um para se ver que é escolha e não esquecimento.
+ */
 export const can = {
-  seeDashboard: (a: Actor) => a.role !== 'professional',
+  seeDashboard: (a: Actor) => !a.balcao && a.role !== 'professional',
   /* Houve aqui um `seeCash`, e depois um `seeMoney`. Abriam, por esta
      ordem, a gaveta do dia e a comanda da cliente. Saíram as duas, e o
      portão ficou sem porta nenhuma para guardar — a única coisa que a
      casa mostra de dinheiro é o painel, e esse tem o seu. */
+  /* ABERTO NO BALCÃO, de propósito: quem atende ao balcão precisa da
+     ficha da cliente que tem à frente — o telefone, o histórico, o que
+     ela costuma fazer. Foi a dona que o pediu assim. */
   seeClients: (a: Actor) => a.role !== 'professional',
   /* Toda a gente avisa — mas a profissional só vê as clientes dela.
      Quem corta a fila é o `noticesStaffId`, não este portão. */
+  /* Também aberto no balcão, pela mesma razão: confirmar a cliente de
+     amanhã é trabalho de quem está lá, não da dona a 60 km. */
   seeNotices: (_a: Actor) => true,
-  manageTeam: (a: Actor) => a.role !== 'professional',
-  manageCatalog: (a: Actor) => a.orgScope && a.role !== 'manager',
+  manageTeam: (a: Actor) => !a.balcao && a.role !== 'professional',
+  manageCatalog: (a: Actor) =>
+    !a.balcao && a.orgScope && a.role !== 'manager',
   /* Mexer numa loja que já existe — nome, morada, horas, WhatsApp — é
      gerir o salão, e isso é da dona. */
-  manageUnits: (a: Actor) => a.orgScope && a.role !== 'manager',
+  manageUnits: (a: Actor) => !a.balcao && a.orgScope && a.role !== 'manager',
   /* ABRIR E FECHAR LOJAS NÃO É GERIR O SALÃO, É MUDAR A FORMA DO
      SISTEMA. Uma loja a mais arrasta catálogo, equipa, horários,
      e as contas atrás dela; uma loja a menos leva tudo isso com
      ela. Fica de quem monta o sistema, não de quem o usa. */
-  createUnits: (a: Actor) => a.role === 'master',
+  createUnits: (a: Actor) => !a.balcao && a.role === 'master',
   /* Chamava-se `manageCommissions` e fazia dois trabalhos: abria o
      separador das comissões e decidia quem vê as CONTAS DA REDE — o
      painel inteiro, contra os quatro atalhos que a gerente recebe. As
      comissões saíram; o segundo trabalho não tinha nada que ver com
      elas e ficou com o nome certo. A regra é a mesma: quem vê a rede
      toda é quem manda nela. */
-  seeNetworkNumbers: (a: Actor) => a.orgScope && a.role !== 'manager',
+  seeNetworkNumbers: (a: Actor) =>
+    !a.balcao && a.orgScope && a.role !== 'manager',
   /* ENCAIXAR É TRABALHO DE QUEM ESTÁ AO BALCÃO, e ao balcão está quem
      atende. A profissional é quem tem a cliente à frente a perguntar
      «e amanhã, dá?» — mandá-la chamar a dona para isso era pôr um
      degrau no meio de uma conversa de dez segundos. Quem vê a pessoa
      decide a hora dela. */
+  /* O terceiro que fica aberto no balcão, e o mais importante dos
+     três: é para isto que o tablet lá está. */
   overrideLeadRules: (_a: Actor) => true,
   /* Só o master mexe noutro master — a dona não promove ninguém acima
      dela própria, nem se despromove por engano. */
-  manageMasters: (a: Actor) => a.role === 'master',
+  manageMasters: (a: Actor) => !a.balcao && a.role === 'master',
 } as const

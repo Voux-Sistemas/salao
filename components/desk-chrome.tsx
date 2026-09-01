@@ -4,13 +4,14 @@ import { getOrg } from '@/lib/org'
 import { BRAND } from '@/lib/branding'
 import { can, requireActor, type Actor } from '@/lib/auth/actor'
 import { signOutAction } from '@/app/(auth)/entrar/actions'
+import { voltarAoBalcaoAction } from '@/app/(desk)/balcao/actions'
 import { initial } from '@/lib/text'
 import { DeskNav, type NavItem } from '@/components/desk-nav'
 import { NovasMarcacoes } from '@/components/novas-marcacoes'
 import { countNotices } from '@/lib/notices'
 import { ownStaffId } from '@/lib/auth/actor'
 import { Monogram } from '@/components/brand'
-import { IconSignOut } from '@/components/desk-icons'
+import { IconKey, IconSignOut } from '@/components/desk-icons'
 
 /**
  * A MOLDURA DA OPERAÇÃO — o ecrã onde a equipa vive o dia inteiro.
@@ -89,18 +90,42 @@ export async function DeskChrome({ children }: { children: ReactNode }) {
           <DeskNav items={navFor(actor, avisos)} variant="rail" />
         </div>
 
-        <form action={signOutAction} className="w-full shrink-0">
-          <button
-            type="submit"
-            className="flex w-full flex-col items-center gap-1.5 border-t border-[var(--line-soft)] py-4 text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
+        {actor.balcao ? (
+          <Link
+            href="/balcao/abrir"
+            className="flex w-full shrink-0 flex-col items-center gap-1.5 border-t border-[var(--line-soft)] py-4 text-center text-[var(--ink-faint)] transition-colors hover:text-[var(--accent)]"
           >
-            <IconSignOut className="h-5 w-5" />
-            <span className="text-[0.625rem] font-semibold">Sair</span>
-          </button>
-        </form>
+            <IconKey className="h-5 w-5" />
+            <span className="text-[0.625rem] font-semibold leading-tight">
+              Sou a
+              <br />
+              {primeiroNome(actor.name)}
+            </span>
+          </Link>
+        ) : (
+          <form action={signOutAction} className="w-full shrink-0">
+            <button
+              type="submit"
+              className="flex w-full flex-col items-center gap-1.5 border-t border-[var(--line-soft)] py-4 text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
+            >
+              <IconSignOut className="h-5 w-5" />
+              <span className="text-[0.625rem] font-semibold">Sair</span>
+            </button>
+          </form>
+        )}
       </aside>
 
       <div className="flex min-h-dvh flex-col lg:pl-[4.5rem]">
+        {/*
+          A FITA DE QUANDO ELA DESTRANCOU.
+
+          Sem ela, um tablet aberto é indistinguível de um tablet no
+          balcão até se ir bater numa porta — e o que ela precisa de saber
+          é que aquilo volta a fechar-se sozinho, e quando. A conta em
+          minutos é do servidor: o navegador não sabe as horas de
+          ninguém.
+        */}
+        {actor.elevadaAte ? <FitaAberta ate={actor.elevadaAte} /> : null}
         {/* A fita de cima: o dia, a casa, a pessoa. ------------------ */}
         {/*
             CHAPADA, E NÃO VIDRO FOSCO.
@@ -237,10 +262,24 @@ function navFor(actor: Actor, avisos = 0): NavItem[] {
     ]
   }
 
-  const items: NavItem[] = [
-    { href: '/', label: 'Hoje', icon: 'hoje' },
-    { href: '/agenda', label: 'Agenda', icon: 'agenda' },
-  ]
+  /*
+    NO BALCÃO O «HOJE» DESAPARECE INTEIRO, e não só o separador dos
+    Números.
+
+    Metade dele é a agenda do dia — que está a uma porta de distância,
+    logo a seguir — e a outra metade é o dinheiro. Deixar a porta lá com
+    metade fechada era pôr o cadeado à vista sem ganhar nada: quem lá
+    entrasse via um separador que não abre, e o que se quer é que o
+    balcão pareça um sítio inteiro e não um sítio amputado.
+
+    AS PORTAS FECHADAS SÃO RETIRADAS, NÃO ACINZENTADAS. Uma coluna com
+    dois cadeados convida a experimentar; três portas limpas são só o
+    trabalho. A porta dela — «Sou a Nohora» — fica no fundo da coluna,
+    com outra forma, e é o `DeskChrome` que a desenha.
+  */
+  const items: NavItem[] = []
+  if (!actor.balcao) items.push({ href: '/', label: 'Hoje', icon: 'hoje' })
+  items.push({ href: '/agenda', label: 'Agenda', icon: 'agenda' })
   if (can.seeNotices(actor)) {
     items.push({
       href: '/avisos',
@@ -252,7 +291,9 @@ function navFor(actor: Actor, avisos = 0): NavItem[] {
   if (can.seeClients(actor)) {
     items.push({ href: '/clientes', label: 'Clientes', icon: 'clientes' })
   }
-  items.push({ href: '/admin', label: 'Gestão', icon: 'gestao' })
+  if (!actor.balcao) {
+    items.push({ href: '/admin', label: 'Gestão', icon: 'gestao' })
+  }
   return items
 }
 
@@ -306,19 +347,71 @@ function AccountMenu({ actor }: { actor: Actor }) {
         />
       </span>
 
-      {/* No ecrã largo o Sair vive na coluna; aqui só no telemóvel. */}
-      <form action={signOutAction} className="lg:hidden">
-        <button
-          type="submit"
-          aria-label="Sair"
-          title="Sair"
-          className="flex h-9 w-9 items-center justify-center text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
+      {/* No ecrã largo o Sair vive na coluna; aqui só no telemóvel. E
+          no balcão não vive em lado nenhum — ver a coluna. */}
+      {actor.balcao ? (
+        <Link
+          href="/balcao/abrir"
+          aria-label={`Sou a ${primeiroNome(actor.name)}`}
+          title="Abrir com a palavra-passe"
+          className="flex h-9 w-9 items-center justify-center text-[var(--ink-faint)] transition-colors hover:text-[var(--accent)] lg:hidden"
         >
-          <IconSignOut className="h-5 w-5" />
+          <IconKey className="h-5 w-5" />
+        </Link>
+      ) : (
+        <form action={signOutAction} className="lg:hidden">
+          <button
+            type="submit"
+            aria-label="Sair"
+            title="Sair"
+            className="flex h-9 w-9 items-center justify-center text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
+          >
+            <IconSignOut className="h-5 w-5" />
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+/**
+ * A FITA DE QUANDO O TABLET ESTÁ DESTRANCADO.
+ *
+ * Meia hora não é muito tempo, mas é tempo que chega para ela se
+ * distrair — e um tablet destrancado que PARECE trancado é a pior das
+ * duas coisas. A fita diz que está aberto, quanto falta, e dá a porta
+ * de saída para quem acabou antes do tempo.
+ *
+ * OS MINUTOS SÃO CONTADOS NO SERVIDOR e desenhados uma vez, sem relógio
+ * a correr. Um número que anda sozinho pede JavaScript e uma actualização
+ * por segundo para dizer o que «faltam 28 minutos» já diz — e ninguém
+ * fica à espera de o ver chegar a zero: quando chegar, a página seguinte
+ * é que o mostra.
+ */
+function FitaAberta({ ate }: { ate: Date }) {
+  const faltam = Math.max(
+    0,
+    Math.round((ate.getTime() - Date.now()) / 60000),
+  )
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[color-mix(in_srgb,var(--warn)_30%,transparent)] bg-[color-mix(in_srgb,var(--warn)_13%,transparent)] px-4 py-2 text-[0.75rem] font-semibold text-[var(--warn)] sm:px-6">
+      <span>
+        Aberto com a tua palavra-passe · volta ao balcão em{' '}
+        {faltam <= 1 ? 'menos de um minuto' : `${faltam} min`}
+      </span>
+      <form action={voltarAoBalcaoAction} className="ml-auto">
+        <button type="submit" className="underline hover:no-underline">
+          voltar já
         </button>
       </form>
     </div>
   )
+}
+
+/** «Nohora Ramirez» -> «Nohora». A coluna tem 72 píxeis. */
+function primeiroNome(nome: string): string {
+  return nome.trim().split(/\s+/)[0] ?? nome
 }
 
 function capitalise(text: string): string {

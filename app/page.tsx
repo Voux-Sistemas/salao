@@ -37,6 +37,12 @@ export default async function Home({
   }
 
   if (actor.role === 'professional') redirect('/agenda')
+  /*
+    O «Hoje» é metade agenda e metade dinheiro, e no balcão a segunda
+    metade não abre. Em vez de o desenhar amputado, manda-se para a
+    agenda — que é a porta que ficou, e a que elas queriam.
+  */
+  if (actor.balcao) redirect('/agenda')
 
   const units = await unitsFor(actor)
 

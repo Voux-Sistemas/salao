@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { requireManagement, unitsFor, type Actor } from '@/lib/auth/actor'
+import { requireGestao, unitsFor, type Actor } from '@/lib/auth/actor'
 import { passwordProblem } from '@/lib/auth/password'
 import { normalisePhone } from '@/lib/env'
 import { requireOrg } from '@/lib/org'
@@ -44,7 +44,7 @@ const GONE: TeamState = { error: 'Essa pessoa não existe.' }
  * do alcance recebe "não existe", igual a quem nunca existiu.
  */
 async function reach(staffId: string) {
-  const actor = await requireManagement()
+  const actor = await requireGestao()
   const member = await getMember(actor, staffId)
   if (!member) return null
   return { actor, member }
@@ -105,7 +105,7 @@ export async function createMemberAction(
   _previous: TeamState,
   form: FormData,
 ): Promise<TeamState> {
-  const actor = await requireManagement()
+  const actor = await requireGestao()
   const input = memberFrom(form)
   const unitIds = form.getAll('units').map(String).filter(Boolean)
 
@@ -663,7 +663,7 @@ export async function saveFichaAction(
   _previous: TeamState,
   form: FormData,
 ): Promise<TeamState> {
-  const actor = await requireManagement()
+  const actor = await requireGestao()
   const input = parseFicha(String(form.get('ficha') ?? ''))
   if (!input) return { error: 'Não percebi o que veio do formulário.' }
 

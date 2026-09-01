@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { can, requireManagement } from '@/lib/auth/actor'
+import { can, requireGestao } from '@/lib/auth/actor'
 import { DeskNav, type NavItem } from '@/components/desk-nav'
 
 /**
@@ -15,7 +15,7 @@ export default async function AdminLayout({
 }: {
   children: ReactNode
 }) {
-  const actor = await requireManagement()
+  const actor = await requireGestao()
 
   /*
     O PAINEL É UM SEPARADOR COMO OS OUTROS.
@@ -35,6 +35,11 @@ export default async function AdminLayout({
   }
   if (can.manageTeam(actor)) {
     tabs.push({ href: '/admin/equipe', label: 'Equipa' })
+  }
+  /* O balcão é da dona: é o login DELA que fica no tablet, e são os
+     aparelhos DELA que a página lista. A gerente não tem nada aqui. */
+  if (can.manageCatalog(actor)) {
+    tabs.push({ href: '/admin/balcao', label: 'Balcão' })
   }
   /* Por último, e só para quem monta o sistema: é a porta que a dona
      não precisa de saber que existe. */

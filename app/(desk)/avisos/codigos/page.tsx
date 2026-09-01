@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { pendingCodes } from '@/lib/account'
-import { requireManagement } from '@/lib/auth/actor'
+import { requireGestao } from '@/lib/auth/actor'
 import { requireOrg } from '@/lib/org'
 import { formatTime } from '@/lib/time'
 import { ACCESS_CODE_TEMPLATE, renderTemplate, waLink } from '@/lib/whatsapp'
@@ -24,7 +24,7 @@ export const dynamic = 'force-dynamic'
  * telefone é a identidade.
  */
 export default async function CodigosPage() {
-  const actor = await requireManagement()
+  const actor = await requireGestao()
   const [org, codes] = await Promise.all([
     requireOrg(),
     pendingCodes(actor.orgId),

@@ -94,6 +94,20 @@ export function IconSignOut({ className }: { className?: string }) {
   )
 }
 
+/**
+ * A CHAVE DO BALCAO. Nao e um cadeado: um cadeado diz «fechado», e o
+ * que esta ali e a porta DELA — a unica coisa naquela coluna que so ela
+ * abre.
+ */
+export function IconKey({ className }: { className?: string }) {
+  return (
+    <Glyph className={className}>
+      <circle cx="8.5" cy="8.5" r="3.5" />
+      <path d="M11 11l8 8M16.5 15.5l-2 2M19 18l-1.5 1.5" />
+    </Glyph>
+  )
+}
+
 export function IconClose({ className }: { className?: string }) {
   return (
     <Glyph className={className}>
