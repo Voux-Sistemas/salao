@@ -18,5 +18,9 @@
 -- ficou a apontar para ela continua a ser uma sessão válida.
 -- ---------------------------------------------------------------------
 
+-- Repetível, pela mesma razão que a migração anterior: esta casa corre
+-- as migrações à mão, e colar o mesmo ficheiro duas vezes tem de ser
+-- inofensivo.
 alter table session
-  add column last_unit_id uuid references unit(id) on delete set null;
+  add column if not exists last_unit_id uuid
+    references unit(id) on delete set null;

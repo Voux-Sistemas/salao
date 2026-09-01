@@ -14,19 +14,32 @@
 -- tocar nos outros.
 -- ---------------------------------------------------------------------
 
+-- ---------------------------------------------------------------------
+-- CORRER ISTO DUAS VEZES NÃO PARTE NADA.
+--
+-- O `if not exists` está aqui por uma razão concreta: esta casa corre as
+-- migrações à mão, no editor do Supabase, e um `alter table` com três
+-- colunas falha INTEIRO se uma delas já lá estiver. Foi o que aconteceu
+-- — a coluna nova ficou por acrescentar porque as duas velhas já
+-- existiam, e a mensagem falava só da primeira.
+--
+-- Assim, colar o ficheiro todo é sempre seguro: o que falta entra, o
+-- que já está fica quieto.
+-- ---------------------------------------------------------------------
+
 alter table session
   -- Quando esta sessão foi posta no balcão. Nulo = sessão normal.
-  add column balcao_at timestamptz,
+  add column if not exists balcao_at timestamptz,
   -- Até quando é que a dona a destrancou aqui. Passado ou nulo = trancada.
   --
   -- É um INSTANTE e não um booleano de propósito: uma sessão destrancada
   -- volta ao balcão sozinha, sem depender de ninguém se lembrar de a
   -- fechar. Se dependesse, o tablet ficava aberto de par em par na
   -- terceira vez que ela se distraísse.
-  add column elevado_ate timestamptz;
+  add column if not exists elevado_ate timestamptz;
 
 -- Só as poucas sessões de balcão interessam a estas perguntas.
-create index session_balcao_idx on session (subject_id)
+create index if not exists session_balcao_idx on session (subject_id)
   where balcao_at is not null;
 
 -- ---------------------------------------------------------------------
@@ -52,6 +65,6 @@ create index session_balcao_idx on session (subject_id)
 -- balcao, e nada mais. O resumo fica na mesma, porque e por ele que se
 -- verifica.
 alter table org
-  add column balcao_code_hash text,
-  add column balcao_code_plain text,
-  add column balcao_code_set_at timestamptz;
+  add column if not exists balcao_code_hash text,
+  add column if not exists balcao_code_plain text,
+  add column if not exists balcao_code_set_at timestamptz;
