@@ -1,9 +1,4 @@
-import {
-  addDays,
-  daysBetween,
-  isValidDay,
-  type IsoDay,
-} from '@/lib/time'
+import { addDays, daysBetween, isValidDay, type IsoDay } from '@/lib/time'
 
 /**
  * O PERÍODO — E PORQUE PASSOU A HAVER UM.
@@ -18,10 +13,20 @@ import {
  * Agora a janela é UMA e escolhe-se em cima. Tudo o que está por baixo
  * obedece.
  *
- * QUATRO ESCOLHAS, E A ÚLTIMA FAZ AS OUTRAS TODAS. Hoje, sete dias,
- * este mês — e um intervalo à mão. «Três meses» e «este ano» eram
- * pastilhas fixas a fazer o que o intervalo à mão faz melhor, porque
- * ele também sabe fazer «a semana da Páscoa» e «agosto do ano passado».
+ * TRÊS ESCOLHAS, E O MÊS ANDA PARA TRÁS.
+ *
+ * Houve aqui um «Personalizado» com um calendário para escolher um
+ * intervalo à mão. Estava feito e funcionava, e saiu à mesma: era o
+ * único dos quatro que obrigava a pensar antes de usar, e trazia um
+ * quadro de trezentos píxeis para uma pergunta que uma dona de salão
+ * faz uma vez por trimestre.
+ *
+ * O que ele resolvia de verdade era uma coisa só — «como foi agosto?».
+ * Assim que setembro começa, agosto desaparecia do painel para sempre,
+ * porque nenhuma das pastilhas fixas sabe falar de um mês fechado. Duas
+ * setas ao lado do nome do mês respondem a isso com um toque, e a «como
+ * foi agosto do ano passado» com treze. Perdeu-se «de 12 a 31» e «a
+ * semana da Páscoa», que ninguém pediu.
  *
  * O PERÍODO ANTERIOR É O QUE DÁ SENTIDO AO NÚMERO. 50 € num mês não é
  * bom nem mau; 50 € contra 35 € é. A regra é sempre a mesma: começa no
@@ -38,7 +43,7 @@ import {
  * dados. Quem precisa de instantes converte-os na borda, como sempre.
  */
 
-export type Periodo = 'hoje' | '7d' | 'mes' | 'custom'
+export type Periodo = 'hoje' | '7d' | 'mes'
 
 export type Janela = {
   periodo: Periodo
@@ -56,117 +61,84 @@ export type Janela = {
   /** Contra o que se compara: «ontem», «agosto, até ao dia 12». */
   rotuloAnterior: string
   /**
-   * O QUE ELA TOCOU NO CALENDÁRIO — ou nulo se ainda não tocou nada.
+   * O DIA 1 DO MÊS QUE ESTÁ A SER VISTO — só quando o período é o mês.
    *
-   * Não é o mesmo que `de`/`ate`. Quando o «Personalizado» abre pela
-   * primeira vez não há escolha nenhuma, mas a página tem de mostrar
-   * alguma coisa por baixo — e mostra o mês. Se o calendário lesse
-   * `de`/`ate` ficava com o mês inteiro pintado como se ela o tivesse
-   * escolhido, e o primeiro toque parecia estar a desfazer qualquer
-   * coisa em vez de a começar.
-   *
-   * Só o calendário lê isto. As contas leem `de` e `ate`, sempre.
+   * É daqui que as setas sabem para onde apontar. Não se deduz do `de`
+   * porque nos outros períodos o `de` não é o princípio de mês nenhum,
+   * e uma seta a partir de «os últimos 7 dias» não quer dizer nada.
    */
-  escolha: { de: IsoDay; ate: IsoDay } | null
+  mes: IsoDay | null
 }
 
-/** As quatro escolhas, pela ordem em que aparecem no selector. */
+/** As três escolhas, pela ordem em que aparecem no selector. */
 export const PERIODOS: readonly { valor: Periodo; nome: string }[] = [
   { valor: 'hoje', nome: 'Hoje' },
   { valor: '7d', nome: '7 dias' },
   { valor: 'mes', nome: 'Este mês' },
-  { valor: 'custom', nome: 'Personalizado' },
 ] as const
 
 /**
- * DOIS ANOS É O TECTO, e não é teimosia.
+ * DOIS ANOS PARA TRÁS É O TECTO, e não é teimosia.
  *
  * O mapa das horas parte cada turno hora a hora antes de medir o que
- * lá está marcado. Cinco anos de uma vez são dezenas de milhares de
- * células, cada uma com duas subconsultas — é onde ele deixa de
- * responder. Um intervalo maior do que isto encolhe-se pela ponta mais
- * antiga, que é a que menos interessa a quem está a olhar.
+ * lá está marcado. Recuar sem fim era deixá-la chegar a meses onde ele
+ * deixa de responder — e a meses onde a casa nem existia. A seta pára
+ * onde o painel ainda tem alguma coisa para dizer.
  */
-const MAX_DIAS = 731
+const MESES_ATRAS = 24
 
 /**
  * O QUE VEM NO ENDEREÇO, TRANSFORMADO NUMA JANELA — E NUNCA UM ERRO.
  *
- * Isto lê texto de fora: um atalho guardado, um endereço escrito à
- * mão, um formulário submetido com o campo em branco. Tudo o que não
- * fizer sentido cai no mês, em silêncio. A alternativa era um ecrã
- * rebentado à frente da cliente por causa de uma letra a mais no
- * endereço.
- *
- * AS DATAS AO CONTRÁRIO TROCAM-SE. Escolher «de 31/08 até 12/08» é um
- * engano de dedo, não um pedido; recusá-lo com uma frase era fazê-la
- * repetir o trabalho para dizer o que já se percebeu.
+ * Isto lê texto de fora: um atalho guardado, um endereço escrito à mão.
+ * Tudo o que não fizer sentido cai no mês corrente, em silêncio. A
+ * alternativa era um ecrã rebentado à frente da cliente por causa de
+ * uma letra a mais no endereço.
  */
 export function lerJanela(
-  params: { p?: string; de?: string; ate?: string },
+  params: { p?: string; m?: string },
   hoje: IsoDay,
 ): Janela {
-  if (params.p === 'custom') {
-    const janela = janelaAMao(params.de, params.ate, hoje)
-    if (janela) return janela
-    /*
-      «Personalizado» sem datas ainda válidas é o estado normal do
-      primeiro toque: a gaveta abriu, ninguém escolheu nada. Mostra-se
-      o mês por baixo dela — e não um ecrã vazio à espera.
-    */
-    return { ...janelaDe('mes', hoje), periodo: 'custom' }
-  }
+  const p = PERIODOS.find((x) => x.valor === params.p)?.valor ?? 'mes'
+  if (p !== 'mes') return janelaDe(p, hoje)
 
-  const p = PERIODOS.find((x) => x.valor === params.p)?.valor
-  return janelaDe(p && p !== 'custom' ? p : 'mes', hoje)
+  const pedido = params.m && isValidDay(params.m) ? primeiroDoMes(params.m) : null
+  return janelaDe('mes', hoje, pedido ?? primeiroDoMes(hoje))
 }
 
 export function janelaDe(
-  periodo: Exclude<Periodo, 'custom'>,
+  periodo: Periodo,
   hoje: IsoDay,
+  mesPedido?: IsoDay,
 ): Janela {
-  const de = inicioDe(periodo, hoje)
-  return montar(periodo, de, hoje, inicioAnteriorDe(periodo, de, hoje))
-}
+  if (periodo === 'hoje') {
+    return montar(periodo, hoje, hoje, addDays(hoje, -1), null)
+  }
+  if (periodo === '7d') {
+    const de = addDays(hoje, -6)
+    return montar(periodo, de, hoje, addDays(de, -7), null)
+  }
 
-/** O intervalo escolhido à mão, já limpo — ou nulo se não for um. */
-function janelaAMao(
-  deBruto: string | undefined,
-  ateBruto: string | undefined,
-  hoje: IsoDay,
-): Janela | null {
-  if (!deBruto || !ateBruto) return null
-  if (!isValidDay(deBruto) || !isValidDay(ateBruto)) return null
-
-  // Ao contrário? Trocam-se — ver o cabeçalho do `lerJanela`.
-  let de = deBruto < ateBruto ? deBruto : ateBruto
-  let ate = deBruto < ateBruto ? ateBruto : deBruto
-
+  const mes = limitarMes(mesPedido ?? primeiroDoMes(hoje), hoje)
   /*
-    O FUTURO CORTA-SE. Estas contas somam o que já foi feito; dias que
-    ainda não aconteceram só acrescentavam zeros e faziam a ocupação
-    parecer pior do que é. O que está para vir tem o seu próprio sítio
-    na página, e é sempre os próximos sete dias.
+    UM MÊS FECHADO VAI ATÉ AO FIM; O CORRENTE VAI ATÉ HOJE. É a mesma
+    regra dita uma vez: o último dia é o que vier primeiro. Sem ela,
+    setembro em dia 15 contava trinta dias e a ocupação aparecia a
+    metade do que é.
   */
-  if (ate > hoje) ate = hoje
-  if (de > ate) de = ate
-
-  if (daysBetween(de, ate) + 1 > MAX_DIAS) de = addDays(ate, -(MAX_DIAS - 1))
-
-  return montar('custom', de, ate, null, { de, ate })
+  const ultimo = ultimoDoMes(mes)
+  const ate = ultimo < hoje ? ultimo : hoje
+  return montar('mes', mes, ate, primeiroDoMes(addDays(mes, -1)), mes)
 }
 
 function montar(
   periodo: Periodo,
   de: IsoDay,
   ate: IsoDay,
-  deAnteriorPedido: IsoDay | null,
-  escolha: { de: IsoDay; ate: IsoDay } | null = null,
+  deAnterior: IsoDay,
+  mes: IsoDay | null,
 ): Janela {
   const dias = daysBetween(de, ate) + 1
-  // Sem âncora análoga — o caso do intervalo à mão — o anterior são os
-  // mesmos dias, logo antes.
-  const deAnterior = deAnteriorPedido ?? addDays(de, -dias)
 
   const fimNatural = addDays(deAnterior, dias - 1)
   const vespera = addDays(de, -1)
@@ -180,41 +152,86 @@ function montar(
     dias,
     deAnterior,
     ateAnterior,
-    rotulo: rotuloDe(periodo, de, ate),
-    rotuloAnterior: rotuloAnteriorDe(periodo, deAnterior, ateAnterior, dias),
-    escolha,
+    rotulo: rotuloDe(periodo, de),
+    rotuloAnterior: rotuloAnteriorDe(periodo, deAnterior, ateAnterior),
+    mes,
   }
 }
 
-function inicioDe(periodo: Exclude<Periodo, 'custom'>, hoje: IsoDay): IsoDay {
-  switch (periodo) {
-    case 'hoje':
-      return hoje
-    case '7d':
-      return addDays(hoje, -6)
-    case 'mes':
-      return `${hoje.slice(0, 7)}-01`
-  }
-}
+// ---------------------------------------------------------------------
+// As setas do mês
+// ---------------------------------------------------------------------
 
-function inicioAnteriorDe(
-  periodo: Exclude<Periodo, 'custom'>,
-  de: IsoDay,
+/**
+ * Para onde as setas levam — nulo quando não há para onde ir.
+ *
+ * Recebe o mês VISTO e não a janela: as setas continuam a andar quando
+ * ela está no «Hoje» ou nos «7 dias», e um toque numa delas troca as duas
+ * coisas de uma vez — o período passa a ser o mês, e o mês é o do lado.
+ *
+ * A da frente pára no mês de hoje: adiante não há nada para somar. A de
+ * trás pára nos dois anos, pela razão que está no `MESES_ATRAS`. Uma
+ * seta que não leva a lado nenhum não é uma ligação, e desenha-se
+ * apagada.
+ */
+export function mesesAoLado(
+  mes: IsoDay,
   hoje: IsoDay,
-): IsoDay {
-  switch (periodo) {
-    case 'hoje':
-      return addDays(hoje, -1)
-    case '7d':
-      return addDays(de, -7)
-    case 'mes': {
-      // O primeiro do mês anterior. `de` é sempre um dia 1, por isso a
-      // véspera cai no mês de trás e diz qual é.
-      const vespera = addDays(de, -1)
-      return `${vespera.slice(0, 7)}-01`
-    }
+): { atras: IsoDay | null; frente: IsoDay | null } {
+  const atras = primeiroDoMes(addDays(mes, -1))
+  const frente = primeiroDoMes(addDays(ultimoDoMes(mes), 1))
+  const limite = recuarMeses(primeiroDoMes(hoje), MESES_ATRAS)
+
+  return {
+    atras: atras >= limite ? atras : null,
+    frente: frente <= hoje ? frente : null,
   }
 }
+
+/**
+ * QUE MÊS AS SETAS VÊEM, a partir do que vier no endereço.
+ *
+ * É uma pergunta à parte do período: ela pode estar nos «7 dias» com
+ * agosto ainda debaixo do dedo, e as setas têm de continuar a apontar
+ * para julho e setembro. Passa pelos mesmos cortes que a janela — dois
+ * anos para trás, o mês de hoje para a frente — porque duas leituras do
+ * mesmo parâmetro com regras diferentes acabam sempre a discordar.
+ */
+export function mesVistoDe(m: string | undefined, hoje: IsoDay): IsoDay {
+  const pedido = m && isValidDay(m) ? primeiroDoMes(m) : primeiroDoMes(hoje)
+  return limitarMes(pedido, hoje)
+}
+
+/** O dia 1 do mês de um dia qualquer. */
+export function primeiroDoMes(day: IsoDay): IsoDay {
+  return `${day.slice(0, 7)}-01`
+}
+
+/** O último dia do mês — a véspera do dia 1 do mês seguinte. */
+function ultimoDoMes(day: IsoDay): IsoDay {
+  const [ano, mes] = day.split('-').map(Number) as [number, number]
+  const quantos = new Date(Date.UTC(ano, mes, 0)).getUTCDate()
+  return `${day.slice(0, 8)}${String(quantos).padStart(2, '0')}`
+}
+
+function recuarMeses(primeiro: IsoDay, meses: number): IsoDay {
+  const [ano, mes] = primeiro.split('-').map(Number) as [number, number]
+  const total = ano * 12 + (mes - 1) - meses
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}-01`
+}
+
+/** Nem à frente de hoje, nem para além do tecto. */
+function limitarMes(mes: IsoDay, hoje: IsoDay): IsoDay {
+  const tecto = primeiroDoMes(hoje)
+  const chao = recuarMeses(tecto, MESES_ATRAS)
+  if (mes > tecto) return tecto
+  if (mes < chao) return chao
+  return mes
+}
+
+// ---------------------------------------------------------------------
+// Como se chamam
+// ---------------------------------------------------------------------
 
 const MESES = [
   'janeiro',
@@ -236,12 +253,21 @@ export function mesDe(day: IsoDay): string {
   return MESES[Number(day.slice(5, 7)) - 1] ?? ''
 }
 
-/** «12/08» — o dia e o mês, sem o ano e sem passar por fuso nenhum. */
-export function diaMes(day: IsoDay): string {
-  return `${day.slice(8, 10)}/${day.slice(5, 7)}`
+/**
+ * «setembro», ou «dezembro de 2025» quando não é deste ano.
+ *
+ * O ano só aparece quando faz falta. Andando para trás mês a mês
+ * chega-se a dezembro duas vezes, e sem o ano as duas pastilhas
+ * dizem o mesmo e mostram coisas diferentes.
+ */
+export function mesPorExtenso(day: IsoDay, hoje: IsoDay): string {
+  const nome = mesDe(day)
+  return day.slice(0, 4) === hoje.slice(0, 4)
+    ? nome
+    : `${nome} de ${day.slice(0, 4)}`
 }
 
-function rotuloDe(periodo: Periodo, de: IsoDay, ate: IsoDay): string {
+function rotuloDe(periodo: Periodo, de: IsoDay): string {
   switch (periodo) {
     case 'hoje':
       return 'hoje'
@@ -249,24 +275,24 @@ function rotuloDe(periodo: Periodo, de: IsoDay, ate: IsoDay): string {
       return 'últimos 7 dias'
     case 'mes':
       return mesDe(de)
-    case 'custom':
-      return de === ate ? diaMes(de) : `${diaMes(de)} – ${diaMes(ate)}`
   }
 }
 
 /**
  * Contra o que se compara, dito de maneira a que ninguém se engane.
  *
- * No mês a comparação é CORTADA — a 1 de setembro compara-se com o dia
- * 1 de agosto, não com agosto inteiro — e é isso que a legenda tem de
- * dizer. Calada, o painel parecia estar a comparar com um mês cheio e
- * todo o princípio de mês parecia uma derrota.
+ * NUM MÊS A MEIO A COMPARAÇÃO É CORTADA — a 15 de setembro compara-se
+ * com agosto até ao dia 15, não com agosto inteiro — e é isso que a
+ * legenda tem de dizer. Calada, o painel parecia estar a comparar com
+ * um mês cheio e todo o princípio de mês parecia uma derrota.
+ *
+ * Num mês já fechado não há corte nenhum, e a legenda encurta: julho
+ * inteiro contra agosto inteiro diz-se «julho» e mais nada.
  */
 function rotuloAnteriorDe(
   periodo: Periodo,
   deAnterior: IsoDay,
   ateAnterior: IsoDay,
-  dias: number,
 ): string {
   switch (periodo) {
     case 'hoje':
@@ -274,10 +300,8 @@ function rotuloAnteriorDe(
     case '7d':
       return 'os 7 dias antes'
     case 'mes':
-      return `${mesDe(deAnterior)}, até ao dia ${Number(ateAnterior.slice(8, 10))}`
-    case 'custom':
-      return dias === 1
-        ? `${diaMes(deAnterior)}`
-        : `os ${dias} dias antes`
+      return ateAnterior === ultimoDoMes(deAnterior)
+        ? mesDe(deAnterior)
+        : `${mesDe(deAnterior)}, até ao dia ${Number(ateAnterior.slice(8, 10))}`
   }
 }
