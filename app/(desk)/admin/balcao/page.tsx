@@ -57,11 +57,6 @@ export default async function BalcaoPage() {
             Deixar este aparelho no balcão
           </Button>
         </form>
-        <p className="mt-3 text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-          Fica logo — sem confirmação. Trancar por engano não custa nada:
-          desfaz-se com a tua palavra-passe, na chave que aparece no fundo
-          da coluna.
-        </p>
       </Panel>
 
       {/* ------------------------------------------------ o código --- */}
@@ -116,18 +111,6 @@ export default async function BalcaoPage() {
           </ul>
         )}
       </Panel>
-
-      {/*
-        POR ESCRITO, PORQUE É A PERGUNTA QUE ELA VAI FAZER.
-
-        «Consigo abrir um tablet à distância?» Não — e é de propósito.
-        Melhor dizê-lo aqui do que deixá-la à procura do botão.
-      */}
-      <p className="px-1 text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-        Trancar à distância podes; destrancar não. Abrir um tablet num
-        salão onde não estás não serve a ninguém — a chave é sempre a tua
-        palavra-passe, escrita no próprio aparelho.
-      </p>
     </div>
   )
 }
@@ -141,6 +124,7 @@ function Linha({ aparelho }: { aparelho: Aparelho }) {
           {aparelho.esta ? ' · este' : ''}
         </span>
         <span className="tabular mt-0.5 block text-[0.75rem] text-[var(--ink-faint)]">
+          {aparelho.unit_name ? `${aparelho.unit_name} · ` : ''}
           visto {desdeQuando(aparelho.last_seen_at)}
         </span>
       </span>

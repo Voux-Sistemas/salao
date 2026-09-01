@@ -208,6 +208,8 @@ export type Aparelho = {
   created_at: Date
   balcao: boolean
   esta: boolean
+  /** A última agenda que este aparelho abriu — ver `marcarLojaDaSessao`. */
+  unit_name: string | null
 }
 
 export async function aparelhosDe(
@@ -218,14 +220,49 @@ export async function aparelhosDe(
   const token = jar.get(COOKIE[subjectType])?.value
 
   return sql<Aparelho[]>`
-    select id, user_agent, last_seen_at, created_at,
-           balcao_at is not null as balcao,
-           token_hash = ${token ? hash(token) : ''} as esta
-      from session
-     where subject_type = ${subjectType}
-       and subject_id = ${subjectId}
-       and expires_at > now()
-     order by last_seen_at desc
+    select s.id, s.user_agent, s.last_seen_at, s.created_at,
+           s.balcao_at is not null as balcao,
+           s.token_hash = ${token ? hash(token) : ''} as esta,
+           u.name as unit_name
+      from session s
+      left join unit u on u.id = s.last_unit_id
+     where s.subject_type = ${subjectType}
+       and s.subject_id = ${subjectId}
+       and s.expires_at > now()
+     order by s.last_seen_at desc
+  `
+}
+
+/**
+ * ONDE É QUE ESTE APARELHO ESTÁ — a loja, não a cidade.
+ *
+ * A lista dos aparelhos dizia «iPad · visto há 4 min», e com um tablet
+ * em cada salão isso não chega para trancar o certo. O que ela precisa
+ * de saber é QUAL, e a casa já o sabe de certeza: é a agenda que aquele
+ * aparelho abriu da última vez.
+ *
+ * NÃO SE TIRA DO ENDEREÇO DE REDE, e é escolha. Uma cidade tirada do IP
+ * mente — numa rede móvel dá o nó da operadora, numa fixa a central do
+ * fornecedor — e um salão em Valongo aparecia como «Porto». Uma cidade
+ * errada é pior do que nenhuma, porque se decide com ela. Além disso
+ * obrigava a mandar o endereço dela a um serviço de fora, ou a carregar
+ * uma base de dados de geografia para dizer pior o que isto diz bem.
+ *
+ * ESCREVE-SE E ESQUECE-SE. É uma linha por visita à agenda, sem esperar
+ * pela resposta: se falhar, a lista mostra a loja anterior — o que é uma
+ * imprecisão, não um erro, e não vale um milissegundo a quem está a
+ * abrir o dia.
+ */
+export async function marcarLojaDaSessao(unitId: string): Promise<void> {
+  const jar = await cookies()
+  const token = jar.get(COOKIE.staff)?.value
+  if (!token) return
+
+  await sql`
+    update session set last_unit_id = ${unitId}
+     where token_hash = ${hash(token)}
+       and subject_type = 'staff'
+       and last_unit_id is distinct from ${unitId}
   `
 }
 

@@ -25,6 +25,7 @@ import {
   type Momento,
 } from '@/components/agenda-grid'
 import { AgendaFocus } from '@/components/agenda-focus'
+import { marcarLojaDaSessao } from '@/lib/auth/session'
 import { AppointmentPanel } from '@/components/appointment-panel'
 import { DayJump } from '@/components/day-jump'
 import { DeskDayStrip } from '@/components/desk-day-strip'
@@ -74,6 +75,22 @@ export default async function AgendaDayPage({
 
   // Loja inexistente e loja sem acesso dão a MESMA resposta.
   const unit = await resolveUnit(actor, loja)
+
+  /*
+    ESTE APARELHO ESTÁ NESTE SALÃO — fica escrito na sessão.
+
+    É o que faz a lista dos aparelhos dizer «iPad · Valongo» em vez de
+    «iPad», e sem isso trancar um à distância era escolher à sorte.
+
+    NÃO SE ESPERA PELA RESPOSTA. Se falhar, a lista mostra a loja
+    anterior — uma imprecisão, não um erro — e isso não vale um
+    milissegundo a quem está a abrir o dia. A rede de segurança existe
+    porque uma promessa largada que rebente derruba o processo inteiro
+    do servidor.
+  */
+  void marcarLojaDaSessao(unit.id).catch((erro: unknown) => {
+    console.error('[agenda] marcar a loja da sessão falhou', erro)
+  })
 
   const now = new Date()
   const day: IsoDay = d && isValidDay(d) ? d : today(unit.timezone, now)
