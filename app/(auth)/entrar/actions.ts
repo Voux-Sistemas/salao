@@ -83,14 +83,32 @@ export async function signInAction(
   `
   const staff = rows[0]
 
+  /*
+    SEIS ALGARISMOS NA PALAVRA-PASSE É QUASE SEMPRE O CÓDIGO DO BALCÃO.
+
+    Aconteceu no primeiro dia: uma funcionária com o papel na mão
+    escreveu-o aqui, e o sistema respondeu-lhe «palavra-passe errada» —
+    verdade, e um beco sem saída. Ela não tem palavra-passe nenhuma para
+    tentar a seguir.
+
+    Não confirma nem desmente que o código exista: diz apenas onde é a
+    outra porta, que está ali por cima e é pública de qualquer maneira.
+  */
+  const pareceCodigo = /^\d{6}$/.test(password.trim())
+  const enganoDoBalcao = pareceCodigo
+    ? ' Se isso é o código do balcão, use a caixa lá em cima.'
+    : ''
+
   // Conta que não existe demora o mesmo que conta com senha errada.
   if (!staff || !staff.password_hash) {
     await burnTime()
-    return { error: 'Entrada ou palavra-passe erradas.' }
+    return { error: 'Entrada ou palavra-passe erradas.' + enganoDoBalcao }
   }
 
   const ok = await verifyPassword(password, staff.password_hash)
-  if (!ok) return { error: 'Entrada ou palavra-passe erradas.' }
+  if (!ok) {
+    return { error: 'Entrada ou palavra-passe erradas.' + enganoDoBalcao }
+  }
 
   await createSession('staff', staff.id)
   redirect('/')

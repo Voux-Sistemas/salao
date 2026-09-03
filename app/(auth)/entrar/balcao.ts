@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { requireOrg } from '@/lib/org'
 import { burnTime } from '@/lib/auth/password'
 import { createSession, marcarBalcao } from '@/lib/auth/session'
-import { quemAbreComCodigo } from '@/lib/balcao'
+import { lerCodigo, quemAbreComCodigo } from '@/lib/balcao'
 
 export type EntrarState = { error?: string }
 
@@ -35,9 +35,25 @@ export async function entrarNoBalcaoAction(
   const org = await requireOrg()
   const donaId = await quemAbreComCodigo(org.id, codigo)
 
+  /*
+    DOIS ERROS DIFERENTES, DUAS FRASES DIFERENTES.
+
+    Diziam ambos «esse código não abre nada» — e quando isto falhou no
+    salão, a frase não dizia se o código estava errado, se nunca tinha
+    sido criado, ou se a casa não tinha dona para abrir. Quem está ao
+    balcão não sabe o que fazer a seguir com nenhuma delas.
+
+    O que se protege é o código: esse continua a responder o mesmo,
+    demore o que demorar. O resto pode ser dito por palavras.
+  */
   if (!donaId) {
     await burnTime()
-    return { error: 'Esse código não abre nada.' }
+    const { codigo: existe } = await lerCodigo(org.id)
+    return {
+      error: existe
+        ? 'Esse código não está certo. Confirme os seis algarismos.'
+        : 'Ainda não há código do balcão. A dona cria-o em Gestão · Balcão.',
+    }
   }
 
   await createSession('staff', donaId)

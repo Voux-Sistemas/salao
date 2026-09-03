@@ -23,26 +23,36 @@ export default async function SignInPage() {
       <p className="eyebrow eyebrow-gold">Área da equipa</p>
       <h1 className="display mt-3 text-4xl text-[var(--ink)]">Entrar</h1>
       <p className="mt-3 text-sm leading-relaxed text-[var(--ink-muted)]">
-        A agenda, o caixa e a casa — tudo a partir daqui.
+        A agenda, os avisos e as clientes — tudo a partir daqui.
       </p>
 
+      {/*
+        A PORTA DO BALCÃO VEM PRIMEIRO, E ISSO É UMA CORRECÇÃO.
+
+        Estava em último, com este raciocínio escrito: «quem entra aqui
+        todos os dias é a equipa com a sua palavra-passe, e isto é a
+        excepção». Estava errado ao contrário.
+
+        Neste salão a equipa NÃO TEM CONTAS — trabalham na sessão da dona,
+        no tablet do balcão. Quem chega a este ecrã é quase sempre uma
+        funcionária com um papel de seis algarismos na mão, e o que ela
+        encontrava primeiro eram dois campos a pedir uma palavra-passe que
+        ela não tem. Escrevia o código no sítio errado e o sistema
+        respondia-lhe «palavra-passe errada», o que era verdade e não
+        ajudava nada.
+
+        A porta mais usada fica em cima. A da dona continua logo abaixo,
+        inteira — só deixou de estar à frente de quem não a pode abrir.
+      */}
       <div className="mt-9">
-        <SignInForm />
+        <BalcaoCodeForm />
       </div>
 
-      {/*
-        A PORTA DE SERVIÇO.
-
-        Para o dia em que o tablet do salão se desligar com a dona noutro
-        sítio. O código põe o aparelho em modo balcão e MAIS NADA — nunca
-        a Gestão, nunca os números — e é por isso que pode andar escrito
-        num papel ao lado dele.
-
-        Fica debaixo do «Entrar» e não ao lado: quem entra aqui todos os
-        dias é a equipa com a sua palavra-passe, e isto é a excepção.
-      */}
-      <div className="mt-8 border-t border-[var(--line-soft)] pt-6">
-        <BalcaoCodeForm />
+      <div className="mt-8 border-t border-[var(--line-soft)] pt-7">
+        <p className="mb-4 text-[0.8125rem] font-semibold text-[var(--ink)]">
+          Ou entra com a tua conta
+        </p>
+        <SignInForm />
       </div>
 
       {/* Um segundo bloco da largura toda debaixo do «Entrar» punha as

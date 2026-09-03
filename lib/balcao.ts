@@ -117,6 +117,12 @@ export async function quemAbreComCodigo(
     A DONA, e não uma pessoa qualquer com papel alto. Se houver mais do
     que uma, a mais antiga — para que o mesmo código abra sempre a mesma
     sessão e a lista dos aparelhos dela faça sentido.
+
+    NÃO SE EXIGE QUE O PAPEL SEJA DA REDE TODA. Exigia — `r.unit_id is
+    null` — e isso é uma armadilha: uma dona cujo papel esteja guardado
+    com uma loja associada continua a ser a dona, e o código deixava de
+    abrir seja o que for, sem ninguém perceber porquê. Basta o papel;
+    prefere-se quem o tem sem loja, que é o caso normal.
   */
   const donas = await sql<{ id: string }[]>`
     select s.id
@@ -125,8 +131,10 @@ export async function quemAbreComCodigo(
      where s.org_id = ${orgId}
        and s.is_active
        and r.role in ('master', 'owner')
-       and r.unit_id is null
-     order by case r.role when 'owner' then 0 else 1 end, s.created_at
+     group by s.id, s.created_at
+     order by bool_or(r.unit_id is null) desc,
+              min(case r.role when 'owner' then 0 else 1 end),
+              s.created_at
      limit 1
   `
   return donas[0]?.id ?? null
