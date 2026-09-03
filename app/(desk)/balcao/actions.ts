@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireActor } from '@/lib/auth/actor'
 import { sql } from '@/lib/db'
@@ -45,6 +46,10 @@ export async function abrirAction(
   }
 
   await elevarSessao('staff')
+  // A moldura volta a ter as cinco portas e ganha a fita a contar os
+  // minutos — e nenhuma delas é desta página. Ver a nota no
+  // `deixarNoBalcaoAction`.
+  revalidatePath('/', 'layout')
   redirect('/')
 }
 
@@ -52,5 +57,6 @@ export async function abrirAction(
 export async function voltarAoBalcaoAction(): Promise<void> {
   await requireActor()
   await baixarSessao('staff')
+  revalidatePath('/', 'layout')
   redirect('/agenda')
 }

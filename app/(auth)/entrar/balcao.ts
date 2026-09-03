@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireOrg } from '@/lib/org'
 import { burnTime } from '@/lib/auth/password'
@@ -58,5 +59,9 @@ export async function entrarNoBalcaoAction(
 
   await createSession('staff', donaId)
   await marcarBalcao('staff', true)
+  // Aqui a sessão é nova e a árvore viria limpa de qualquer maneira; fica
+  // pela mesma razão que nas outras — quem lê isto não tem de descobrir
+  // qual das quatro é a excepção.
+  revalidatePath('/', 'layout')
   redirect('/agenda')
 }

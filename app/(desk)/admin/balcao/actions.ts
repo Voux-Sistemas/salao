@@ -29,10 +29,26 @@ export type BalcaoState = { error?: string }
  * própria coluna — é o contrário do cancelar, que tem dois toques
  * porque não tem volta. O que fecha está escrito no botão, antes do
  * toque.
+ *
+ * E A COLUNA ENCOLHE SEM NINGUÉM ACTUALIZAR A PÁGINA.
+ *
+ * A coluna das portas vive no LAYOUT, e o Next reaproveita o layout
+ * quando se anda entre páginas que o partilham. O servidor já sabia que
+ * este aparelho estava no balcão — mas a moldura desenhada continuava a
+ * ser a de antes, com as cinco portas e a Gestão à vista, até alguém
+ * carregar em F5. Para a dona isso lê-se como «não funcionou».
+ *
+ * `revalidatePath('/', 'layout')` deita fora a árvore inteira, layouts
+ * incluídos. É o martelo grande, e é o certo aqui: o que mudou não foi
+ * uma página, foi quem esta pessoa é em todas elas.
+ *
+ * ANTES DO `redirect`, sempre — o `redirect` atira, e o que vier a
+ * seguir não corre.
  */
 export async function deixarNoBalcaoAction(): Promise<void> {
   await requireOrgScope()
   await marcarBalcao('staff', true)
+  revalidatePath('/', 'layout')
   redirect('/agenda')
 }
 
@@ -57,7 +73,7 @@ export async function trancarAparelhoAction(
   if (!id) return { error: 'Aparelho desconhecido.' }
 
   await trancarAparelho('staff', actor.id, id)
-  revalidatePath('/admin/balcao')
+  revalidatePath('/', 'layout')
   return {}
 }
 
@@ -71,6 +87,6 @@ export async function terminarAparelhoAction(
   if (!id) return { error: 'Aparelho desconhecido.' }
 
   await terminarAparelho('staff', actor.id, id)
-  revalidatePath('/admin/balcao')
+  revalidatePath('/', 'layout')
   return {}
 }
