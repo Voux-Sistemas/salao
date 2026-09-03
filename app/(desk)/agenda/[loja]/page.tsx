@@ -835,10 +835,26 @@ export default async function AgendaDayPage({
               medida encurtada mente.
             */
             <div className="mx-auto w-full max-w-[68rem] sm:px-6 sm:pb-6">
-              {/* No monitor a lista é uma folha pousada na mesa; no
-                  telemóvel encosta às duas margens, porque lá o ecrã
-                  inteiro já é a folha. */}
-              <div className="sm:overflow-hidden sm:rounded-[var(--radius)] sm:border sm:border-[var(--line-soft)] sm:shadow-[0_1px_2px_rgba(46,38,28,0.05)]">
+              {/*
+                No monitor a lista é uma folha pousada na mesa; no
+                telemóvel encosta às duas margens, porque lá o ecrã
+                inteiro já é a folha.
+
+                E A FOLHA NÃO CORTA O QUE LHE SAI DE DENTRO.
+
+                Tinha `sm:overflow-hidden` para os cantos redondos
+                aparcarem as linhas — e isso decapitava a caixa de
+                transferir, que é `absolute` contra a linha e desce por
+                baixo dela. No telemóvel nunca se viu porque lá o corte
+                não existia; no monitor a caixa aparecia partida ao meio
+                e a última profissional da lista ficava inalcançável.
+
+                Um corte que existe para arredondar dois cantos não pode
+                custar uma funcionalidade. Os cantos passam a vir da
+                própria linha — ver o `group-first`/`group-last` no
+                `agenda-grid` — e a folha deixa de cortar seja o que for.
+              */}
+              <div className="sm:rounded-[var(--radius)] sm:border sm:border-[var(--line-soft)] sm:shadow-[0_1px_2px_rgba(46,38,28,0.05)]">
                 <AgendaList
                   agenda={agenda}
                   colors={colors}

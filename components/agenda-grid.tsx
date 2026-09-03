@@ -1127,7 +1127,14 @@ export function AgendaList({
         return (
           <li
             key={card.appointmentId}
-            className="relative border-b border-[var(--line-soft)] last:border-b-0"
+            /*
+              `group` para o fundo da linha saber se está na ponta da
+              lista — ver o `group-first`/`group-last` mais abaixo. A
+              linha NÃO leva `overflow-hidden`: é contra ela que a caixa
+              de transferir se posiciona, e cortá-la aqui era repetir o
+              erro que a folha acabou de largar.
+            */
+            className="group relative border-b border-[var(--line-soft)] last:border-b-0"
           >
             {index === idxAgora ? <NowRule nowMin={nowMin!} /> : null}
             {/*
@@ -1164,6 +1171,16 @@ export function AgendaList({
               className={clsx(
                 // O mesmo ar nos dois: a linha é a mesma linha.
                 'flex items-stretch gap-3 py-3 pr-4 transition-colors active:bg-[var(--surface-2)]',
+                /*
+                  OS CANTOS DA FOLHA, DEVOLVIDOS.
+
+                  A folha deixou de recortar as linhas para poder deixar
+                  sair a caixa de transferir. Sem isto, o fundo da
+                  primeira linha — quando está escolhida ou debaixo do
+                  dedo — entrava a direito pelo canto redondo da folha.
+                  São dois cantos e um estado; passam a ser da linha.
+                */
+                'group-first:rounded-t-[var(--radius)] group-last:rounded-b-[var(--radius)]',
                 // O que já acabou apaga-se um pouco: a lista do dia é
                 // sobretudo uma lista do que falta.
                 passou && !falhou && 'opacity-65',
