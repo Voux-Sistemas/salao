@@ -186,8 +186,6 @@ export async function createAppointment(
 
     try {
       const written = await sql.begin(async (tx) => {
-        await comPrazo(tx)
-
         // Primeiro a fila, depois a verdade. Enquanto este cadeado for
         // nosso, mais ninguém escreve para estas profissionais neste
         // dia — e o que se ler a seguir é o estado final, não uma
@@ -349,41 +347,36 @@ class SlotTaken extends Error {
  * ordem que lhe desse jeito, duas visitas cruzadas ficavam à espera uma
  * da outra para sempre. Por ordem crescente, isso não acontece.
  */
-/**
- * PRAZOS PARA A TRANSACAO. Sem eles, uma marcacao pode ficar pendurada
- * ate a plataforma a matar — e a matar deixa a transacao aberta do lado
- * do Postgres, com os cadeados na mao. Toda a gente que chega a seguir
- * fica na fila atras de um morto. E um efeito domino, e foi o que se viu
- * nos registos: cinco pedidos a bater nos 60 000 ms.
- *
- * TRES PRAZOS, TRES PERIGOS DIFERENTES:
- *
- * O `lock_timeout` e o mais importante. O `pg_advisory_xact_lock`
- * espera para sempre por natureza — e "para sempre" numa funcao com
- * tecto de sessenta segundos quer dizer "ate morrer com os cadeados na
- * mao". Oito segundos e muito mais do que uma marcacao honesta precisa:
- * quem espera mais do que isso esta atras de alguma coisa avariada.
- *
- * O `statement_timeout` apanha uma consulta que se arraste por outra
- * razao qualquer — uma base sobrecarregada, um plano mau.
- *
- * O `idle_in_transaction_session_timeout` e a rede de seguranca: se a
- * funcao morrer a meio, o Postgres deita fora a sessao passados dez
- * segundos e larga os cadeados sozinho. E isto que corta o domino.
- *
- * SAO `set local`: valem so dentro desta transacao e nao encostam nada
- * a ligacao, que e partilhada pelo pooler. Um `set` normal ficava
- * agarrado a ligacao e ia parar ao pedido seguinte de outra pessoa.
- *
- * Falhar depressa e com um erro que se le vale mais do que ficar
- * pendurado: um erro conta-se nos registos, uma espera de sessenta
- * segundos so se sente.
- */
-async function comPrazo(tx: Tx): Promise<void> {
-  await tx`set local lock_timeout = '8s'`
-  await tx`set local statement_timeout = '20s'`
-  await tx`set local idle_in_transaction_session_timeout = '10s'`
-}
+/*
+  AQUI ESTEVE UM `comPrazo(tx)`, E DUROU DEZANOVE MINUTOS.
+
+  Punha tres prazos em `set local` no inicio de cada transacao que
+  escreve na agenda — lock_timeout, statement_timeout e
+  idle_in_transaction_session_timeout — para curar um domino de travas
+  presas que eu tinha diagnosticado a partir de cinco pedidos mortos aos
+  60 000 ms.
+
+  O DIAGNOSTICO ESTAVA ERRADO. O `pg_stat_activity` veio VAZIO: nem uma
+  sessao parada em transacao, ninguem a espera de cadeados. Nao havia
+  domino nenhum para curar.
+
+  E A CURA FEZ MAL. O `idle_in_transaction_session_timeout` nao trava a
+  consulta: manda o Postgres MATAR a sessao a meio. O condutor fica a
+  ler uma resposta cortada, rebenta com
+
+      TypeError: Cannot read properties of undefined (reading 'length')
+        at TLSSocket
+
+  e a ligacao fica partida na piscina. Quem a apanhar a seguir espera
+  para sempre — que e, com ironia, o mesmo sintoma que isto vinha curar.
+
+  A LICAO: um prazo que MATA a sessao nao e um prazo, e uma machadada.
+  E nao se poe uma machadada no caminho de escrita por causa de uma
+  teoria que ainda nao se mediu.
+
+  Se um dia isto voltar a ser preciso, o `lock_timeout` sozinho serve —
+  esse aborta a consulta e devolve um erro limpo, sem matar ninguem.
+*/
 
 async function lockStaffDay(
   tx: Tx,
@@ -825,8 +818,6 @@ export async function rescheduleAppointment(input: {
 
     try {
       const created = await sql.begin(async (tx) => {
-        await comPrazo(tx)
-
         // A fila, como na criação: primeiro as profissionais do plano
         // que se quer gravar, depois as da marcação antiga — que também
         // se mexe, ao libertar-lhe os blocos.
