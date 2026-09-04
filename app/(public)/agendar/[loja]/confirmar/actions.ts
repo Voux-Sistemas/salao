@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { normalisePhone } from '@/lib/env'
@@ -145,6 +146,20 @@ export async function bookAction(
   */
   try {
     await createSession('client', clientId)
+
+    /*
+      E A MOLDURA TEM DE SABER QUE ELA ENTROU.
+
+      Sem isto, a sessão nascia na base de dados e o cabeçalho continuava
+      a dizer «Entrar»: o Next reaproveita o layout entre páginas que o
+      partilham, e a moldura desenhada é a do funil — de quando ela ainda
+      não era ninguém. Ela ficava entrada e a ver a porta de entrada.
+
+      `revalidatePath('/', 'layout')` deita fora a árvore inteira,
+      layouts incluídos. Vai ANTES do `redirect`, sempre: o `redirect`
+      atira, e o que vem a seguir não corre.
+    */
+    revalidatePath('/', 'layout')
   } catch (erro) {
     console.error('[marcar] abrir a sessão da cliente falhou', erro)
   }
