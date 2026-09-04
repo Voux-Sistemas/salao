@@ -9,6 +9,7 @@ import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
 import { ButtonLink, Eyebrow } from '@/components/ui'
 import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
 import { GuardarLink } from '@/components/guardar-link'
+import { MolduraFresca } from '@/components/moldura-fresca'
 import { formatPhone } from '@/lib/text'
 import { serviceNamesFor } from '@/lib/catalog-names'
 import { preencherSaudacao } from '@/lib/notify'
@@ -81,6 +82,14 @@ export default async function DonePage({ params }: Params) {
 
   return (
     <div className="flex min-h-[78vh] flex-col">
+      {/*
+        A sessão dela nasceu há um instante, na acção que a trouxe aqui.
+        O cabeçalho lá em cima é o do funil, guardado no navegador de
+        quando ela ainda não era ninguém — e continuaria a oferecer-lhe a
+        porta de entrada. Isto pede uma volta ao servidor, uma só.
+      */}
+      <MolduraFresca />
+
       {/* ------------------------------------------------- o carimbo --- */}
       <header className="band-dark relative overflow-hidden">
         <div

@@ -1,7 +1,6 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { normalisePhone } from '@/lib/env'
@@ -148,18 +147,27 @@ export async function bookAction(
     await createSession('client', clientId)
 
     /*
-      E A MOLDURA TEM DE SABER QUE ELA ENTROU.
+      AQUI ESTEVE UM `revalidatePath('/', 'layout')`, E FOI UM ERRO CARO.
 
-      Sem isto, a sessão nascia na base de dados e o cabeçalho continuava
-      a dizer «Entrar»: o Next reaproveita o layout entre páginas que o
-      partilham, e a moldura desenhada é a do funil — de quando ela ainda
-      não era ninguém. Ela ficava entrada e a ver a porta de entrada.
+      Servia para o cabeçalho deixar de dizer «Entrar» depois de ela
+      marcar — a moldura é partilhada com o funil e tinha sido desenhada
+      quando ela ainda não era ninguém. O problema resolvia-se; só que
+      trazia outro muito pior atrás.
 
-      `revalidatePath('/', 'layout')` deita fora a árvore inteira,
-      layouts incluídos. Vai ANTES do `redirect`, sempre: o `redirect`
-      atira, e o que vem a seguir não corre.
+      Deitar fora a árvore INTEIRA deita fora também a página onde ela
+      ainda está: a `/confirmar`. O Next volta a desenhá-la como parte
+      da resposta desta acção, ela corre o `planAt` outra vez, e não
+      encontra plano nenhum — porque a hora acabou de ser ocupada PELA
+      MARCAÇÃO QUE ELA ACABOU DE FAZER. A `/confirmar` faz então o seu
+      próprio `redirect` para os horários, que choca com o desta acção:
+      o botão fica preso a rodar, e quem recarrega vai parar a um dia sem
+      vagas — o seu próprio dia, que ele próprio encheu.
+
+      A LIÇÃO: numa acção que ACABOU DE MUDAR O MUNDO, revalidar a página
+      de onde se veio é pedir-lhe que se volte a validar contra um mundo
+      que já não é o dela. A moldura arranja-se do outro lado, na página
+      de chegada, onde não há nada para revalidar contra.
     */
-    revalidatePath('/', 'layout')
   } catch (erro) {
     console.error('[marcar] abrir a sessão da cliente falhou', erro)
   }
