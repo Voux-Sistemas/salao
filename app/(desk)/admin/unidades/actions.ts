@@ -143,7 +143,8 @@ export async function saveRulesAction(
     maxLeadDays: number('max_lead'),
     slotGranularityMinutes: number('granularity'),
     gapBetweenServicesMinutes: number('gap'),
-    cancelWindowHours: number('cancel_window'),
+    cancelWindowMinutes: number('cancel_window'),
+    rescheduleWindowMinutes: number('reschedule_window'),
     assignmentStrategy: strategy,
   } as const
 

@@ -91,7 +91,7 @@ export default async function ManagePage({ params, searchParams }: Params) {
   const now = new Date()
   const podeDesmarcar = clientMayCancel(
     appointment,
-    { cancel_window_hours: unit?.cancel_window_hours ?? 0 },
+    { cancel_window_minutes: unit?.cancel_window_minutes ?? 0 },
     now,
   )
   const podeRemarcar = unit !== null && clientMayReschedule(appointment, unit, now)

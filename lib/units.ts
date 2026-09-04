@@ -145,7 +145,8 @@ export type BookingRules = {
   maxLeadDays: number
   slotGranularityMinutes: number
   gapBetweenServicesMinutes: number
-  cancelWindowHours: number
+  cancelWindowMinutes: number
+  rescheduleWindowMinutes: number
   assignmentStrategy: Unit['assignment_strategy']
 }
 
@@ -160,7 +161,8 @@ export async function updateBookingRules(
     input.slotGranularityMinutes < 5 ||
     input.slotGranularityMinutes > 120 ||
     input.gapBetweenServicesMinutes < 0 ||
-    input.cancelWindowHours < 0
+    input.cancelWindowMinutes < 0 ||
+    input.rescheduleWindowMinutes < 0
   if (bad) return { ok: false, reason: 'invalid' }
 
   const rows = await sql<{ id: string }[]>`
@@ -169,7 +171,8 @@ export async function updateBookingRules(
       max_lead_days = ${input.maxLeadDays},
       slot_granularity_minutes = ${input.slotGranularityMinutes},
       gap_between_services_minutes = ${input.gapBetweenServicesMinutes},
-      cancel_window_hours = ${input.cancelWindowHours},
+      cancel_window_minutes = ${input.cancelWindowMinutes},
+      reschedule_window_minutes = ${input.rescheduleWindowMinutes},
       assignment_strategy = ${input.assignmentStrategy}
      where id = ${id} and org_id = ${orgId}
      returning id

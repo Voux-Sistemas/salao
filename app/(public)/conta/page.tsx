@@ -153,7 +153,7 @@ export default async function ContaPage() {
 
                         {clientMayCancel(
                           booking,
-                          { cancel_window_hours: booking.cancel_window_hours },
+                          { cancel_window_minutes: booking.cancel_window_minutes },
                           now,
                         ) ? (
                           <CancelBooking

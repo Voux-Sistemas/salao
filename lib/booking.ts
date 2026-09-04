@@ -1038,12 +1038,21 @@ export async function marcacaoPelaChave(chave: string) {
 }
 
 /**
- * A janela de cancelamento é da loja. Passado esse prazo, a cliente fala
- * connosco — não cancela sozinha.
+ * A JANELA DE CANCELAMENTO É DA LOJA, e mede-se em minutos.
+ *
+ * Media-se em horas, e as horas trabalhavam contra a casa: com uma
+ * janela de 24, uma marcação de sábado ao meio-dia deixava de se
+ * cancelar na sexta à tarde. Quem não pode vir e não consegue dizê-lo
+ * não vem à mesma — falta, e a casa perde a hora sem saber que ela
+ * vagou. Meia hora não se escreve em horas inteiras.
+ *
+ * Fecha mais cedo do que a de remarcar, e é essa a ordem que se quer:
+ * fica uma faixa em que ela já não desmarca mas ainda muda de dia.
+ * Entre uma falta e uma mudança, a casa quer a mudança.
  */
 export function clientMayCancel(
   appointment: { status: Status; starts_at: Date },
-  unit: { cancel_window_hours: number },
+  unit: { cancel_window_minutes: number },
   now: Date = new Date(),
 ): boolean {
   if (isTerminal(appointment.status)) return false
@@ -1051,7 +1060,7 @@ export function clientMayCancel(
     return false
   }
   const limit =
-    appointment.starts_at.getTime() - unit.cancel_window_hours * 3_600_000
+    appointment.starts_at.getTime() - unit.cancel_window_minutes * 60_000
   return now.getTime() <= limit
 }
 

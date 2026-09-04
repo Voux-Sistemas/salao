@@ -31,7 +31,8 @@ export type Unit = {
   max_lead_days: number
   slot_granularity_minutes: number
   gap_between_services_minutes: number
-  cancel_window_hours: number
+  /** Até quantos minutos antes a cliente ainda pode desmarcar. */
+  cancel_window_minutes: number
   /** Até quantos minutos antes a cliente ainda pode mudar de hora sozinha. */
   reschedule_window_minutes: number
   assignment_strategy: 'balance_load' | 'first_available' | 'least_busy_week'

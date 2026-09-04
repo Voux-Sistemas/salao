@@ -58,7 +58,7 @@ export type AccountBooking = {
   unit_name: string
   unit_slug: string
   timezone: string
-  cancel_window_hours: number
+  cancel_window_minutes: number
   status: Status
   starts_at: Date
   ends_at: Date
@@ -79,7 +79,7 @@ export type AccountBooking = {
 function columns(language: Language) {
   return sql`
     a.id, u.name as unit_name, u.slug as unit_slug, u.timezone,
-    u.cancel_window_hours, a.status, a.starts_at, a.ends_at,
+    u.cancel_window_minutes, a.status, a.starts_at, a.ends_at,
     (select string_agg(
               case when ${language} = 'pt' then i.service_name
                    else name_in(${language}, i.service_name,
@@ -157,9 +157,9 @@ export async function cancelBooking(
   appointmentId: string,
 ): Promise<CancelResult> {
   const rows = await sql<
-    { status: Status; starts_at: Date; cancel_window_hours: number }[]
+    { status: Status; starts_at: Date; cancel_window_minutes: number }[]
   >`
-    select a.status, a.starts_at, u.cancel_window_hours
+    select a.status, a.starts_at, u.cancel_window_minutes
       from appointment a
       join unit u on u.id = a.unit_id
      where a.id = ${appointmentId} and a.client_id = ${clientId}
@@ -167,7 +167,9 @@ export async function cancelBooking(
   const row = rows[0]
   if (!row) return { ok: false, reason: 'not_found' }
 
-  if (!clientMayCancel(row, { cancel_window_hours: row.cancel_window_hours })) {
+  if (
+    !clientMayCancel(row, { cancel_window_minutes: row.cancel_window_minutes })
+  ) {
     return { ok: false, reason: 'too_late' }
   }
 

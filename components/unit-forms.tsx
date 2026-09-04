@@ -248,7 +248,8 @@ export type RuleFields = {
   max_lead_days: number
   slot_granularity_minutes: number
   gap_between_services_minutes: number
-  cancel_window_hours: number
+  cancel_window_minutes: number
+  reschedule_window_minutes: number
   assignment_strategy: 'balance_load' | 'first_available' | 'least_busy_week'
 }
 
@@ -336,19 +337,48 @@ export function RulesForm({ unit }: { unit: RuleFields }) {
             suffix="min"
           />
         </Field>
+{/*
+          AS DUAS JANELAS ANDAM JUNTAS, e é preciso vê-las ao mesmo
+          tempo para as perceber.
+
+          A de remarcar é a mais larga de propósito, e parece ao
+          contrário. Uma cliente que já não pode desmarcar NÃO VEM À
+          MESMA: falta, e a casa perde a hora e o dinheiro. Se puder
+          mudar de dia, perde a hora e mantém o dinheiro. Entre uma
+          falta e uma mudança, a casa quer a mudança — por isso a porta
+          de mudar fecha DEPOIS da de desmarcar.
+
+          As duas em minutos: a de desmarcar media-se em horas, e horas
+          inteiras não sabem dizer «meia hora».
+        */}
         <Field
-          label="Janela de cancelamento"
+          label="Desmarcar até"
           htmlFor="rule-cancel"
-          hint="Até quando se pode desmarcar."
-          className="w-40"
+          hint="Quanto tempo antes ela ainda pode desmarcar sozinha."
+          className="w-44"
         >
           <SuffixInput
             id="rule-cancel"
             name="cancel_window"
             type="number"
             min={0}
-            defaultValue={unit.cancel_window_hours}
-            suffix="horas"
+            defaultValue={unit.cancel_window_minutes}
+            suffix="min"
+          />
+        </Field>
+        <Field
+          label="Mudar de hora até"
+          htmlFor="rule-reschedule"
+          hint="Mais perto da hora do que desmarcar: uma mudança vale mais do que uma falta."
+          className="w-44"
+        >
+          <SuffixInput
+            id="rule-reschedule"
+            name="reschedule_window"
+            type="number"
+            min={0}
+            defaultValue={unit.reschedule_window_minutes}
+            suffix="min"
           />
         </Field>
         <Field
