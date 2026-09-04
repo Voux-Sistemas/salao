@@ -9,7 +9,6 @@ import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
 import { ButtonLink, Eyebrow } from '@/components/ui'
 import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
 import { GuardarLink } from '@/components/guardar-link'
-import { MolduraFresca } from '@/components/moldura-fresca'
 import { formatPhone } from '@/lib/text'
 import { serviceNamesFor } from '@/lib/catalog-names'
 import { preencherSaudacao } from '@/lib/notify'
@@ -82,13 +81,29 @@ export default async function DonePage({ params }: Params) {
 
   return (
     <div className="flex min-h-[78vh] flex-col">
-      {/*
-        A sessão dela nasceu há um instante, na acção que a trouxe aqui.
-        O cabeçalho lá em cima é o do funil, guardado no navegador de
-        quando ela ainda não era ninguém — e continuaria a oferecer-lhe a
-        porta de entrada. Isto pede uma volta ao servidor, uma só.
+{/*
+        O CABEÇALHO PODE DIZER «ENTRAR» A QUEM JÁ ESTÁ ENTRADA, E DEIXA-SE.
+
+        A sessão dela nasceu há um instante, na acção que a trouxe aqui,
+        mas a moldura é partilhada com o funil e a que o navegador tem
+        guardada foi desenhada antes disso.
+
+        Tentou-se arranjar duas vezes e das duas partiu-se coisa pior. Um
+        `revalidatePath('/', 'layout')` na acção deitava fora a página
+        `/confirmar`, que se revalidava, não encontrava a hora livre —
+        acabara de a ocupar ela própria — e se atirava para os horários:
+        o botão ficava preso a rodar. Um `router.refresh()` aqui pedia
+        uma segunda volta ao servidor no pior momento possível e acabava
+        no ecrã de contratempo.
+
+        E NÃO VALIA NADA DISSO. A palavra está errada e mais nada: o
+        `/conta/entrar` começa por `if (client) redirect('/conta')`, e
+        portanto quem carregar em «Entrar» com sessão aberta vai parar
+        direitinho à sua conta. Uma etiqueta enganada que leva ao sítio
+        certo custa uma palavra feia; as duas curas custavam a marcação.
+
+        Endireita-se sozinha na primeira navegação inteira.
       */}
-      <MolduraFresca />
 
       {/* ------------------------------------------------- o carimbo --- */}
       <header className="band-dark relative overflow-hidden">
