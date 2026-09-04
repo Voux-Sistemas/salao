@@ -97,10 +97,23 @@ export async function bookAction(
 
     Sai quando soubermos.
   */
+  /*
+    CADA PASSO ESCREVE NO ACTO. A primeira versão disto juntava os
+    tempos num array e escrevia uma linha só no fim — e ficou cega
+    precisamente no caso que interessava: uma acção que fica pendurada a
+    meio nunca chega ao fim, e portanto nunca escrevia nada. O registo
+    de uma marcação que morreu aos 60 segundos veio VAZIO.
+
+    Uma ferramenta de diagnóstico que só fala quando corre tudo bem não
+    serve para nada. Agora cada passo deixa a sua linha assim que passa:
+    se a acção morrer, a última linha escrita diz até onde chegou, e o
+    silêncio a seguir diz onde ficou presa.
+
+    Custa cinco linhas de registo por marcação. É barato pelo que dá.
+  */
   const arranque = Date.now()
-  const marcas: string[] = []
   const passo = (nome: string) => {
-    marcas.push(`${nome} ${Date.now() - arranque}ms`)
+    console.info(`[marcar] ${nome} ${Date.now() - arranque}ms`)
   }
 
   const ip = await callerIp()
@@ -201,9 +214,9 @@ export async function bookAction(
     console.error('[marcar] abrir a sessão da cliente falhou', erro)
   }
 
-  /* Antes do `redirect`, sempre: ele atira, e o que vem a seguir não
-     corre. */
-  console.info(`[marcar] tempos: ${marcas.join(' · ')}`)
+  /* O remate, antes do `redirect` — que atira, e o que vem a seguir
+     não corre. Se esta linha aparecer, a acção fez o percurso todo. */
+  passo('FIM')
 
   redirect(`/agendar/${unit.slug}/pronto/${result.appointmentId}`)
 }
