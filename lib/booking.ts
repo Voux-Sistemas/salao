@@ -1,7 +1,7 @@
 import 'server-only'
 import { randomBytes } from 'node:crypto'
 import type postgres from 'postgres'
-import { isOverlapError, sql } from '@/lib/db'
+import { isBusyError, isOverlapError, sql } from '@/lib/db'
 import { planAt, type CartLine, type Channel, type Plan } from '@/lib/availability'
 import type { Unit } from '@/lib/org'
 import type { IsoDay } from '@/lib/time'
@@ -186,6 +186,8 @@ export async function createAppointment(
 
     try {
       const written = await sql.begin(async (tx) => {
+        await comPrazo(tx)
+
         // Primeiro a fila, depois a verdade. Enquanto este cadeado for
         // nosso, mais ninguém escreve para estas profissionais neste
         // dia — e o que se ler a seguir é o estado final, não uma
@@ -304,6 +306,11 @@ export async function createAppointment(
          `resource_block` sim: o lavatório não se parte ao meio. Este
          `catch` continua a ser o que apanha a disputa por um recurso. */
       if (isOverlapError(error)) continue
+      /* Prazo expirado à espera da agenda daquele dia. A transação
+         desfez-se inteira; vale uma segunda volta, e se essa também não
+         passar a cliente ouve «essa hora acabou de ser tomada» — que é
+         a verdade do lado dela. */
+      if (isBusyError(error)) continue
       throw error
     }
   }
@@ -342,6 +349,42 @@ class SlotTaken extends Error {
  * ordem que lhe desse jeito, duas visitas cruzadas ficavam à espera uma
  * da outra para sempre. Por ordem crescente, isso não acontece.
  */
+/**
+ * PRAZOS PARA A TRANSACAO. Sem eles, uma marcacao pode ficar pendurada
+ * ate a plataforma a matar — e a matar deixa a transacao aberta do lado
+ * do Postgres, com os cadeados na mao. Toda a gente que chega a seguir
+ * fica na fila atras de um morto. E um efeito domino, e foi o que se viu
+ * nos registos: cinco pedidos a bater nos 60 000 ms.
+ *
+ * TRES PRAZOS, TRES PERIGOS DIFERENTES:
+ *
+ * O `lock_timeout` e o mais importante. O `pg_advisory_xact_lock`
+ * espera para sempre por natureza — e "para sempre" numa funcao com
+ * tecto de sessenta segundos quer dizer "ate morrer com os cadeados na
+ * mao". Oito segundos e muito mais do que uma marcacao honesta precisa:
+ * quem espera mais do que isso esta atras de alguma coisa avariada.
+ *
+ * O `statement_timeout` apanha uma consulta que se arraste por outra
+ * razao qualquer — uma base sobrecarregada, um plano mau.
+ *
+ * O `idle_in_transaction_session_timeout` e a rede de seguranca: se a
+ * funcao morrer a meio, o Postgres deita fora a sessao passados dez
+ * segundos e larga os cadeados sozinho. E isto que corta o domino.
+ *
+ * SAO `set local`: valem so dentro desta transacao e nao encostam nada
+ * a ligacao, que e partilhada pelo pooler. Um `set` normal ficava
+ * agarrado a ligacao e ia parar ao pedido seguinte de outra pessoa.
+ *
+ * Falhar depressa e com um erro que se le vale mais do que ficar
+ * pendurado: um erro conta-se nos registos, uma espera de sessenta
+ * segundos so se sente.
+ */
+async function comPrazo(tx: Tx): Promise<void> {
+  await tx`set local lock_timeout = '8s'`
+  await tx`set local statement_timeout = '20s'`
+  await tx`set local idle_in_transaction_session_timeout = '10s'`
+}
+
 async function lockStaffDay(
   tx: Tx,
   staffIds: string[],
@@ -782,6 +825,8 @@ export async function rescheduleAppointment(input: {
 
     try {
       const created = await sql.begin(async (tx) => {
+        await comPrazo(tx)
+
         // A fila, como na criação: primeiro as profissionais do plano
         // que se quer gravar, depois as da marcação antiga — que também
         // se mexe, ao libertar-lhe os blocos.
@@ -912,6 +957,7 @@ export async function rescheduleAppointment(input: {
          — e vale a pena uma segunda volta. */
       if (error instanceof SlotTaken) continue
       if (isOverlapError(error)) continue
+      if (isBusyError(error)) continue
       throw error
     }
   }

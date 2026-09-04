@@ -107,6 +107,36 @@ export type Sql = Client | postgres.TransactionSql<Record<string, never>>
 export const EXCLUSION_VIOLATION = '23P01'
 export const UNIQUE_VIOLATION = '23505'
 
+/**
+ * A BASE ESTAVA OCUPADA — NÃO É UM DEFEITO, É TRÂNSITO.
+ *
+ * Dois códigos, dois prazos que expiraram:
+ *
+ *   55P03  lock_not_available — o `lock_timeout` disparou. Alguém tem a
+ *          agenda daquele dia na mão e não a largou a tempo.
+ *   57014  query_canceled — o `statement_timeout` disparou. A consulta
+ *          arrastou-se para lá do prazo.
+ *
+ * Distingue-se de um erro a sério porque a resposta é outra: numa base
+ * ocupada tenta-se outra vez, e se a segunda também falhar diz-se à
+ * cliente que aquela hora acabou de ser tomada — que é o que
+ * verdadeiramente aconteceu do ponto de vista dela.
+ *
+ * O que NÃO se faz é deixar isto subir até ao ecrã como um erro cru. A
+ * marcação não se gravou, a transação desfez-se inteira, e o sistema
+ * está são: só estava gente à frente.
+ */
+export const LOCK_NOT_AVAILABLE = '55P03'
+export const QUERY_CANCELED = '57014'
+
+export function isBusyError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return false
+  }
+  const code = (error as { code?: string }).code
+  return code === LOCK_NOT_AVAILABLE || code === QUERY_CANCELED
+}
+
 export function isOverlapError(error: unknown): boolean {
   return (
     typeof error === 'object' &&
