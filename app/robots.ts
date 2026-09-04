@@ -34,6 +34,11 @@ export default function robots(): MetadataRoute.Robots {
         '/agendar/*/horarios',
         '/agendar/*/confirmar',
         '/agendar/*/pronto',
+        // O link que a cliente guarda: um endereço por marcação, cada um
+        // a apontar para uma pessoa em concreto. Também vai com
+        // `noindex` no cabeçalho — isto poupa-lhes a visita.
+        '/m/',
+        '/balcao',
       ],
     },
     sitemap: `${env.siteUrl}/sitemap.xml`,

@@ -6,6 +6,7 @@ import { getDictionary, getLanguage } from '@/lib/i18n'
 import { normalisePhone } from '@/lib/env'
 import { parseCart } from '@/lib/cart'
 import { createAppointment, findOrCreateClient } from '@/lib/booking'
+import { createSession } from '@/lib/auth/session'
 import { LIMITS, allowed, callerIp } from '@/lib/auth/throttle'
 import { isValidInstant, isoDay } from '@/lib/time'
 
@@ -115,6 +116,37 @@ export async function bookAction(
           ? dict.errors.slotTaken
           : dict.errors.slotInvalid,
     }
+  }
+
+  /*
+    A CLIENTE SAI DAQUI JÁ ENTRADA — e isto resolve o problema que a
+    deixava presa.
+
+    Para desmarcar, ela tinha de entrar na área dela; para entrar,
+    precisava de um código; e o código não tem canal automático nenhum —
+    fica no balcão à espera que alguém o mande. Quem está ao balcão não
+    tem tempo, e a cliente ficava a olhar para seis quadrados vazios.
+
+    Mas o sistema JÁ SABE quem ela é: acabou de a encontrar ou de a criar,
+    trinta linhas acima, e tem o `clientId` na mão. Deitava-o fora aqui.
+    Abrindo-lhe a sessão neste instante, ela fica com a conta aberta
+    sessenta dias naquele telemóvel — e desmarca sozinha, sem código, sem
+    link, sem ninguém.
+
+    ONDE NÃO CHEGA, e é honesto sabê-lo: vale para o aparelho em que
+    marcou. Noutro, ou depois de limpar o navegador, é o link da página
+    seguinte que a salva. Marcações feitas ao balcão não passam por aqui
+    — mas nessas ela está lá, à frente de alguém.
+
+    NÃO TRAVA A MARCAÇÃO. A marcação está feita e gravada; se abrir a
+    sessão falhar, o pior que acontece é ela ter de pedir o código como
+    antes. Recusar-lhe a marcação por causa de um cookie seria trocar um
+    incómodo por um prejuízo.
+  */
+  try {
+    await createSession('client', clientId)
+  } catch (erro) {
+    console.error('[marcar] abrir a sessão da cliente falhou', erro)
   }
 
   redirect(`/agendar/${unit.slug}/pronto/${result.appointmentId}`)

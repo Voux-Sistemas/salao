@@ -3,11 +3,12 @@ import type { Metadata } from 'next'
 import { MapPin, Phone } from 'lucide-react'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
-import { getAppointment } from '@/lib/booking'
+import { chaveDa, getAppointment } from '@/lib/booking'
 import { formatCents } from '@/lib/money'
 import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
 import { ButtonLink, Eyebrow } from '@/components/ui'
 import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
+import { GuardarLink } from '@/components/guardar-link'
 import { formatPhone } from '@/lib/text'
 import { serviceNamesFor } from '@/lib/catalog-names'
 import { preencherSaudacao } from '@/lib/notify'
@@ -70,6 +71,13 @@ export default async function DonePage({ params }: Params) {
         `${appointment.unit_name}, ${address}`,
       )}`
     : null
+
+  /*
+    A chave vem numa pergunta à parte e não com a marcação: só esta
+    página a usa, e enfiá-la no `getAppointment` fazia todas as outras
+    do balcão pagarem por ela.
+  */
+  const chave = await chaveDa(appointment.id)
 
   return (
     <div className="flex min-h-[78vh] flex-col">
@@ -193,14 +201,35 @@ export default async function DonePage({ params }: Params) {
             </div>
           </div>
 
+          {/*
+            AS DUAS PORTAS PARA ELA VOLTAR AQUI SOZINHA.
+
+            Vai para `/conta` e não para `/conta/entrar`: a sessão dela
+            nasceu ao marcar, e mandá-la à porta de entrada era pedir-lhe
+            um código que ninguém lhe manda. É esse código que a deixava
+            presa.
+          */}
           <div className="mt-9 flex flex-wrap gap-3">
-            <ButtonLink href="/conta/entrar" size="lg">
+            <ButtonLink href="/conta" size="lg">
               {dict.funnel.goToAccount}
             </ButtonLink>
             <ButtonLink href="/agendar" size="lg" variant="outline">
               {dict.funnel.bookAnother}
             </ButtonLink>
           </div>
+
+          {/*
+            E A SEGUNDA PORTA, DISCRETA.
+
+            A sessão vive naquele telemóvel. Se ela quiser desmarcar do
+            computador do trabalho, ou se limpar o navegador, é este link
+            que a salva — e vem DELA, não de alguém do salão a ter de o
+            enviar.
+
+            Fica pequeno de propósito: a maioria nunca vai precisar dele,
+            e quem precisa é porque já anda à procura.
+          */}
+          {chave ? <GuardarLink chave={chave} /> : null}
 
           <div className="mt-12 flex justify-center text-[var(--line)]">
             <LeafRule className="w-40" />

@@ -226,7 +226,8 @@ export const es: Dictionary = {
     signInNoAccount: 'No necesitas cuenta para reservar.',
     phoneLabel: 'Móvil',
     sendCode: 'Recibir código',
-    codeSent: 'Si este número tiene cuenta con nosotros, el código ya va en camino.',
+    codeSent:
+      'Si este número tiene cuenta con nosotros, el salón le enviará el código — puede no ser inmediato. Para anular ya, use el enlace que recibió al reservar.',
     verifyTitle: 'Escribe el código',
     verifySubtitle: 'Tiene seis dígitos y vale 10 minutos.',
     codeLabel: 'Código',
@@ -258,5 +259,22 @@ export const es: Dictionary = {
       cancelled_by_salon: 'Cancelada por el salón',
       no_show: 'No se presentó',
     },
+  },
+
+  manage: {
+    title: 'Su reserva',
+    subtitle: 'Guardó el enlace — aquí puede cambiar la hora o anular.',
+    gone: 'Este enlace ya no abre nada.',
+    goneHint:
+      'O la reserva fue anulada, o el enlace está incompleto. Hable con nosotros y lo resolvemos.',
+    reschedule: 'Cambiar la hora',
+    rescheduleTitle: 'Cambiar la hora',
+    rescheduleSubtitle: 'Los mismos servicios, otro día u otra hora.',
+    rescheduleTooLate: 'Ya no se puede cambiar la hora en línea. Llámenos, por favor.',
+    rescheduled: 'Hora cambiada. Todo confirmado.',
+    noSlots: 'Este día no hay horas libres para esta visita.',
+    keep: 'Dejar como está',
+    cancelledTitle: 'Reserva anulada',
+    cancelledHint: 'No tiene que hacer nada más. La esperamos otro día.',
   },
 }

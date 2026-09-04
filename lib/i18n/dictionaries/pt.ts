@@ -268,7 +268,8 @@ export const pt = {
     signInNoAccount: 'Não precisa de conta para marcar hora.',
     phoneLabel: 'Telemóvel',
     sendCode: 'Receber código',
-    codeSent: 'Se este número tiver conta connosco, o código já seguiu.',
+    codeSent:
+      'Se este número tiver conta connosco, o salão envia-lhe o código — pode não ser imediato. Para desmarcar já, use o link que recebeu quando marcou.',
     verifyTitle: 'Escreva o código',
     verifySubtitle: 'Tem seis dígitos e é válido por 10 minutos.',
     codeLabel: 'Código',
@@ -300,6 +301,25 @@ export const pt = {
       cancelled_by_salon: 'Cancelada pelo salão',
       no_show: 'Falta',
     },
+  },
+
+  /* A página que o link abre. Uma marcação, e o que se pode fazer com
+     ela: mudar de hora ou desmarcar. Nada da conta. */
+  manage: {
+    title: 'A sua marcação',
+    subtitle: 'Guardou o link — aqui pode mudar de hora ou desmarcar.',
+    gone: 'Este link já não abre nada.',
+    goneHint:
+      'Ou a marcação foi desmarcada, ou o link está incompleto. Fale connosco e resolvemos.',
+    reschedule: 'Mudar de hora',
+    rescheduleTitle: 'Mudar de hora',
+    rescheduleSubtitle: 'Os mesmos serviços, noutro dia ou a outra hora.',
+    rescheduleTooLate: 'Já não dá para mudar a hora online. Ligue-nos, por favor.',
+    rescheduled: 'Hora mudada. Está tudo confirmado.',
+    noSlots: 'Neste dia não há horas livres para esta visita.',
+    keep: 'Fica como está',
+    cancelledTitle: 'Marcação desmarcada',
+    cancelledHint: 'Não precisa de fazer mais nada. Cá a esperamos noutro dia.',
   },
 }
 

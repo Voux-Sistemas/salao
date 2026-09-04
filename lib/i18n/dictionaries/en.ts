@@ -226,7 +226,8 @@ export const en: Dictionary = {
     signInNoAccount: 'You do not need an account to book.',
     phoneLabel: 'Mobile',
     sendCode: 'Send code',
-    codeSent: 'If this number has an account with us, the code is on its way.',
+    codeSent:
+      'If this number has an account with us, the salon will send you the code — it may not be immediate. To cancel right away, use the link you got when you booked.',
     verifyTitle: 'Enter the code',
     verifySubtitle: 'Six digits, valid for 10 minutes.',
     codeLabel: 'Code',
@@ -258,5 +259,22 @@ export const en: Dictionary = {
       cancelled_by_salon: 'Cancelled by the salon',
       no_show: 'No-show',
     },
+  },
+
+  manage: {
+    title: 'Your booking',
+    subtitle: 'You saved the link — here you can change the time or cancel.',
+    gone: 'This link no longer opens anything.',
+    goneHint:
+      'Either the booking was cancelled, or the link is incomplete. Talk to us and we will sort it out.',
+    reschedule: 'Change the time',
+    rescheduleTitle: 'Change the time',
+    rescheduleSubtitle: 'The same services, another day or another time.',
+    rescheduleTooLate: 'It is too late to change the time online. Please call us.',
+    rescheduled: 'Time changed. All confirmed.',
+    noSlots: 'There are no free times for this visit on this day.',
+    keep: 'Leave it as it is',
+    cancelledTitle: 'Booking cancelled',
+    cancelledHint: 'Nothing else to do. We will see you another day.',
   },
 }

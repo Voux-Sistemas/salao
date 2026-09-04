@@ -1,4 +1,5 @@
 import 'server-only'
+import { randomBytes } from 'node:crypto'
 import type postgres from 'postgres'
 import { isOverlapError, sql } from '@/lib/db'
 import { planAt, type CartLine, type Channel, type Plan } from '@/lib/availability'
@@ -266,15 +267,16 @@ export async function createAppointment(
           insert into appointment (
             org_id, unit_id, client_id, status, source,
             starts_at, ends_at, client_note, internal_note, language,
-            created_by_staff_id
+            created_by_staff_id, manage_token
           ) values (
             ${input.unit.org_id}, ${input.unit.id}, ${input.clientId},
             'confirmed', ${input.source},
             ${fresh.startsAt}, ${fresh.endsAt},
             ${input.clientNote ?? null}, ${input.internalNote ?? null},
-            ${input.language}, ${input.createdByStaffId ?? null}
+            ${input.language}, ${input.createdByStaffId ?? null},
+            ${novaChave()}
           )
-          returning id
+          returning id, manage_token
         `
         const appointment = rows[0]
         if (!appointment) throw new Error('insert falhou')
@@ -431,6 +433,24 @@ async function writePlan(
       `
     }
   }
+}
+
+/**
+ * A CHAVE DA MARCAÇÃO — o que vai no link que a cliente guarda.
+ *
+ * Abre AQUELA marcação, de qualquer aparelho, sem entrar em conta
+ * nenhuma. É a saída para quem marcou no telemóvel e quer desmarcar do
+ * computador do trabalho, ou para quem limpou o navegador.
+ *
+ * VINTE E QUATRO CARACTERES de aleatoriedade a sério — o mesmo gerador
+ * das chaves de sessão. Não é um número curto que se adivinhe: é uma
+ * chave, e o que ela abre é uma marcação de uma pessoa.
+ *
+ * Nasce com cada marcação. As que já existiam ficam sem ela e continuam
+ * a funcionar como sempre — só não têm link.
+ */
+function novaChave(): string {
+  return randomBytes(18).toString('base64url')
 }
 
 // ---------------------------------------------------------------------
@@ -787,9 +807,14 @@ export async function rescheduleAppointment(input: {
         }
 
         await freeBlocks(tx, previous.id)
-        await tx`
-          update appointment set status = 'cancelled_by_salon'
+        /* A chave sai com a marcação antiga e volta a entrar mais
+           abaixo, já na nova. Para a cliente é o mesmo link e a mesma
+           marcação; a troca de linha é assunto nosso. */
+        const solta = await tx<{ manage_token: string | null }[]>`
+          update appointment
+             set status = 'cancelled_by_salon', manage_token = null
            where id = ${previous.id}
+           returning manage_token
         `
         await tx`
           insert into appointment_status_event
@@ -848,6 +873,16 @@ export async function rescheduleAppointment(input: {
         if (!appointment) throw new Error('insert falhou')
 
         await writePlan(tx, appointment.id, input.unit.id, fresh)
+
+        // E a chave passa. As marcações nascidas antes de haver chave
+        // não têm nenhuma para passar, e continuam como sempre.
+        const chave = solta[0]?.manage_token ?? null
+        if (chave) {
+          await tx`
+            update appointment set manage_token = ${chave}
+             where id = ${appointment.id}
+          `
+        }
 
         /*
          * Havia aqui um passo a mais: arrastar os pagamentos da antiga
@@ -968,6 +1003,41 @@ export async function getAppointment(
 }
 
 /**
+ * A CHAVE DE UMA MARCAÇÃO, para o link que a cliente guarda.
+ *
+ * Pergunta à parte, e não uma coluna a mais no `getAppointment`: só a
+ * página do «pronto» precisa da chave, e o balcão lê marcações o dia
+ * inteiro. Não se faz o balcão pagar por uma coisa que é da cliente.
+ *
+ * Devolve `null` nas marcações antigas, que nasceram antes de haver
+ * chave. Essas continuam a funcionar como sempre — só não têm link, e a
+ * página do «pronto» simplesmente não o mostra.
+ */
+export async function chaveDa(id: string): Promise<string | null> {
+  const rows = await sql<{ manage_token: string | null }[]>`
+    select manage_token from appointment where id = ${id}
+  `
+  return rows[0]?.manage_token ?? null
+}
+
+/**
+ * A MARCAÇÃO QUE UMA CHAVE ABRE.
+ *
+ * É a porta do `/m/[chave]`: quem tem o link entra nesta marcação sem
+ * conta e sem código. Devolve `null` quando a chave não existe — e quem
+ * chama trata as duas coisas da mesma maneira, para que uma chave
+ * inventada e uma chave apagada sejam indistinguíveis de fora.
+ */
+export async function marcacaoPelaChave(chave: string) {
+  const rows = await sql<{ id: string }[]>`
+    select id from appointment where manage_token = ${chave}
+  `
+  const encontrada = rows[0]
+  if (!encontrada) return null
+  return getAppointment(encontrada.id)
+}
+
+/**
  * A janela de cancelamento é da loja. Passado esse prazo, a cliente fala
  * connosco — não cancela sozinha.
  */
@@ -982,5 +1052,32 @@ export function clientMayCancel(
   }
   const limit =
     appointment.starts_at.getTime() - unit.cancel_window_hours * 3_600_000
+  return now.getTime() <= limit
+}
+
+/**
+ * A JANELA DE REMARCAR É MAIS LARGA DO QUE A DE DESMARCAR — parece ao
+ * contrário e não é.
+ *
+ * Uma cliente que às oito da noite da véspera já não pode desmarcar NÃO
+ * VEM À MESMA: falta, e a casa perde a hora e o dinheiro. Se puder
+ * mudar de dia, a casa perde a hora e mantém o dinheiro. Entre uma
+ * falta e uma mudança, a casa quer a mudança — e por isso esta porta
+ * fecha muito mais tarde: quinze minutos antes, por omissão.
+ *
+ * Fecha à mesma quando a cliente já chegou ou já está na cadeira: a
+ * partir daí quem manda é quem está lá.
+ */
+export function clientMayReschedule(
+  appointment: { status: Status; starts_at: Date },
+  unit: { reschedule_window_minutes: number },
+  now: Date = new Date(),
+): boolean {
+  if (isTerminal(appointment.status)) return false
+  if (appointment.status === 'checked_in' || appointment.status === 'in_service') {
+    return false
+  }
+  const limit =
+    appointment.starts_at.getTime() - unit.reschedule_window_minutes * 60_000
   return now.getTime() <= limit
 }

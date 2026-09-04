@@ -47,8 +47,15 @@ const GROUPS: Record<string, number[]> = {
   '1': [3, 3, 4],
 }
 
-/** Quantos dígitos leva um número inteiro, para saber quando parar. */
-const NATIONAL_LENGTH: Record<string, number> = {
+/**
+ * Quantos dígitos leva um número inteiro, para saber quando parar.
+ *
+ * Sai daqui para fora porque o `normalisePhone` precisa dele: é o que
+ * distingue «351912345678» — o indicativo de casa mais um número
+ * completo, como o Excel o cospe — de um número nacional que por acaso
+ * começa por 351.
+ */
+export const NATIONAL_LENGTH: Record<string, number> = {
   '351': 9,
   '34': 9,
   '33': 9,
