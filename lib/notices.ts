@@ -125,7 +125,25 @@ export async function countNotices(input: {
       + (select count(*) from vista v
           where v.status in ('no_show', 'cancelled_by_client')
             and v.starts_at < now()
-            and v.dia >= v.hoje - ${WINBACK_DAYS}
+            /*
+              O ::int NAO E ENFEITE — SEM ELE A CONTA INTEIRA REBENTA.
+
+              O v.hoje e uma date, e o numero vai como parametro sem
+              tipo. O Postgres tem dois candidatos para "date menos
+              parametro": date - integer, que da uma data, e date - date,
+              que da um inteiro. Sem tipo escolhe o segundo — e a linha
+              seguinte fica a comparar date >= integer, operador que nao
+              existe.
+
+              A consulta TODA ia abaixo, e nao so esta parcela. O sino
+              apanhava a excepcao, punha zero, e nunca mais contou nada.
+              Um selo que nunca aparece le-se como "nao ha avisos" e nao
+              como "isto esta avariado" — foi por isso que durou tanto.
+
+              Sem acentos e sem crases de proposito: isto mora dentro de
+              um literal de SQL, e uma crase aqui fecha-o.
+            */
+            and v.dia >= v.hoje - ${WINBACK_DAYS}::int
             and not exists (select 1 from notification_log n
                              where n.appointment_id = v.id
                                and n.routine = 'winback')
