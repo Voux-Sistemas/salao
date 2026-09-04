@@ -80,14 +80,39 @@ export async function bookAction(
    * quem faz isto de propósito escreve um número diferente de cada vez.
    * Doze marcações por hora do mesmo sítio chegam bem para uma família.
    */
+  /*
+    O CRONÓMETRO. É TEMPORÁRIO E ESTÁ AQUI POR UMA RAZÃO CONCRETA.
+
+    Nos registos da Netlify, o pedido de marcar ficava trinta segundos
+    vivo e depois partia — e todos os outros pedidos respondiam entre 8
+    e 160 ms. A base não estava lenta e não havia ninguém à espera de
+    cadeados (o `pg_stat_activity` veio vazio). Três explicações minhas
+    caíram por terra, e nenhuma delas caiu por falta de imaginação:
+    caíram por falta de medição.
+
+    Isto escreve UMA linha por marcação, com o tempo acumulado a cada
+    passo. Custa quase nada, não muda comportamento nenhum, e a próxima
+    vez que o problema aparecer o registo diz onde — em vez de eu
+    adivinhar pela quarta vez.
+
+    Sai quando soubermos.
+  */
+  const arranque = Date.now()
+  const marcas: string[] = []
+  const passo = (nome: string) => {
+    marcas.push(`${nome} ${Date.now() - arranque}ms`)
+  }
+
   const ip = await callerIp()
   if (!(await allowed('marcar-ip', ip, LIMITS.book))) {
     return { error: dict.errors.tooMany }
   }
+  passo('travao')
 
   const org = await requireOrg()
   const unit = await getUnitBySlug(slug)
   if (!unit) return { error: dict.errors.generic }
+  passo('loja')
 
   const clientId = await findOrCreateClient(org.id, {
     phone,
@@ -95,6 +120,7 @@ export async function bookAction(
     language,
     preferredUnitId: unit.id,
   })
+  passo('ficha')
 
   const result = await createAppointment({
     unit,
@@ -143,8 +169,11 @@ export async function bookAction(
     antes. Recusar-lhe a marcação por causa de um cookie seria trocar um
     incómodo por um prejuízo.
   */
+  passo('marcacao')
+
   try {
     await createSession('client', clientId)
+    passo('sessao')
 
     /*
       AQUI ESTEVE UM `revalidatePath('/', 'layout')`, E FOI UM ERRO CARO.
@@ -171,6 +200,10 @@ export async function bookAction(
   } catch (erro) {
     console.error('[marcar] abrir a sessão da cliente falhou', erro)
   }
+
+  /* Antes do `redirect`, sempre: ele atira, e o que vem a seguir não
+     corre. */
+  console.info(`[marcar] tempos: ${marcas.join(' · ')}`)
 
   redirect(`/agendar/${unit.slug}/pronto/${result.appointmentId}`)
 }
