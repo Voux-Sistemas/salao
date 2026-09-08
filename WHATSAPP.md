@@ -4,8 +4,15 @@ Roteiro da integração com a WhatsApp Cloud API. Escrito antes de se
 tocar em código, para que o que se vai partir esteja escrito antes de
 partir.
 
-Estado: **fases 1 e 2 feitas**. O sistema continua a comportar-se como sempre
-— sem as variáveis de ambiente da Meta, nada disto se liga.
+Estado: **o código está todo escrito — fases 1 a 8.** O sistema continua a
+comportar-se exactamente como sempre: sem as variáveis de ambiente da
+Meta, `isConfigured()` responde que não e nenhum destes caminhos se
+liga. Nada mudou para quem está ao balcão hoje, com uma excepção
+deliberada e assinalada na fase 3.
+
+**Falta o que não é código**, e está reunido de propósito num sítio só:
+o §4.1. Duas migrações por aplicar, três variáveis por pôr no Netlify,
+os modelos por submeter, e a conta da Meta por criar.
 
 ---
 
@@ -222,12 +229,15 @@ Supabase não se corre sem alguém decidir. Aplica-se com:
 Enquanto não correr, nada quebra: o código de hoje não lê nem escreve
 nenhuma destas colunas.
 
-### Fase 3 · Os modelos, dos dois lados
+### Fase 3 · Os modelos, dos dois lados — FEITA
 
 O `message_template` guarda o texto que a casa escreve. Passa a guardar
 também o nome do modelo aprovado na Meta e a ordem dos marcadores.
 
-- Submeter os nove modelos (3 rotinas × 3 línguas) na categoria Utility.
+- Submeter os modelos na categoria Utility. São **6**, e não nove: só
+  as duas rotinas automáticas (`confirm`, `reminder_eve`) × 3 línguas.
+  As outras três continuam a sair pela mão de alguém, e o WhatsApp não
+  exige modelo aprovado a uma pessoa que escreve do telemóvel dela.
 - Uma função que pega no nosso `{cliente}, {loja}, {dia}, {hora}` e
   produz o array de parâmetros posicionais que a Meta espera.
 - **A ordem dos marcadores é um contrato.** Se a casa reescrever o texto
@@ -237,7 +247,22 @@ também o nome do modelo aprovado na Meta e a ordem dos marcadores.
 **Prova:** uma confirmação real, com o modelo aprovado, chega formatada
 como o `composeMessage` diz que devia chegar.
 
-### Fase 4 · A confirmação sai sozinha
+**Feito:** `lib/whatsapp/template.ts` traduz `{cliente}` para `{{1}}`
+lendo a ordem **do próprio corpo** — a ordem não se guarda em coluna
+nenhuma, porque uma coluna pode discordar do texto e o texto não pode
+discordar de si mesmo. `scripts/wa-modelos.mjs` imprime o que há a
+colar no WhatsApp Manager.
+
+**Uma mudança no que sai hoje, de propósito:** a Meta recusa dois
+parâmetros seguidos, e um espaço entre eles não chega. Os modelos
+`confirm` e `reminder_eve` tinham-nos nas três línguas — teriam sido
+recusados. Passaram a ter `Para: {servicos}` e `No {loja}`. O texto do
+botão e o texto aprovado na Meta têm de ser o MESMO, ou o envio
+automático dá 132005. A regra ficou no `lintMetaBody()` para não voltar.
+
+**Por fazer (§4.1):** submeter os modelos. Precisa da conta.
+
+### Fase 4 · A confirmação sai sozinha — FEITA
 
 O primeiro envio automático. É o mais fácil dos dois: acontece no
 momento da marcação, não precisa de relógio.
@@ -252,7 +277,22 @@ momento da marcação, não precisa de relógio.
 **Prova:** marco pelo site, o telemóvel apita, e a linha sai da fila de
 «Confirmar» sozinha.
 
-### Fase 5 · O relógio da véspera
+**Feito:** `lib/whatsapp/send.ts` e `despachar.ts`, com o gancho em
+`lib/booking.ts` — **fora da transacção**, imediatamente antes do
+`return`. A Meta em baixo nunca desfaz uma marcação.
+
+Escreve-se ANTES de enviar, e não por estilo: o `unique (appointment_id,
+routine)` só protege quem passa por ele antes de agir. Se o envio
+falhar, a linha é **apagada** e a marcação volta à fila do balcão.
+
+E o `isConfigured()` é perguntado antes de qualquer escrita — sem conta
+ligada nem se toca na base de dados, ou a fila enchia-se de linhas de
+mensagens que nunca saíram.
+
+**Por fazer (§4.1):** ligar a conta. O caminho está escrito e provado
+até à porta.
+
+### Fase 5 · O relógio da véspera — FEITA
 
 A Netlify Scheduled Function. Corre de hora a hora, em UTC.
 
@@ -270,7 +310,20 @@ A Netlify Scheduled Function. Corre de hora a hora, em UTC.
 **Prova:** o lembrete chega às 19:00 sem ninguém lá estar. Corro a
 função duas vezes seguidas e a cliente recebe uma mensagem só.
 
-### Fase 6 · O que a Meta responde
+**Feito:** `app/api/whatsapp/lembretes/route.ts` e
+`netlify/functions/lembretes.mts`, de hora a hora.
+
+**De hora a hora e não `0 19 * * *`**, porque um cron fixo em UTC está
+uma hora errado metade do ano e não serve duas lojas em fusos
+diferentes. Cada loja é perguntada no fuso dela: já são as
+`reminder_hour` aqui? A hora é por loja, com 19:00 por omissão.
+
+Usa o mesmo `loadQueue` que o balcão vê — não há duas verdades. Sem
+`CRON_SECRET` responde 503.
+
+**Por fazer (§4.1):** pôr o `CRON_SECRET` no Netlify.
+
+### Fase 6 · O que a Meta responde — FEITA
 
 Um webhook em `app/api/whatsapp/webhook/route.ts`.
 
@@ -283,7 +336,23 @@ Um webhook em `app/api/whatsapp/webhook/route.ts`.
 **Prova:** mando uma mensagem, leio-a no telemóvel, e o balcão passa a
 dizer «lida» sem eu recarregar nada.
 
-### Fase 7 · O balcão passa a mostrar isto
+**Feito:** `app/api/whatsapp/webhook/route.ts`. O `GET` responde ao
+*challenge*; o `POST` verifica a `X-Hub-Signature-256` sobre o corpo
+**cru**, lido uma vez — voltar a serializar o JSON muda os espaços e a
+assinatura deixa de bater. É o engano clássico, e está evitado.
+
+Os estados só andam para a frente: cada um tem um peso e só se escreve
+o que pesa mais, para que um aviso atrasado não volte a pôr em `sent`
+uma mensagem já lida. O `failed` é o mais pesado — nada que chegue
+depois o apaga.
+
+Responde 200 a tudo o que venha assinado, mesmo ao que não consegue
+ler: o 200 diz «recebi», não diz «concordo», e sem ele a Meta insiste
+durante dias.
+
+**Por fazer (§4.1):** dar o endereço à Meta e pôr os dois segredos.
+
+### Fase 7 · O balcão passa a mostrar isto — FEITA, com uma nota
 
 A página de avisos deixa de ser só uma fila: passa a ser fila **e**
 registo.
@@ -297,7 +366,23 @@ registo.
 **Prova:** a pré-visualização que se mostrou à cliente e o ecrã real
 dizem a mesma coisa.
 
-### Fase 8 · O que a lei obriga
+**Feito:** as duas faixas perguntam antes de afirmar. Com conta
+ligada: «A confirmação e o lembrete da véspera saem sozinhos», e o que
+aparece nessas duas filas é o que o sistema NÃO conseguiu enviar. Sem
+conta ligada, o texto é o de sempre, palavra por palavra.
+
+**O que NÃO fiz, e porquê.** O roteiro pedia «o estado por marcação, e
+o que falhou em destaque». Ao escrever a fase 4 isso deixou de fazer
+sentido: **uma mensagem falhada apaga a sua linha e a marcação volta à
+fila.** O que falhou já está em destaque — está lá, por despachar. Uma
+coluna de estado ao lado mostraria «enviada» em zero linhas, porque as
+enviadas saem da fila.
+
+Ver o que JÁ saiu é outra página, e é uma decisão tua, não minha. Por
+agora responde-se com `node scripts/wa-estado.mjs`, que mostra o que foi
+enviado, o que a Meta fez com cada uma, e põe as falhadas primeiro.
+
+### Fase 8 · O que a lei obriga — FEITA
 
 Não é opcional e não é o fim da lista por ser menos importante.
 
@@ -309,6 +394,20 @@ Não é opcional e não é o fim da lista por ser menos importante.
 
 **Prova:** uma cliente com opt-out não recebe nada, e isso vê-se na
 ficha dela.
+
+**Feito:** `client.whatsapp_opted_out_at`, uma data e não um booleano —
+«desde quando» responde a perguntas que «sim ou não» não responde.
+
+O opt-out tira a linha da **fila**, não só do envio: acrescentou-se `and
+c.whatsapp_opted_out_at is null` ao `base()` e ao `countNotices()` do
+`lib/notices.ts`, os dois sítios que os comentários do próprio ficheiro
+avisam que andam juntos. Assim não há botão para carregar nem relógio
+que a apanhe, nas cinco rotinas.
+
+**Não há coluna de consentimento, de propósito.** O consentimento para
+receber a confirmação de uma marcação É A MARCAÇÃO, e o
+`appointment.created_at` já é esse registo. Isto cobre transaccional;
+marketing seria outra conversa e outra base legal.
 
 ---
 
@@ -365,6 +464,61 @@ primeiro.
 5. **Decidir a hora do lembrete.** As 19:00 são um palpite meu.
 6. **Confirmar o preço à cliente:** ~17 €/mês de custo Meta para 600
    marcações, mais a vossa margem.
+
+Depois, quando a conta existir — e só depois, porque cada um destes
+passos precisa do anterior:
+
+7. **Aplicar as duas migrações.** Estão escritas e **nunca foram
+   aplicadas a lado nenhum** — nem local (não há Postgres nesta
+   máquina) nem em produção (não toco na base de dados da cliente sem
+   to dizer). São só colunas novas e nulas: nada do que existe muda de
+   forma.
+
+   ```
+   node scripts/_prod.mjs migrate --status    # ver o que falta
+   node scripts/_prod.mjs migrate             # aplicar
+   ```
+
+8. **Submeter os modelos**, na categoria **Utility** (não Marketing — a
+   diferença é de preço e de aprovação). O texto exacto sai daqui, já
+   com os `{{n}}` no sítio e já passado pelo lint:
+
+   ```
+   node scripts/wa-modelos.mjs
+   ```
+
+   São 6: `confirm` e `reminder_eve`, em pt_PT, en_US e es_ES.
+
+9. **Pôr as variáveis no Netlify** (Site settings › Environment
+   variables). Estão todas documentadas no `.env.example`:
+
+   | Variável | Onde se arranja |
+   |---|---|
+   | `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Manager. É o id, não o número |
+   | `WHATSAPP_ACCESS_TOKEN` | Token permanente de utilizador de sistema |
+   | `WHATSAPP_VERIFY_TOKEN` | Inventas tu. A Meta pede-a uma vez |
+   | `WHATSAPP_APP_SECRET` | developers.facebook.com › Definições › Básica |
+   | `CRON_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
+
+   **A integração acende no momento em que as duas primeiras existirem.**
+   As outras três não a acendem — protegem-na. Sem elas o webhook e o
+   relógio respondem 503, e é o que devem fazer.
+
+10. **Dar o endereço do webhook à Meta:**
+    `https://<o-site>/api/whatsapp/webhook`, subscrevendo o campo
+    `messages`.
+
+11. **Provar, por esta ordem:**
+
+    ```
+    node scripts/wa-teste.mjs                          # o token abre a porta?
+    node scripts/wa-teste.mjs +351... confirm pt_PT Maria ...   # sai uma mensagem?
+    ```
+
+    Depois uma marcação a sério pelo site, para o teu próprio número. Se
+    o telemóvel apitar e a linha sair da fila de «Confirmar» sozinha,
+    está feito. `node scripts/wa-estado.mjs` mostra o que a Meta fez com
+    ela.
 
 Não é preciso: conta de anúncios, página de Facebook, nem verificação do
 negócio para começar.
