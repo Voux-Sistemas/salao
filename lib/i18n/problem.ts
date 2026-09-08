@@ -29,6 +29,8 @@ export type ProblemStrings = {
   retry: string
   home: string
   book: string
+  /* A porta para ela CONFERIR antes de repetir. Ver `errorBody`. */
+  account: string
 }
 
 export const PROBLEM: Record<Language, ProblemStrings> = {
@@ -38,12 +40,26 @@ export const PROBLEM: Record<Language, ProblemStrings> = {
     notFoundBody:
       'O endereço pode ter mudado, ou o link veio partido pelo caminho. A marcação continua a um toque daqui.',
     errorEyebrow: 'Contratempo',
-    errorTitle: 'Alguma coisa correu mal',
+    /*
+      A FRASE ANTIGA MENTIA PELO PIOR LADO, e custava dinheiro à casa.
+
+      Dizia «correu mal» a quem tinha acabado de marcar — e a marcação
+      estava FEITA, gravada, na agenda. A cliente lia «falhou», marcava
+      outra vez, e a casa ficava com duas horas ocupadas para uma
+      pessoa. A dona reclamou disto, e com razão.
+
+      Agora não promete nem desmente: diz que pode estar feita e manda
+      CONFERIR antes de repetir. É o conselho certo nos dois casos — se
+      falhou mesmo, ela não perde nada por olhar; se não falhou, a casa
+      não perde uma cadeira.
+    */
+    errorTitle: 'Não conseguimos mostrar-lhe o ecrã seguinte',
     errorBody:
-      'Não foi por sua causa. Tente outra vez — e se voltar a acontecer, ligue-nos que marcamos por si.',
+      'Se estava a marcar, é bem possível que a sua marcação já esteja registada. Veja em «As minhas marcações» antes de marcar outra vez — e se lá não estiver, ligue-nos que marcamos por si.',
     retry: 'Tentar outra vez',
     home: 'Voltar ao início',
     book: 'Marcar',
+    account: 'As minhas marcações',
   },
   en: {
     notFoundEyebrow: 'Page',
@@ -51,12 +67,13 @@ export const PROBLEM: Record<Language, ProblemStrings> = {
     notFoundBody:
       'The address may have changed, or the link arrived broken. Booking is still one tap away.',
     errorEyebrow: 'Hiccup',
-    errorTitle: 'Something went wrong',
+    errorTitle: 'We could not show you the next screen',
     errorBody:
-      'It was not your doing. Try again — and if it happens again, call us and we will book it for you.',
+      'If you were booking, your appointment may well already be registered. Check «My bookings» before booking again — and if it is not there, call us and we will book it for you.',
     retry: 'Try again',
     home: 'Back to the start',
     book: 'Book',
+    account: 'My bookings',
   },
   es: {
     notFoundEyebrow: 'Página',
@@ -64,12 +81,13 @@ export const PROBLEM: Record<Language, ProblemStrings> = {
     notFoundBody:
       'La dirección puede haber cambiado, o el enlace llegó roto. Reservar sigue a un toque de aquí.',
     errorEyebrow: 'Contratiempo',
-    errorTitle: 'Algo ha salido mal',
+    errorTitle: 'No pudimos mostrarle la pantalla siguiente',
     errorBody:
-      'No ha sido culpa tuya. Inténtalo otra vez — y si vuelve a pasar, llámanos y reservamos por ti.',
+      'Si estaba reservando, es muy posible que su reserva ya esté registrada. Mire en «Mis reservas» antes de reservar otra vez — y si no está, llámenos y reservamos por usted.',
     retry: 'Intentar otra vez',
     home: 'Volver al inicio',
     book: 'Reservar',
+    account: 'Mis reservas',
   },
 }
 

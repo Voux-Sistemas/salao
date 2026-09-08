@@ -47,10 +47,25 @@ export default function PublicError({
       digest={error.digest ?? null}
       actions={
         <>
-          <Button size="lg" onClick={() => retry()}>
+          {/*
+            «AS MINHAS MARCAÇÕES» VEM PRIMEIRO, E É DE PROPÓSITO.
+
+            O caso mais comum desta tela é uma cliente que acabou de
+            marcar e não viu o recibo — a marcação está feita e ela pensa
+            que falhou. Se o primeiro botão for «Tentar outra vez», ela
+            marca duas vezes e a casa fica com duas cadeiras ocupadas
+            para uma pessoa. Foi o que aconteceu, e a dona reclamou.
+
+            Conferir primeiro não custa nada a quem falhou mesmo: vê a
+            lista vazia e carrega no botão do lado.
+          */}
+          <ButtonLink href="/conta" size="lg">
+            {text.account}
+          </ButtonLink>
+          <Button variant="outline" size="lg" onClick={() => retry()}>
             {text.retry}
           </Button>
-          <ButtonLink href="/" variant="outline" size="lg">
+          <ButtonLink href="/" variant="quiet" size="lg">
             {text.home}
           </ButtonLink>
         </>
