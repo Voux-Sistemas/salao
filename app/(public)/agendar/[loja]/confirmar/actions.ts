@@ -1,25 +1,15 @@
 'use server'
 
+import { redirect } from 'next/navigation'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { normalisePhone } from '@/lib/env'
 import { parseCart } from '@/lib/cart'
 import { createAppointment, findOrCreateClient } from '@/lib/booking'
-import { createSession } from '@/lib/auth/session'
 import { LIMITS, allowed, callerIp } from '@/lib/auth/throttle'
 import { isValidInstant, isoDay } from '@/lib/time'
 
-/**
- * O QUE A ACÇÃO DEVOLVE.
- *
- * O `pronto` é o endereço do recibo. Vem no estado e não num
- * `redirect` — a razão está escrita lá em baixo, onde o `redirect`
- * esteve.
- */
-export type BookState = {
-  error: string | null
-  pronto?: string | null
-}
+export type BookState = { error: string | null }
 
 /**
  * Gravar. A cliente manda apenas o INSTANTE escolhido — quem faz o quê e
@@ -89,52 +79,14 @@ export async function bookAction(
    * quem faz isto de propósito escreve um número diferente de cada vez.
    * Doze marcações por hora do mesmo sítio chegam bem para uma família.
    */
-  /*
-    O CRONÓMETRO. É TEMPORÁRIO E ESTÁ AQUI POR UMA RAZÃO CONCRETA.
-
-    Nos registos da Netlify, o pedido de marcar ficava trinta segundos
-    vivo e depois partia — e todos os outros pedidos respondiam entre 8
-    e 160 ms. A base não estava lenta e não havia ninguém à espera de
-    cadeados (o `pg_stat_activity` veio vazio). Três explicações minhas
-    caíram por terra, e nenhuma delas caiu por falta de imaginação:
-    caíram por falta de medição.
-
-    Isto escreve UMA linha por marcação, com o tempo acumulado a cada
-    passo. Custa quase nada, não muda comportamento nenhum, e a próxima
-    vez que o problema aparecer o registo diz onde — em vez de eu
-    adivinhar pela quarta vez.
-
-    Sai quando soubermos.
-  */
-  /*
-    CADA PASSO ESCREVE NO ACTO. A primeira versão disto juntava os
-    tempos num array e escrevia uma linha só no fim — e ficou cega
-    precisamente no caso que interessava: uma acção que fica pendurada a
-    meio nunca chega ao fim, e portanto nunca escrevia nada. O registo
-    de uma marcação que morreu aos 60 segundos veio VAZIO.
-
-    Uma ferramenta de diagnóstico que só fala quando corre tudo bem não
-    serve para nada. Agora cada passo deixa a sua linha assim que passa:
-    se a acção morrer, a última linha escrita diz até onde chegou, e o
-    silêncio a seguir diz onde ficou presa.
-
-    Custa cinco linhas de registo por marcação. É barato pelo que dá.
-  */
-  const arranque = Date.now()
-  const passo = (nome: string) => {
-    console.info(`[marcar] ${nome} ${Date.now() - arranque}ms`)
-  }
-
   const ip = await callerIp()
   if (!(await allowed('marcar-ip', ip, LIMITS.book))) {
     return { error: dict.errors.tooMany }
   }
-  passo('travao')
 
   const org = await requireOrg()
   const unit = await getUnitBySlug(slug)
   if (!unit) return { error: dict.errors.generic }
-  passo('loja')
 
   const clientId = await findOrCreateClient(org.id, {
     phone,
@@ -142,7 +94,6 @@ export async function bookAction(
     language,
     preferredUnitId: unit.id,
   })
-  passo('ficha')
 
   const result = await createAppointment({
     unit,
@@ -166,92 +117,5 @@ export async function bookAction(
     }
   }
 
-  /*
-    A CLIENTE SAI DAQUI JÁ ENTRADA — e isto resolve o problema que a
-    deixava presa.
-
-    Para desmarcar, ela tinha de entrar na área dela; para entrar,
-    precisava de um código; e o código não tem canal automático nenhum —
-    fica no balcão à espera que alguém o mande. Quem está ao balcão não
-    tem tempo, e a cliente ficava a olhar para seis quadrados vazios.
-
-    Mas o sistema JÁ SABE quem ela é: acabou de a encontrar ou de a criar,
-    trinta linhas acima, e tem o `clientId` na mão. Deitava-o fora aqui.
-    Abrindo-lhe a sessão neste instante, ela fica com a conta aberta
-    sessenta dias naquele telemóvel — e desmarca sozinha, sem código, sem
-    link, sem ninguém.
-
-    ONDE NÃO CHEGA, e é honesto sabê-lo: vale para o aparelho em que
-    marcou. Noutro, ou depois de limpar o navegador, é o link da página
-    seguinte que a salva. Marcações feitas ao balcão não passam por aqui
-    — mas nessas ela está lá, à frente de alguém.
-
-    NÃO TRAVA A MARCAÇÃO. A marcação está feita e gravada; se abrir a
-    sessão falhar, o pior que acontece é ela ter de pedir o código como
-    antes. Recusar-lhe a marcação por causa de um cookie seria trocar um
-    incómodo por um prejuízo.
-  */
-  passo('marcacao')
-
-  try {
-    await createSession('client', clientId)
-    passo('sessao')
-
-    /*
-      AQUI ESTEVE UM `revalidatePath('/', 'layout')`, E FOI UM ERRO CARO.
-
-      Servia para o cabeçalho deixar de dizer «Entrar» depois de ela
-      marcar — a moldura é partilhada com o funil e tinha sido desenhada
-      quando ela ainda não era ninguém. O problema resolvia-se; só que
-      trazia outro muito pior atrás.
-
-      Deitar fora a árvore INTEIRA deita fora também a página onde ela
-      ainda está: a `/confirmar`. O Next volta a desenhá-la como parte
-      da resposta desta acção, ela corre o `planAt` outra vez, e não
-      encontra plano nenhum — porque a hora acabou de ser ocupada PELA
-      MARCAÇÃO QUE ELA ACABOU DE FAZER. A `/confirmar` faz então o seu
-      próprio `redirect` para os horários, que choca com o desta acção:
-      o botão fica preso a rodar, e quem recarrega vai parar a um dia sem
-      vagas — o seu próprio dia, que ele próprio encheu.
-
-      A LIÇÃO: numa acção que ACABOU DE MUDAR O MUNDO, revalidar a página
-      de onde se veio é pedir-lhe que se volte a validar contra um mundo
-      que já não é o dela. A moldura arranja-se do outro lado, na página
-      de chegada, onde não há nada para revalidar contra.
-    */
-  } catch (erro) {
-    console.error('[marcar] abrir a sessão da cliente falhou', erro)
-  }
-
-  /* O remate. Se esta linha aparecer nos registos, a acção fez o
-     percurso todo e a marcação está gravada. */
-  passo('FIM')
-
-  /*
-    AQUI ESTEVE UM `redirect`, E ERA ELE QUE PARTIA O ECRÃ.
-
-    Um `redirect` dentro de uma acção não é uma navegação: o Next
-    desenha a página de destino DENTRO da resposta desta acção e manda-a
-    pelo mesmo cano. Esse cano rebentava — «failed to pipe response,
-    other side closed» — e a cliente via «alguma coisa correu mal» com a
-    marcação já feita e gravada. Aconteceu em Chrome, em Safari, no
-    telemóvel e no computador.
-
-    A PROVA DE QUE É O CANO E NÃO O TRABALHO: carregar em «Tentar outra
-    vez» mostrava sempre o recibo certo. Esse botão faz uma navegação
-    normal — busca a página como qualquer link — e essa nunca falhou.
-
-    Portanto a acção passa a fazer o que o botão fazia: devolve o
-    endereço, e quem navega é o navegador, por sua conta, num pedido
-    limpo. A acção responde só o essencial — um objecto pequeno — e não
-    carrega uma página inteira às costas.
-
-    A SESSÃO DA CLIENTE CONTINUA A NASCER AQUI. O que muda é que o
-    cookie deixa de viajar na mesma resposta que uma página desenhada:
-    vai sozinho, numa resposta de acção como qualquer outra.
-  */
-  return {
-    error: null,
-    pronto: `/agendar/${unit.slug}/pronto/${result.appointmentId}`,
-  }
+  redirect(`/agendar/${unit.slug}/pronto/${result.appointmentId}`)
 }
