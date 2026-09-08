@@ -79,6 +79,8 @@ export async function countNotices(input: {
        where a.org_id = ${orgId}
          -- Sem número não há aviso: ver a mesma condição no base().
          and c.phone is not null
+         -- E quem recusou também não. Igual ao base(), pela mesma ordem.
+         and c.whatsapp_opted_out_at is null
          and (${unitIds}::uuid[] is null
               or a.unit_id = any(${unitIds}::uuid[]))
          and (
@@ -319,6 +321,19 @@ function base(unit: Unit, routine: Routine, staffId: string | null) {
          informação serve para alguma coisa.
        */
        and c.phone is not null
+       /*
+         E QUEM PEDIU PARA NÃO RECEBER SAI TAMBÉM.
+
+         Sai da fila, e não do envio — é a forma mais forte de
+         respeitar a recusa. Travar o envio obrigava a que cada sítio
+         que envia se lembrasse da regra; tirar a linha da fila faz com
+         que não haja botão para carregar nem relógio que a apanhe.
+
+         Vale para as cinco rotinas, incluindo as três que continuam à
+         mão: quem disse que não quer mensagens não quer nenhuma, e
+         não só as automáticas.
+       */
+       and c.whatsapp_opted_out_at is null
        and not exists (
          select 1 from notification_log n
           where n.appointment_id = a.id and n.routine = ${routine}

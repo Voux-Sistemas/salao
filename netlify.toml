@@ -7,3 +7,17 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# ---------------------------------------------------------------------
+# O relógio dos lembretes.
+#
+# A pasta declara-se aqui porque o plugin do Next não a descobre
+# sozinho. A periodicidade está na própria função (`@hourly`), ao pé do
+# código que ela dispara, e não neste ficheiro — para que quem lê a
+# função saiba quando é que ela corre sem ter de abrir outro sítio.
+#
+# Sem CRON_SECRET nas variáveis do Netlify, a função corre e não faz
+# nada. É de propósito: o sistema fica pronto e adormecido.
+# ---------------------------------------------------------------------
+[functions]
+  directory = "netlify/functions"

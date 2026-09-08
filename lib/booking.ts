@@ -6,6 +6,7 @@ import { planAt, type CartLine, type Channel, type Plan } from '@/lib/availabili
 import type { Unit } from '@/lib/org'
 import type { IsoDay } from '@/lib/time'
 import type { Language } from '@/lib/i18n/config'
+import { avisarSemEstragar } from '@/lib/whatsapp/despachar'
 
 /**
  * O caminho de escrita da marcação.
@@ -297,6 +298,29 @@ export async function createAppointment(
       // outra vez — um carrinho "sem preferência" pode cair noutra
       // profissional. Na segunda, é mesmo não.
       if (!written) continue
+
+      /*
+       * A CONFIRMAÇÃO SAI AQUI — FORA DA TRANSACÇÃO, SEMPRE.
+       *
+       * Reparar onde isto está: depois do `sql.begin` ter fechado e a
+       * marcação estar gravada em definitivo. Dentro da transacção, uma
+       * chamada à Meta que demorasse vinte segundos segurava o cadeado
+       * da agenda daquele dia durante vinte segundos — e uma que
+       * rebentasse desfazia a marcação inteira.
+       *
+       * Uma marcação perdida por causa de uma mensagem é o pior
+       * resultado possível. A mensagem é o acessório; a hora vendida é
+       * o trabalho.
+       *
+       * `await` e não «deixar a correr»: numa função serverless o
+       * processo pode ser congelado assim que a resposta sai, e uma
+       * promessa órfã morre a meio. Esperar custa o tempo do pedido e
+       * dá a garantia de que ou saiu, ou ficou na fila para alguém.
+       *
+       * Sem conta da Meta ligada isto retorna imediatamente, sem sequer
+       * ir à base — ver `avisarSemEstragar`.
+       */
+      await avisarSemEstragar(written.id, 'confirm')
 
       return { ok: true, appointmentId: written.id, plan: written.plan }
     } catch (error) {
