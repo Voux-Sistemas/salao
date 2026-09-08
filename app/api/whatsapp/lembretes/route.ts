@@ -40,6 +40,20 @@ const ORCAMENTO_MS = 45_000
  * o `loadQueue` recebe um `Unit` completo, e montar-lhe um objecto pela
  * metade era esperar que ele nunca viesse a ler mais nada.
  */
+/**
+ * A HORA DA REDE DE SEGURANÇA, na hora da loja.
+ *
+ * Às 9h a casa está a abrir e quem tem marcação hoje ainda vai a tempo
+ * de a mudar. Mais cedo acorda-se gente; mais tarde o aviso chega
+ * depois de metade das marcações do dia já terem passado.
+ *
+ * Fixa, e não uma coluna: a `reminder_hour` é a decisão que a casa toma
+ * — a hora a que quer falar com as clientes. Esta é uma rede que só
+ * apanha quem escapou, e uma segunda coluna era pedir à casa que
+ * decidisse sobre um caso que ela não devia ter de conhecer.
+ */
+const HORA_DA_REDE = 9
+
 type Loja = Unit & { reminder_hour: number }
 
 export async function POST(request: Request) {
@@ -64,7 +78,7 @@ export async function POST(request: Request) {
 
   for (const loja of lojas) {
     /*
-     * A PERGUNTA QUE FAZ ISTO FUNCIONAR: já são as sete DESTA LOJA?
+     * A PERGUNTA QUE FAZ ISTO FUNCIONAR: já são as horas DESTA LOJA?
      *
      * A função corre em UTC. Em Lisboa, no Verão, as 19:00 locais são
      * as 18:00 UTC; no Inverno são as 19:00 UTC. Uma função que
@@ -76,51 +90,82 @@ export async function POST(request: Request) {
      * que a agenda usa para desenhar a grelha. Uma verdade só.
      */
     const horaLocal = Math.floor(minutesOfDay(new Date(), loja.timezone) / 60)
-    if (horaLocal !== loja.reminder_hour) {
-      relatorio.push({ loja: loja.slug, saltada: `são ${horaLocal}h lá` })
-      continue
-    }
 
     /*
-     * A FILA, TAL COMO O BALCÃO A VÊ. Sem `staffId`: o relógio não é
-     * ninguém, e vê a casa toda.
+     * DUAS RONDAS, A HORAS DIFERENTES, E A SEGUNDA EXISTE POR CAUSA DE
+     * UM BURACO NA PRIMEIRA.
      *
-     * É a mesma consulta que desenha a página de avisos. Se um dia a
-     * regra do lembrete mudar, muda nos dois sítios ao mesmo tempo
-     * porque só existe um sítio.
+     * A da véspera é a que a casa pediu: à hora da loja, avisa quem tem
+     * marcação amanhã.
+     *
+     * A da manhã apanha quem marcou DEPOIS de a véspera já ter passado.
+     * Quem marca às 21h para amanhã às 10h nunca entrou na fila das
+     * 19h — recebia a confirmação e mais nada, e chegava ao dia sem
+     * nunca ter sido lembrado. Num salão, a marcação de última hora não
+     * é a excepção.
+     *
+     * NÃO É UM SEGUNDO LEMBRETE PARA A MESMA PESSOA. A fila
+     * `reminder_today` exclui quem já tem linha no `notification_log`,
+     * e quem recebeu o da véspera tem-na. Só apanha os que escaparam.
+     *
+     * A ordem importa: a véspera primeiro. Se as duas horas coincidirem
+     * numa loja, quem tem marcação para amanhã é avisado como véspera,
+     * e não fica a contar para a ronda de hoje.
      */
-    const fila = await loadQueue(loja, 'reminder_eve')
+    const rondas: { routine: 'reminder_eve' | 'reminder_today'; hora: number }[] = [
+      { routine: 'reminder_eve', hora: loja.reminder_hour },
+      { routine: 'reminder_today', hora: HORA_DA_REDE },
+    ]
 
-    let enviados = 0
-    let falhados = 0
-    let esgotou = false
-
-    for (const linha of fila) {
-      if (Date.now() - comeco > ORCAMENTO_MS) {
-        esgotou = true
-        break
-      }
+    for (const ronda of rondas) {
+      if (horaLocal !== ronda.hora) continue
 
       /*
-       * O `avisar` grava antes de enviar, e a gravação é a trava. Duas
-       * execuções em simultâneo — a Netlify a repetir uma chamada, ou
-       * alguém a carregar no botão ao mesmo tempo — não mandam duas
-       * mensagens: a segunda bate no `unique (appointment_id, routine)`
-       * e sai com `already_sent`.
+       * A FILA, TAL COMO O BALCÃO A VÊ. Sem `staffId`: o relógio não é
+       * ninguém, e vê a casa toda.
+       *
+       * É a mesma consulta que desenha a página de avisos. Se um dia a
+       * regra do lembrete mudar, muda nos dois sítios ao mesmo tempo
+       * porque só existe um sítio.
+       *
+       * O `reminder_today` traz só marcações que ainda não começaram
+       * (`a.starts_at >= now()`), o que é exactamente o que se quer:
+       * ninguém é lembrado de uma marcação a que já faltou.
        */
-      const resultado = await avisar(linha.appointment_id, 'reminder_eve')
-      if (resultado.ok) enviados++
-      else if (resultado.reason === 'send_failed') falhados++
-    }
+      const fila = await loadQueue(loja, ronda.routine)
 
-    relatorio.push({
-      loja: loja.slug,
-      hora: loja.reminder_hour,
-      na_fila: fila.length,
-      enviados,
-      falhados,
-      ...(esgotou ? { interrompido: 'tempo esgotado; segue na próxima hora' } : {}),
-    })
+      let enviados = 0
+      let falhados = 0
+      let esgotou = false
+
+      for (const linha of fila) {
+        if (Date.now() - comeco > ORCAMENTO_MS) {
+          esgotou = true
+          break
+        }
+
+        /*
+         * O `avisar` grava antes de enviar, e a gravação é a trava. Duas
+         * execuções em simultâneo — a Netlify a repetir uma chamada, ou
+         * alguém a carregar no botão ao mesmo tempo — não mandam duas
+         * mensagens: a segunda bate no `unique (appointment_id, routine)`
+         * e sai com `already_sent`.
+         */
+        const resultado = await avisar(linha.appointment_id, ronda.routine)
+        if (resultado.ok) enviados++
+        else if (resultado.reason === 'send_failed') falhados++
+      }
+
+      relatorio.push({
+        loja: loja.slug,
+        ronda: ronda.routine,
+        hora: ronda.hora,
+        na_fila: fila.length,
+        enviados,
+        falhados,
+        ...(esgotou ? { interrompido: 'tempo esgotado; segue na próxima hora' } : {}),
+      })
+    }
   }
 
   return NextResponse.json({ ok: true, lojas: relatorio })

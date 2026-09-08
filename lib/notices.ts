@@ -112,7 +112,13 @@ export async function countNotices(input: {
             and v.starts_at >= now()
             and not exists (select 1 from notification_log n
                              where n.appointment_id = v.id
-                               and n.routine = 'reminder_today'))
+                               and n.routine = 'reminder_today')
+            -- Espelha o loadQueue: quem foi avisado na vespera sai
+            -- desta fila. Se um dia mudar la, muda aqui.
+            -- E o par que os comentarios deste ficheiro avisam que anda junto.
+            and not exists (select 1 from notification_log n
+                             where n.appointment_id = v.id
+                               and n.routine = 'reminder_eve'))
       + (select count(*) from vista v
           where (
                   v.status = 'completed'
@@ -226,11 +232,33 @@ export async function loadQueue(
       `
 
     case 'reminder_today':
+      /*
+       * QUEM JÁ FOI AVISADO ONTEM NÃO É AVISADO OUTRA VEZ.
+       *
+       * O `base()` só exclui quem tem linha DESTA rotina — e é o que
+       * deve fazer, porque cada fila conta a sua própria história. Mas
+       * o lembrete da véspera e o de hoje falam da MESMA marcação, e
+       * receber os dois é receber duas vezes o mesmo aviso.
+       *
+       * Isto ficou por dizer enquanto os dois eram despachados à mão:
+       * quem estava ao balcão via a linha e sabia que já a tinha
+       * mandado na véspera. A partir do momento em que é o relógio a
+       * despachar, ninguém está lá para ver.
+       *
+       * A fila de hoje passa então a ser o que sempre foi na cabeça de
+       * quem a usa: **os que escaparam à da véspera** — quem marcou
+       * depois das 19h de ontem, ou para hoje mesmo.
+       */
       return sql<NoticeRow[]>`
         ${base(unit, routine, staffId)}
           and a.status in ('booked', 'confirmed')
           and (a.starts_at at time zone ${tz})::date = ${day}::date
           and a.starts_at >= ${now}
+          and not exists (
+            select 1 from notification_log n
+             where n.appointment_id = a.id
+               and n.routine = 'reminder_eve'
+          )
         order by a.starts_at
         limit ${LIMIT}
       `

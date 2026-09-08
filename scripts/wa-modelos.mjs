@@ -83,10 +83,33 @@ const ORIGEM = {
       'Si necesita cambiarla, díganos.',
     ),
   },
+  reminder_today: {
+    pt: linhas(
+      'Olá {cliente}, é hoje.',
+      '',
+      '*Às {hora}*, no {loja}',
+      '',
+      'Estamos à sua espera.',
+    ),
+    en: linhas(
+      'Hello {cliente}, it is today.',
+      '',
+      '*At {hora}*, at {loja}',
+      '',
+      'We are waiting for you.',
+    ),
+    es: linhas(
+      '¡Hola {cliente}! Es hoy.',
+      '',
+      '*A las {hora}*, en {loja}',
+      '',
+      'La esperamos.',
+    ),
+  },
 }
 
 /** As que se automatizam. As outras três ficam à mão, por decisão. */
-const ROTINAS = ['confirm', 'reminder_eve']
+const ROTINAS = ['confirm', 'reminder_eve', 'reminder_today']
 const LINGUAS = ['pt', 'en', 'es']
 const META_LINGUA = { pt: 'pt_PT', en: 'en_US', es: 'es_ES' }
 const MARCADORES = ['cliente', 'loja', 'dia', 'hora', 'servicos']

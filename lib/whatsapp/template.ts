@@ -180,7 +180,38 @@ export function submissionFor(
  * dia é o que faz uma cliente bloquear o número — e uma queixa na Meta
  * baixa a qualidade da conta para todas as mensagens, não só para esta.
  */
-export const AUTOMATIC_ROUTINES: Routine[] = ['confirm', 'reminder_eve']
+/**
+ * AS TRÊS QUE SAEM SOZINHAS — e porque são três e não duas.
+ *
+ * A casa pediu duas coisas: a confirmação no momento da marcação, e um
+ * aviso no dia anterior. São estas:
+ *
+ *   confirm         no instante em que se marca
+ *   reminder_eve    na véspera, à hora da loja (19h por omissão)
+ *
+ * A terceira existe por causa de um buraco entre as duas. Quem marca
+ * hoje às 21h para amanhã às 10h JÁ PASSOU a hora do lembrete da
+ * véspera: recebe a confirmação e mais nada, e chega ao dia da marcação
+ * sem nunca ter sido lembrada. Não é um caso raro — é a marcação de
+ * última hora, que num salão é das mais comuns.
+ *
+ *   reminder_today  na manhã do próprio dia, só para quem escapou
+ *
+ * Não é um lembrete a mais para toda a gente: a fila `reminder_today`
+ * exclui quem já tem linha no `notification_log`, e quem recebeu o da
+ * véspera tem-na. Só apanha os que ficaram de fora.
+ *
+ * Isto é o que substitui o «24 horas antes» à letra. Um lembrete a
+ * horas exactas mandava avisos às 7h da manhã para uma marcação das 7h
+ * do dia seguinte, e espalhava os envios pelas 24 horas do dia. A hora
+ * fixa avisa quando a pessoa está em casa e pode responder — e esta
+ * terceira fila cobre o caso que a hora fixa deixaria escapar.
+ */
+export const AUTOMATIC_ROUTINES: Routine[] = [
+  'confirm',
+  'reminder_eve',
+  'reminder_today',
+]
 
 export function isAutomatic(routine: Routine): boolean {
   return AUTOMATIC_ROUTINES.includes(routine)

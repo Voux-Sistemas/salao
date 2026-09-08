@@ -369,18 +369,19 @@ export default async function AvisosPage({
           ser — e continuar a dizê-la era ensinar a casa a desconfiar
           do que lê no ecrã.
 
-          Note-se o que NÃO muda: as três rotinas de baixo continuam a
-          ser à mão nos dois casos, e é isso que a segunda metade diz.
+          Note-se o que NÃO muda: «Pedir avaliação» e «Recuperar
+          cliente» continuam a ser à mão nos dois casos, e é isso que a
+          segunda metade diz.
         */}
         <p className="text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
           {automatico ? (
             <>
               <span className="font-medium text-[var(--ink)]">
-                A confirmação e o lembrete da véspera saem sozinhos.
+                A confirmação e os dois lembretes saem sozinhos.
               </span>{' '}
               {mine
-                ? 'O que aparecer nessas duas filas é o que o sistema não conseguiu mandar — e aí é consigo. As outras três são sempre à mão. Estas são as clientes que marcaram consigo, mais as de domingo, que são da casa toda.'
-                : 'O que aparecer nessas duas filas é o que o sistema não conseguiu mandar, e fica à espera de uma pessoa. As outras três são sempre à mão.'}
+                ? 'O que aparecer nessas três filas é o que o sistema não conseguiu mandar — e aí é consigo. Pedir avaliação e recuperar cliente são sempre à mão. Estas são as clientes que marcaram consigo, mais as de domingo, que são da casa toda.'
+                : 'O que aparecer nessas três filas é o que o sistema não conseguiu mandar, e fica à espera de uma pessoa. Pedir avaliação e recuperar cliente são sempre à mão.'}
             </>
           ) : (
             <>

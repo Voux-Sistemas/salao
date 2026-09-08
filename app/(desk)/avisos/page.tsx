@@ -50,8 +50,8 @@ export default async function AvisosChooser() {
       hint={
         automatico
           ? staffId
-            ? 'As suas clientes, casa a casa. A confirmação e o lembrete da véspera saem sozinhos; o resto é consigo.'
-            : 'A confirmação e o lembrete da véspera saem sozinhos. O resto da fila é para despachar à mão, casa a casa.'
+            ? 'As suas clientes, casa a casa. A confirmação e os dois lembretes saem sozinhos; o resto é consigo.'
+            : 'A confirmação e os dois lembretes saem sozinhos. O resto da fila é para despachar à mão, casa a casa.'
           : staffId
             ? 'As suas clientes, casa a casa. O sistema nunca envia nada sozinho — prepara a mensagem e é você que carrega no botão.'
             : 'O sistema nunca envia nada sozinho — prepara a mensagem e uma pessoa carrega no botão. Cada loja tem a sua fila.'
