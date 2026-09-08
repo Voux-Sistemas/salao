@@ -312,9 +312,40 @@ ficha dela.
 
 ---
 
-## 4 · O que só tu podes fazer
+## 4 · A divisão do trabalho
 
-Nada disto é código. Sem isto, as fases 3 em diante ficam paradas.
+**O código todo é meu, e não depende de ti.** Isto foi a descoberta que
+reorganizou o plano: nenhuma das fases 3 a 8 precisa da conta da Meta
+para ser ESCRITA. Precisa dela para ser LIGADA — e essas são duas
+coisas diferentes.
+
+A razão é o `isConfigured()` da fase 1. Sem as duas variáveis de
+ambiente, toda a integração responde `not_configured` e o sistema cai
+no caminho de sempre: a pessoa carrega no botão. Posso escrever o
+motor inteiro, com as provas todas, e ele fica adormecido no
+repositório até alguém lhe dar a chave.
+
+O que fica à minha responsabilidade:
+
+| Fase | O que é | Depende da Meta? |
+|---|---|---|
+| 3 | Tradução `{cliente}` → `{{1}}`, e o registo do nome do modelo | Não. O texto dos modelos já existe em `lib/whatsapp.ts` |
+| 4 | A confirmação sai sozinha, fora da transacção | Não |
+| 5 | O relógio da véspera, na Netlify | Não |
+| 6 | O webhook e a verificação da assinatura | Não |
+| 7 | O balcão a mostrar o estado de entrega | Não |
+| 8 | Opt-out e consentimento (RGPD) | Não |
+
+O que fica à tua: a secção 4.1, e mais nada. **Faz-se toda de uma vez,
+no fim** — não há razão para a partir em bocados, porque nenhum passo
+meu fica à espera de nenhum passo teu.
+
+---
+
+### 4.1 · O que só tu podes fazer
+
+Nada disto é código, e nada disto tem pressa: o sistema fica pronto e à
+espera. Quando fizeres esta lista, a integração acende.
 
 Por ordem. O primeiro ponto pode matar o plano todo, por isso é o
 primeiro.

@@ -118,6 +118,34 @@ export function renderTemplate(
  */
 const linhas = (...partes: string[]) => partes.join('\n')
 
+/*
+ * UMA PALAVRA ANTES DO ÚLTIMO MARCADOR — E NÃO É ENFEITE.
+ *
+ * O `confirm` dizia o serviço numa linha só sua, e o `reminder_eve` a
+ * loja da mesma forma:
+ *
+ *     *{dia}, às {hora}*
+ *     {servicos}
+ *
+ * Entre o `{hora}` e o `{servicos}` só há um asterisco e uma mudança de
+ * linha. Aos olhos da Meta isso são DOIS MARCADORES ENCOSTADOS, e um
+ * modelo assim é recusado na revisão — a regra existe porque um modelo
+ * feito só de marcadores é uma forma de mandar o que se quiser sem
+ * passar por revisão nenhuma. Um espaço entre eles não chega: tem de
+ * haver texto a sério.
+ *
+ * A recusa chegaria dias depois, por email, com uma frase genérica. O
+ * `lintMetaBody` em `lib/whatsapp/template.ts` apanha-a agora.
+ *
+ * O «Para:» e o «No» resolvem-no com o mínimo: o desenho da mensagem
+ * mantém-se — o dia e a hora continuam sozinhos na sua linha, a negrito
+ * — e a linha de baixo passa a dizer o que é, o que ela já devia dizer.
+ *
+ * ISTO MUDA O QUE SAI HOJE PELO BOTÃO, e é de propósito: o texto do
+ * botão e o texto aprovado na Meta têm de ser o MESMO texto, ou o envio
+ * automático dá 132005. Duas versões da mesma mensagem seria a casa a
+ * falar de duas maneiras conforme quem carregou.
+ */
 export const DEFAULT_TEMPLATES: Record<Routine, Record<Language, string>> = {
   /*
    * O nome da loja é {loja} e não «Valongo»: a casa tem duas, e uma
@@ -129,7 +157,7 @@ export const DEFAULT_TEMPLATES: Record<Routine, Record<Language, string>> = {
       'Olá {cliente}, a sua marcação no {loja} ficou registada.',
       '',
       '*{dia}, às {hora}*',
-      '{servicos}',
+      'Para: {servicos}',
       '',
       'Até já!',
     ),
@@ -137,7 +165,7 @@ export const DEFAULT_TEMPLATES: Record<Routine, Record<Language, string>> = {
       'Hello {cliente}, your appointment at {loja} is booked.',
       '',
       '*{dia}, at {hora}*',
-      '{servicos}',
+      'For: {servicos}',
       '',
       'See you soon!',
     ),
@@ -145,7 +173,7 @@ export const DEFAULT_TEMPLATES: Record<Routine, Record<Language, string>> = {
       '¡Hola {cliente}! Su cita en {loja} ha quedado reservada.',
       '',
       '*{dia}, a las {hora}*',
-      '{servicos}',
+      'Para: {servicos}',
       '',
       '¡Hasta pronto!',
     ),
@@ -155,7 +183,7 @@ export const DEFAULT_TEMPLATES: Record<Routine, Record<Language, string>> = {
       'Olá {cliente}, é já amanhã.',
       '',
       '*{dia}, às {hora}*',
-      '{loja}',
+      'No {loja}',
       '',
       'Se precisar de mudar, é só dizer.',
     ),
@@ -163,7 +191,7 @@ export const DEFAULT_TEMPLATES: Record<Routine, Record<Language, string>> = {
       'Hello {cliente}, it is tomorrow.',
       '',
       '*{dia}, at {hora}*',
-      '{loja}',
+      'At {loja}',
       '',
       'Just tell us if you need to change it.',
     ),
@@ -171,7 +199,7 @@ export const DEFAULT_TEMPLATES: Record<Routine, Record<Language, string>> = {
       '¡Hola {cliente}! Es mañana.',
       '',
       '*{dia}, a las {hora}*',
-      '{loja}',
+      'En {loja}',
       '',
       'Si necesita cambiarla, díganos.',
     ),
