@@ -236,6 +236,9 @@ export const pt = {
     noteLabel: 'Quer deixar alguma observação?',
     notePlaceholder: 'Alergias, preferências, o que quiser dizer-nos.',
     submit: 'Confirmar marcação',
+    /* Só aparece a quem tem o JavaScript desligado: a navegação para o
+       recibo é feita pelo navegador, e sem ele fica este botão. */
+    doneGo: 'Está marcado — ver a sua marcação',
     doneTitle: 'Está marcado.',
     doneSubtitle:
       'Olá, {cliente}! 😊 A sua marcação no salão de {loja} foi registada com sucesso. ✨\n\nAgradecemos a sua preferência e esperamos por si! 💖',

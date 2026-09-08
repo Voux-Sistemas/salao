@@ -197,6 +197,7 @@ export const en: Dictionary = {
     noteLabel: 'Anything you would like us to know?',
     notePlaceholder: 'Allergies, preferences, anything at all.',
     submit: 'Confirm booking',
+    doneGo: 'All booked — see your appointment',
     doneTitle: 'You are booked.',
     doneSubtitle:
       'Hello, {cliente}! 😊 Your appointment at our {loja} salon has been booked. ✨\n\nThank you for choosing us — we look forward to seeing you! 💖',

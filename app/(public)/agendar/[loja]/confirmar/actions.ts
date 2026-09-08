@@ -1,6 +1,5 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { normalisePhone } from '@/lib/env'
@@ -10,7 +9,17 @@ import { createSession } from '@/lib/auth/session'
 import { LIMITS, allowed, callerIp } from '@/lib/auth/throttle'
 import { isValidInstant, isoDay } from '@/lib/time'
 
-export type BookState = { error: string | null }
+/**
+ * O QUE A ACÇÃO DEVOLVE.
+ *
+ * O `pronto` é o endereço do recibo. Vem no estado e não num
+ * `redirect` — a razão está escrita lá em baixo, onde o `redirect`
+ * esteve.
+ */
+export type BookState = {
+  error: string | null
+  pronto?: string | null
+}
 
 /**
  * Gravar. A cliente manda apenas o INSTANTE escolhido — quem faz o quê e
@@ -214,9 +223,35 @@ export async function bookAction(
     console.error('[marcar] abrir a sessão da cliente falhou', erro)
   }
 
-  /* O remate, antes do `redirect` — que atira, e o que vem a seguir
-     não corre. Se esta linha aparecer, a acção fez o percurso todo. */
+  /* O remate. Se esta linha aparecer nos registos, a acção fez o
+     percurso todo e a marcação está gravada. */
   passo('FIM')
 
-  redirect(`/agendar/${unit.slug}/pronto/${result.appointmentId}`)
+  /*
+    AQUI ESTEVE UM `redirect`, E ERA ELE QUE PARTIA O ECRÃ.
+
+    Um `redirect` dentro de uma acção não é uma navegação: o Next
+    desenha a página de destino DENTRO da resposta desta acção e manda-a
+    pelo mesmo cano. Esse cano rebentava — «failed to pipe response,
+    other side closed» — e a cliente via «alguma coisa correu mal» com a
+    marcação já feita e gravada. Aconteceu em Chrome, em Safari, no
+    telemóvel e no computador.
+
+    A PROVA DE QUE É O CANO E NÃO O TRABALHO: carregar em «Tentar outra
+    vez» mostrava sempre o recibo certo. Esse botão faz uma navegação
+    normal — busca a página como qualquer link — e essa nunca falhou.
+
+    Portanto a acção passa a fazer o que o botão fazia: devolve o
+    endereço, e quem navega é o navegador, por sua conta, num pedido
+    limpo. A acção responde só o essencial — um objecto pequeno — e não
+    carrega uma página inteira às costas.
+
+    A SESSÃO DA CLIENTE CONTINUA A NASCER AQUI. O que muda é que o
+    cookie deixa de viajar na mesma resposta que uma página desenhada:
+    vai sozinho, numa resposta de acção como qualquer outra.
+  */
+  return {
+    error: null,
+    pronto: `/agendar/${unit.slug}/pronto/${result.appointmentId}`,
+  }
 }

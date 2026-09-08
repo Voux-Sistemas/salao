@@ -192,6 +192,7 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
             notePlaceholder: dict.funnel.notePlaceholder,
             optional: dict.common.optional,
             submit: dict.funnel.submit,
+            done: dict.funnel.doneGo,
           }}
         />
       </div>

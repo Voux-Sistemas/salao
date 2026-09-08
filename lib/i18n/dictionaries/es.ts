@@ -197,6 +197,7 @@ export const es: Dictionary = {
     noteLabel: '¿Quieres dejarnos alguna nota?',
     notePlaceholder: 'Alergias, preferencias, lo que quieras contarnos.',
     submit: 'Confirmar reserva',
+    doneGo: 'Reservado — ver su reserva',
     doneTitle: 'Está reservado.',
     doneSubtitle:
       '¡Hola, {cliente}! 😊 Su cita en el salón de {loja} ha quedado reservada. ✨\n\n¡Gracias por su preferencia, la esperamos! 💖',
