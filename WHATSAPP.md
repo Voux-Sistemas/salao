@@ -4,7 +4,8 @@ Roteiro da integração com a WhatsApp Cloud API. Escrito antes de se
 tocar em código, para que o que se vai partir esteja escrito antes de
 partir.
 
-Estado: **o código está todo escrito — fases 1 a 8.** O sistema continua a
+Estado: **o código está todo escrito — fases 1 a 8**, com a decisão do
+lembrete fechada no §2.1. O sistema continua a
 comportar-se exactamente como sempre: sem as variáveis de ambiente da
 Meta, `isConfigured()` responde que não e nenhum destes caminhos se
 liga. Nada mudou para quem está ao balcão hoje, com uma excepção
@@ -165,6 +166,55 @@ número anterior (R$ 52) morre aqui.
 
 ---
 
+### 2.1 · Quando sai o lembrete — e porque não é «24 horas antes»
+
+A casa pediu «um dia antes». Há duas formas de o cumprir, e a diferença
+importa:
+
+| Marcação | Menos 24h à letra | Véspera às 19h (o escolhido) |
+|---|---|---|
+| Sábado 10:00 | Sexta às 10:00 | Sexta às 19:00 |
+| Sábado 09:00 | Sexta às 09:00 | Sexta às 19:00 |
+| Sábado 19:00 | Sexta às 19:00 | Sexta às 19:00 |
+
+**Escolheu-se a hora fixa**, por três razões. Às 19h a pessoa está em
+casa e ainda pode desmarcar — às 9h da manhã lê e esquece. A hora fixa
+torna previsível quando as mensagens saem, em vez de as espalhar pelas
+24 horas do dia. E a fila `reminder_eve` já existia com esta definição,
+que o balcão já usa: mudá-la criava duas verdades sobre o mesmo aviso.
+
+**O buraco, e como se tapa.** A hora fixa deixa passar quem marca
+depois dela: às 21h de sexta para sábado às 10h, as 19h já passaram.
+Recebe a confirmação e mais nada. Note-se que «menos 24h à letra» também
+falharia este caso — já faltam menos de 24 horas — por isso o buraco não
+é da escolha, é do problema.
+
+Tapa-se com a fila `reminder_today`, que já existia e já despachava
+exactamente isto à mão: passa a sair sozinha **às 9h da loja**, e só
+apanha **quem escapou à véspera**.
+
+O resultado, provado sobre seis cenários:
+
+| Quando marca | Marcação | Recebe |
+|---|---|---|
+| Terça | Sábado 10h | véspera (só) |
+| Sexta 21h | Sábado 10h | manhã de sábado |
+| Sábado 7h | Sábado 15h | manhã de sábado |
+| Sábado 11h | Sábado 15h | nenhum — acabou de receber a confirmação |
+
+**Ninguém recebe dois.** Isto exigiu uma correcção: cada fila filtra por
+`n.routine = 'a-sua'`, por isso uma linha de `reminder_eve` não excluía
+da fila de hoje. Enquanto as duas eram à mão não se notava — quem estava
+ao balcão via a linha e sabia que já a tinha mandado. Com o relógio a
+despachar, não está lá ninguém para ver. A exclusão ficou na **fila**, e
+não no relógio, para que o balcão e o motor vejam o mesmo.
+
+**As horas:** a véspera é a `unit.reminder_hour` (19h por omissão,
+por loja). A da manhã é fixa nas 9h — é uma rede que só apanha quem
+escapou, e uma segunda coluna era pedir à casa que decidisse sobre um
+caso que ela não devia ter de conhecer.
+
+
 ## 3 · O caminho
 
 Cada fase termina com o sistema a funcionar. Nenhuma fase deixa o
@@ -234,10 +284,11 @@ nenhuma destas colunas.
 O `message_template` guarda o texto que a casa escreve. Passa a guardar
 também o nome do modelo aprovado na Meta e a ordem dos marcadores.
 
-- Submeter os modelos na categoria Utility. São **6**, e não nove: só
-  as duas rotinas automáticas (`confirm`, `reminder_eve`) × 3 línguas.
-  As outras três continuam a sair pela mão de alguém, e o WhatsApp não
-  exige modelo aprovado a uma pessoa que escreve do telemóvel dela.
+- Submeter os modelos na categoria Utility. São **9**: as três rotinas
+  automáticas (`confirm`, `reminder_eve`, `reminder_today`) × 3 línguas.
+  «Pedir avaliação» e «Recuperar cliente» continuam a sair pela mão de
+  alguém, e o WhatsApp não exige modelo aprovado a uma pessoa que
+  escreve do telemóvel dela.
 - Uma função que pega no nosso `{cliente}, {loja}, {dia}, {hora}` e
   produz o array de parâmetros posicionais que a Meta espera.
 - **A ordem dos marcadores é um contrato.** Se a casa reescrever o texto
@@ -315,8 +366,11 @@ função duas vezes seguidas e a cliente recebe uma mensagem só.
 
 **De hora a hora e não `0 19 * * *`**, porque um cron fixo em UTC está
 uma hora errado metade do ano e não serve duas lojas em fusos
-diferentes. Cada loja é perguntada no fuso dela: já são as
-`reminder_hour` aqui? A hora é por loja, com 19:00 por omissão.
+diferentes. Cada loja é perguntada no fuso dela.
+
+**Duas rondas por loja**, e o §2.1 explica porquê: a da véspera à
+`reminder_hour` (19h), e a rede das 9h que apanha quem marcou depois de
+a véspera já ter passado. A segunda exclui quem recebeu a primeira.
 
 Usa o mesmo `loadQueue` que o balcão vê — não há duas verdades. Sem
 `CRON_SECRET` responde 503.
@@ -482,7 +536,9 @@ primeiro.
 4. **Avisar a Nohora de duas coisas:** que perde as listas de difusão, e
    que tem de abrir a app pelo menos de 13 em 13 dias ou os envios
    param.
-5. **Decidir a hora do lembrete.** As 19:00 são um palpite meu.
+5. **Confirmar a hora do lembrete da véspera.** Está nas 19:00, por
+   loja, e a razão está no §2.1. A rede das 9h da manhã não se
+   configura — só apanha quem escapou.
 6. **Confirmar o preço à cliente:** ~17 €/mês de custo Meta para 600
    marcações, mais a vossa margem.
 
@@ -508,7 +564,8 @@ passos precisa do anterior:
    node scripts/wa-modelos.mjs
    ```
 
-   São 6: `confirm` e `reminder_eve`, em pt_PT, en_US e es_ES.
+   São 9: `confirm`, `reminder_eve` e `reminder_today`, em pt_PT, en_US
+   e es_ES.
 
 9. **Pôr as variáveis no Netlify** (Site settings › Environment
    variables). Estão todas documentadas no `.env.example`:
