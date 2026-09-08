@@ -457,7 +457,28 @@ primeiro.
 2. **Criar o Meta Business Portfolio** no nome da VOUX. Não é preciso
    verificar o negócio para arrancar (ver 1.1.3) — a verificação faz-se
    em paralelo, sem pressa.
-3. **Escolher o BSP** que faz o Embedded Signup da Coexistence.
+3. **Escolher por onde entra o Embedded Signup.** Isto não é opcional:
+   a Coexistence só se liga por Embedded Signup, e a Meta escreve nos
+   pré-requisitos que *«You must already be a Solution Partner or Tech
+   Provider»*. Não há caminho em que a cliente ligue o número dela
+   sozinha. O que se escolhe é **qual dos dois**:
+
+   | | Usar um BSP | A VOUX torna-se Tech Provider |
+   |---|---|---|
+   | Esforço | Registas-te e usas | Business verification + Meta App + aprovação |
+   | Prazo | Dias | Semanas |
+   | Custo | Margem do BSP sobre os ~17 €/mês | Só o custo Meta |
+   | Compensa quando | Uma cliente, ou poucas | Muitos salões no mesmo sistema |
+
+   **Não muda uma linha de código.** Os dois caminhos dão o mesmo
+   `PHONE_NUMBER_ID` e o mesmo `ACCESS_TOKEN`, e é só isso que o
+   sistema conhece — falamos directamente com a Graph API nos dois
+   casos. A escolha muda de onde vêm as duas variáveis, e mais nada.
+
+   Se a ideia é revender a mais salões, o caminho Tech Provider é o que
+   escala: cada cliente nova entra pelo Embedded Signup da VOUX em vez
+   de pagar margem a terceiros. Para uma cliente só, não compensa o
+   processo.
 4. **Avisar a Nohora de duas coisas:** que perde as listas de difusão, e
    que tem de abrir a app pelo menos de 13 em 13 dias ou os envios
    param.
