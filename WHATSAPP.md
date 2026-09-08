@@ -4,7 +4,7 @@ Roteiro da integração com a WhatsApp Cloud API. Escrito antes de se
 tocar em código, para que o que se vai partir esteja escrito antes de
 partir.
 
-Estado: **fase 1 feita**. O sistema continua a comportar-se como sempre
+Estado: **fases 1 e 2 feitas**. O sistema continua a comportar-se como sempre
 — sem as variáveis de ambiente da Meta, nada disto se liga.
 
 ---
@@ -180,7 +180,7 @@ mais nada. Sem UI, sem agendador, sem tocar na fila.
 
 **Prova:** uma mensagem chega ao meu telemóvel. Zero linhas de UI mudadas.
 
-### Fase 2 · O registo do que sai
+### Fase 2 · O registo do que sai — FEITA
 
 A tabela `notification_log` regista hoje que *alguém carregou no botão*.
 Passa a ter de registar também *o que a Meta fez com a mensagem*.
@@ -199,8 +199,28 @@ muda de forma**, e o código actual continua a escrever como escrevia:
 Um `notification_log` com `sent_by_staff_id` nulo é um envio automático.
 Não é preciso coluna nova para isso.
 
-**Prova:** `npm run typecheck` e `npm run build` passam, o balcão
-funciona igual, a migração corre duas vezes sem estragar nada.
+**Feito** em `supabase/migrations/20260908150000_notificacao_estado_entrega.sql`.
+Além do que estava previsto, leva um índice parcial em `provider_id` —
+é por ele que os webhooks da fase 6 encontram a linha a partir do wamid,
+e sem ele cada aviso de estado varria a tabela toda.
+
+**Prova:** `npm run typecheck` e `npm run build` passam. Só colunas
+novas e nulas: nenhuma coluna existente muda, e o
+`unique (appointment_id, routine)` — o único guarda contra o aviso
+repetido — fica intacto. A repetibilidade é a da casa: `add column if
+not exists`, `create index if not exists`, e a restrição dentro de um
+`do $$ ... if not exists (select 1 from pg_constraint) ...`, o mesmo
+padrão do `20260822120000_rate_limit.sql`.
+
+**POR CORRER.** A migração está escrita mas ainda não foi aplicada a
+lado nenhum — não há base local a correr nesta máquina, e contra a
+Supabase não se corre sem alguém decidir. Aplica-se com:
+
+    node scripts/_prod.mjs migrate --status    (só diz o que falta)
+    node scripts/_prod.mjs migrate             (aplica)
+
+Enquanto não correr, nada quebra: o código de hoje não lê nem escreve
+nenhuma destas colunas.
 
 ### Fase 3 · Os modelos, dos dois lados
 
