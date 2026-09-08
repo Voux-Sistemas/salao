@@ -34,6 +34,7 @@ import { SendWhatsApp } from '@/components/desk-actions'
 import { UnitSwitcher } from '@/components/unit-switcher'
 import { Badge, Card, Empty } from '@/components/ui'
 import { formatPhone } from '@/lib/text'
+import { isConfigured } from '@/lib/whatsapp/cloud'
 
 export const metadata: Metadata = { title: 'Avisos' }
 
@@ -67,6 +68,8 @@ export default async function AvisosPage({
     r && (ROUTINES as string[]).includes(r) ? (r as Routine) : 'confirm'
 
   const mine = noticesStaffId(actor)
+  /* Há conta da Meta ligada? É o que decide o que a faixa diz. */
+  const automatico = isConfigured()
   const [queues, units, templates, corRows] = await Promise.all([
     loadQueues(unit, { staffId: mine }),
     unitsFor(actor),
@@ -359,13 +362,36 @@ export default async function AvisosPage({
         >
           <Info size={16} strokeWidth={2} />
         </span>
+        {/*
+          DUAS FRASES PARA DOIS MUNDOS, e o que decide é se há conta da
+          Meta ligada. Enquanto não houver, o sistema é o de sempre e a
+          frase de sempre é a verdadeira. Depois de haver, deixa de o
+          ser — e continuar a dizê-la era ensinar a casa a desconfiar
+          do que lê no ecrã.
+
+          Note-se o que NÃO muda: as três rotinas de baixo continuam a
+          ser à mão nos dois casos, e é isso que a segunda metade diz.
+        */}
         <p className="text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-          <span className="font-medium text-[var(--ink)]">
-            O sistema nunca envia nada sozinho.
-          </span>{' '}
-          {mine
-            ? 'Prepara a mensagem e abre a conversa — quem carrega no botão é você. Estas são as clientes que marcaram consigo, mais as de domingo, que são da casa toda.'
-            : 'Prepara a mensagem e abre a conversa — quem carrega no botão é uma pessoa, e é o registo do envio que tira a linha da fila.'}
+          {automatico ? (
+            <>
+              <span className="font-medium text-[var(--ink)]">
+                A confirmação e o lembrete da véspera saem sozinhos.
+              </span>{' '}
+              {mine
+                ? 'O que aparecer nessas duas filas é o que o sistema não conseguiu mandar — e aí é consigo. As outras três são sempre à mão. Estas são as clientes que marcaram consigo, mais as de domingo, que são da casa toda.'
+                : 'O que aparecer nessas duas filas é o que o sistema não conseguiu mandar, e fica à espera de uma pessoa. As outras três são sempre à mão.'}
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-[var(--ink)]">
+                O sistema nunca envia nada sozinho.
+              </span>{' '}
+              {mine
+                ? 'Prepara a mensagem e abre a conversa — quem carrega no botão é você. Estas são as clientes que marcaram consigo, mais as de domingo, que são da casa toda.'
+                : 'Prepara a mensagem e abre a conversa — quem carrega no botão é uma pessoa, e é o registo do envio que tira a linha da fila.'}
+            </>
+          )}
         </p>
       </div>
 

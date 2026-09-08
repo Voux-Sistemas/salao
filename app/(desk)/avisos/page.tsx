@@ -5,6 +5,7 @@ import { loadQueue } from '@/lib/notices'
 import { listUnitCovers } from '@/lib/org'
 import { Empty } from '@/components/ui'
 import { StoreChooser } from '@/components/store-chooser'
+import { isConfigured } from '@/lib/whatsapp/cloud'
 
 export const metadata: Metadata = { title: 'Avisos' }
 
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: 'Avisos' }
 export default async function AvisosChooser() {
   const actor = await requireActor()
   const staffId = noticesStaffId(actor)
+  const automatico = isConfigured()
   const units = await unitsFor(actor)
 
   const only = units[0]
@@ -39,10 +41,20 @@ export default async function AvisosChooser() {
   return (
     <StoreChooser
       title="Avisos"
+      /*
+        A FRASE TEM DE DIZER O QUE É VERDADE HOJE, e o que é verdade
+        depende de haver ou não conta da Meta ligada. Escrevê-la fixa
+        era garantir que metade do tempo mentia — e uma frase que mente
+        sobre quem manda as mensagens é pior do que nenhuma.
+      */
       hint={
-        staffId
-          ? 'As suas clientes, casa a casa. O sistema nunca envia nada sozinho — prepara a mensagem e é você que carrega no botão.'
-          : 'O sistema nunca envia nada sozinho — prepara a mensagem e uma pessoa carrega no botão. Cada loja tem a sua fila.'
+        automatico
+          ? staffId
+            ? 'As suas clientes, casa a casa. A confirmação e o lembrete da véspera saem sozinhos; o resto é consigo.'
+            : 'A confirmação e o lembrete da véspera saem sozinhos. O resto da fila é para despachar à mão, casa a casa.'
+          : staffId
+            ? 'As suas clientes, casa a casa. O sistema nunca envia nada sozinho — prepara a mensagem e é você que carrega no botão.'
+            : 'O sistema nunca envia nada sozinho — prepara a mensagem e uma pessoa carrega no botão. Cada loja tem a sua fila.'
       }
       cta="Ver a fila"
       stores={units.map((unit, index) => {
