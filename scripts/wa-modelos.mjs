@@ -173,9 +173,9 @@ console.log('')
 console.log('  Categoria:  Utility   (NÃO Marketing — é um terço do preço')
 console.log('                         e não precisa de opt-in de marketing)')
 console.log('')
-console.log('  São DOIS modelos, cada um com TRÊS traduções por baixo.')
-console.log('  Na Meta isso é um nome só com três línguas, e não seis')
-console.log('  modelos separados.')
+console.log(`  São ${ROTINAS.length} modelos, cada um com TRÊS traduções por baixo.`)
+console.log('  Na Meta isso é um nome só com três línguas por modelo, e')
+console.log(`  não ${ROTINAS.length * LINGUAS.length} modelos separados.`)
 console.log('')
 
 let divergencias = 0
