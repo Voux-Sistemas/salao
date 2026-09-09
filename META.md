@@ -209,6 +209,22 @@ Nada disto é teu. Fica registado para saberes que existe:
 - Duas migrações por aplicar (`node scripts/_prod.mjs migrate`)
 - O branch `whatsapp` por juntar ao `main`
 
+**E a ordem entre os dois não é indiferente: MIGRAÇÃO PRIMEIRO.**
+
+O `lib/notices.ts` — a página de avisos, que a Nohora usa todos os dias
+— passa a consultar a coluna `whatsapp_opted_out_at`. Essa coluna só
+existe depois da migração. Se o `main` for publicado antes, a página de
+avisos deixa de abrir, e isso não tem nada a ver com a Meta: acontece na
+mesma sem conta nenhuma ligada.
+
+A migração sozinha é inofensiva — só acrescenta colunas novas e nulas, e
+o código que está em produção hoje nem sabe que elas existem. Pode
+correr a qualquer hora, com o salão a trabalhar.
+
+    1º   node scripts/_prod.mjs migrate     (seguro a qualquer hora)
+    2º   juntar o branch ao main            (o texto dos modelos muda)
+    3º   as variáveis da Meta               (aqui começa a enviar)
+
 E uma decisão da casa, que não é técnica: **o lembrete da véspera está
 nas 19:00**. Vale a pena confirmar com a Nohora. A razão da escolha está
 no `WHATSAPP.md`, §2.1.
