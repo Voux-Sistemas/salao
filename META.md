@@ -9,23 +9,20 @@ documento existe para as obter.
 
 ---
 
-## Passo 0 · A pergunta que decide o caminho
+## Passo 0 · A pergunta que decide o caminho — ✅ RESPONDIDA
 
-**A Nohora usa o WhatsApp *Business* ou o WhatsApp normal?**
+**A Nohora usa o WhatsApp *Business*.** Confirmado a 8 de Setembro de
+2026.
 
-Abre-se o telemóvel dela e vê-se o ícone da app. O Business tem um «B»
-no ícone e, dentro, tem «Ferramentas de empresa».
+Era o único ponto que podia matar o plano: a Coexistence só existe para
+números já no WhatsApp Business. Com o WhatsApp normal era preciso migrar
+primeiro e esperar semanas pela elegibilidade.
 
-| Resposta | O que fazer |
-|---|---|
-| **WhatsApp Business** | Segue em frente. É o caso normal. |
-| **WhatsApp normal** | **Pára aqui.** Ela tem de passar para o Business e usá-lo umas semanas antes de o número ser elegível. Instalar o Business preserva as conversas (a migração faz-se dentro da própria app), mas a elegibilidade não é imediata. |
+**O caminho da Coexistence está aberto. Segue para o passo 1.**
 
-Se for o normal, o resto deste documento fica à espera. Não há atalho —
-e descobrir isto a meio custa mais do que perguntar agora.
-
-**Confirma também:** a app está actualizada? É preciso a versão 2.24.17
-ou superior.
+Falta só uma verificação, e faz-se em dez segundos no telemóvel dela:
+**a app está actualizada?** É preciso a versão 2.24.17 ou superior. Se
+estiver desactualizada, o passo 3 falha sem dizer porquê.
 
 ---
 
