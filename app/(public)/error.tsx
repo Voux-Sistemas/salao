@@ -59,7 +59,7 @@ export default function PublicError({
             Conferir primeiro não custa nada a quem falhou mesmo: vê a
             lista vazia e carrega no botão do lado.
           */}
-          <ButtonLink href="/conta" size="lg">
+          <ButtonLink href="/remarcar" size="lg">
             {text.account}
           </ButtonLink>
           <Button variant="outline" size="lg" onClick={() => retry()}>

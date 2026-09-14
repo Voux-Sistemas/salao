@@ -38,6 +38,7 @@ export default function robots(): MetadataRoute.Robots {
         // a apontar para uma pessoa em concreto. Também vai com
         // `noindex` no cabeçalho — isto poupa-lhes a visita.
         '/m/',
+        '/remarcar',
         '/balcao',
       ],
     },

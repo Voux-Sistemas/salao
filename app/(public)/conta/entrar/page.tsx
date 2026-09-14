@@ -1,53 +1,13 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import type { Metadata } from 'next'
-import { rememberedPhone } from '@/lib/account'
-import { getClientActor } from '@/lib/auth/client-actor'
-import { getDictionary } from '@/lib/i18n'
-import { PhoneForm } from '@/components/account-forms'
-import { Gate } from '@/components/account-gate'
 
-export async function generateMetadata(): Promise<Metadata> {
-  const dict = await getDictionary()
-  return {
-    title: dict.tabs.signIn,
-    robots: { index: false, follow: false },
-  }
-}
+/*
+  A ENTRADA POR CÓDIGO SAIU.
 
-/**
- * A porta da cliente: só o telefone. O telefone é a identidade, e a
- * chave é um código de uso único — nunca uma palavra-passe que ela
- * tenha de guardar.
- */
-export default async function ContaEntrarPage() {
-  const client = await getClientActor()
-  if (client) redirect('/conta')
-
-  const [dict, phone] = await Promise.all([getDictionary(), rememberedPhone()])
-
-  return (
-    <Gate
-      eyebrow={dict.nav.account}
-      title={dict.account.signInTitle}
-      subtitle={dict.account.signInSubtitle}
-      footer={
-        <p className="text-[0.8125rem] text-[var(--ink-muted)]">
-          {dict.account.signInNoAccount}{' '}
-          <Link href="/agendar" className="link-slide text-[var(--accent)]">
-            {dict.nav.book}
-          </Link>
-        </p>
-      }
-    >
-      <PhoneForm
-        defaultPhone={phone}
-        labels={{
-          phone: dict.account.phoneLabel,
-          phoneHint: dict.funnel.phoneHint,
-          submit: dict.account.sendCode,
-        }}
-      />
-    </Gate>
-  )
+  O código não tinha canal nenhum até à cliente: o sistema gerava-o e
+  deixava-o nos Avisos à espera de alguém do salão, e ninguém o mandava.
+  A dona decidiu: nada de códigos. A cliente muda ou desmarca pelo botão
+  «Remarcar», e quem ainda tiver este endereço guardado vai lá parar.
+*/
+export default function Reencaminha(): never {
+  redirect('/remarcar')
 }

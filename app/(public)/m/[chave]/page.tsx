@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import type { Metadata } from 'next'
 import { CalendarClock, MapPin, Phone } from 'lucide-react'
 import {
@@ -251,13 +250,6 @@ export default async function ManagePage({ params, searchParams }: Params) {
           </div>
         </div>
       ) : null}
-
-      <p className="mt-10 text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-        {dict.account.signInNoAccount}{' '}
-        <Link href="/conta" className="link-slide">
-          {dict.account.title}
-        </Link>
-      </p>
 
       <div className="mt-10 flex justify-center text-[var(--line)]">
         <LeafRule className="w-40" />

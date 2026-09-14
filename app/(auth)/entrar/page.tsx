@@ -71,10 +71,10 @@ export default async function SignInPage() {
       <p className="mt-5 text-center text-[0.8125rem] text-[var(--ink-faint)]">
         É cliente?{' '}
         <Link
-          href="/conta/entrar"
+          href="/remarcar"
           className="link-slide text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
         >
-          Entre pela montra
+          Mude a sua marcação aqui
         </Link>
         .
       </p>

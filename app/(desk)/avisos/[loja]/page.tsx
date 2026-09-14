@@ -318,18 +318,6 @@ export default async function AvisosPage({
           </h1>
         </div>
         <div className="flex items-center gap-4">
-          {/* Os códigos de acesso não são de loja nenhuma: a ficha da
-              cliente é uma só na rede. Por isso ficam aqui, ao lado do
-              selector, e não entre as abas — lá, um sexto botão que não
-              filtrava nada só enganava. */}
-          {can.seeClients(actor) ? (
-            <Link
-              href="/avisos/codigos"
-              className="link-slide text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--accent)]"
-            >
-              Códigos de acesso
-            </Link>
-          ) : null}
           {/* A pastilha da casa, igual à da agenda, do encaixe e da
               caixa. Esta página tinha ficado com o par de separadores —
               e uma casa não pode ter duas maneiras de dizer a mesma

@@ -4,7 +4,6 @@ import clsx from 'clsx'
 import { getOrg, listUnits } from '@/lib/org'
 import { allWeeklyHours, weekDigest } from '@/lib/hours'
 import { getDictionary, getLanguage, LANGUAGE_TAG } from '@/lib/i18n'
-import { getClientActor } from '@/lib/auth/client-actor'
 import { BRAND } from '@/lib/branding'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { LogoSeal } from '@/components/brand'
@@ -28,11 +27,10 @@ export async function PublicChrome({
   /** Página com herói escuro no topo: o cabeçalho vira vidro fumado. */
   hero?: boolean
 }) {
-  const [org, dict, language, client, units, horas] = await Promise.all([
+  const [org, dict, language, units, horas] = await Promise.all([
     getOrg(),
     getDictionary(),
     getLanguage(),
-    getClientActor(),
     listUnits(),
     /*
      * As horas de TODAS as lojas numa consulta só, e em cache: a
@@ -153,12 +151,22 @@ export async function PublicChrome({
               </>
             ) : null}
 
-            <Link
-              href={client ? '/conta' : '/conta/entrar'}
-              className="link-slide hidden text-[0.8125rem] text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)] sm:block"
+            {/*
+              «REMARCAR» AO LADO DO «MARCAR», E À VISTA EM TODOS OS ECRÃS.
+
+              Era aqui o «Entrar», e levava a um código que não tinha quem o
+              enviasse. Estava escondido no telemóvel — que é justamente
+              onde a cliente o procura. Passa a botão, mais quieto do que o
+              «Marcar» para marcar continuar a ser o principal.
+            */}
+            <ButtonLink
+              href="/remarcar"
+              size="sm"
+              variant="quiet"
+              className="min-h-11 sm:min-h-0"
             >
-              {client ? dict.nav.account : dict.nav.signIn}
-            </Link>
+              {dict.nav.reschedule}
+            </ButtonLink>
 
             <Suspense fallback={null}>
               <LanguageSwitcher current={language} />
@@ -315,7 +323,7 @@ export async function PublicChrome({
                     { href: '/loja', label: dict.footer.links.stores },
                     { href: '/servicos', label: dict.footer.links.services },
                     {
-                      href: client ? '/conta' : '/conta/entrar',
+                      href: '/remarcar',
                       label: dict.footer.links.account,
                     },
                   ].map((item) => (
@@ -354,7 +362,7 @@ export async function PublicChrome({
             {/*
               A PORTA DA EQUIPA.
 
-              O «entrar» do cabeçalho é a área da cliente; esta é outra, e
+              O «Remarcar» do cabeçalho é da cliente; esta é outra, e
               é a que se abre mais vezes por dia. Aqui em baixo, com
               contorno e um cadeado a dizer de quem é — em cima, ao lado
               do outro «entrar», eram duas portas parecidas a levar a

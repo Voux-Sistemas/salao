@@ -27,6 +27,7 @@ export const pt = {
     book: 'Marcar',
     account: 'A minha conta',
     signIn: 'Entrar',
+    reschedule: 'Remarcar',
     signOut: 'Sair',
     language: 'Língua',
   },
@@ -122,7 +123,7 @@ export const pt = {
     links: {
       stores: 'Nossas lojas',
       services: 'Nossos serviços',
-      account: 'Área do cliente',
+      account: 'Remarcar',
       book: 'Marcar hora',
     },
   },
@@ -236,16 +237,14 @@ export const pt = {
     noteLabel: 'Quer deixar alguma observação?',
     notePlaceholder: 'Alergias, preferências, o que quiser dizer-nos.',
     submit: 'Confirmar marcação',
-    /* Só aparece a quem tem o JavaScript desligado: a navegação para o
-       recibo é feita pelo navegador, e sem ele fica este botão. */
-    doneGo: 'Está marcado — ver a sua marcação',
-    doneTitle: 'Está marcado.',
-    doneSubtitle:
-      'Olá, {cliente}! 😊 A sua marcação no salão de {loja} foi registada com sucesso. ✨\n\nAgradecemos a sua preferência e esperamos por si! 💖',
+    doneTitle: 'Está confirmado.',
+    doneSubtitle: 'Esperamos por si no salão {loja}, {dia}, às {hora}.',
     whenLabel: 'Quando',
     whereLabel: 'Onde',
     whatLabel: 'O quê',
-    goToAccount: 'Ver as minhas marcações',
+    changeOrCancel: 'Mudar ou desmarcar',
+    changeUntil: 'Pode mudar a hora ou desmarcar até {tempo} antes.',
+    changeUntilSplit: 'Pode mudar a hora até {mudar} antes e desmarcar até {desmarcar} antes.',
     bookAnother: 'Fazer outra marcação',
   },
   errors: {
@@ -288,7 +287,7 @@ export const pt = {
     bookNow: 'Marcar',
     cancelBooking: 'Cancelar marcação',
     cancelConfirm: 'Tem a certeza que quer cancelar?',
-    cancelTooLate: 'Já não dá para cancelar online. Fale connosco, por favor.',
+    cancelTooLate: 'Já passou o prazo para desmarcar online.',
     cancelled: 'Marcação cancelada.',
     details: 'Os meus dados',
     detailsSaved: 'Dados guardados.',
@@ -310,19 +309,32 @@ export const pt = {
      ela: mudar de hora ou desmarcar. Nada da conta. */
   manage: {
     title: 'A sua marcação',
-    subtitle: 'Guardou o link — aqui pode mudar de hora ou desmarcar.',
+    subtitle: 'Aqui pode mudar a hora ou desmarcar.',
     gone: 'Este link já não abre nada.',
-    goneHint:
-      'Ou a marcação foi desmarcada, ou o link está incompleto. Fale connosco e resolvemos.',
+    goneHint: 'Ou a marcação foi desmarcada, ou o link está incompleto.',
     reschedule: 'Mudar de hora',
     rescheduleTitle: 'Mudar de hora',
     rescheduleSubtitle: 'Os mesmos serviços, noutro dia ou a outra hora.',
-    rescheduleTooLate: 'Já não dá para mudar a hora online. Ligue-nos, por favor.',
+    rescheduleTooLate: 'Já passou o prazo para mudar a hora online.',
     rescheduled: 'Hora mudada. Está tudo confirmado.',
     noSlots: 'Neste dia não há horas livres para esta visita.',
     keep: 'Fica como está',
     cancelledTitle: 'Marcação desmarcada',
     cancelledHint: 'Não precisa de fazer mais nada. Cá a esperamos noutro dia.',
+  },
+
+  /* A porta «Remarcar»: sem código e sem salão. */
+  remarcar: {
+    eyebrow: 'Remarcar',
+    savedTitle: 'As suas marcações',
+    savedSubtitle: 'Guardadas neste telemóvel.',
+    otherPhone: 'Marcou noutro telemóvel?',
+    findTitle: 'Encontrar a sua marcação',
+    findSubtitle: 'Escreva o telemóvel e o primeiro nome com que marcou.',
+    nameLabel: 'Primeiro nome',
+    submit: 'Ver as minhas marcações',
+    notFound: 'Não encontrámos marcações por vir com esse telemóvel e esse nome.',
+    fillBoth: 'Escreva o telemóvel e o primeiro nome.',
   },
 }
 

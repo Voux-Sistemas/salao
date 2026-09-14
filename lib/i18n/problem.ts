@@ -55,11 +55,11 @@ export const PROBLEM: Record<Language, ProblemStrings> = {
     */
     errorTitle: 'Não conseguimos mostrar-lhe o ecrã seguinte',
     errorBody:
-      'Se estava a marcar, é bem possível que a sua marcação já esteja registada. Veja em «As minhas marcações» antes de marcar outra vez — e se lá não estiver, ligue-nos que marcamos por si.',
+      'Se estava a marcar, é bem possível que a sua marcação já esteja registada. Veja em «Remarcar» antes de marcar outra vez.',
     retry: 'Tentar outra vez',
     home: 'Voltar ao início',
     book: 'Marcar',
-    account: 'As minhas marcações',
+    account: 'Remarcar',
   },
   en: {
     notFoundEyebrow: 'Page',
@@ -69,11 +69,11 @@ export const PROBLEM: Record<Language, ProblemStrings> = {
     errorEyebrow: 'Hiccup',
     errorTitle: 'We could not show you the next screen',
     errorBody:
-      'If you were booking, your appointment may well already be registered. Check «My bookings» before booking again — and if it is not there, call us and we will book it for you.',
+      'If you were booking, your appointment may well already be registered. Check «Reschedule» before booking again.',
     retry: 'Try again',
     home: 'Back to the start',
     book: 'Book',
-    account: 'My bookings',
+    account: 'Reschedule',
   },
   es: {
     notFoundEyebrow: 'Página',
@@ -83,11 +83,11 @@ export const PROBLEM: Record<Language, ProblemStrings> = {
     errorEyebrow: 'Contratiempo',
     errorTitle: 'No pudimos mostrarle la pantalla siguiente',
     errorBody:
-      'Si estaba reservando, es muy posible que su reserva ya esté registrada. Mire en «Mis reservas» antes de reservar otra vez — y si no está, llámenos y reservamos por usted.',
+      'Si estaba reservando, es muy posible que su reserva ya esté registrada. Mire en «Cambiar cita» antes de reservar otra vez.',
     retry: 'Intentar otra vez',
     home: 'Volver al inicio',
     book: 'Reservar',
-    account: 'Mis reservas',
+    account: 'Cambiar cita',
   },
 }
 

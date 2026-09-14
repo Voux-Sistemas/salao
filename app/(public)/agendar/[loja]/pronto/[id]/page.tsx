@@ -8,10 +8,9 @@ import { formatCents } from '@/lib/money'
 import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
 import { ButtonLink, Eyebrow } from '@/components/ui'
 import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
-import { GuardarLink } from '@/components/guardar-link'
+import { GuardarNoTelemovel } from '@/components/remarcar-forms'
 import { formatPhone } from '@/lib/text'
 import { serviceNamesFor } from '@/lib/catalog-names'
-import { preencherSaudacao } from '@/lib/notify'
 import { picksStaffOn } from '@/lib/sunday'
 import { isUuid } from '@/lib/id'
 
@@ -79,32 +78,21 @@ export default async function DonePage({ params }: Params) {
   */
   const chave = await chaveDa(appointment.id)
 
+  /* Os prazos são da loja e a dona muda-os no Admin; a frase diz os que
+     estão em vigor, e junta-os numa só quando são iguais. */
+  const prazo = unit
+    ? unit.reschedule_window_minutes === unit.cancel_window_minutes
+      ? dict.funnel.changeUntil.replace(
+          '{tempo}',
+          formatDuration(unit.cancel_window_minutes, language),
+        )
+      : dict.funnel.changeUntilSplit
+          .replace('{mudar}', formatDuration(unit.reschedule_window_minutes, language))
+          .replace('{desmarcar}', formatDuration(unit.cancel_window_minutes, language))
+    : null
+
   return (
     <div className="flex min-h-[78vh] flex-col">
-{/*
-        O CABEÇALHO PODE DIZER «ENTRAR» A QUEM JÁ ESTÁ ENTRADA, E DEIXA-SE.
-
-        A sessão dela nasceu há um instante, na acção que a trouxe aqui,
-        mas a moldura é partilhada com o funil e a que o navegador tem
-        guardada foi desenhada antes disso.
-
-        Tentou-se arranjar duas vezes e das duas partiu-se coisa pior. Um
-        `revalidatePath('/', 'layout')` na acção deitava fora a página
-        `/confirmar`, que se revalidava, não encontrava a hora livre —
-        acabara de a ocupar ela própria — e se atirava para os horários:
-        o botão ficava preso a rodar. Um `router.refresh()` aqui pedia
-        uma segunda volta ao servidor no pior momento possível e acabava
-        no ecrã de contratempo.
-
-        E NÃO VALIA NADA DISSO. A palavra está errada e mais nada: o
-        `/conta/entrar` começa por `if (client) redirect('/conta')`, e
-        portanto quem carregar em «Entrar» com sessão aberta vai parar
-        direitinho à sua conta. Uma etiqueta enganada que leva ao sítio
-        certo custa uma palavra feia; as duas curas custavam a marcação.
-
-        Endireita-se sozinha na primeira navegação inteira.
-      */}
-
       {/* ------------------------------------------------- o carimbo --- */}
       <header className="band-dark relative overflow-hidden">
         <div
@@ -120,15 +108,23 @@ export default async function DonePage({ params }: Params) {
           <h1 className="display display-italic animate-rise delay-3 mt-7 text-[2.1rem] leading-[1.1] sm:text-[2.75rem]">
             {dict.funnel.doneTitle}
           </h1>
-          {/* A mensagem de boas-vindas é da casa e fala com a cliente
-              pelo nome — os {marcadores} enchem-se aqui, não no modelo.
-              O `pre-line` respeita a linha vazia entre as duas frases. */}
-          <p className="animate-fade delay-4 mt-4 whitespace-pre-line text-[0.9375rem] text-[var(--ink-muted)]">
-            {preencherSaudacao(
-              dict.funnel.doneSubtitle,
-              appointment.client_name,
-              appointment.unit_name,
-            )}
+          {/*
+            A CONFIRMAÇÃO DIZ ONDE E QUANDO, E MAIS NADA.
+
+            Viveu aqui uns dias uma saudação com emojis — «Olá, TESTE! 😊 …
+            registada com sucesso ✨» — que gritava o nome em maiúsculas
+            quando a ficha vinha assim e soava a sistema. A dona pediu uma
+            confirmação a sério: está confirmado, onde, e a que horas.
+
+            «No salão Maia» e não «na Maia»: a preposição muda de terra
+            para terra («em Valongo», «na Maia»), e a frase tem de servir
+            às lojas todas sem se enganar em nenhuma.
+          */}
+          <p className="animate-fade delay-4 mt-4 text-[0.9375rem] text-[var(--ink-muted)]">
+            {dict.funnel.doneSubtitle
+              .replace('{loja}', appointment.unit_name)
+              .replace('{dia}', formatDayLong(day, timezone, language))
+              .replace('{hora}', formatTime(appointment.starts_at, timezone, language))}
           </p>
           <div className="animate-fade delay-5 mt-8 flex justify-center text-[var(--gold)] opacity-60">
             <Ornament />
@@ -226,34 +222,30 @@ export default async function DonePage({ params }: Params) {
           </div>
 
           {/*
-            AS DUAS PORTAS PARA ELA VOLTAR AQUI SOZINHA.
+            MUDAR OU DESMARCAR, SEM CÓDIGO.
 
-            Vai para `/conta` e não para `/conta/entrar`: a sessão dela
-            nasceu ao marcar, e mandá-la à porta de entrada era pedir-lhe
-            um código que ninguém lhe manda. É esse código que a deixava
-            presa.
+            O botão principal levava a «Ver as minhas marcações», que dava
+            na porta do código — e o código não tinha quem o enviasse. Agora
+            abre a própria marcação, pela chave dela.
+
+            O bloco «Guarde este link» saiu: a cliente já não precisa de o
+            guardar. Este telemóvel lembra-se da marcação sozinho (é o
+            `GuardarNoTelemovel`), e noutro telemóvel encontra-a pelo
+            telemóvel e pelo primeiro nome, no botão «Remarcar».
           */}
+          <GuardarNoTelemovel chave={chave} />
           <div className="mt-9 flex flex-wrap gap-3">
-            <ButtonLink href="/conta" size="lg">
-              {dict.funnel.goToAccount}
+            <ButtonLink href={chave ? `/m/${chave}` : '/remarcar'} size="lg">
+              {dict.funnel.changeOrCancel}
             </ButtonLink>
             <ButtonLink href="/agendar" size="lg" variant="outline">
               {dict.funnel.bookAnother}
             </ButtonLink>
           </div>
 
-          {/*
-            E A SEGUNDA PORTA, DISCRETA.
-
-            A sessão vive naquele telemóvel. Se ela quiser desmarcar do
-            computador do trabalho, ou se limpar o navegador, é este link
-            que a salva — e vem DELA, não de alguém do salão a ter de o
-            enviar.
-
-            Fica pequeno de propósito: a maioria nunca vai precisar dele,
-            e quem precisa é porque já anda à procura.
-          */}
-          {chave ? <GuardarLink chave={chave} /> : null}
+          {prazo ? (
+            <p className="mt-5 text-[0.8125rem] text-[var(--ink-faint)]">{prazo}</p>
+          ) : null}
 
           <div className="mt-12 flex justify-center text-[var(--line)]">
             <LeafRule className="w-40" />
