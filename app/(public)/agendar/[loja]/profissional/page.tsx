@@ -40,7 +40,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * preferência»: era isso, exactamente, que atribuía a profissional por
  * ela e que a casa não quis.
  *
- * O desenho é o do mockup «Profissional · mais simples».
+ * O desenho é o do mockup «Profissional · delicado».
  */
 export default async function ChooseStaffPage({ params, searchParams }: Params) {
   const { loja } = await params
@@ -114,15 +114,15 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
         />
       }
     >
-      <div className="flex items-center gap-3 px-1.5 sm:gap-4 sm:px-0">
-        <h2 className="text-[0.6875rem] leading-[14px] font-semibold tracking-[0.18em] whitespace-nowrap text-[var(--accent)] uppercase sm:text-[0.75rem] sm:leading-4">
+      <div className="flex items-center gap-2.5 px-1 sm:gap-3.5 sm:px-0">
+        <h2 className="text-[0.625rem] leading-3 font-medium tracking-[0.18em] whitespace-nowrap text-[var(--accent)] uppercase sm:text-[0.6875rem] sm:leading-[14px]">
           {dict.funnel.staffWorking}
         </h2>
         <span
           aria-hidden
           className="h-px flex-1"
           style={{
-            background: 'linear-gradient(90deg, rgba(198,169,107,0.5), rgba(198,169,107,0))',
+            background: 'linear-gradient(90deg, rgba(198,169,107,0.4), rgba(198,169,107,0))',
           }}
         />
       </div>
@@ -132,7 +132,7 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
       ) : (
         /* No telemóvel é uma lista só, com um fio entre as linhas; no
            monitor cada pessoa ganha o seu cartão, três por fila. */
-        <ul className="mt-3 overflow-hidden rounded-[22px] bg-[var(--surface-raised)] sm:mt-4 sm:grid sm:grid-cols-2 sm:gap-3.5 sm:overflow-visible sm:rounded-none sm:bg-transparent lg:grid-cols-3">
+        <ul className="mt-2.5 overflow-hidden rounded-[18px] bg-[var(--surface-raised)] shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:mt-3.5 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:rounded-none sm:bg-transparent sm:shadow-none lg:grid-cols-3">
           {working.map((person, index) => (
             <StaffCard
               key={person.id}
@@ -160,19 +160,19 @@ function StaffCard({
   return (
     <li>
       {first ? null : (
-        <span aria-hidden className="ml-[72px] block h-px bg-[var(--line-soft)] sm:hidden" />
+        <span aria-hidden className="ml-[60px] block h-px bg-[rgba(34,29,23,0.06)] sm:hidden" />
       )}
       <Link
         href={href}
-        className="group flex items-center gap-3.5 py-3.5 pr-[18px] pl-3.5 transition-[background-color,box-shadow] duration-200 outline-offset-2 hover:bg-[#FFFDF8] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:gap-4 sm:rounded-[22px] sm:bg-[var(--surface-raised)] sm:py-5 sm:pr-6 sm:pl-5 sm:hover:shadow-[0_0_0_1px_rgba(142,111,65,0.28),0_10px_28px_-18px_rgba(34,29,23,0.3)]"
+        className="group flex items-center gap-3 py-[11px] pr-4 pl-3 transition-[background-color,box-shadow] duration-200 outline-offset-2 hover:bg-[#FFFDF8] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:gap-3.5 sm:rounded-[18px] sm:bg-[var(--surface-raised)] sm:py-3.5 sm:pr-[18px] sm:pl-3.5 sm:hover:shadow-[0_0_0_1px_rgba(142,111,65,0.24),0_8px_22px_-16px_rgba(34,29,23,0.28)]"
       >
-        <span className="relative size-11 shrink-0 overflow-hidden rounded-full bg-[#F3EBDA] sm:size-[52px]">
+        <span className="relative size-9 shrink-0 overflow-hidden rounded-full bg-[#F3EBDA] sm:size-[42px]">
           {person.avatarUrl ? (
             <Photo src={person.avatarUrl} alt="" />
           ) : (
             <span
               aria-hidden
-              className="display flex h-full w-full items-center justify-center text-[1rem] leading-none tracking-[-0.04em] text-[var(--action-strong)] sm:text-[1.0625rem]"
+              className="display flex h-full w-full items-center justify-center text-[0.8125rem] leading-none tracking-[-0.02em] text-[var(--action-strong)] sm:text-[0.9375rem]"
             >
               {initialsOf(person.publicName)}
             </span>
@@ -180,19 +180,19 @@ function StaffCard({
           {/* O fio dourado vai por cima do retrato, e escurece no hover. */}
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgba(198,169,107,0.5)] transition-shadow group-hover:shadow-[inset_0_0_0_1.5px_var(--accent)]"
+            className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgba(198,169,107,0.45)] transition-shadow group-hover:shadow-[inset_0_0_0_1px_#A88A57]"
           />
         </span>
 
-        <span className="min-w-0 flex-1 truncate text-[0.9375rem] leading-[22px] font-medium text-[var(--ink)] sm:text-base sm:leading-6">
+        <span className="min-w-0 flex-1 truncate text-[0.9375rem] leading-[22px] text-[var(--ink)]">
           {person.publicName}
         </span>
 
         <ChevronRight
-          size={16}
-          strokeWidth={2}
+          size={14}
+          strokeWidth={1.8}
           aria-hidden
-          className="shrink-0 text-[var(--ink-faint)] transition-colors group-hover:text-[var(--action-strong)]"
+          className="shrink-0 text-[#B3A68F] transition-colors group-hover:text-[var(--action-strong)]"
         />
       </Link>
     </li>

@@ -11,30 +11,31 @@ import { formatMonthLong, formatWeekdayShort, type IsoDay } from '@/lib/time'
  * da porcelana sem precisar de borda.
  */
 const BAND_GROUND =
-  'radial-gradient(640px 300px at 92% -30%, rgba(211,184,126,0.13), rgba(211,184,126,0) 70%), linear-gradient(158deg, #1E1811 0%, #141009 100%)'
+  'radial-gradient(640px 300px at 92% -30%, rgba(211,184,126,0.12), rgba(211,184,126,0) 70%), linear-gradient(158deg, #1E1811 0%, #141009 100%)'
 
 /**
  * A MOLDURA LEVE DO FUNIL.
  *
- * É a do mockup «Profissional · mais simples», que a casa aprovou
- * (sem o «ver calendário»).
- * Entra passo a passo: a página da profissional é a primeira, e as
- * outras continuam na `FunnelShell` até terem o seu mockup aprovado.
+ * É a do mockup «Profissional · delicado», que a casa aprovou. Entra
+ * passo a passo: a página da profissional é a primeira, e as outras
+ * continuam na `FunnelShell` até terem o seu mockup aprovado.
  *
  * O que muda em relação à antiga:
  *
  * - A faixa escura deixa de ir de ponta a ponta. É um painel de cantos
- *   redondos, mais baixo, com o título num peso fino.
- * - «‹ Voltar» é um botão a sério, no canto da faixa, em todos os
- *   ecrãs. Uma seta de texto pequena ao lado de «Dia» não se via.
- * - A semana vive DENTRO da faixa, à direita do título: o dia é parte
- *   da pergunta («com quem, neste dia?»), não uma tira solta no corpo.
+ *   redondos, baixo, com o título em corpo contido.
+ * - «‹ Voltar» é um botão, no canto da faixa, em todos os ecrãs.
+ * - A semana vive DENTRO da faixa: o dia é parte da pergunta («com
+ *   quem, neste dia?»), não uma tira solta no corpo.
  * - O rasto é uma frase — «Loja · Dia · Profissional · …» — e no
  *   telemóvel dá lugar à conta do passo.
- * - A letra é a da casa, a mesma dos outros passos: Playfair no título,
- *   nos números dos dias e nas iniciais; Inter no resto. Chegou a
- *   experimentar-se a Manrope aqui, e a página parecia de outro site a
- *   meio da marcação.
+ * - A letra é a da casa, a mesma dos outros passos: Playfair no título e
+ *   nas iniciais; Inter no resto. Chegou a experimentar-se a Manrope
+ *   aqui, e a página parecia de outro site a meio da marcação.
+ *
+ * TUDO PEQUENO DE PROPÓSITO. A primeira versão tinha botões de 36 px,
+ * título de 24 e números de 17, e no telemóvel a casa achou-a grosseira.
+ * Os tamanhos daqui são os do mockup delicado; antes de os subir, ver lá.
  */
 export function FunnelStage({
   step,
@@ -74,9 +75,9 @@ export function FunnelStage({
   return (
     <div className="tabular flex min-h-[78vh] flex-col">
       {/* ---------------------------------------------- a faixa --- */}
-      <div className="mx-auto w-full max-w-[74.5rem] px-3 pt-1 sm:px-5 sm:pt-2">
+      <div className="mx-auto w-full max-w-[74.5rem] px-3 pt-2.5 sm:px-5 sm:pt-4">
         <header
-          className="band-dark relative overflow-hidden rounded-[24px] px-3.5 pt-3.5 pb-4 shadow-[inset_0_0_0_1px_rgba(211,184,126,0.16)] sm:rounded-[28px] sm:px-8 sm:pt-7 sm:pb-[38px]"
+          className="band-dark relative overflow-hidden rounded-[20px] px-3.5 pt-3 pb-3.5 shadow-[inset_0_0_0_1px_rgba(211,184,126,0.14)] sm:rounded-[24px] sm:px-8 sm:pt-6 sm:pb-7"
           style={{ background: BAND_GROUND }}
         >
           {/* Voltar, e — no telemóvel — onde se está. */}
@@ -84,17 +85,17 @@ export function FunnelStage({
             {back ? (
               <Link
                 href={back.href}
-                className="inline-flex h-[34px] items-center gap-1 rounded-full bg-[rgba(242,237,226,0.10)] pr-3.5 pl-2 text-[0.875rem] font-semibold text-[var(--ink)] transition-colors outline-offset-2 hover:bg-[rgba(242,237,226,0.16)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:h-9 sm:pr-4 sm:pl-2.5"
+                className="inline-flex h-7 items-center gap-[3px] rounded-full bg-[rgba(242,237,226,0.08)] pr-2.5 pl-1.5 text-[0.78125rem] font-medium text-[#E9E2D4] transition-colors outline-offset-2 hover:bg-[rgba(242,237,226,0.14)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:h-[30px] sm:gap-1 sm:pr-3 sm:pl-2 sm:text-[0.8125rem]"
               >
-                <ChevronLeft size={16} strokeWidth={2.2} aria-hidden />
+                <ChevronLeft size={14} strokeWidth={2} aria-hidden />
                 {back.label}
               </Link>
             ) : (
               <span />
             )}
-            <span className="truncate pr-0.5 text-[0.6875rem] font-semibold tracking-[0.16em] text-[var(--accent)] uppercase sm:hidden">
+            <span className="truncate text-[0.625rem] leading-3 font-semibold tracking-[0.16em] text-[var(--accent)] uppercase sm:hidden">
               {eyebrow}
-              <span className="tracking-[0.06em] text-[var(--ink-muted)] normal-case">
+              <span className="font-medium tracking-[0.04em] text-[#8F8472] normal-case">
                 {' · '}
                 {count}
               </span>
@@ -103,28 +104,28 @@ export function FunnelStage({
 
           <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
             <div className="min-w-0">
-              <p className="mt-[22px] hidden text-[0.75rem] leading-4 font-semibold tracking-[0.2em] text-[var(--accent)] uppercase sm:block">
+              <p className="mt-5 hidden text-[0.6875rem] leading-[14px] font-semibold tracking-[0.2em] text-[var(--accent)] uppercase sm:block">
                 {eyebrow}
               </p>
-              <h1 className="display animate-rise mx-0.5 mt-3 text-[1.5rem] leading-[1.15] text-balance text-[var(--ink)] sm:mx-0 sm:mt-2 sm:text-[2.25rem] sm:leading-[1.1] lg:text-[2.625rem]">
+              <h1 className="display animate-rise mx-0.5 mt-3 text-[1.3125rem] leading-[1.2] text-balance text-[var(--ink)] sm:mx-0 sm:mt-2 sm:text-[1.875rem] sm:leading-[1.15] lg:text-[2.125rem]">
                 {title}
               </h1>
 
-              <ol className="mt-3.5 hidden flex-wrap items-center text-[0.8125rem] leading-[18px] sm:flex">
+              <ol className="mt-3 hidden flex-wrap items-center text-[0.75rem] leading-4 sm:flex">
                 {labels.map((label, index) => {
                   const number = index + 1
                   const done = number < step
                   const current = number === step
                   const href = done ? (hrefs?.[index] ?? null) : null
                   const tone = current
-                    ? 'font-semibold text-[var(--accent-strong)]'
+                    ? 'font-medium text-[var(--accent-strong)]'
                     : done
                       ? 'text-[var(--ink-muted)]'
-                      : 'text-[rgba(242,237,226,0.38)]'
+                      : 'text-[rgba(242,237,226,0.36)]'
                   return (
                     <li key={label} className="flex items-center">
                       {index > 0 ? (
-                        <span aria-hidden className="px-2 text-[rgba(242,237,226,0.38)]">
+                        <span aria-hidden className="px-2 text-[rgba(242,237,226,0.36)]">
                           ·
                         </span>
                       ) : null}
@@ -146,14 +147,24 @@ export function FunnelStage({
               </ol>
             </div>
 
-            {week ? <div className="mt-4 sm:mt-6 lg:mt-0 lg:shrink-0">{week}</div> : null}
+            {week ? (
+              <div className="lg:shrink-0">
+                {/* Enquanto a semana fica por baixo do título, um fio
+                    separa-os; ao lado dele, no monitor, não faz falta. */}
+                <div
+                  aria-hidden
+                  className="mt-3.5 mb-2.5 h-px bg-[rgba(242,237,226,0.08)] sm:mt-5 sm:mb-4 lg:hidden"
+                />
+                {week}
+              </div>
+            ) : null}
           </div>
         </header>
       </div>
 
       {/* ----------------------------------------------- o corpo --- */}
       <div className="flex-1">
-        <div className="mx-auto w-full max-w-[74.5rem] px-3 pt-6 pb-12 sm:px-[3.25rem] sm:pt-[52px] sm:pb-16">
+        <div className="mx-auto w-full max-w-[74.5rem] px-3 pt-[22px] pb-12 sm:px-[3.25rem] sm:pt-10 sm:pb-16">
           {children}
         </div>
       </div>
@@ -164,17 +175,19 @@ export function FunnelStage({
 /**
  * A SEMANA DA FAIXA.
  *
- * Sete dias a começar no escolhido, com setas para a semana anterior e
- * a seguinte, como a tira antiga. Por cima, o mês por extenso (os dois,
- * quando a semana atravessa o fim do mês). Não há «ver calendário»: o
- * dia já foi escolhido no passo anterior, e aqui só se afina.
+ * Sete dias a começar no escolhido. Em cima, o mês por extenso (os dois,
+ * quando a semana atravessa o fim do mês) entre as setas da semana
+ * anterior e da seguinte — assim os sete dias ficam com a largura toda.
+ * Não há «ver calendário»: o dia já foi escolhido no passo anterior, e
+ * aqui só se afina.
+ *
+ * OS NÚMEROS VÃO EM INTER, NÃO EM PLAYFAIR. Os algarismos da Playfair
+ * têm alturas diferentes — o 4, o 7 e o 9 descem abaixo da linha — e
+ * numa fila de sete dias isso lia-se grosseiro.
  *
  * OS DIAS DA SEMANA VÃO EM TRÊS LETRAS, CORTADAS À MÃO. O `short` do
  * Intl em pt-PT dá «terça», «sábado», «domingo» — por extenso — e no
  * telemóvel encavalitavam-se uns nos outros.
- *
- * O dia escolhido é um disco dourado; um dia sem ninguém fica apagado e
- * sem ligação.
  */
 export function BandWeek({
   day,
@@ -202,18 +215,20 @@ export function BandWeek({
   const months = [...new Set(days.map((value) => formatMonthLong(value, timezone, language)))]
 
   return (
-    <nav aria-label={dict.funnel.steps.day} className="flex flex-col gap-2.5 sm:gap-3.5">
-      <div className="px-0.5 sm:px-11">
-        <p className="text-[0.625rem] leading-3 font-semibold tracking-[0.2em] text-[var(--ink-muted)] uppercase sm:text-[0.6875rem] sm:leading-[14px] sm:tracking-[0.22em]">
+    <nav aria-label={dict.funnel.steps.day} className="w-full lg:w-[324px]">
+      <div className="flex items-center justify-between">
+        <WeekArrow href={previous} label={dict.funnel.previousWeek}>
+          <ChevronLeft size={13} strokeWidth={2} aria-hidden />
+        </WeekArrow>
+        <p className="text-[0.625rem] leading-3 font-medium tracking-[0.2em] text-[var(--ink-muted)] uppercase sm:text-[0.6875rem] sm:leading-[14px]">
           {months.join(' · ')}
         </p>
+        <WeekArrow href={next} label={dict.funnel.nextWeek}>
+          <ChevronRight size={13} strokeWidth={2} aria-hidden />
+        </WeekArrow>
       </div>
 
-      <div className="flex items-end justify-between sm:justify-start sm:gap-2">
-        <WeekArrow href={previous} label={dict.funnel.previousWeek}>
-          <ChevronLeft size={15} strokeWidth={2.2} aria-hidden />
-        </WeekArrow>
-
+      <div className="mt-2 grid grid-cols-7 sm:mt-2.5">
         {days.map((value) => {
           const selected = value === day
           const off = !selected && (disabled?.has(value) ?? false)
@@ -224,31 +239,31 @@ export function BandWeek({
             <>
               <span
                 className={clsx(
-                  'text-[0.5625rem] leading-[11px] font-semibold tracking-[0.08em] uppercase sm:text-[0.625rem] sm:leading-3 sm:tracking-[0.12em]',
+                  'text-[0.5625rem] leading-[11px] font-medium tracking-[0.08em] uppercase sm:text-[0.625rem] sm:leading-3 sm:tracking-[0.1em]',
                   selected
                     ? 'text-[var(--accent)]'
                     : off
                       ? 'text-[rgba(242,237,226,0.26)]'
-                      : 'text-[var(--ink-muted)]',
+                      : 'text-[#8F8472]',
                 )}
               >
                 {weekday}
               </span>
               <span
                 className={clsx(
-                  'display flex size-[34px] items-center justify-center rounded-full text-[1.0625rem] leading-none transition-colors sm:size-11 sm:text-xl',
+                  'flex size-8 items-center justify-center rounded-full text-[0.875rem] leading-none transition-colors sm:size-9 sm:text-[0.9375rem]',
                   selected
-                    ? 'bg-[#C6A96B] text-[#1E1811]'
+                    ? 'bg-[#C6A96B] font-semibold text-[#1E1811]'
                     : off
                       ? 'text-[rgba(242,237,226,0.26)]'
-                      : 'text-[var(--ink)] group-hover:bg-[rgba(242,237,226,0.08)]',
+                      : 'text-[#EDE6D8] group-hover:bg-[rgba(242,237,226,0.08)]',
                 )}
               >
                 {value.slice(8, 10)}
               </span>
             </>
           )
-          const shape = 'flex w-9 flex-col items-center gap-[5px] sm:w-11 sm:gap-2'
+          const shape = 'flex flex-col items-center gap-1 sm:gap-[5px]'
           return off ? (
             <div key={value} aria-disabled className={shape}>
               {inside}
@@ -260,23 +275,22 @@ export function BandWeek({
               aria-current={selected ? 'date' : undefined}
               className={clsx(
                 shape,
-                'group rounded-full outline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
+                'group rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
               )}
             >
               {inside}
             </Link>
           )
         })}
-
-        <WeekArrow href={next} label={dict.funnel.nextWeek}>
-          <ChevronRight size={15} strokeWidth={2.2} aria-hidden />
-        </WeekArrow>
       </div>
     </nav>
   )
 }
 
-/** A seta de uma semana. Sem semana para onde ir, fica apagada. */
+/**
+ * A seta de uma semana: um círculo só com fio. Sem semana para onde ir,
+ * o fio e a seta ficam apagados.
+ */
 function WeekArrow({
   href,
   label,
@@ -286,13 +300,15 @@ function WeekArrow({
   label: string
   children: ReactNode
 }) {
-  const shape =
-    'flex h-[34px] w-[26px] shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-9'
+  const shape = 'flex size-[26px] shrink-0 items-center justify-center rounded-full sm:size-7'
   if (!href) {
     return (
       <span
         aria-hidden
-        className={clsx(shape, 'bg-[rgba(242,237,226,0.04)] text-[rgba(242,237,226,0.22)]')}
+        className={clsx(
+          shape,
+          'text-[rgba(242,237,226,0.22)] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.08)]',
+        )}
       >
         {children}
       </span>
@@ -304,7 +320,7 @@ function WeekArrow({
       aria-label={label}
       className={clsx(
         shape,
-        'bg-[rgba(242,237,226,0.08)] text-[var(--ink)] transition-colors outline-offset-2 hover:bg-[rgba(242,237,226,0.16)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
+        'text-[#E9E2D4] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.16)] transition-colors outline-offset-2 hover:bg-[rgba(242,237,226,0.08)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
       )}
     >
       {children}
