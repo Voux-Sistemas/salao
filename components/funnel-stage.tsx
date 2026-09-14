@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Dictionary } from '@/lib/i18n'
 import { formatMonthLong, formatWeekdayShort, type IsoDay } from '@/lib/time'
 
@@ -16,18 +16,21 @@ const BAND_GROUND =
 /**
  * A MOLDURA LEVE DO FUNIL.
  *
- * É a do mockup «Profissional · elegante», que a casa aprovou. Entra
- * passo a passo: a página da profissional é a primeira, e as outras
- * continuam na `FunnelShell` até terem o seu mockup aprovado.
+ * É a do mockup «Profissional · mais simples», que a casa aprovou
+ * (sem o «ver calendário»).
+ * Entra passo a passo: a página da profissional é a primeira, e as
+ * outras continuam na `FunnelShell` até terem o seu mockup aprovado.
  *
  * O que muda em relação à antiga:
  *
  * - A faixa escura deixa de ir de ponta a ponta. É um painel de cantos
  *   redondos, mais baixo, com o título num peso fino.
+ * - «‹ Voltar» é um botão a sério, no canto da faixa, em todos os
+ *   ecrãs. Uma seta de texto pequena ao lado de «Dia» não se via.
  * - A semana vive DENTRO da faixa, à direita do título: o dia é parte
  *   da pergunta («com quem, neste dia?»), não uma tira solta no corpo.
  * - O rasto é uma frase — «Loja · Dia · Profissional · …» — e no
- *   telemóvel dá lugar a «‹ Dia» e à conta do passo.
+ *   telemóvel dá lugar à conta do passo.
  * - A letra é a Manrope, a mesma da equipa.
  */
 export function FunnelStage({
@@ -47,7 +50,7 @@ export function FunnelStage({
   /** A loja, em maiúsculas pequenas por cima do título. */
   eyebrow: string
   title: string
-  /** O passo anterior, para o «‹» do telemóvel. */
+  /** O passo anterior: o botão «‹ Voltar». */
   back?: { href: string; label: string }
   /** A semana da faixa (ver `BandWeek`). */
   week?: ReactNode
@@ -70,23 +73,23 @@ export function FunnelStage({
       {/* ---------------------------------------------- a faixa --- */}
       <div className="mx-auto w-full max-w-[74.5rem] px-3 pt-1 sm:px-5 sm:pt-2">
         <header
-          className="band-dark relative overflow-hidden rounded-[24px] px-4 pt-3.5 pb-[18px] shadow-[inset_0_0_0_1px_rgba(211,184,126,0.16)] sm:rounded-[28px] sm:px-8 sm:pt-[42px] sm:pb-10"
+          className="band-dark relative overflow-hidden rounded-[24px] px-3.5 pt-3.5 pb-4 shadow-[inset_0_0_0_1px_rgba(211,184,126,0.16)] sm:rounded-[28px] sm:px-8 sm:pt-7 sm:pb-[38px]"
           style={{ background: BAND_GROUND }}
         >
-          {/* No telemóvel: voltar, e onde se está. */}
-          <div className="flex items-center justify-between gap-3 sm:hidden">
+          {/* Voltar, e — no telemóvel — onde se está. */}
+          <div className="flex items-center justify-between gap-3">
             {back ? (
               <Link
                 href={back.href}
-                className="-my-2 -ml-1.5 inline-flex items-center gap-0.5 py-2 pr-2 pl-1 text-[0.8125rem] font-medium text-[var(--ink)]"
+                className="inline-flex h-[34px] items-center gap-1 rounded-full bg-[rgba(242,237,226,0.10)] pr-3.5 pl-2 text-[0.875rem] font-semibold text-[var(--ink)] transition-colors outline-offset-2 hover:bg-[rgba(242,237,226,0.16)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:h-9 sm:pr-4 sm:pl-2.5"
               >
-                <ChevronLeft size={15} strokeWidth={2} aria-hidden />
+                <ChevronLeft size={16} strokeWidth={2.2} aria-hidden />
                 {back.label}
               </Link>
             ) : (
               <span />
             )}
-            <span className="truncate text-[0.6875rem] font-semibold tracking-[0.16em] text-[var(--accent)] uppercase">
+            <span className="truncate pr-0.5 text-[0.6875rem] font-semibold tracking-[0.16em] text-[var(--accent)] uppercase sm:hidden">
               {eyebrow}
               <span className="tracking-[0.06em] text-[var(--ink-muted)] normal-case">
                 {' · '}
@@ -97,14 +100,14 @@ export function FunnelStage({
 
           <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
             <div className="min-w-0">
-              <p className="hidden text-[0.75rem] leading-4 font-semibold tracking-[0.2em] text-[var(--accent)] uppercase sm:block">
+              <p className="mt-[22px] hidden text-[0.75rem] leading-4 font-semibold tracking-[0.2em] text-[var(--accent)] uppercase sm:block">
                 {eyebrow}
               </p>
-              <h1 className="animate-rise mt-2 text-[1.5rem] leading-[1.15] font-medium tracking-[-0.028em] text-balance text-[var(--ink)] sm:mt-3 sm:text-[2.25rem] sm:leading-[1.1] sm:tracking-[-0.03em] lg:text-[2.625rem]">
+              <h1 className="animate-rise mx-0.5 mt-3.5 text-[1.5rem] leading-[1.15] font-medium tracking-[-0.028em] text-balance text-[var(--ink)] sm:mx-0 sm:mt-2.5 sm:text-[2.25rem] sm:leading-[1.1] sm:tracking-[-0.03em] lg:text-[2.625rem]">
                 {title}
               </h1>
 
-              <ol className="mt-3 hidden flex-wrap items-center text-[0.8125rem] leading-[18px] sm:flex">
+              <ol className="mt-3.5 hidden flex-wrap items-center text-[0.8125rem] leading-[18px] sm:flex">
                 {labels.map((label, index) => {
                   const number = index + 1
                   const done = number < step
@@ -140,7 +143,7 @@ export function FunnelStage({
               </ol>
             </div>
 
-            {week ? <div className="mt-3.5 sm:mt-6 lg:mt-0 lg:shrink-0">{week}</div> : null}
+            {week ? <div className="mt-4 sm:mt-6 lg:mt-0 lg:shrink-0">{week}</div> : null}
           </div>
         </header>
       </div>
@@ -158,10 +161,17 @@ export function FunnelStage({
 /**
  * A SEMANA DA FAIXA.
  *
- * Sete dias a começar no escolhido, como a tira antiga: carregar no
- * último leva à semana seguinte. Por cima, o mês por extenso (os dois,
- * quando a semana atravessa o fim do mês). O dia escolhido é um disco
- * dourado; um dia sem ninguém fica apagado e sem ligação, como na tira.
+ * Sete dias a começar no escolhido, com setas para a semana anterior e
+ * a seguinte, como a tira antiga. Por cima, o mês por extenso (os dois,
+ * quando a semana atravessa o fim do mês). Não há «ver calendário»: o
+ * dia já foi escolhido no passo anterior, e aqui só se afina.
+ *
+ * OS DIAS DA SEMANA VÃO EM TRÊS LETRAS, CORTADAS À MÃO. O `short` do
+ * Intl em pt-PT dá «terça», «sábado», «domingo» — por extenso — e no
+ * telemóvel encavalitavam-se uns nos outros.
+ *
+ * O dia escolhido é um disco dourado; um dia sem ninguém fica apagado e
+ * sem ligação.
  */
 export function BandWeek({
   day,
@@ -169,7 +179,9 @@ export function BandWeek({
   timezone,
   language,
   href,
-  label,
+  previous,
+  next,
+  dict,
   disabled,
 }: {
   day: IsoDay
@@ -177,27 +189,39 @@ export function BandWeek({
   timezone: string
   language: string
   href: (day: IsoDay) => string
-  /** Nome da semana para quem a ouve em vez de a ver. */
-  label: string
+  /** Endereço da semana anterior; null quando já é a primeira. */
+  previous: string | null
+  /** Endereço da semana seguinte; null quando já passa do limite. */
+  next: string | null
+  dict: Dictionary
   disabled?: ReadonlySet<IsoDay>
 }) {
   const months = [...new Set(days.map((value) => formatMonthLong(value, timezone, language)))]
 
   return (
-    <nav aria-label={label} className="flex flex-col sm:items-start sm:gap-3.5 lg:items-end">
-      <p className="hidden text-[0.6875rem] leading-[14px] font-semibold tracking-[0.22em] text-[var(--ink-muted)] uppercase sm:block lg:pr-3">
-        {months.join(' · ')}
-      </p>
-      <ul className="flex justify-between sm:justify-start sm:gap-2">
+    <nav aria-label={dict.funnel.steps.day} className="flex flex-col gap-2.5 sm:gap-3.5">
+      <div className="px-0.5 sm:px-11">
+        <p className="text-[0.625rem] leading-3 font-semibold tracking-[0.2em] text-[var(--ink-muted)] uppercase sm:text-[0.6875rem] sm:leading-[14px] sm:tracking-[0.22em]">
+          {months.join(' · ')}
+        </p>
+      </div>
+
+      <div className="flex items-end justify-between sm:justify-start sm:gap-2">
+        <WeekArrow href={previous} label={dict.funnel.previousWeek}>
+          <ChevronLeft size={15} strokeWidth={2.2} aria-hidden />
+        </WeekArrow>
+
         {days.map((value) => {
           const selected = value === day
           const off = !selected && (disabled?.has(value) ?? false)
-          const weekday = formatWeekdayShort(value, timezone, language).replace(/\.$/, '')
+          const weekday = formatWeekdayShort(value, timezone, language)
+            .replace(/\.$/, '')
+            .slice(0, 3)
           const inside = (
             <>
               <span
                 className={clsx(
-                  'text-[0.5625rem] leading-[11px] font-semibold tracking-[0.1em] uppercase sm:text-[0.625rem] sm:leading-3 sm:tracking-[0.12em]',
+                  'text-[0.5625rem] leading-[11px] font-semibold tracking-[0.08em] uppercase sm:text-[0.625rem] sm:leading-3 sm:tracking-[0.12em]',
                   selected
                     ? 'text-[var(--accent)]'
                     : off
@@ -209,7 +233,7 @@ export function BandWeek({
               </span>
               <span
                 className={clsx(
-                  'flex size-9 items-center justify-center rounded-full text-[0.9375rem] transition-colors sm:size-11 sm:text-[1.0625rem]',
+                  'flex size-[34px] items-center justify-center rounded-full text-[0.9375rem] transition-colors sm:size-11 sm:text-[1.0625rem]',
                   selected
                     ? 'bg-[#C6A96B] font-bold text-[#1E1811]'
                     : off
@@ -221,29 +245,66 @@ export function BandWeek({
               </span>
             </>
           )
-          const shape = 'flex flex-col items-center gap-[5px] sm:gap-2'
-          return (
-            <li key={value} className="w-[38px] sm:w-11">
-              {off ? (
-                <div aria-disabled className={shape}>
-                  {inside}
-                </div>
-              ) : (
-                <Link
-                  href={href(value)}
-                  aria-current={selected ? 'date' : undefined}
-                  className={clsx(
-                    shape,
-                    'group rounded-full outline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
-                  )}
-                >
-                  {inside}
-                </Link>
+          const shape = 'flex w-9 flex-col items-center gap-[5px] sm:w-11 sm:gap-2'
+          return off ? (
+            <div key={value} aria-disabled className={shape}>
+              {inside}
+            </div>
+          ) : (
+            <Link
+              key={value}
+              href={href(value)}
+              aria-current={selected ? 'date' : undefined}
+              className={clsx(
+                shape,
+                'group rounded-full outline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
               )}
-            </li>
+            >
+              {inside}
+            </Link>
           )
         })}
-      </ul>
+
+        <WeekArrow href={next} label={dict.funnel.nextWeek}>
+          <ChevronRight size={15} strokeWidth={2.2} aria-hidden />
+        </WeekArrow>
+      </div>
     </nav>
+  )
+}
+
+/** A seta de uma semana. Sem semana para onde ir, fica apagada. */
+function WeekArrow({
+  href,
+  label,
+  children,
+}: {
+  href: string | null
+  label: string
+  children: ReactNode
+}) {
+  const shape =
+    'flex h-[34px] w-[26px] shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-9'
+  if (!href) {
+    return (
+      <span
+        aria-hidden
+        className={clsx(shape, 'bg-[rgba(242,237,226,0.04)] text-[rgba(242,237,226,0.22)]')}
+      >
+        {children}
+      </span>
+    )
+  }
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className={clsx(
+        shape,
+        'bg-[rgba(242,237,226,0.08)] text-[var(--ink)] transition-colors outline-offset-2 hover:bg-[rgba(242,237,226,0.16)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
+      )}
+    >
+      {children}
+    </Link>
   )
 }

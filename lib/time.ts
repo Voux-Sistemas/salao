@@ -250,11 +250,6 @@ export function formatMonthLong(
   }).format(dayStart(day, timezone))
 }
 
-/** ["Ana", "Rita"] -> "Ana e Rita", com o «e» da língua da página. */
-export function formatList(items: string[], language = 'pt'): string {
-  return new Intl.ListFormat(localeOf(language), { type: 'conjunction' }).format(items)
-}
-
 export function formatMonthYear(
   day: IsoDay,
   timezone: string,
