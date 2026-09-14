@@ -1065,6 +1065,12 @@ html:not(.js) .grow-rule {
 html.js [data-menu-fechado] {
   display: none;
 }
+
+/* As categorias do passo dos serviços (components/service-group.tsx)
+   fecham em qualquer ecrã — e, como aqui, só com JavaScript. */
+html.js [data-grupo-fechado] {
+  display: none;
+}
 @media (min-width: 640px) {
   html.js [data-menu-fechado] {
     display: block;

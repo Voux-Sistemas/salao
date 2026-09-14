@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import clsx from 'clsx'
-import { Check, MessageCircle, Plus, X } from 'lucide-react'
+import { Check, ChevronRight, MessageCircle, Plus, X } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { fill, getDictionary, getLanguage } from '@/lib/i18n'
@@ -30,10 +30,11 @@ import {
 } from '@/lib/cart'
 import { categoryOpenOn, picksStaffOn } from '@/lib/sunday'
 import { waLink } from '@/lib/whatsapp'
-import { ButtonLink, Empty, Eyebrow, Notice } from '@/components/ui'
-import { FunnelShell, MobileVisitBar } from '@/components/funnel-shell'
-import { CollapseGroup } from '@/components/collapse-group'
-import { Photo, PhotoFallback } from '@/components/photo'
+import { Empty, Notice } from '@/components/ui'
+import { FunnelStage } from '@/components/funnel-stage'
+import { ServiceGroup } from '@/components/service-group'
+import { Photo } from '@/components/photo'
+import { initialsOf } from '@/lib/initials'
 
 type Params = {
   params: Promise<{ loja: string }>
@@ -283,8 +284,15 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
     categories.set(row.category_id, entry)
   }
 
+  const timesHref = funnelHref(`${here}/horarios`, { day, staffId: chosenStaff, cart: clean })
+  const visitMeta = `${clean.length} ${
+    clean.length === 1 ? dict.common.service : dict.common.services
+  } · ${formatDuration(totalMinutes, language)}`
+  const total = formatCents(totalCents, org.currency, language)
+  const categoryList = [...categories.values()]
+
   return (
-    <FunnelShell
+    <FunnelStage
       step={4}
       picksStaff={picksStaff}
       dict={dict}
@@ -301,230 +309,234 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
       ]}
       eyebrow={unit.name}
       title={dict.funnel.serviceTitle}
-      subtitle={picksStaff ? dict.funnel.serviceSubtitle : dict.funnel.sundaySubtitle}
+      back={{
+        href: picksStaff
+          ? funnelHref(`${here}/profissional`, { day })
+          : funnelHref(here, { day }),
+        label: dict.common.back,
+      }}
     >
-      {/* Com quem e quando — as duas escolhas já feitas, à vista e com
-          saída. Sem isto a ementa encolhida não se explicava: quem
-          chegasse aqui via meia dúzia de serviços e não sabia porquê.
-          Ao domingo não há «com quem», e o que fica é o dia — mais o
-          motivo por que ninguém lhe foi perguntado. */}
-      <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--line-soft)] pb-5">
-        <p className="text-[0.9375rem] text-[var(--ink)]">
-          {person ? (
-            <>
-              <span className="text-[var(--ink-faint)]">{dict.funnel.withStaff} </span>
-              {person.publicName}
-              <span className="text-[var(--ink-faint)]"> · </span>
-            </>
-          ) : null}
-          <span className="first-letter:uppercase">
-            {formatDayLong(day, unit.timezone, language)}
-          </span>
-        </p>
-        <span className="hidden h-px flex-1 bg-[var(--line-soft)] sm:block" />
-        <span className="flex flex-wrap gap-x-4 gap-y-1 text-[0.75rem]">
-          {picksStaff ? (
-            <Link
-              href={funnelHref(`${here}/profissional`, { day })}
-              className="text-[var(--ink-muted)] underline underline-offset-4 hover:text-[var(--accent)]"
-            >
-              {dict.funnel.changeStaff}
-            </Link>
-          ) : null}
-          <Link
-            href={funnelHref(here, { day })}
-            className="text-[var(--ink-muted)] underline underline-offset-4 hover:text-[var(--accent)]"
-          >
-            {dict.funnel.changeDay}
-          </Link>
-        </span>
-      </div>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10">
+        <div className="flex flex-col gap-2">
+          {/*
+            COM QUEM E QUANDO, NUM CARTÃO PEQUENO.
 
-      {/* Porque é que ninguém lhe perguntou com quem. Dito uma vez, em
-          cima, antes de ela dar pela falta do passo. */}
-      {!picksStaff ? (
-        <div className="mb-8">
-          <Notice tone="neutral">{dict.funnel.sundayNoStaff}</Notice>
-        </div>
-      ) : null}
-
-      {dropped ? (
-        <div className="mb-8">
-          <Notice tone="warn">{dict.errors.serviceGone}</Notice>
-        </div>
-      ) : null}
-
-      {/* Cheio: dizer-se uma vez em cima, em vez de um traço mudo em
-          cada linha do catálogo. */}
-      {clean.length >= MAX_CART_LINES ? (
-        <div className="mb-8">
-          <Notice tone="warn">{dict.funnel.cartFull}</Notice>
-        </div>
-      ) : null}
-
-      {/* Ela existe, está de serviço, e não tem uma única habilidade
-          aberta ao online. É raro e é da gestão, não da cliente — mas
-          sem isto ficava uma página em branco com um botão morto. */}
-      {bookable.length === 0 ? (
-        <Empty
-          title={dict.funnel.staffNoServices}
-          hint={dict.funnel.staffNoServicesHint}
-        />
-      ) : (
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_19rem]">
-        {/* ------------------------------------------------ catálogo --- */}
-        <div className="space-y-10 sm:space-y-14">
-          {[...categories.values()].map((category, groupIndex) => {
-            // Categoria onde já se escolheu alguma coisa chega aberta:
-            // fechá-la era esconder da cliente a escolha que ela fez.
-            const anyChosen = category.services.some((service) =>
-              clean.some((line) => line.serviceId === service.id),
-            )
-            return (
-              <CollapseGroup
-                key={category.name}
-                title={category.name}
-                count={category.services.length}
-                ordinal={String(groupIndex + 1).padStart(2, '0')}
-                defaultOpen={anyChosen}
-                delay={groupIndex * 60}
+            Era uma frase comprida — «Com Profissional 01 · terça-feira,
+            15 de setembro» — com dois links sublinhados por baixo, e no
+            telemóvel levava três linhas. As duas escolhas continuam à
+            vista, e a saída é uma só: «Alterar» leva à profissional, e lá
+            a semana deixa trocar o dia também. Ao domingo não há «com
+            quem», e «Alterar» volta ao dia.
+          */}
+          <div className="flex items-center gap-[11px] rounded-2xl bg-[var(--surface-raised)] py-2 pr-3.5 pl-2 shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:max-w-[23.75rem] sm:rounded-[18px] sm:py-2.5 sm:pr-5 sm:pl-2.5">
+            {person ? (
+              <span className="relative size-[34px] shrink-0 overflow-hidden rounded-full bg-[#F3EBDA] sm:size-[38px]">
+                {person.avatarUrl ? (
+                  <Photo src={person.avatarUrl} alt="" />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="display flex h-full w-full items-center justify-center text-[0.8125rem] leading-none text-[var(--action-strong)]"
+                  >
+                    {initialsOf(person.publicName)}
+                  </span>
+                )}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgba(198,169,107,0.45)]"
+                />
+              </span>
+            ) : null}
+            <div className={clsx('min-w-0 flex-1', !person && 'pl-2')}>
+              {person ? (
+                <p className="truncate text-[0.875rem] leading-[19px] font-medium text-[var(--ink)]">
+                  {person.publicName}
+                </p>
+              ) : null}
+              <p
+                className={clsx(
+                  'truncate first-letter:uppercase',
+                  person
+                    ? 'text-[0.75rem] leading-4 text-[#8A7F6E]'
+                    : 'text-[0.875rem] leading-[19px] font-medium text-[var(--ink)]',
+                )}
               >
-                {category.services.map((service) => {
-                  const chosenAt = clean.findIndex(
-                    (line) => line.serviceId === service.id,
-                  )
-                  const chosen = chosenAt >= 0
-                  const full = clean.length >= MAX_CART_LINES
-                  // Não cabe no maior bocado livre que lhe resta: fica
-                  // cinzento com o motivo, como uma profissional de
-                  // folga. Tirar continua sempre possível.
-                  const noFit =
-                    !chosen &&
-                    cartOccupies +
-                      (clean.length > 0 ? gapMin : 0) +
-                      occupies(service) >
-                      longestFree
+                {formatDayLong(day, unit.timezone, language)}
+              </p>
+            </div>
+            <Link
+              href={
+                picksStaff
+                  ? funnelHref(`${here}/profissional`, { day })
+                  : funnelHref(here, { day })
+              }
+              className="-my-2 shrink-0 py-2 text-[0.78125rem] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--action-strong)]"
+            >
+              {dict.common.change}
+            </Link>
+          </div>
 
-                  const price = formatCents(
-                    service.price_cents,
-                    org.currency,
-                    language,
-                  )
-                  const detail = noFit
-                    ? `${formatDuration(service.duration_minutes, language)} · ${dict.funnel.serviceNoFit}`
-                    : formatDuration(service.duration_minutes, language) +
-                      (service.description ? ` · ${service.description}` : '')
+          {/* Porque é que ninguém lhe perguntou com quem. Dito uma vez, em
+              cima, antes de ela dar pela falta do passo. */}
+          {!picksStaff ? <Notice tone="neutral">{dict.funnel.sundayNoStaff}</Notice> : null}
 
-                  /* A linha inteira é o alvo. Antes o que se tocava era um
-                     botão de 95 por 32 debaixo do nome: no polegar isso é
-                     uma mira, e cada serviço ocupava três linhas de altura
-                     por causa dele. Agora toca-se no serviço — que é o que
-                     qualquer pessoa tenta fazer primeiro — e a linha cabe
-                     em duas. Tocar outra vez tira; é o que se espera de
-                     uma ementa. */
-                  const inside = (
-                    <>
-                      <span
-                        aria-hidden
-                        className={clsx(
-                          'mt-[0.2rem] flex size-[1.125rem] shrink-0 items-center justify-center border transition-colors',
-                          chosen
-                            ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
-                            : 'border-[var(--line)] text-[var(--ink-faint)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]',
-                        )}
-                      >
-                        {chosen ? <Check size={12} /> : <Plus size={12} />}
-                      </span>
-                      {/* A miniatura está sempre cá. Sem fotografia sai o
-                          monograma da casa, com o tom a variar com o nome:
-                          é um desenho, não um buraco à espera de imagem, e
-                          é o que mantém a lista aprumada enquanto a gestão
-                          vai pondo as fotografias dos serviços. */}
-                      <span className="size-11 shrink-0 overflow-hidden bg-[var(--surface-raised)]">
-                        {service.image_url ? (
-                          <Photo
-                            src={service.image_url}
-                            alt={
-                              service.image_alt ??
-                              fill(dict.home.servicePhotoAlt, {
-                                service: service.name,
-                              })
-                            }
-                          />
-                        ) : (
-                          <PhotoFallback seed={service.name} label={service.name} compact />
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline gap-3">
+          {dropped ? <Notice tone="warn">{dict.errors.serviceGone}</Notice> : null}
+
+          {/* Cheio: dizer-se uma vez em cima, em vez de um traço mudo em
+              cada linha do catálogo. */}
+          {clean.length >= MAX_CART_LINES ? (
+            <Notice tone="warn">{dict.funnel.cartFull}</Notice>
+          ) : null}
+
+          {/* Ela existe, está de serviço, e não tem uma única habilidade
+              aberta ao online. É raro e é da gestão, não da cliente — mas
+              sem isto ficava uma página em branco com um botão morto. */}
+          {bookable.length === 0 ? (
+            <Empty
+              title={dict.funnel.staffNoServices}
+              hint={dict.funnel.staffNoServicesHint}
+            />
+          ) : (
+            <div className="mt-1.5 flex flex-col gap-2 sm:gap-2.5">
+              {categoryList.map((category, groupIndex) => {
+                const chosenHere = category.services.filter((service) =>
+                  clean.some((line) => line.serviceId === service.id),
+                ).length
+                // Abre à chegada a categoria onde já se escolheu alguma
+                // coisa — fechá-la era esconder a escolha que ela fez. Com
+                // a visita vazia abre a primeira, para o ecrã nunca chegar
+                // só com títulos.
+                const openAtStart = chosenHere > 0 || (clean.length === 0 && groupIndex === 0)
+                return (
+                  <ServiceGroup
+                    key={category.name}
+                    title={category.name}
+                    count={category.services.length}
+                    chosenLabel={
+                      chosenHere > 0
+                        ? (chosenHere === 1
+                            ? dict.funnel.serviceChosen
+                            : dict.funnel.serviceChosenMany
+                          ).replace('{n}', String(chosenHere))
+                        : null
+                    }
+                    defaultOpen={openAtStart}
+                  >
+                    {category.services.map((service, serviceIndex) => {
+                      const chosenAt = clean.findIndex(
+                        (line) => line.serviceId === service.id,
+                      )
+                      const chosen = chosenAt >= 0
+                      const full = clean.length >= MAX_CART_LINES
+                      // Não cabe no maior bocado livre que lhe resta: fica
+                      // apagado com o motivo, como uma profissional de
+                      // folga. Tirar continua sempre possível.
+                      const noFit =
+                        !chosen &&
+                        cartOccupies +
+                          (clean.length > 0 ? gapMin : 0) +
+                          occupies(service) >
+                          longestFree
+
+                      const price = formatCents(service.price_cents, org.currency, language)
+                      const detail = noFit
+                        ? `${formatDuration(service.duration_minutes, language)} · ${dict.funnel.serviceNoFit}`
+                        : formatDuration(service.duration_minutes, language) +
+                          (service.description ? ` · ${service.description}` : '')
+
+                      /* A linha inteira é o alvo: toca-se no serviço, e
+                         tocar outra vez tira. O círculo diz o estado — um
+                         «+» de fio, ou ouro cheio com o visto. As miniaturas
+                         com iniciais saíram: eram quase todas desenho à
+                         espera de fotografia, e ocupavam a largura do nome. */
+                      const inside = (
+                        <>
                           <span
+                            aria-hidden
                             className={clsx(
-                              'min-w-0 text-[0.9375rem] transition-colors',
+                              'flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors sm:size-6',
                               chosen
-                                ? 'text-[var(--accent)]'
-                                : 'text-[var(--ink)] group-hover:text-[var(--accent)]',
+                                ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
+                                : noFit || full
+                                  ? 'text-[#C9BEAC] shadow-[inset_0_0_0_1px_rgba(34,29,23,0.08)]'
+                                  : 'text-[var(--accent)] shadow-[inset_0_0_0_1px_rgba(142,111,65,0.35)] group-hover:shadow-[inset_0_0_0_1px_var(--accent)]',
                             )}
                           >
-                            {service.name}
+                            {chosen ? <Check size={12} strokeWidth={2.6} /> : <Plus size={11} strokeWidth={2.2} />}
                           </span>
-                          {/* O pontilhado só existe onde há branco para
-                              ele: ao telemóvel o nome já leva a linha. */}
-                          <span className="hidden flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)] sm:block" />
-                          <span className="tabular ml-auto shrink-0 text-[0.875rem] text-[var(--ink)] sm:ml-0">
+                          <span className="min-w-0 flex-1">
+                            <span
+                              className={clsx(
+                                'block text-[0.90625rem] leading-5 sm:text-[0.9375rem]',
+                                chosen
+                                  ? 'font-medium text-[var(--action-strong)]'
+                                  : 'text-[var(--ink)]',
+                              )}
+                            >
+                              {service.name}
+                            </span>
+                            <span className="mt-px line-clamp-2 block text-[0.75rem] leading-[17px] text-[#8A7F6E]">
+                              {detail}
+                            </span>
+                          </span>
+                          <span className="tabular shrink-0 text-[0.875rem] leading-5 text-[var(--ink)] sm:text-[0.90625rem]">
                             {price}
                           </span>
-                        </span>
-                        <span className="mt-1 block max-w-md text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-                          {detail}
-                        </span>
-                      </span>
-                    </>
-                  )
+                        </>
+                      )
 
-                  const rowClass =
-                    'flex min-h-[3.25rem] w-full items-start gap-3 py-3 text-left'
+                      const rowClass = clsx(
+                        'flex w-full items-center gap-3 px-3.5 py-3 text-left sm:gap-3.5 sm:px-5 sm:py-3.5',
+                        chosen && 'bg-[rgba(198,169,107,0.08)]',
+                      )
 
-                  return (
-                    <li
-                      key={service.id}
-                      className="border-b border-[var(--line-soft)] last:border-0"
-                    >
-                      {(full || noFit) && !chosen ? (
-                        // Visita cheia, ou serviço que já não cabe: a
-                        // linha fica lá para se ler, mas deixa de
-                        // prometer um toque que não faz nada.
-                        <div className={clsx(rowClass, 'opacity-40')}>{inside}</div>
-                      ) : (
-                        <Link
-                          href={funnelHref(`${here}/servicos`, {
-                            day,
-                            staffId: chosenStaff,
-                            cart: chosen
-                              ? removeAt(clean, chosenAt)
-                              : addLine(clean, service.id),
-                          })}
-                          // Sem isto o Next saltava a página para o
-                          // topo a cada toque — o carrinho muda de
-                          // endereço, mas a cliente não está a mudar de
-                          // sítio, só a marcar um check. Ela fica onde
-                          // estava, a descer a ementa ao seu ritmo.
-                          scroll={false}
-                          // O nome do serviço só existe para quem lê o
-                          // ecrã; para quem o ouve, vai no rótulo.
-                          aria-label={`${
-                            chosen ? dict.common.remove : addLabel
-                          } · ${service.name}`}
-                          className={clsx('group', rowClass)}
-                        >
-                          {inside}
-                        </Link>
-                      )}
-                    </li>
-                  )
-                })}
-              </CollapseGroup>
-            )
-          })}
+                      return (
+                        <li key={service.id}>
+                          {serviceIndex > 0 ? (
+                            <span
+                              aria-hidden
+                              className="ml-12 block h-px bg-[rgba(34,29,23,0.06)] sm:ml-[58px]"
+                            />
+                          ) : null}
+                          {(full || noFit) && !chosen ? (
+                            // Visita cheia, ou serviço que já não cabe: a
+                            // linha fica lá para se ler, mas deixa de
+                            // prometer um toque que não faz nada.
+                            <div className={clsx(rowClass, 'opacity-50')}>{inside}</div>
+                          ) : (
+                            <Link
+                              href={funnelHref(`${here}/servicos`, {
+                                day,
+                                staffId: chosenStaff,
+                                cart: chosen
+                                  ? removeAt(clean, chosenAt)
+                                  : addLine(clean, service.id),
+                              })}
+                              // Sem isto o Next saltava a página para o topo
+                              // a cada toque — o carrinho muda de endereço,
+                              // mas a cliente não está a mudar de sítio.
+                              scroll={false}
+                              // O nome do serviço só existe para quem lê o
+                              // ecrã; para quem o ouve, vai no rótulo.
+                              aria-label={`${
+                                chosen ? dict.common.remove : addLabel
+                              } · ${service.name}`}
+                              className={clsx(
+                                'group transition-colors outline-offset-[-2px] hover:bg-[#FFFDF8] focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
+                                rowClass,
+                              )}
+                            >
+                              {inside}
+                            </Link>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ServiceGroup>
+                )
+              })}
+            </div>
+          )}
 
           {/* ------------------------------------------ sob consulta --- */}
           {onRequest.length > 0 ? (
@@ -539,124 +551,116 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
         </div>
 
         {/* -------------------------------------------------- visita --- */}
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="border border-[var(--line)] bg-[var(--surface-raised)] p-6 shadow-[var(--shadow-soft)]">
-            <Eyebrow>{dict.funnel.yourVisit}</Eyebrow>
+        {/* Só no monitor. No telemóvel a barra escura do fundo traz o
+            total e o botão, e esta coluna era a mesma decisão pedida
+            duas vezes. */}
+        <aside className="hidden rounded-[20px] bg-[var(--surface-raised)] p-[22px] shadow-[0_1px_2px_rgba(34,29,23,0.03),0_14px_32px_-24px_rgba(34,29,23,0.28)] lg:sticky lg:top-24 lg:block">
+          <p className="text-[0.6875rem] leading-[14px] font-medium tracking-[0.18em] text-[var(--accent)] uppercase">
+            {dict.funnel.yourVisit}
+          </p>
 
-            {clean.length === 0 ? (
-              <p className="mt-5 text-[0.8125rem] leading-relaxed text-[var(--ink-faint)]">
-                {dict.funnel.emptyCart}
-              </p>
-            ) : (
-              <>
-                <ul className="mt-5 space-y-5">
-                  {clean.map((line, index) => {
-                    const service = byId.get(line.serviceId)
-                    if (!service) return null
-                    return (
-                      <li
-                        key={`${line.serviceId}-${index}`}
-                        className="border-b border-[var(--line-soft)] pb-5 last:border-0 last:pb-0"
+          {clean.length === 0 ? (
+            <p className="mt-3.5 text-[0.8125rem] leading-relaxed text-[#8A7F6E]">
+              {dict.funnel.emptyCart}
+            </p>
+          ) : (
+            <>
+              <ul className="mt-3.5 space-y-3">
+                {clean.map((line, index) => {
+                  const service = byId.get(line.serviceId)
+                  if (!service) return null
+                  return (
+                    <li key={`${line.serviceId}-${index}`} className="flex items-start gap-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[0.875rem] leading-5 text-[var(--ink)]">{service.name}</p>
+                        <p className="tabular text-[0.75rem] leading-[17px] text-[#8A7F6E]">
+                          {formatDuration(service.duration_minutes, language)} ·{' '}
+                          {formatCents(service.price_cents, org.currency, language)}
+                        </p>
+                      </div>
+                      <Link
+                        href={funnelHref(`${here}/servicos`, {
+                          day,
+                          staffId: chosenStaff,
+                          cart: removeAt(clean, index),
+                        })}
+                        scroll={false}
+                        aria-label={`${dict.common.remove} · ${service.name}`}
+                        className="-mt-1.5 -mr-2 flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--ink-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] hover:text-[var(--bad)]"
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[0.8125rem] text-[var(--ink)]">
-                              {service.name}
-                            </p>
-                            <p className="tabular mt-0.5 text-[0.75rem] text-[var(--ink-faint)]">
-                              {formatDuration(service.duration_minutes, language)} ·{' '}
-                              {formatCents(service.price_cents, org.currency, language)}
-                            </p>
-                          </div>
-                          <Link
-                            href={funnelHref(`${here}/servicos`, {
-                              day,
-                              staffId: chosenStaff,
-                              cart: removeAt(clean, index),
-                            })}
-                            scroll={false}
-                            aria-label={`${dict.common.remove} · ${service.name}`}
-                            // Tirar um serviço da visita é a única coisa
-                            // que se desfaz aqui, e era uma cruz de quinze
-                            // pixéis. A cruz fica igual; o que cresce é a
-                            // caixa à volta dela, puxada de volta com
-                            // margens negativas para a linha não mexer.
-                            className="-mr-3.5 -mt-3 flex size-11 shrink-0 items-center justify-center text-[var(--ink-faint)] transition-colors hover:text-[var(--bad)]"
-                          >
-                            <X size={15} />
-                          </Link>
-                        </div>
+                        <X size={14} />
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
 
-                        {/* Aqui viviam as etiquetas das profissionais, uma
-                            fila por serviço, com «sem preferência» à
-                            cabeça e escolhida por omissão. Era isso que
-                            atribuía a pessoa sem a cliente ter escolhido
-                            nada. A escolha subiu para um passo só dela; o
-                            nome agora está no cabeçalho, uma vez, com a
-                            saída ao lado. */}
-                      </li>
-                    )
-                  })}
-                </ul>
-
-                <div className="mt-6 border-t border-[var(--line-soft)] pt-4">
-                  <div className="flex items-baseline justify-between text-[0.8125rem]">
-                    <span className="text-[var(--ink-muted)]">
-                      {dict.common.duration}
-                    </span>
-                    <span className="tabular text-[var(--ink)]">
-                      {formatDuration(totalMinutes, language)}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-baseline justify-between">
-                    <span className="text-[0.8125rem] text-[var(--ink-muted)]">
-                      {dict.common.total}
-                    </span>
-                    <span className="tabular display text-lg text-[var(--ink)]">
-                      {formatCents(totalCents, org.currency, language)}
-                    </span>
-                  </div>
+              <div className="mt-4 border-t border-[rgba(34,29,23,0.07)] pt-3">
+                <div className="flex items-baseline justify-between text-[0.8125rem] leading-5">
+                  <span className="text-[var(--ink-muted)]">{dict.common.duration}</span>
+                  <span className="tabular text-[var(--ink)]">
+                    {formatDuration(totalMinutes, language)}
+                  </span>
                 </div>
-              </>
-            )}
+                <div className="mt-1 flex items-baseline justify-between">
+                  <span className="text-[0.8125rem] text-[var(--ink-muted)]">{dict.common.total}</span>
+                  <span className="tabular text-[1.1875rem] font-semibold tracking-[-0.01em] text-[var(--ink)]">
+                    {total}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
 
-            {/* Só no ecrã grande. No telemóvel a barra colada ao fundo já
-                traz o total e o «continuar»; este botão aparecia-lhe um
-                ecrã acima e a mesma decisão ficava pedida duas vezes. */}
-            <div className="mt-6 hidden lg:block">
-              {clean.length === 0 ? (
-                // A mesma altura do botão a sério: quando a visita deixa
-                // de estar vazia, o painel não dá um salto.
-                <span className="flex h-[3.25rem] cursor-not-allowed items-center justify-center border border-[var(--line)] px-5 text-center text-sm text-[var(--ink-faint)]">
-                  {dict.common.next}
-                </span>
-              ) : (
-                <ButtonLink
-                  href={funnelHref(`${here}/horarios`, { day, staffId: chosenStaff, cart: clean })}
-                  size="lg"
-                  className="w-full"
-                >
-                  {dict.common.next}
-                </ButtonLink>
-              )}
-            </div>
-          </div>
-
+          {clean.length === 0 ? (
+            // A mesma altura do botão a sério: quando a visita deixa de
+            // estar vazia, o cartão não dá um salto.
+            <span className="mt-[18px] flex h-12 cursor-not-allowed items-center justify-center rounded-full text-[0.9375rem] font-medium text-[var(--ink-faint)] shadow-[inset_0_0_0_1px_rgba(34,29,23,0.1)]">
+              {dict.funnel.chooseTime}
+            </span>
+          ) : (
+            <Link
+              href={timesHref}
+              className="botao sheen mt-[18px] flex h-12 w-full items-center justify-center gap-1.5 rounded-full bg-[var(--action)] text-[0.9375rem] font-semibold tracking-[0.01em] text-[var(--action-ink)] shadow-[0_10px_22px_-14px_rgba(111,85,47,0.7)] transition-all duration-300 select-none hover:-translate-y-0.5 hover:bg-[var(--action-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:translate-y-px"
+            >
+              {dict.funnel.chooseTime}
+              <ChevronRight size={15} strokeWidth={2} aria-hidden />
+            </Link>
+          )}
         </aside>
       </div>
-      )}
 
+      {/*
+        A BARRA DA VISITA, NO TELEMÓVEL: UM CARTÃO ESCURO A FLUTUAR.
+
+        É a mesma faixa do topo, em pequeno, colada ao fundo do ecrã
+        assim que há alguma coisa escolhida. É `sticky`, não `fixed`:
+        larga o ecrã quando o conteúdo acaba, em vez de ficar pousada por
+        cima do rodapé. Qualquer `overflow` num antepassado desfaz isto.
+      */}
       {clean.length > 0 ? (
-        <MobileVisitBar
-          meta={`${clean.length} ${
-            clean.length === 1 ? dict.common.service : dict.common.services
-          } · ${formatDuration(totalMinutes, language)}`}
-          total={formatCents(totalCents, org.currency, language)}
-          href={funnelHref(`${here}/horarios`, { day, staffId: chosenStaff, cart: clean })}
-          label={dict.common.next}
-        />
+        <div className="band-dark animate-rise sticky bottom-3 z-40 mt-5 flex items-center gap-3 rounded-[20px] py-2.5 pr-2.5 pl-4 shadow-[inset_0_0_0_1px_rgba(211,184,126,0.14),0_18px_40px_-16px_rgba(20,16,9,0.55)] lg:hidden"
+          style={{
+            background:
+              'radial-gradient(260px 160px at 95% -20%, rgba(211,184,126,0.12), rgba(211,184,126,0) 70%), linear-gradient(158deg, #1E1811 0%, #141009 100%)',
+          }}
+        >
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.6875rem] leading-[14px] text-[var(--ink-muted)]">{visitMeta}</p>
+            <p className="tabular mt-0.5 text-[1.0625rem] leading-[1.15] font-semibold tracking-[-0.01em] text-[var(--ink)]">
+              {total}
+            </p>
+          </div>
+          <Link
+            href={timesHref}
+            className="flex h-[42px] shrink-0 items-center gap-1 rounded-full bg-[#C6A96B] pr-3.5 pl-[18px] text-[0.875rem] font-semibold text-[#1E1811] transition-colors hover:bg-[#D3B87E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D3B87E]"
+          >
+            {dict.funnel.chooseTime}
+            <ChevronRight size={15} strokeWidth={2} aria-hidden />
+          </Link>
+        </div>
       ) : null}
-    </FunnelShell>
+    </FunnelStage>
   )
 }
 
@@ -691,15 +695,15 @@ function OnRequest({
   dict: Awaited<ReturnType<typeof getDictionary>>
 }) {
   return (
-    <section className="border-t border-[var(--line)] pt-10">
-      <h3 className="display text-lg text-[var(--ink)]">
+    <section className="mt-3 rounded-[18px] bg-[var(--surface-raised)] px-3.5 pt-4 pb-1 shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:rounded-[20px] sm:px-5 sm:pt-5">
+      <h3 className="display text-[1.0625rem] leading-[1.25] text-[var(--ink)] sm:text-[1.1875rem]">
         {dict.funnel.sundayOnRequestTitle}
       </h3>
-      <p className="mt-2 max-w-prose text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+      <p className="mt-1.5 max-w-prose text-[0.78125rem] leading-[18px] text-[#8A7F6E]">
         {dict.funnel.sundayOnRequestHint}
       </p>
 
-      <ul className="mt-6">
+      <ul className="mt-3">
         {services.map((service) => {
           /* Sem número da casa não há conversa para abrir. Em vez de um
              botão que não vai a lado nenhum, o serviço fica na mesma
@@ -718,14 +722,13 @@ function OnRequest({
           return (
             <li
               key={service.id}
-              className="flex min-h-[3.25rem] items-start gap-3 border-b border-[var(--line-soft)] py-3 last:border-0"
+              className="flex items-start gap-3 border-t border-[rgba(34,29,23,0.06)] py-3"
             >
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-3">
-                  <span className="min-w-0 text-[0.9375rem] text-[var(--ink-muted)]">
+                  <span className="min-w-0 text-[0.90625rem] leading-5 text-[var(--ink-muted)]">
                     {service.name}
                   </span>
-                  <span className="hidden flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)] sm:block" />
                   <span className="ml-auto shrink-0 text-[0.6875rem] tracking-[0.08em] text-[var(--ink-faint)] uppercase sm:ml-0">
                     {dict.funnel.sundayOnRequest}
                   </span>

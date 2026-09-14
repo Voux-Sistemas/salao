@@ -193,6 +193,9 @@ export const pt = {
        extenso, para do outro lado ninguém ter de perguntar «qual?». */
     sundayAskMessage: 'Olá! Queria saber se é possível marcar {servico} no domingo, dia {dia}, em {loja}.',
     serviceTitle: 'O que vai fazer?',
+    serviceChosen: '{n} escolhido',
+    serviceChosenMany: '{n} escolhidos',
+    chooseTime: 'Escolher hora',
     serviceSubtitle: 'Pode juntar mais do que um serviço na mesma visita.',
     selected: 'Selecionado',
     yourVisit: 'A sua visita',
