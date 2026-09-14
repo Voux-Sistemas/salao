@@ -1,4 +1,6 @@
+import Link from 'next/link'
 import type { Metadata } from 'next'
+import { ChevronRight } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { getUnitBySlug } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
@@ -16,8 +18,8 @@ import {
 } from '@/lib/time'
 import { DAY_PARAM, first, funnelHref } from '@/lib/cart'
 import { picksStaffOn } from '@/lib/sunday'
-import { ButtonLink, Notice } from '@/components/ui'
-import { FunnelShell } from '@/components/funnel-shell'
+import { Notice } from '@/components/ui'
+import { FunnelStage } from '@/components/funnel-stage'
 import { MonthCalendar } from '@/components/month-calendar'
 
 type Params = {
@@ -78,24 +80,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
  */
 /** O mês visível do calendário. Só existe neste passo. */
 const MONTH_PARAM = 'm'
-
-/** Um facto do dia: o rótulo em versaletes, a resposta na tinta. */
-function Facto({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-baseline gap-3">
-      <dt className="w-16 shrink-0 text-[0.625rem] tracking-[0.12em] text-[var(--ink-faint)] uppercase">
-        {label}
-      </dt>
-      <dd className="min-w-0 text-[var(--ink)]">{children}</dd>
-    </div>
-  )
-}
 
 export default async function ChooseDayPage({ params, searchParams }: Params) {
   const { loja } = await params
@@ -185,176 +169,117 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
 
   const here = `/agendar/${unit.slug}`
   const offset = daysBetween(firstDay, day)
+  const withStaff = picksStaffOn(day)
+
+  /*
+    A LINHA DO DIA: «Hoje · Abre 09:00–21:00 · 2 de serviço».
+
+    Eram três pares de rótulo e resposta — loja, abre, equipa — por baixo
+    da data. A loja já está na faixa, e três linhas empurravam o botão
+    para baixo da dobra no telemóvel. Numa linha só dizem o mesmo.
+  */
+  const dayLine = [
+    offset === 0 ? dict.funnel.today : null,
+    horario ? `${dict.funnel.dayOpens} ${horario}` : null,
+    aoServico > 0
+      ? aoServico === 1
+        ? dict.funnel.dayTeamOne
+        : dict.funnel.dayTeamCount.replace('{n}', String(aoServico))
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
-    <FunnelShell
+    <FunnelStage
       step={2}
       dict={dict}
-      // O dia em foco na tira manda no rasto: quem está a olhar para um
-      // domingo já vê cinco passos, e não seis com um deles a mentir.
-      picksStaff={picksStaffOn(day)}
+      // O dia em foco manda no rasto: quem está a olhar para um domingo
+      // já vê cinco passos, e não seis com um deles a mentir.
+      picksStaff={withStaff}
       hrefs={['/agendar', null, null, null, null, null]}
       eyebrow={unit.name}
       title={dict.funnel.dayTitle}
-      subtitle={dict.funnel.daySubtitle}
+      back={{ href: '/agendar', label: dict.common.back }}
     >
       {/*
-        NO MONITOR, DUAS COLUNAS — MAS CENTRADAS COMO UM PAR.
+        NO TELEMÓVEL, TUDO NO PRIMEIRO ECRÃ: o cartão do mês, a data e o
+        botão, empilhados.
 
-        À primeira pus o calendário à esquerda e a decisão numa coluna de
-        largura livre à direita, e ficou pior do que empilhado: a coluna
-        da direita esticava-se até à margem da página, e o botão ficava a
-        boiar em trinta centímetros de nada.
-
-        O erro não era serem duas colunas — era deixá-las crescer. Aqui o
-        par tem a largura das duas peças (`w-max`) e é o PAR que se
-        centra na página: a grelha, um fio, e ao lado dele a data e o
-        botão, à mesma altura dos olhos.
-
-        No telemóvel volta a empilhar-se, ao eixo, que é a única coisa
-        que lá cabe.
+        NO MONITOR, UM PAR ENCOSTADO À MARGEM DO TÍTULO: o cartão do mês
+        à esquerda, um fio que nasce e morre em nada, e à direita a data e
+        o botão, à altura do meio do mês.
       */}
-      {/*
-        O PAR ALINHA-SE PELO MEIO, E NÃO PELO TOPO.
+      <div className="lg:flex lg:items-center lg:gap-12">
+        <MonthCalendar
+          month={mes}
+          day={day}
+          today={firstDay}
+          firstDay={firstDay}
+          lastDay={lastDay}
+          timezone={unit.timezone}
+          language={language}
+          href={(value) => funnelHref(here, { day: value })}
+          monthHref={(value) => `${here}?${MONTH_PARAM}=${value}`}
+          dead={deadDays}
+          labels={{
+            previous: dict.funnel.monthPrevious,
+            next: dict.funnel.monthNext,
+            noSlotsHint: dict.funnel.dayNoSlotsHint,
+          }}
+        />
 
-        A grelha tem seis linhas de altura; a coluna do lado tem três
-        linhas de texto. Encostadas ao topo, ficava um bloco alto de um
-        lado e três linhas soltas do outro, com meio metro de nada por
-        baixo delas — e o ecrã lia-se como duas coisas atiradas para os
-        cantos em vez de um par.
+        <span
+          aria-hidden
+          className="hidden w-px self-stretch bg-[linear-gradient(180deg,transparent,rgba(34,29,23,0.12)_16%,rgba(34,29,23,0.12)_84%,transparent)] lg:block"
+        />
 
-        Ao centro uma da outra, o fio que as separa fica com peso igual
-        dos dois lados, e a decisão fica à altura do meio do mês.
-      */}
-      {/*
-        UM EIXO SÓ NA PÁGINA.
-
-        O título e o rasto dos passos vivem no eixo esquerdo da faixa
-        escura; o calendário estava centrado na página. Dois eixos
-        diferentes no mesmo ecrã, e o olho não sabe onde pousar — «uma
-        coisa de um lado, outra para outro».
-
-        Encostado à esquerda, o mês nasce debaixo da primeira letra de
-        «Que dia lhe dá jeito?», e a página inteira passa a ter uma só
-        margem a mandar. É também o alinhamento dos outros passos do
-        funil: a lista dos serviços e a das profissionais começam todas
-        na mesma linha.
-      */}
-      <div className="max-w-[21.5rem] lg:flex lg:w-max lg:max-w-none lg:items-center lg:gap-14">
-      <MonthCalendar
-        month={mes}
-        day={day}
-        today={firstDay}
-        firstDay={firstDay}
-        lastDay={lastDay}
-        timezone={unit.timezone}
-        language={language}
-        href={(value) => funnelHref(here, { day: value })}
-        monthHref={(value) => `${here}?${MONTH_PARAM}=${value}`}
-        dead={deadDays}
-        labels={{
-          previous: dict.funnel.monthPrevious,
-          next: dict.funnel.monthNext,
-          noSlotsHint: dict.funnel.dayNoSlotsHint,
-        }}
-      />
-
-      {/*
-        A SEGUNDA PARTE: o que se escolheu, e o que se faz com isso.
-
-        No telemóvel fica por baixo da grelha, ao eixo, entre dois fios.
-        No monitor passa para o lado, encostada a um fio vertical — e
-        ganha uma largura sua, para não se esticar até à margem.
-      */}
-      {/*
-        UM FIO QUE COMEÇA E ACABA EM NADA.
-
-        Era uma borda de canto a canto da coluna mais alta — e uma borda
-        toca nas duas pontas com a mesma força, o que num sítio sem
-        moldura nenhuma parece um risco de caneta. Este nasce do nada,
-        chega a um sexto de tinta ao meio, e volta a desaparecer: separa
-        sem cortar. É o mesmo gesto dos fios que acompanham os títulos
-        da casa, virado ao alto.
-      */}
-      <span
-        aria-hidden
-        className="hidden w-px self-stretch bg-[linear-gradient(180deg,transparent,color-mix(in_srgb,var(--ink)_15%,transparent)_16%,color-mix(in_srgb,var(--ink)_15%,transparent)_84%,transparent)] lg:block"
-      />
-
-      <div className="mt-7 lg:mt-0 lg:w-[18rem] lg:shrink-0">
-        <div className="flex items-center gap-3.5 lg:flex-col lg:items-start lg:gap-2">
-          <span
-            aria-hidden
-            className="h-px flex-1 bg-[var(--line-soft)] lg:hidden"
-          />
-          <h2 className="display shrink-0 text-lg text-[var(--ink)] first-letter:uppercase lg:text-2xl lg:leading-tight lg:whitespace-normal">
+        <div className="mt-4 px-1 lg:mt-0 lg:w-[18.75rem] lg:shrink-0 lg:px-0">
+          <p className="hidden text-[0.6875rem] leading-[14px] font-medium tracking-[0.18em] text-[var(--accent)] uppercase lg:block">
+            {dict.funnel.dayChosen}
+          </p>
+          <h2 className="display text-[1.0625rem] leading-[1.25] text-[var(--ink)] first-letter:uppercase lg:mt-2 lg:text-2xl lg:leading-[1.2]">
             {formatDayLong(day, unit.timezone, language)}
           </h2>
-          {offset === 0 ? (
-            <span className="shrink-0 text-[0.625rem] tracking-[0.14em] text-[var(--ink-faint)] uppercase">
-              {dict.funnel.today}
-            </span>
-          ) : null}
-          <span
-            aria-hidden
-            className="h-px flex-1 bg-[var(--line-soft)] lg:hidden"
-          />
-        </div>
-
-        {/* Os três factos, em pares de rótulo e resposta. O rótulo em
-            versaletes finos, a resposta na tinta do texto: lê-se de
-            relance, e não compete com a data que está por cima. */}
-        <dl className="mt-5 space-y-2 border-t border-[var(--line-soft)] pt-4 text-[0.8125rem] lg:mt-6">
-          <Facto label={dict.funnel.dayStore}>{unit.name}</Facto>
-          {horario ? (
-            <Facto label={dict.funnel.dayOpens}>
-              <span className="tabular">{horario}</span>
-            </Facto>
-          ) : null}
-          {aoServico > 0 ? (
-            <Facto label={dict.funnel.dayTeam}>
-              {aoServico === 1
-                ? dict.funnel.dayTeamOne
-                : dict.funnel.dayTeamCount.replace('{n}', String(aoServico))}
-            </Facto>
-          ) : null}
-        </dl>
-
-      {state === 'ok' ? (
-        <div className="mt-5">
-          {/* Ao domingo o passo da profissional não existe — e por isso
-              o botão também não pode prometê-lo. Vai direito à ementa,
-              e o aviso por baixo diz porquê antes de ela dar pela
-              falta do passo. */}
-          <ButtonLink
-            href={
-              picksStaffOn(day)
-                ? funnelHref(`${here}/profissional`, { day })
-                : funnelHref(`${here}/servicos`, { day })
-            }
-            size="lg"
-            className="w-full"
-          >
-            {picksStaffOn(day) ? dict.funnel.dayAction : dict.funnel.chooseService}
-          </ButtonLink>
-          {!picksStaffOn(day) ? (
-            <p className="mt-4 max-w-prose text-[0.8125rem] text-[var(--ink-muted)]">
-              {dict.funnel.sundayNoStaff}
+          {dayLine ? (
+            <p className="mt-[3px] text-[0.78125rem] leading-[18px] text-[var(--ink-muted)] lg:mt-2 lg:text-[0.8125rem] lg:leading-5">
+              {dayLine}
             </p>
           ) : null}
+
+          {state === 'ok' ? (
+            <>
+              {/* Ao domingo o passo da profissional não existe — e por
+                  isso o botão também não o pode prometer. Vai direito
+                  aos serviços, e o aviso por baixo diz porquê. */}
+              <Link
+                href={
+                  withStaff
+                    ? funnelHref(`${here}/profissional`, { day })
+                    : funnelHref(`${here}/servicos`, { day })
+                }
+                className="botao sheen mt-3 flex h-[46px] w-full items-center justify-center gap-1.5 rounded-full bg-[var(--action)] text-[0.90625rem] font-semibold tracking-[0.01em] text-[var(--action-ink)] shadow-[0_10px_22px_-14px_rgba(111,85,47,0.7)] transition-all duration-300 select-none hover:-translate-y-0.5 hover:bg-[var(--action-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:translate-y-px lg:mt-5 lg:h-12 lg:text-[0.9375rem]"
+              >
+                {withStaff ? dict.funnel.dayAction : dict.funnel.dayActionServices}
+                <ChevronRight size={15} strokeWidth={2} aria-hidden />
+              </Link>
+              {!withStaff ? (
+                <p className="mt-3 max-w-prose text-[0.78125rem] leading-[18px] text-[var(--ink-muted)] lg:text-[0.8125rem] lg:leading-5">
+                  {dict.funnel.sundayNoStaff}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            // Fechada é uma coisa, cheia é outra — e o calendário por
+            // cima já mostra acesos os dias que servem.
+            <div className="mt-3 lg:mt-5">
+              <Notice tone="warn">
+                {state === 'closed' ? dict.unit.closedToday : dict.funnel.dayFull}
+              </Notice>
+            </div>
+          )}
         </div>
-      ) : (
-        // Fechada é uma coisa, cheia é outra — e a grelha por cima já
-        // mostra acesos os dias que servem, portanto a saída está à
-        // vista.
-        <div className="mt-5">
-          <Notice tone="warn">
-            {state === 'closed' ? dict.unit.closedToday : dict.funnel.dayFull}
-          </Notice>
-        </div>
-      )}
       </div>
-      </div>
-    </FunnelShell>
+    </FunnelStage>
   )
 }

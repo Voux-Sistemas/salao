@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   addDays,
-  formatMonthYear,
+  formatMonthLong,
   formatWeekdayShort,
   type IsoDay,
 } from '@/lib/time'
@@ -16,11 +16,11 @@ import {
  * ver um mês inteiro e sem se saber quantas vezes ainda faltava
  * carregar. Aqui vê-se o mês todo e a seta muda de mês.
  *
- * SEM CAIXAS NENHUMAS. Trinta rectângulos brancos numa página de papel
- * parecem uma folha de cálculo; os números soltos no papel parecem um
- * calendário impresso — que é o que a montra desta casa é. O que está
- * livre leva um ponto de ouro por baixo, o dia escolhido um círculo de
- * ouro cheio, e hoje um fio de ouro à volta.
+ * NUM CARTÃO CLARO. Chegou a viver solto no papel, sem caixa nenhuma,
+ * e com células quadradas: no telemóvel, com a faixa escura em cima,
+ * empurrava a data e o botão para baixo da dobra. Agora é um cartão
+ * compacto (ver o desenho em baixo). O dia escolhido é um disco de ouro
+ * cheio, e hoje um fio de ouro à volta.
  *
  * OS ALGARISMOS SÃO DA LETRA DO TEXTO, E DE LARGURA FIXA. A serifa da
  * casa foi desenhada para títulos: em corpo dezasseis, trinta e um
@@ -109,58 +109,52 @@ export function MonthCalendar({
   const podeAvancar = mesSeguinte <= lastDay
 
   /*
-    A LARGURA É SUA, O EIXO É DA PÁGINA.
+    UM CARTÃO CLARO, COMPACTO.
 
-    A grelha tem tecto — não cresce com o ecrã, cresce até caber e pára —
-    mas não se centra a si própria: quem decide onde ela assenta é a
-    página que a usa. Centrada aqui dentro, ficava num eixo diferente do
-    título e do rasto dos passos, e o ecrã lia-se com duas margens a
-    mandar ao mesmo tempo.
+    Sem caixa nenhuma, com o mês em corpo vinte e três e células
+    quadradas, o calendário e a faixa escura enchiam o telemóvel: a data
+    escolhida e o botão ficavam abaixo da dobra, e a casa dizia que o
+    ecrã ficava «comido». No mockup «Dia · delicado» o mês vai num cartão
+    de papel mais claro, com linhas de quarenta píxeis, e tudo o que
+    decide cabe no primeiro ecrã.
+
+    A largura é da página: no telemóvel ocupa a coluna, no monitor pára
+    nos 420 píxeis e fica encostada à margem do título.
   */
   return (
-    <div className="max-w-[21.5rem] lg:max-w-[26.5rem]">
-      {/*
-        O mês entre dois fios que se desvanecem do ouro para nada — a
-        mesma peça dos títulos de secção da casa — com as setas nas
-        pontas. Sem caixa, sem fundo: é um cabeçalho, não um controlo.
-      */}
-      <div className="mb-5 flex items-center gap-3.5 lg:mb-7">
+    <div className="rounded-[18px] bg-[var(--surface-raised)] p-3.5 shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:rounded-[22px] sm:p-[22px] lg:w-[26.25rem]">
+      <div className="flex items-center justify-between">
         <Seta
           href={podeRecuar ? monthHref(mesAnterior) : null}
           label={labels.previous}
         >
-          <ChevronLeft className="h-3.5 w-3.5" />
+          <ChevronLeft size={13} strokeWidth={2} aria-hidden />
         </Seta>
-        <span
-          aria-hidden
-          className="h-px flex-1 bg-[linear-gradient(270deg,color-mix(in_srgb,var(--accent)_32%,transparent),transparent)]"
-        />
-        <p className="display shrink-0 text-[1.1875rem] whitespace-nowrap text-[var(--ink)] first-letter:uppercase lg:text-[1.4375rem]">
-          {formatMonthYear(primeiro, timezone, language)}
+        <p className="display text-[1.0625rem] leading-[1.2] whitespace-nowrap text-[var(--ink)] sm:text-xl">
+          <span className="capitalize">{formatMonthLong(primeiro, timezone, language)}</span>{' '}
+          <span className="text-[#8A7F6E]">{ano}</span>
         </p>
-        <span
-          aria-hidden
-          className="h-px flex-1 bg-[linear-gradient(90deg,color-mix(in_srgb,var(--accent)_32%,transparent),transparent)]"
-        />
         <Seta
           href={podeAvancar ? monthHref(mesSeguinte) : null}
           label={labels.next}
         >
-          <ChevronRight className="h-3.5 w-3.5" />
+          <ChevronRight size={13} strokeWidth={2} aria-hidden />
         </Seta>
       </div>
 
-      <div className="grid grid-cols-7 gap-y-0.5">
+      <div className="mt-3.5 grid grid-cols-7">
         {cabecalhos.map((nome, i) => (
           <span
             key={i}
             aria-hidden
-            className="pb-3 text-center text-[0.5938rem] font-bold tracking-[0.16em] text-[var(--ink-faint)] uppercase lg:text-[0.625rem]"
+            className="text-center text-[0.5625rem] leading-3 font-medium tracking-[0.1em] text-[#8A7F6E] uppercase sm:text-[0.625rem]"
           >
             {nome}
           </span>
         ))}
+      </div>
 
+      <div className="mt-1.5 grid grid-cols-7">
         {Array.from({ length: recuo }, (_, i) => (
           <span key={`vazio-${i}`} aria-hidden />
         ))}
@@ -171,12 +165,14 @@ export function MonthCalendar({
           const escolhido = valor === day
           const numero = Number(valor.slice(8))
 
+          /* Os dias sem ninguém não são botões: ficam a um quarto de
+             tinta, lêem-se mas não chamam, e não levam ligação. */
           if (semVaga) {
             return (
               <span
                 key={valor}
                 aria-disabled="true"
-                className="tabular flex aspect-square items-center justify-center text-[0.9375rem] font-medium text-[var(--ink)] opacity-20 lg:text-base"
+                className="tabular flex h-10 items-center justify-center text-[0.875rem] text-[var(--ink)] opacity-25 sm:h-12 sm:text-[0.9375rem]"
               >
                 {numero}
               </span>
@@ -188,83 +184,42 @@ export function MonthCalendar({
               key={valor}
               href={href(valor)}
               aria-current={escolhido ? 'date' : undefined}
-              className="group relative flex aspect-square items-center justify-center"
+              className="group flex h-10 items-center justify-center outline-none sm:h-12"
             >
-              {/*
-                A BOLINHA SAI DE DENTRO DO NÚMERO.
-
-                Estava empilhada com ele, os dois a dividir o meio da
-                célula: o número subia para dar lugar ao ponto, e dentro
-                do círculo cheio ficavam as duas coisas apertadas contra
-                as paredes. E era redundante — um dia pintado de ouro já
-                diz que está livre, e é o único que está escolhido.
-
-                Agora o número fica no centro óptico da célula, sozinho,
-                e o ponto desce para o pé dela, fora do caminho. No dia
-                escolhido não há ponto nenhum: o círculo já o disse.
-              */}
-              {escolhido ? (
-                <span
-                  aria-hidden
-                  className="absolute inset-[0.3rem] rounded-full bg-[var(--accent)]"
-                />
-              ) : valor === today ? (
-                <span
-                  aria-hidden
-                  className="absolute inset-[0.3rem] rounded-full border border-[color-mix(in_srgb,var(--accent)_45%,transparent)]"
-                />
-              ) : (
-                <span
-                  aria-hidden
-                  className="absolute inset-[0.3rem] rounded-full transition-colors group-hover:bg-[color-mix(in_srgb,var(--accent)_9%,transparent)]"
-                />
-              )}
-
+              {/* O dia escolhido é um disco cheio; hoje, um fio à volta.
+                  O número fica sozinho ao centro do disco. */}
               <span
                 className={clsx(
-                  'tabular relative text-[0.9375rem] leading-none font-medium lg:text-base',
-                  escolhido ? 'text-[var(--accent-ink)]' : 'text-[var(--ink)]',
+                  'tabular flex size-[34px] items-center justify-center rounded-full text-[0.875rem] leading-none transition-colors group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-[var(--accent)] sm:size-[42px] sm:text-[0.9375rem]',
+                  escolhido
+                    ? 'bg-[var(--accent)] font-semibold text-[var(--accent-ink)]'
+                    : clsx(
+                        'font-medium text-[var(--ink)] group-hover:bg-[color-mix(in_srgb,var(--accent)_9%,transparent)]',
+                        valor === today &&
+                          'shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_45%,transparent)]',
+                      ),
                 )}
               >
                 {numero}
               </span>
-
-              {/*
-                E OS PONTOS SAEM.
-
-                Um ponto por baixo de cada dia livre parecia boa ideia
-                enquanto os dias livres eram poucos. Num mês em que a
-                casa abre todos os dias são trinta pontos: deixam de
-                dizer «tem vaga» e passam a ser sarampo — e a marca que
-                está em toda a gente não distingue ninguém.
-
-                A diferença de tinta já dizia tudo sozinha: o que se
-                pode marcar está em tinta cheia, o que não se pode está
-                a um quinto. A linha em itálico por baixo explica-o por
-                palavras, para quem não o leia à primeira.
-              */}
             </Link>
           )
         })}
       </div>
 
-      {/*
-        A LEGENDA SAIU, E BEM.
-
-        Era um quadrado branco sobre papel quase branco — invisível — e um
-        algarismo de amostra que ficava a parecer um número perdido no
-        meio da página. Uma legenda que precisa de desenhar amostras num
-        calendário de trinta números está a competir com aquilo que devia
-        explicar. Uma linha em itálico diz o mesmo e não desenha nada.
-      */}
-      <p className="mt-5 text-center text-[0.75rem] text-[var(--ink-faint)] italic">
+      {/* Uma linha em itálico diz porque há dias apagados, sem desenhar
+          legenda nenhuma. */}
+      <p className="mt-2 text-center text-[0.71875rem] leading-4 text-[#8A7F6E] italic sm:mt-3">
         {labels.noSlotsHint}
       </p>
     </div>
   )
 }
 
-/** A seta do mês. Sem sítio para onde ir, não é ligação nenhuma. */
+/**
+ * A seta do mês: um círculo só com fio, como as da semana na faixa.
+ * Sem sítio para onde ir, não é ligação nenhuma e fica apagada.
+ */
 function Seta({
   href,
   label,
@@ -275,11 +230,17 @@ function Seta({
   children: React.ReactNode
 }) {
   const moldura =
-    'flex h-[1.875rem] w-[1.875rem] shrink-0 items-center justify-center rounded-full border border-[var(--line-soft)] text-[var(--ink-muted)]'
+    'flex size-7 shrink-0 items-center justify-center rounded-full sm:size-[30px]'
 
   if (!href) {
     return (
-      <span aria-hidden className={clsx(moldura, 'opacity-25')}>
+      <span
+        aria-hidden
+        className={clsx(
+          moldura,
+          'text-[#C9BEAC] shadow-[inset_0_0_0_1px_rgba(34,29,23,0.07)]',
+        )}
+      >
         {children}
       </span>
     )
@@ -291,7 +252,7 @@ function Seta({
       aria-label={label}
       className={clsx(
         moldura,
-        'transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]',
+        'text-[var(--action-strong)] shadow-[inset_0_0_0_1px_rgba(34,29,23,0.14)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_9%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
       )}
     >
       {children}

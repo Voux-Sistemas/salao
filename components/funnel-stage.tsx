@@ -16,9 +16,10 @@ const BAND_GROUND =
 /**
  * A MOLDURA LEVE DO FUNIL.
  *
- * É a do mockup «Profissional · delicado», que a casa aprovou. Entra
- * passo a passo: a página da profissional é a primeira, e as outras
- * continuam na `FunnelShell` até terem o seu mockup aprovado.
+ * É a dos mockups «Profissional · delicado» e «Dia · delicado», que a
+ * casa aprovou. Entra passo a passo: o dia e a profissional já a usam,
+ * e os outros passos continuam na `FunnelShell` até terem o seu mockup
+ * aprovado.
  *
  * O que muda em relação à antiga:
  *
@@ -41,6 +42,7 @@ export function FunnelStage({
   step,
   dict,
   hrefs,
+  picksStaff = true,
   eyebrow,
   title,
   back,
@@ -51,6 +53,12 @@ export function FunnelStage({
   dict: Dictionary
   /** Endereço de cada passo já percorrido; null desliga a ligação. */
   hrefs?: (string | null)[]
+  /**
+   * Ao domingo é falso: o passo da profissional sai da fila, e a conta
+   * passa a ser de cinco. A numeração das páginas não muda — `step={5}`
+   * são as horas em qualquer dia — só o que se desenha.
+   */
+  picksStaff?: boolean
   /** A loja, em maiúsculas pequenas por cima do título. */
   eyebrow: string
   title: string
@@ -68,9 +76,13 @@ export function FunnelStage({
     dict.funnel.steps.time,
     dict.funnel.steps.confirm,
   ]
+  const shown = labels
+    .map((label, index) => ({ label, index }))
+    .filter((entry) => picksStaff || entry.index !== 2)
+  const position = shown.findIndex((entry) => entry.index + 1 === step)
   const count = dict.funnel.stepCount
-    .replace('{n}', String(step))
-    .replace('{total}', String(labels.length))
+    .replace('{n}', String(position >= 0 ? position + 1 : step))
+    .replace('{total}', String(shown.length))
 
   return (
     <div className="tabular flex min-h-[78vh] flex-col">
@@ -112,7 +124,7 @@ export function FunnelStage({
               </h1>
 
               <ol className="mt-3 hidden flex-wrap items-center text-[0.75rem] leading-4 sm:flex">
-                {labels.map((label, index) => {
+                {shown.map(({ label, index }, position) => {
                   const number = index + 1
                   const done = number < step
                   const current = number === step
@@ -124,7 +136,7 @@ export function FunnelStage({
                       : 'text-[rgba(242,237,226,0.36)]'
                   return (
                     <li key={label} className="flex items-center">
-                      {index > 0 ? (
+                      {position > 0 ? (
                         <span aria-hidden className="px-2 text-[rgba(242,237,226,0.36)]">
                           ·
                         </span>
