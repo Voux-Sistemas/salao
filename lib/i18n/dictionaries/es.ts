@@ -197,7 +197,6 @@ export const es: Dictionary = {
     previousDay: 'Día anterior',
     nextDay: 'Día siguiente',
     confirmTitle: 'Solo falta tu nombre',
-    confirmSubtitle: 'Usamos el teléfono para identificarte y para hablarte por WhatsApp.',
     nameLabel: 'Nombre',
     phoneLabel: 'Móvil',
     phoneHint: 'Con prefijo, por ejemplo +34 612 345 678',

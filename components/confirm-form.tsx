@@ -73,8 +73,9 @@ export function ConfirmForm({
         Por isso o campo pede o número, e o balcão continua a poder
         marcar sem ele — ver o comentário do encaixe-form.tsx.
 
-        Porque é que se pede, está dito no subtítulo da página: para a
-        identificar e para lhe falar pelo WhatsApp. Não se repete aqui.
+        A frase que explicava porquê («para a identificar e para lhe falar
+        pelo WhatsApp») saiu da página a pedido da casa, com o redesenho
+        delicado. O campo continua obrigatório.
       */}
       <Field label={labels.phone} htmlFor="phone" hint={labels.phoneHint}>
         <PhoneInput

@@ -236,7 +236,6 @@ export const pt = {
     previousDay: 'Dia anterior',
     nextDay: 'Dia seguinte',
     confirmTitle: 'Falta só o seu nome',
-    confirmSubtitle: 'Usamos o telefone para a identificar e para lhe falar pelo WhatsApp.',
     nameLabel: 'Nome',
     phoneLabel: 'Telemóvel',
     phoneHint: 'Com indicativo, por exemplo +351 912 345 678',

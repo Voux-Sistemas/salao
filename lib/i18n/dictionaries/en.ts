@@ -197,7 +197,6 @@ export const en: Dictionary = {
     previousDay: 'Previous day',
     nextDay: 'Next day',
     confirmTitle: 'Just your name now',
-    confirmSubtitle: 'We use your phone number to identify you and to reach you on WhatsApp.',
     nameLabel: 'Name',
     phoneLabel: 'Mobile',
     phoneHint: 'With country code, for example +351 912 345 678',

@@ -16,10 +16,9 @@ const BAND_GROUND =
 /**
  * A MOLDURA LEVE DO FUNIL.
  *
- * É a dos mockups «Dia», «Profissional», «Serviço» e «Hora · delicado»,
- * que a casa aprovou. Entra passo a passo: esses quatro passos já a
- * usam, e a confirmação continua na `FunnelShell` até ter o seu mockup
- * aprovado.
+ * É a dos mockups «· delicado» do dia, da profissional, do serviço, da
+ * hora e da confirmação, que a casa aprovou — os cinco passos do funil
+ * que vêm depois da loja já a usam.
  *
  * O que muda em relação à antiga:
  *

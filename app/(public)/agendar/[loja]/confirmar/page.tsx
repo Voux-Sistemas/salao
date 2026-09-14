@@ -28,7 +28,7 @@ import {
 } from '@/lib/cart'
 import { serviceNamesFor } from '@/lib/catalog-names'
 import { MapPin } from 'lucide-react'
-import { FunnelShell, VisitSummary } from '@/components/funnel-shell'
+import { FunnelStage } from '@/components/funnel-stage'
 import { ConfirmForm } from '@/components/confirm-form'
 
 type Params = {
@@ -120,8 +120,15 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
     language,
   )
 
+  const timesHref = funnelHref(`${here}/horarios`, { cart, day, staffId })
+  const dayLong = formatDayLong(day, unit.timezone, language)
+  const startTime = formatTime(plan.startsAt, unit.timezone, language)
+  const total = formatCents(plan.totalCents, org.currency, language)
+  const staffName = picksStaff ? (plan.items[0]?.staffPublicName ?? null) : null
+  const address = [unit.name, unit.address_line, unit.city].filter(Boolean).join(', ')
+
   return (
-    <FunnelShell
+    <FunnelStage
       step={6}
       picksStaff={picksStaff}
       dict={dict}
@@ -130,71 +137,130 @@ export default async function ConfirmPage({ params, searchParams }: Params) {
         funnelHref(here, { day }),
         picksStaff ? funnelHref(`${here}/profissional`, { day }) : null,
         funnelHref(`${here}/servicos`, { day, staffId, cart }),
-        funnelHref(`${here}/horarios`, { cart, day, staffId }),
+        timesHref,
         null,
       ]}
       eyebrow={unit.name}
       title={dict.funnel.confirmTitle}
-      subtitle={dict.funnel.confirmSubtitle}
-      aside={
-        <VisitSummary
-          title={dict.funnel.yourVisit}
-          head={
-            <>
-              <p className="display text-lg leading-snug text-[var(--ink)] first-letter:uppercase">
-                {formatDayLong(day, unit.timezone, language)}
-              </p>
-              <p className="tabular mt-1 text-[var(--accent)]">
-                {formatTime(plan.startsAt, unit.timezone, language)}
-                {' · '}
-                {formatDuration(minutes, language)}
-              </p>
-            </>
-          }
-          lines={plan.items.map((item) => ({
-            label: names.get(item.serviceId) ?? item.serviceName,
-            /* Ao domingo nao se diz «com quem»: a cliente nao
-               escolheu ninguem, e quem atende decide-se no salao. */
-            meta: picksStaff
-              ? `${formatTime(item.startsAt, unit.timezone, language)} · ${dict.common.with} ${item.staffPublicName}`
-              : formatTime(item.startsAt, unit.timezone, language),
-            value: formatCents(item.priceCents, org.currency, language),
-          }))}
-          total={{
-            label: dict.common.total,
-            value: formatCents(plan.totalCents, org.currency, language),
-          }}
-          footer={
-            <p className="flex items-start gap-2 text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-              <MapPin size={13} className="mt-0.5 shrink-0" />
-              <span>
-                {unit.name}
-                {unit.address_line ? <>, {unit.address_line}</> : null}
-                {unit.city ? <>, {unit.city}</> : null}
-              </span>
-            </p>
-          }
-        />
-      }
+      back={{ href: timesHref, label: dict.common.back }}
     >
-      <div className="max-w-md">
-        <ConfirmForm
-          unitSlug={unit.slug}
-          cart={cartToParam(cart)}
-          time={plan.startsAt.toISOString()}
-          defaultName={client?.name ?? ''}
-          defaultPhone={client?.phone ?? ''}
-          labels={{
-            name: dict.funnel.nameLabel,
-            phone: dict.funnel.phoneLabel,
-            phoneHint: dict.funnel.phoneHint,
-            note: dict.funnel.noteLabel,
-            notePlaceholder: dict.funnel.notePlaceholder,
-            optional: dict.common.optional,
-            submit: dict.funnel.submit,
-          }}
-        />
+      <div className="lg:grid lg:grid-cols-[minmax(0,30rem)_21.25rem] lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-2.5">
+          {/*
+            NO TELEMÓVEL O RECIBO VEM PRIMEIRO, EM PEQUENO.
+
+            Estava no fim da página, depois do botão: ela escrevia o nome e
+            confirmava sem ter à vista o que estava a confirmar. Aqui vai
+            o dia, a hora, os serviços e o total, antes dos campos. No
+            monitor o recibo inteiro fica na coluna do lado.
+          */}
+          <div className="rounded-[18px] bg-[var(--surface-raised)] px-3.5 py-3 shadow-[0_1px_2px_rgba(34,29,23,0.03)] lg:hidden">
+            <div className="flex items-baseline justify-between gap-2.5">
+              <p className="display text-[1.0625rem] leading-[1.25] text-[var(--ink)] first-letter:uppercase">
+                {dayLong}
+              </p>
+              <p className="tabular shrink-0 text-[0.9375rem] font-semibold text-[var(--accent)]">
+                {startTime}
+              </p>
+            </div>
+            <ul className="mt-2.5 border-t border-[rgba(34,29,23,0.07)] pt-2">
+              {plan.items.map((item, index) => (
+                <li
+                  key={`${item.serviceId}-${index}`}
+                  className="flex items-baseline justify-between gap-3 text-[0.84375rem] leading-[22px] text-[var(--ink)]"
+                >
+                  <span className="min-w-0">{names.get(item.serviceId) ?? item.serviceName}</span>
+                  <span className="tabular shrink-0">
+                    {formatCents(item.priceCents, org.currency, language)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-1.5 flex items-baseline justify-between gap-3">
+              <span className="tabular min-w-0 truncate text-[0.75rem] text-[#8A7F6E]">
+                {[staffName, formatDuration(minutes, language)].filter(Boolean).join(' · ')}
+              </span>
+              <span className="tabular shrink-0 text-base font-semibold text-[var(--ink)]">
+                {total}
+              </span>
+            </div>
+          </div>
+
+          {/* O formulário fica tal e qual — só o cartão à volta é novo, e
+              o aspecto dos campos vem do .confirmar-leve no globals.css. */}
+          <div className="confirmar-leve rounded-[18px] bg-[var(--surface-raised)] p-4 shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:rounded-[22px] sm:p-[26px]">
+            <ConfirmForm
+              unitSlug={unit.slug}
+              cart={cartToParam(cart)}
+              time={plan.startsAt.toISOString()}
+              defaultName={client?.name ?? ''}
+              defaultPhone={client?.phone ?? ''}
+              labels={{
+                name: dict.funnel.nameLabel,
+                phone: dict.funnel.phoneLabel,
+                phoneHint: dict.funnel.phoneHint,
+                // «(opcional)» junto da pergunta, e não solto por baixo do
+                // campo: o formulário mostra a dica só quando ela existe.
+                note: `${dict.funnel.noteLabel} (${dict.common.optional})`,
+                notePlaceholder: dict.funnel.notePlaceholder,
+                optional: '',
+                submit: dict.funnel.submit,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* -------------------------------------------------- recibo --- */}
+        <aside className="hidden rounded-[20px] bg-[var(--surface-raised)] p-[22px] shadow-[0_1px_2px_rgba(34,29,23,0.03),0_14px_32px_-24px_rgba(34,29,23,0.28)] lg:sticky lg:top-24 lg:block">
+          <p className="text-[0.6875rem] leading-[14px] font-medium tracking-[0.18em] text-[var(--accent)] uppercase">
+            {dict.funnel.yourVisit}
+          </p>
+          <p className="display mt-3 text-[1.3125rem] leading-[1.2] text-[var(--ink)] first-letter:uppercase">
+            {dayLong}
+          </p>
+          <p className="tabular mt-1 text-[0.875rem] leading-5 font-semibold text-[var(--accent)]">
+            {startTime}
+            <span className="font-normal text-[#8A7F6E]"> · {formatDuration(minutes, language)}</span>
+          </p>
+
+          <ul className="mt-3.5 space-y-2.5 border-t border-[rgba(34,29,23,0.07)] pt-3">
+            {plan.items.map((item, index) => (
+              <li
+                key={`${item.serviceId}-${index}`}
+                className="flex items-baseline justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-[0.875rem] leading-5 text-[var(--ink)]">
+                    {names.get(item.serviceId) ?? item.serviceName}
+                  </p>
+                  {/* Ao domingo não se diz «com quem»: a cliente não
+                      escolheu ninguém, e quem atende decide-se no salão. */}
+                  <p className="tabular text-[0.75rem] leading-[17px] text-[#8A7F6E]">
+                    {picksStaff
+                      ? `${formatTime(item.startsAt, unit.timezone, language)} · ${dict.common.with} ${item.staffPublicName}`
+                      : formatTime(item.startsAt, unit.timezone, language)}
+                  </p>
+                </div>
+                <span className="tabular shrink-0 text-[0.875rem] text-[var(--ink)]">
+                  {formatCents(item.priceCents, org.currency, language)}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-3.5 flex items-baseline justify-between border-t border-[rgba(34,29,23,0.07)] pt-2.5">
+            <span className="text-[0.8125rem] text-[var(--ink-muted)]">{dict.common.total}</span>
+            <span className="tabular text-xl font-semibold tracking-[-0.01em] text-[var(--ink)]">
+              {total}
+            </span>
+          </div>
+
+          <p className="mt-3.5 flex items-start gap-[7px] text-[0.75rem] leading-[17px] text-[#8A7F6E]">
+            <MapPin size={13} className="mt-px shrink-0" aria-hidden />
+            <span>{address}</span>
+          </p>
+        </aside>
       </div>
-    </FunnelShell>
+    </FunnelStage>
   )
 }

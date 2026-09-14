@@ -1071,6 +1071,37 @@ html.js [data-menu-fechado] {
 html.js [data-grupo-fechado] {
   display: none;
 }
+
+/* ---------------------------------------------------------------------
+   O passo de confirmar, no desenho do mockup «Confirmar · delicado».
+
+   SÓ ASPECTO, E POR FORA. O formulário (components/confirm-form.tsx) e
+   a acção que ele chama são o caminho mais frágil da casa, e ficam como
+   estão: nada de lhes mudar a marcação para arredondar um campo. Estas
+   regras pegam-lhes a partir do cartão que os embrulha na página.
+   --------------------------------------------------------------------- */
+.confirmar-leve input:not([type="hidden"]),
+.confirmar-leve textarea {
+  border-radius: 12px;
+  border-color: rgba(34, 29, 23, 0.1);
+  background: #fffdf8;
+  padding-inline: 14px;
+}
+.confirmar-leve input:not([type="hidden"]) {
+  height: 46px;
+}
+.confirmar-leve textarea {
+  padding-block: 11px;
+}
+.confirmar-leve input:not([type="hidden"]):focus,
+.confirmar-leve textarea:focus {
+  border-color: var(--accent);
+}
+.confirmar-leve button[type="submit"] {
+  height: 48px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
 @media (min-width: 640px) {
   html.js [data-menu-fechado] {
     display: block;
