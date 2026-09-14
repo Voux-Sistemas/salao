@@ -29,9 +29,8 @@ import {
 import { picksStaffOn } from '@/lib/sunday'
 import { serviceNamesFor } from '@/lib/catalog-names'
 import { ButtonLink, Empty, Notice } from '@/components/ui'
-import { FunnelShell, VisitSummary } from '@/components/funnel-shell'
-import { DayStrip } from '@/components/day-strip'
-import { Reveal } from '@/components/reveal'
+import { BandWeek, FunnelStage } from '@/components/funnel-stage'
+import { initialsOf } from '@/lib/initials'
 
 type Params = {
   params: Promise<{ loja: string }>
@@ -179,235 +178,336 @@ export default async function TimesPage({ params, searchParams }: Params) {
     language,
   )
 
+  /*
+    PARA ONDE LEVA CADA DIA DA SEMANA DA FAIXA.
+
+    Mudar de ideias sobre o dia quando se está a olhar para as horas é o
+    gesto mais natural do funil, e mandá-la três passos atrás para isso
+    era castigá-la. Quem está de serviço volta a ser verificado: a
+    profissional escolhida pode folgar na quinta, e nesse caso o que
+    aparece em baixo é a explicação, não uma grelha vazia. Um dia de
+    semana a partir de um domingo (sem ninguém escolhido) passa pela
+    profissional; um domingo larga a profissional, porque nesse dia não
+    se escolhe.
+  */
+  const dayHref = (value: IsoDay) =>
+    picksStaffOn(value) && !chosenStaff
+      ? funnelHref(`${here}/profissional`, { day: value, cart })
+      : funnelHref(`${here}/horarios`, {
+          cart,
+          day: value,
+          staffId: picksStaffOn(value) ? chosenStaff : null,
+        })
+  const previousDay = day > firstDay ? maxDay(addDays(day, -7), firstDay) : null
+  const nextDay = addDays(day, 7) <= lastDay ? addDays(day, 7) : null
+
+  const servicesHref = funnelHref(`${here}/servicos`, { day, staffId: chosenStaff, cart })
+
+  /* A visita, dita em pequeno. O nome de quem o motor arrumou por dentro
+     ao domingo não é uma promessa que a casa queira fazer: aí fica só a
+     duração e o preço. */
+  const staffName = picksStaff ? (sample?.items[0]?.staffPublicName ?? null) : null
+  const serviceLabel = sample
+    ? sample.items.map((item) => names.get(item.serviceId) ?? item.serviceName).join(' + ')
+    : null
+  const visitMinutes = sample
+    ? Math.round((sample.endsAt.getTime() - sample.startsAt.getTime()) / 60_000)
+    : 0
+  const visitMeta = sample
+    ? [
+        staffName,
+        formatDuration(visitMinutes, language),
+        formatCents(sample.totalCents, org.currency, language),
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : null
+
+  const monogram = staffName ? (
+    <span className="relative flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F3EBDA] sm:size-[38px]">
+      <span
+        aria-hidden
+        className="display text-[0.8125rem] leading-none text-[var(--action-strong)]"
+      >
+        {initialsOf(staffName)}
+      </span>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgba(198,169,107,0.45)]"
+      />
+    </span>
+  ) : null
+
   return (
-    <FunnelShell
+    <FunnelStage
       step={5}
       picksStaff={picksStaff}
       dict={dict}
       hrefs={[
         '/agendar',
         funnelHref(here, { day }),
+        // Ao domingo o passo da profissional não existe: a migalha dele
+        // não pode apontar para uma página que reencaminha para aqui.
         picksStaff ? funnelHref(`${here}/profissional`, { day }) : null,
-        funnelHref(`${here}/servicos`, { day, staffId: chosenStaff, cart }),
+        servicesHref,
         null,
         null,
       ]}
       eyebrow={unit.name}
       title={dict.funnel.timeTitle}
-      subtitle={dict.funnel.timeSubtitle}
-      aside={
-        sample ? (
-          <VisitSummary
-            title={dict.funnel.yourVisit}
-            lines={sample.items.map((item) => ({
-              label: names.get(item.serviceId) ?? item.serviceName,
-              /* Ao domingo a cliente nao escolheu ninguem — e o nome
-                 de quem o motor arrumou por dentro nao e uma promessa
-                 que a casa queira fazer. Fica so a duracao. */
-              meta: picksStaff
-                ? `${item.staffPublicName} · ${formatDuration(item.durationMinutes, language)}`
-                : formatDuration(item.durationMinutes, language),
-              value: formatCents(item.priceCents, org.currency, language),
-            }))}
-            total={{
-              label: dict.common.total,
-              value: formatCents(sample.totalCents, org.currency, language),
-            }}
-            footer={
-              <div className="flex items-baseline justify-between text-[0.75rem]">
-                <span className="text-[var(--ink-muted)]">{dict.common.duration}</span>
-                <span className="tabular text-[var(--ink)]">
-                  {formatDuration(
-                    Math.round(
-                      (sample.endsAt.getTime() - sample.startsAt.getTime()) / 60_000,
-                    ),
-                    language,
-                  )}
-                </span>
-              </div>
-            }
-          />
-        ) : null
+      back={{ href: servicesHref, label: dict.common.back }}
+      week={
+        <BandWeek
+          day={day}
+          days={week}
+          timezone={unit.timezone}
+          language={language}
+          href={dayHref}
+          previous={previousDay ? dayHref(previousDay) : null}
+          next={nextDay ? dayHref(nextDay) : null}
+          dict={dict}
+          disabled={deadDays}
+        />
       }
     >
-      {/* -------------------------------------------------- os dias ---
-          A tira fica, e continua a navegar: mudar de ideias sobre o dia
-          quando se está a olhar para as horas é o gesto mais natural do
-          funil, e mandá-la três passos atrás para isso era castigá-la
-          por mudar de ideias. Quem está de serviço volta a ser
-          verificado — a profissional escolhida pode folgar na quinta, e
-          nesse caso o que aparece em baixo é a explicação, não uma
-          grelha vazia. */}
-      <DayStrip
-        day={day}
-        firstDay={firstDay}
-        lastDay={lastDay}
-        timezone={unit.timezone}
-        language={language}
-        dict={dict}
-        /*
-         * TROCAR DE DIA PODE ATRAVESSAR A FRONTEIRA DO DOMINGO.
-         *
-         * De um dia de semana para domingo, a profissional escolhida
-         * deixa de fazer sentido e cai. De domingo para um dia de
-         * semana, ela nunca chegou a ser escolhida — e as horas de
-         * uma visita sem dono não se sabem pedir, por isso a troca
-         * leva ao passo dela, com o carrinho intacto.
-         */
-        href={(value) =>
-          picksStaffOn(value) && !chosenStaff
-            ? funnelHref(`${here}/profissional`, { day: value, cart })
-            : funnelHref(`${here}/horarios`, {
-                cart,
-                day: value,
-                staffId: picksStaffOn(value) ? chosenStaff : null,
-              })
-        }
-        label={dict.funnel.steps.day}
-        disabled={deadDays}
-      />
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10">
+        <div>
+          {/* A visita, num cartão pequeno — só no telemóvel. No monitor
+              ela vive na coluna do lado. */}
+          {sample ? (
+            <div className="mb-[18px] flex items-center gap-[11px] rounded-2xl bg-[var(--surface-raised)] py-2 pr-3.5 pl-2 shadow-[0_1px_2px_rgba(34,29,23,0.03)] lg:hidden">
+              {monogram}
+              <div className={staffName ? 'min-w-0 flex-1' : 'min-w-0 flex-1 pl-2'}>
+                <p className="truncate text-[0.875rem] leading-[19px] font-medium text-[var(--ink)]">
+                  {serviceLabel}
+                </p>
+                <p className="tabular truncate text-[0.75rem] leading-4 text-[#8A7F6E]">
+                  {visitMeta}
+                </p>
+              </div>
+              <Link
+                href={servicesHref}
+                className="-my-2 shrink-0 py-2 text-[0.78125rem] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--action-strong)]"
+              >
+                {dict.common.change}
+              </Link>
+            </div>
+          ) : null}
 
-      {/* A data por extenso, em serifa: é o cabeçalho do que vem abaixo. */}
-      <div className="mt-8 flex items-baseline gap-4">
-        <h2 className="display text-xl text-[var(--ink)] first-letter:uppercase">
-          {formatDayLong(day, unit.timezone, language)}
-        </h2>
-        <span className="h-px flex-1 bg-[var(--line-soft)]" />
-        {slots.length > 0 ? (
-          <span className="tabular shrink-0 text-[0.6875rem] text-[var(--ink-faint)]">
-            {slots.length} {dict.funnel.slotsAvailable}
-          </span>
-        ) : null}
-      </div>
+          {/* A data por extenso, em serifa, e quantas horas há. */}
+          <div className="flex items-baseline justify-between gap-4 px-1 lg:px-0">
+            <h2 className="display text-[1.0625rem] leading-[1.25] text-[var(--ink)] first-letter:uppercase lg:text-[1.375rem] lg:leading-[1.2]">
+              {formatDayLong(day, unit.timezone, language)}
+            </h2>
+            {slots.length > 0 ? (
+              <span className="tabular shrink-0 text-[0.71875rem] text-[#8A7F6E] lg:text-[0.78125rem]">
+                {slots.length} {dict.funnel.slotsAvailable}
+              </span>
+            ) : null}
+          </div>
 
-      {/* ------------------------------------------------- as horas --- */}
-      {problem === 'too_far' ? (
-        <div className="mt-8">
-          <Notice tone="warn">{dict.errors.tooFar}</Notice>
-        </div>
-      ) : null}
+          {problem === 'too_far' ? (
+            <div className="mt-5">
+              <Notice tone="warn">{dict.errors.tooFar}</Notice>
+            </div>
+          ) : null}
 
-      {slots.length === 0 ? (
-        /*
-          Três becos diferentes, três respostas. O «no_staff» levava a
-          frase do dia cheio — «experimente outro dia» — e era o pior
-          conselho possível: quando ninguém faz o serviço, ou a
-          profissional escolhida não o faz, nenhum dia do calendário vai
-          servir. Quem seguisse o conselho batia à mesma porta até
-          desistir.
-        */
-        <Empty
-          title={
-            problem === 'closed'
-              ? dict.unit.closedToday
-              : problem === 'no_staff'
-                ? picksStaff
-                  ? dict.funnel.noStaff
-                  : dict.funnel.sundayNoStaffTitle
-                : dict.funnel.noSlots
-          }
-          // Ao domingo a palavra «profissional» não entra: ela não
-          // escolheu ninguém, e um conselho para trocar de pessoa
-          // manda-a a um passo que nesse dia não existe.
-          hint={
-            problem === 'no_staff'
-              ? picksStaff
-                ? dict.funnel.noStaffHint
-                : dict.funnel.sundayNoStaffHint
-              : picksStaff
-                ? dict.funnel.noSlotsHint
-                : dict.funnel.sundayNoSlotsHint
-          }
-          // Um beco nunca acaba em conselho. Primeiro as portas que
-          // levam mesmo a uma hora — os dias mais próximos onde esta
-          // visita cabe, com a conta de horários à vista — e só depois
-          // as saídas de recurso: trocar de pessoa ou de serviço.
-          action={
-            <div className="flex flex-col items-center gap-5">
-              {nearby.length > 0 ? (
-                <div className="flex flex-col items-center gap-3">
-                  <span className="eyebrow text-[var(--ink-faint)]">
-                    {dict.funnel.nearbyDays}
-                  </span>
+          {slots.length === 0 ? (
+            /*
+              Três becos diferentes, três respostas. O «no_staff» levava a
+              frase do dia cheio — «experimente outro dia» — e era o pior
+              conselho possível: quando ninguém faz o serviço, ou a
+              profissional escolhida não o faz, nenhum dia do calendário
+              vai servir.
+            */
+            <Empty
+              title={
+                problem === 'closed'
+                  ? dict.unit.closedToday
+                  : problem === 'no_staff'
+                    ? picksStaff
+                      ? dict.funnel.noStaff
+                      : dict.funnel.sundayNoStaffTitle
+                    : dict.funnel.noSlots
+              }
+              hint={
+                problem === 'no_staff'
+                  ? picksStaff
+                    ? dict.funnel.noStaffHint
+                    : dict.funnel.sundayNoStaffHint
+                  : picksStaff
+                    ? dict.funnel.noSlotsHint
+                    : dict.funnel.sundayNoSlotsHint
+              }
+              action={
+                <div className="flex flex-col items-center gap-5">
+                  {nearby.length > 0 ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="eyebrow text-[var(--ink-faint)]">
+                        {dict.funnel.nearbyDays}
+                      </span>
+                      <div className="flex flex-wrap justify-center gap-3">
+                        {nearby.map((option) => (
+                          <ButtonLink
+                            key={option.day}
+                            href={funnelHref(`${here}/horarios`, {
+                              cart,
+                              day: option.day,
+                              staffId: chosenStaff,
+                            })}
+                          >
+                            <span className="first-letter:uppercase">
+                              {formatWeekdayShort(option.day, unit.timezone, language)}{' '}
+                              {formatDayShort(option.day, unit.timezone, language)}
+                            </span>
+                            <span className="tabular opacity-70">
+                              · {option.count} {dict.funnel.slotsAvailable}
+                            </span>
+                          </ButtonLink>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="flex flex-wrap justify-center gap-3">
-                    {nearby.map((option) => (
+                    {/* Ao domingo não há para onde trocar de pessoa. O
+                        carrinho vai junto — sem ele, quem trocasse de
+                        pessoa perdia a visita montada. */}
+                    {picksStaff ? (
                       <ButtonLink
-                        key={option.day}
-                        href={funnelHref(`${here}/horarios`, {
-                          cart,
-                          day: option.day,
-                          staffId: chosenStaff,
-                        })}
+                        href={funnelHref(`${here}/profissional`, { day, cart })}
+                        variant="outline"
                       >
-                        <span className="first-letter:uppercase">
-                          {formatWeekdayShort(option.day, unit.timezone, language)}{' '}
-                          {formatDayShort(option.day, unit.timezone, language)}
-                        </span>
-                        <span className="tabular opacity-70">
-                          · {option.count} {dict.funnel.slotsAvailable}
-                        </span>
+                        {dict.funnel.changeStaff}
                       </ButtonLink>
-                    ))}
+                    ) : null}
+                    <ButtonLink href={servicesHref} variant="outline">
+                      {dict.funnel.changeServices}
+                    </ButtonLink>
                   </div>
                 </div>
-              ) : null}
-              <div className="flex flex-wrap justify-center gap-3">
-                {/* Ao domingo não há para onde trocar: o passo não
-                    existe, e um botão que leva a um ecrã que
-                    reencaminha de volta é uma porta pintada na
-                    parede. O carrinho vai junto — sem ele, quem
-                    trocasse de pessoa perdia a visita montada. */}
-                {picksStaff ? (
-                  <ButtonLink
-                    href={funnelHref(`${here}/profissional`, { day, cart })}
-                    variant="outline"
-                  >
-                    {dict.funnel.changeStaff}
-                  </ButtonLink>
-                ) : null}
-                <ButtonLink
-                  href={funnelHref(`${here}/servicos`, { day, staffId: chosenStaff, cart })}
-                  variant="outline"
-                >
-                  {dict.funnel.changeServices}
-                </ButtonLink>
+              }
+            />
+          ) : (
+            /*
+              AS HORAS EM PÍLULAS PEQUENAS.
+
+              Eram caixas de quarenta e oito píxeis, três por fila: vinte e
+              cinco horas enchiam três ecrãs de telemóvel. Em pílulas de
+              trinta e oito, quatro por fila, a manhã e a tarde cabem quase
+              no primeiro. Tocar numa leva direto à confirmação.
+            */
+            <div className="mt-3.5 space-y-[18px] lg:mt-5 lg:space-y-[22px]">
+              {groups.map((group) => (
+                <section key={group.label}>
+                  <div className="flex items-center gap-2.5 px-1 lg:gap-3.5 lg:px-0">
+                    <h3 className="text-[0.625rem] leading-[14px] font-medium tracking-[0.18em] text-[var(--accent)] uppercase lg:text-[0.6875rem]">
+                      {group.label}
+                    </h3>
+                    <span className="tabular text-[0.65625rem] text-[var(--ink-faint)] lg:text-[0.71875rem]">
+                      {group.slots.length}
+                    </span>
+                    <span
+                      aria-hidden
+                      className="h-px flex-1"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, rgba(198,169,107,0.4), rgba(198,169,107,0))',
+                      }}
+                    />
+                  </div>
+                  <ul className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:mt-2.5 lg:gap-2">
+                    {group.slots.map((slot) => (
+                      <li key={slot.startsAt.toISOString()}>
+                        <Link
+                          href={funnelHref(`${here}/confirmar`, {
+                            cart,
+                            day,
+                            staffId: chosenStaff,
+                            time: slot.startsAt.toISOString(),
+                          })}
+                          className="tabular flex h-[38px] items-center justify-center rounded-full bg-[var(--surface-raised)] text-[0.875rem] font-medium text-[var(--ink)] shadow-[inset_0_0_0_1px_rgba(34,29,23,0.06)] transition-all duration-200 outline-offset-2 hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] hover:shadow-[0_8px_18px_-12px_rgba(111,85,47,0.8)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] lg:h-10 lg:text-[0.90625rem]"
+                        >
+                          {formatMinutes(slot.minutesOfDay)}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* -------------------------------------------------- visita --- */}
+        {sample ? (
+          <aside className="hidden rounded-[20px] bg-[var(--surface-raised)] p-[22px] shadow-[0_1px_2px_rgba(34,29,23,0.03),0_14px_32px_-24px_rgba(34,29,23,0.28)] lg:sticky lg:top-24 lg:block">
+            <div className="flex items-center justify-between">
+              <p className="text-[0.6875rem] leading-[14px] font-medium tracking-[0.18em] text-[var(--accent)] uppercase">
+                {dict.funnel.yourVisit}
+              </p>
+              <Link
+                href={servicesHref}
+                className="text-[0.78125rem] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--action-strong)]"
+              >
+                {dict.common.change}
+              </Link>
+            </div>
+
+            {staffName ? (
+              <div className="mt-3.5 flex items-center gap-[11px]">
+                {monogram}
+                <div className="min-w-0">
+                  <p className="truncate text-[0.875rem] leading-[19px] font-medium text-[var(--ink)]">
+                    {staffName}
+                  </p>
+                  <p className="truncate text-[0.75rem] leading-4 text-[#8A7F6E] first-letter:uppercase">
+                    {formatDayLong(day, unit.timezone, language)}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <ul className="mt-3.5 space-y-2.5 border-t border-[rgba(34,29,23,0.07)] pt-3">
+              {sample.items.map((item, index) => (
+                <li key={`${item.serviceId}-${index}`} className="flex items-baseline justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[0.875rem] leading-5 text-[var(--ink)]">
+                      {names.get(item.serviceId) ?? item.serviceName}
+                    </p>
+                    <p className="tabular text-[0.75rem] leading-[17px] text-[#8A7F6E]">
+                      {formatDuration(item.durationMinutes, language)}
+                    </p>
+                  </div>
+                  <span className="tabular shrink-0 text-[0.875rem] text-[var(--ink)]">
+                    {formatCents(item.priceCents, org.currency, language)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-3.5 border-t border-[rgba(34,29,23,0.07)] pt-2.5">
+              <div className="flex items-baseline justify-between text-[0.8125rem] leading-5">
+                <span className="text-[var(--ink-muted)]">{dict.common.duration}</span>
+                <span className="tabular text-[var(--ink)]">
+                  {formatDuration(visitMinutes, language)}
+                </span>
+              </div>
+              <div className="mt-1 flex items-baseline justify-between">
+                <span className="text-[0.8125rem] text-[var(--ink-muted)]">{dict.common.total}</span>
+                <span className="tabular text-[1.1875rem] font-semibold tracking-[-0.01em] text-[var(--ink)]">
+                  {formatCents(sample.totalCents, org.currency, language)}
+                </span>
               </div>
             </div>
-          }
-        />
-      ) : (
-        <div className="mt-7 space-y-9">
-          {groups.map((group, groupIndex) => (
-            <Reveal key={group.label} delay={groupIndex * 70}>
-              <section>
-                <div className="flex items-center gap-3">
-                  <h3 className="eyebrow text-[var(--ink-faint)]">{group.label}</h3>
-                  <span className="h-px flex-1 bg-[var(--line-soft)]" />
-                </div>
-                <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                  {group.slots.map((slot) => (
-                    <li key={slot.startsAt.toISOString()}>
-                      <Link
-                        href={funnelHref(`${here}/confirmar`, {
-                          cart,
-                          day,
-                          staffId: chosenStaff,
-                          time: slot.startsAt.toISOString(),
-                        })}
-                        className="tabular flex h-12 items-center justify-center border border-[var(--line-soft)] bg-[var(--surface-raised)] text-sm text-[var(--ink)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] hover:shadow-[var(--shadow-soft)]"
-                      >
-                        {formatMinutes(slot.minutesOfDay)}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            </Reveal>
-          ))}
-        </div>
-      )}
 
-    </FunnelShell>
+            <p className="mt-4 text-center text-[0.75rem] leading-[17px] text-[#8A7F6E] italic">
+              {dict.funnel.pickTimeHint}
+            </p>
+          </aside>
+        ) : null}
+      </div>
+    </FunnelStage>
   )
 }
 
+const maxDay = (a: IsoDay, b: IsoDay): IsoDay => (a > b ? a : b)

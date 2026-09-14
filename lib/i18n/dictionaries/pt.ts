@@ -204,6 +204,7 @@ export const pt = {
     addService: 'Juntar',
     cartFull: 'Já juntou o máximo de serviços para uma visita. Retire um para escolher outro.',
     timeTitle: 'Quando lhe dá jeito?',
+    pickTimeHint: 'Escolha uma hora para confirmar.',
     timeSubtitle: 'Os horários abaixo já contam com a duração total da visita.',
     noSlots: 'Não há horários livres neste dia.',
     noSlotsHint: 'Experimente outro dia ou outra profissional.',

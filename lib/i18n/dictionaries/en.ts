@@ -177,6 +177,7 @@ export const en: Dictionary = {
     addService: 'Add',
     cartFull: 'You have added the most services one visit can hold. Remove one to choose another.',
     timeTitle: 'When suits you?',
+    pickTimeHint: 'Pick a time to confirm.',
     timeSubtitle: 'The times below already account for the full length of your visit.',
     noSlots: 'No times available on this day.',
     noSlotsHint: 'Try another day or another professional.',
