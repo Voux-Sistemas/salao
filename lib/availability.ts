@@ -1,11 +1,12 @@
 import 'server-only'
 import { sql, type Sql } from '@/lib/db'
 import type { Unit } from '@/lib/org'
-import { openingWindows } from '@/lib/hours'
+import { openingWindows, openingWindowsRange } from '@/lib/hours'
 import { categoryOpenOn, picksStaffOn } from '@/lib/sunday'
 import {
   addDays,
   atMinutes,
+  daysBetween,
   dayStart,
   isoRange,
   minutesOfDay,
@@ -1055,21 +1056,213 @@ export async function pulseOfDays(
   channel: Channel = 'online',
   now: Date = new Date(),
 ): Promise<Map<IsoDay, DayPulse>> {
-  const teams = await Promise.all(
-    days.map((day) => staffForDay(unit, day, channel, now)),
-  )
   const out = new Map<IsoDay, DayPulse>()
-  days.forEach((day, i) => {
-    const team = teams[i] ?? []
-    out.set(
-      day,
-      team.some((p) => p.available)
-        ? 'ok'
-        : team.some((p) => p.reason !== 'closed')
-          ? 'nobody'
-          : 'closed',
+  if (days.length === 0) return out
+
+  /*
+    A FAIXA QUE COBRE OS DIAS PEDIDOS.
+
+    Os dias podem não vir seguidos — o calendário do mês corta os que
+    caem fora da janela de marcação. Toma-se do primeiro ao último e
+    responde-se só pelos que foram pedidos: uma faixa com buracos custa
+    o mesmo que uma faixa cheia, e uma consulta por buraco custaria
+    tudo outra vez.
+  */
+  const ordenados = [...days].sort()
+  const de = ordenados[0]!
+  const ate = ordenados[ordenados.length - 1]!
+  const quantos = daysBetween(de, ate) + 1
+
+  /*
+    A EQUIPA VEM UMA VEZ, E NÃO UMA POR DIA.
+
+    É a mesma lista nos trinta e um dias: quem trabalha nesta loja não
+    muda de um dia para o outro. Era esta consulta, repetida, que
+    aparecia nos registos da base com um milhão de chamadas.
+
+    Só o que o pulso precisa. O `staffForDay` traz também o retrato e a
+    cor porque os desenha; aqui ninguém os vê, e cada coluna a mais
+    viajava trinta e uma vezes.
+  */
+  const rows = await sql<
+    { id: string; accepts_online_booking: boolean }[]
+  >`
+    select s.id, s.accepts_online_booking
+      from staff s
+      join staff_unit su on su.staff_id = s.id and su.unit_id = ${unit.id}
+     where s.org_id = ${unit.org_id} and s.is_active
+     order by s.sort_order, s.name
+  `
+  const team = rows.filter(
+    (r) => channel !== 'online' || r.accepts_online_booking,
+  )
+
+  // Sem equipa não há dia nenhum: é o que o `staffForDay` devolve com a
+  // lista vazia, e o pulso lia isso como 'closed'. Mantém-se.
+  if (team.length === 0) {
+    for (const day of days) out.set(day, 'closed')
+    return out
+  }
+  const staffIds = team.map((r) => r.id)
+
+  /*
+    A JANELA ALARGA MEIO DIA PARA CADA LADO, como no motor de um dia só:
+    um bloco que começou na véspera à noite, ou que passa da meia-noite,
+    continua a ocupar.
+  */
+  const janelaDe = new Date(
+    dayStart(de, unit.timezone).getTime() - 12 * 3_600_000,
+  )
+  const janelaAte = new Date(
+    dayStart(addDays(ate, 1), unit.timezone).getTime() + 12 * 3_600_000,
+  )
+
+  /*
+    QUATRO VIAGENS PARA O MÊS INTEIRO, e não cinco por dia.
+
+    Era esta a saída que o comentário da página do calendário já
+    apontava: «uma consulta só que responda pelos trinta dias de uma
+    vez — não é tirar o calendário». Trinta e um dias custavam cento e
+    cinquenta e cinco idas à base; passam a custar quatro.
+
+    As ausências e os blocos vêm da faixa toda e entregam-se inteiros a
+    cada dia. Subtrair um intervalo que não toca no dia não muda nada —
+    e separá-los dia a dia custava mais em código do que poupava em
+    contas.
+  */
+  const [aberturas, escalaRows, ausenciaRows, blocoRows] = await Promise.all([
+    openingWindowsRange(unit.id, de, quantos),
+
+    /* Semana + turnos extra, com o dia à frente para se repartirem. */
+    sql<
+      { day: IsoDay; staff_id: string; starts_min: number; ends_min: number }[]
+    >`
+      with dias as (
+        select d::date as on_date, extract(dow from d)::int as weekday
+          from generate_series(${de}::date, ${ate}::date, interval '1 day') d
+      )
+      select to_char(dias.on_date, 'YYYY-MM-DD') as day,
+             sc.staff_id, sc.starts_min, sc.ends_min
+        from dias
+        join staff_schedule sc
+          on sc.unit_id = ${unit.id}
+         and sc.weekday = dias.weekday
+         and sc.valid_from <= dias.on_date
+         and (sc.valid_to is null or sc.valid_to >= dias.on_date)
+       where sc.staff_id = any(${staffIds}::uuid[])
+      union all
+      select to_char(sh.day, 'YYYY-MM-DD') as day,
+             sh.staff_id, sh.starts_min, sh.ends_min
+        from staff_shift sh
+       where sh.unit_id = ${unit.id}
+         and sh.day between ${de}::date and ${ate}::date
+         and sh.staff_id = any(${staffIds}::uuid[])
+    `,
+
+    sql<{ staff_id: string; starts_at: Date; ends_at: Date }[]>`
+      select staff_id, starts_at, ends_at
+        from staff_absence
+       where staff_id = any(${staffIds}::uuid[])
+         and starts_at < ${janelaAte} and ends_at > ${janelaDe}
+    `,
+
+    // A pessoa é uma só: um bloco na outra loja também a ocupa.
+    sql<{ staff_id: string; s: Date; e: Date }[]>`
+      select staff_id, lower(during) as s, upper(during) as e
+        from staff_block
+       where staff_id = any(${staffIds}::uuid[])
+         and during && tstzrange(${janelaDe}, ${janelaAte})
+    `,
+  ])
+
+  // A escala reparte-se por dia e por pessoa; o resto só por pessoa.
+  const escalas = new Map<string, Map<string, Interval[]>>()
+  for (const row of escalaRows) {
+    const doDia = escalas.get(row.day) ?? new Map<string, Interval[]>()
+    const lista = doDia.get(row.staff_id) ?? []
+    lista.push(
+      interval(
+        atMinutes(row.day, row.starts_min, unit.timezone).getTime(),
+        atMinutes(row.day, row.ends_min, unit.timezone).getTime(),
+      ),
     )
-  })
+    doDia.set(row.staff_id, lista)
+    escalas.set(row.day, doDia)
+  }
+
+  const porPessoa = <T extends { staff_id: string }>(
+    lista: readonly T[],
+    faz: (row: T) => Interval,
+  ) => {
+    const out = new Map<string, Interval[]>()
+    for (const row of lista) {
+      const kept = out.get(row.staff_id) ?? []
+      kept.push(faz(row))
+      out.set(row.staff_id, kept)
+    }
+    return out
+  }
+  const ausencias = porPessoa(ausenciaRows, (a) =>
+    interval(a.starts_at.getTime(), a.ends_at.getTime()),
+  )
+  const blocos = porPessoa(blocoRows, (b) =>
+    interval(b.s.getTime(), b.e.getTime()),
+  )
+
+  // O mais cedo que se pode marcar não muda de dia para dia.
+  const earliest =
+    channel === 'online'
+      ? now.getTime() + unit.min_lead_minutes * 60_000
+      : now.getTime()
+
+  for (const day of days) {
+    const opening = aberturas.get(day) ?? []
+    // Porta fechada: ninguém trabalha, e o motivo é da casa.
+    if (opening.length === 0) {
+      out.set(day, 'closed')
+      continue
+    }
+
+    const openWindows = merge(
+      opening.map((o) =>
+        interval(
+          atMinutes(day, o.openMin, unit.timezone).getTime(),
+          atMinutes(day, o.closeMin, unit.timezone).getTime(),
+        ),
+      ),
+    )
+    const future = subtract(openWindows, [interval(0, earliest)])
+    const doDia = escalas.get(day)
+
+    /*
+      Basta UMA pessoa com vaga para o dia ser 'ok' — e por isso sai-se
+      assim que se encontra. O `staffForDay` tinha de calcular toda a
+      gente porque desenha toda a gente; aqui a pergunta é outra, e é
+      mais barata.
+    */
+    let alguemLivre = false
+    for (const row of team) {
+      const scheduled = merge(doDia?.get(row.id) ?? [])
+      if (scheduled.length === 0) continue
+
+      const working = subtract(scheduled, ausencias.get(row.id) ?? [])
+      if (working.length === 0) continue
+
+      const free = subtract(
+        subtract(working, invert(future)),
+        blocos.get(row.id) ?? [],
+      )
+      if (Math.round(totalMinutes(free)) < unit.slot_granularity_minutes) {
+        continue
+      }
+
+      alguemLivre = true
+      break
+    }
+
+    out.set(day, alguemLivre ? 'ok' : 'nobody')
+  }
+
   return out
 }
 
