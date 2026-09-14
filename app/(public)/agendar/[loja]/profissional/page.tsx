@@ -1,13 +1,15 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
-import clsx from 'clsx'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { getUnitBySlug } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { pulseOfDays, staffForDay, type StaffDay } from '@/lib/availability'
 import {
   addDays,
-  formatDayLong,
+  formatDuration,
+  formatList,
+  formatTime,
   isoRange,
   today,
   type IsoDay,
@@ -16,16 +18,15 @@ import {
 import { CART_PARAM, DAY_PARAM, first, funnelHref, parseCart } from '@/lib/cart'
 import { picksStaffOn } from '@/lib/sunday'
 import { Empty } from '@/components/ui'
-import { FunnelShell } from '@/components/funnel-shell'
-import { DayStrip } from '@/components/day-strip'
-import { Monogram } from '@/components/brand'
+import { BandWeek, FunnelStage } from '@/components/funnel-stage'
 import { Photo } from '@/components/photo'
-import { Reveal } from '@/components/reveal'
 
 type Params = {
   params: Promise<{ loja: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
+
+type Dict = Awaited<ReturnType<typeof getDictionary>>
 
 export async function generateMetadata(): Promise<Metadata> {
   const dict = await getDictionary()
@@ -37,26 +38,35 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
+/** Abaixo disto o maior bocado livre já não dá para uma visita folgada. */
+const LITTLE_TIME_MINUTES = 60
+
+/** Quantos bocados livres se escrevem antes de se passar a «+N». */
+const WINDOWS_SHOWN = 3
 
 /**
  * Passo 3 — escolher a profissional.
  *
  * É o passo que esta casa pediu, e a regra dele é uma só: NINGUÉM
- * DESAPARECE. Quem folga, quem já tem o dia cheio e quem trabalha
- * noutra loja aparecem todas, apagadas e sem ligação por baixo, com o
- * motivo escrito. Uma lista que encolhe faz a cliente pensar que se
- * enganou no dia; uma lista completa com metade apagada diz-lhe a
- * verdade — «hoje é esta gente» — e deixa-a decidir se troca de dia ou
- * de pessoa.
+ * DESAPARECE. Quem atende neste dia aparece em cartão, com as horas em
+ * que ainda está livre. Quem folga ou já tem a agenda cheia fica
+ * escrito por baixo, numa frase, com o motivo. Uma lista que encolhe
+ * faz a cliente pensar que se enganou no dia; uma lista completa diz-lhe
+ * a verdade — «hoje é esta gente» — e deixa-a decidir se troca de dia
+ * ou de pessoa.
  *
  * O que se decide aqui é a pessoa da visita inteira. Não há «sem
  * preferência»: era isso, exactamente, que atribuía a profissional por
  * ela e que a casa não quis.
  *
- * Esta página responde a uma pergunta grosseira — «ainda tem bocado
- * livre hoje?» — porque o serviço ainda não foi escolhido. Quem
- * atravessar por aqui volta a passar pelo motor nos dois passos
- * seguintes, e é lá que a hora exacta se decide.
+ * AS HORAS LIVRES SÃO UM MAPA, NÃO UMA PROMESSA. O serviço ainda não foi
+ * escolhido, por isso «14:00–18:30» diz onde há tempo, não que qualquer
+ * serviço cabe lá. A hora exacta decide-se dois passos à frente, outra
+ * vez pelo motor. Foi a casa que pediu para as ver: sem elas, a cliente
+ * escolhia a profissional às cegas e só descobria no fim que ela estava
+ * livre de manhã e não de tarde.
+ *
+ * O desenho é o do mockup «Profissional · elegante».
  */
 export default async function ChooseStaffPage({ params, searchParams }: Params) {
   const { loja } = await params
@@ -84,12 +94,12 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
   //
   // Não se mostra vazio nem com um aviso: manda-se para onde a visita
   // continua. Quem chega aqui vem de uma ligação guardada, de um
-  // «voltar atrás», ou de trocar para domingo na tira acima — e em
+  // «voltar atrás», ou de trocar para domingo na semana da faixa — e em
   // todos esses casos o que ela quer é seguir, não ler que se enganou.
   if (!picksStaffOn(day)) redirect(funnelHref(`${here}/servicos`, { day, cart }))
 
-  // A semana visível na tira: os dias sem ninguém ficam apagados lá,
-  // para a troca de dia nunca levar a um ecrã todo cinzento.
+  // A semana da faixa: os dias sem ninguém ficam apagados lá, para a
+  // troca de dia nunca levar a um ecrã todo cinzento.
   const week = isoRange(day, 7).filter((d) => d <= lastDay)
   const [dict, language, team, pulse] = await Promise.all([
     getDictionary(),
@@ -97,172 +107,193 @@ export default async function ChooseStaffPage({ params, searchParams }: Params) 
     staffForDay(unit, day, 'online'),
     pulseOfDays(unit, week, 'online'),
   ])
-  const deadDays = new Set(week.filter((d) => pulse.get(d) !== 'ok'))
+  const deadDays = new Set(week.filter((d) => d !== day && pulse.get(d) !== 'ok'))
 
-  const anyone = team.some((person) => person.available)
+  const working = team.filter((person) => person.available)
+  const dayHref = funnelHref(here, { day })
+
+  // Quem não atende, dito numa frase e agrupado pelo motivo. Loja
+  // fechada não entra: aí ninguém atende e o ecrã vazio já o diz.
+  const namesWith = (reason: StaffDay['reason']) =>
+    team.filter((person) => person.reason === reason).map((person) => person.publicName)
+  const off = namesWith('off')
+  const full = namesWith('full')
+  const groups = [
+    off.length > 0
+      ? `${formatList(off, language)}, ${(off.length === 1
+          ? dict.funnel.staffAwayOff
+          : dict.funnel.staffAwayOffMany
+        ).replace('{loja}', unit.name)}`
+      : null,
+    full.length > 0
+      ? `${formatList(full, language)}, ${
+          full.length === 1 ? dict.funnel.staffAwayFull : dict.funnel.staffAwayFullMany
+        }`
+      : null,
+  ].filter(Boolean)
+  const awayLine = groups.length > 0 ? `${dict.funnel.staffAway}: ${groups.join('; ')}.` : null
+
+  /* Os prazos são da loja e a dona muda-os no Admin; é a mesma frase do
+     recibo, dita antes de marcar para ninguém ter medo de escolher. */
+  const prazo =
+    unit.reschedule_window_minutes === unit.cancel_window_minutes
+      ? dict.funnel.changeUntil.replace(
+          '{tempo}',
+          formatDuration(unit.cancel_window_minutes, language),
+        )
+      : dict.funnel.changeUntilSplit
+          .replace('{mudar}', formatDuration(unit.reschedule_window_minutes, language))
+          .replace('{desmarcar}', formatDuration(unit.cancel_window_minutes, language))
 
   return (
-    <FunnelShell
+    <FunnelStage
       step={3}
       dict={dict}
-      hrefs={['/agendar', funnelHref(here, { day }), null, null, null, null]}
+      hrefs={['/agendar', dayHref, null, null, null, null]}
       eyebrow={unit.name}
       title={dict.funnel.staffTitle}
-      subtitle={dict.funnel.staffSubtitle}
+      back={{ href: dayHref, label: dict.funnel.steps.day }}
+      week={
+        <BandWeek
+          day={day}
+          days={week}
+          timezone={unit.timezone}
+          language={language}
+          href={(value) => funnelHref(`${here}/profissional`, { day: value, cart })}
+          label={dict.funnel.steps.day}
+          disabled={deadDays}
+        />
+      }
     >
-      {/* A tira fica: trocar de dia é a saída natural de um dia sem
-          ninguém, e obrigar a voltar atrás para isso era um passo a
-          mais no meio da decisão. */}
-      <DayStrip
-        day={day}
-        firstDay={firstDay}
-        lastDay={lastDay}
-        timezone={unit.timezone}
-        language={language}
-        dict={dict}
-        href={(value) => funnelHref(`${here}/profissional`, { day: value, cart })}
-        label={dict.funnel.steps.day}
-        disabled={deadDays}
-      />
-
-      <div className="mt-8 flex items-baseline gap-4">
-        <h2 className="display text-xl text-[var(--ink)] first-letter:uppercase">
-          {formatDayLong(day, unit.timezone, language)}
+      <div className="flex items-center gap-3 px-1.5 sm:gap-4 sm:px-0">
+        <h2 className="text-[0.6875rem] leading-[14px] font-semibold tracking-[0.18em] whitespace-nowrap text-[var(--accent)] uppercase sm:text-[0.75rem] sm:leading-4">
+          {dict.funnel.staffWorking}
         </h2>
-        <span className="h-px flex-1 bg-[var(--line-soft)]" />
+        <span
+          aria-hidden
+          className="h-px flex-1"
+          style={{
+            background: 'linear-gradient(90deg, rgba(198,169,107,0.5), rgba(198,169,107,0))',
+          }}
+        />
       </div>
 
-      {team.length === 0 || !anyone ? (
-        <div className="mt-8">
-          <Empty
-            title={dict.funnel.staffNobody}
-            hint={dict.funnel.staffNobodyHint}
-          />
-        </div>
-      ) : null}
-
-      {team.length > 0 ? (
-        <ul className="mt-7 grid gap-3 sm:grid-cols-2">
-          {team.map((person, index) => (
-            <Reveal key={person.id} delay={Math.min(index, 6) * 60}>
-              <StaffCard
-                person={person}
-                dict={dict}
-                href={
-                  person.available
-                    ? funnelHref(`${here}/servicos`, {
-                        day,
-                        staffId: person.id,
-                        cart,
-                      })
-                    : null
-                }
-              />
-            </Reveal>
+      {working.length === 0 ? (
+        <Empty title={dict.funnel.staffNobody} hint={dict.funnel.staffNobodyHint} />
+      ) : (
+        /* No telemóvel é uma lista só, com um fio entre as linhas; no
+           monitor cada pessoa ganha o seu cartão, dois por fila. */
+        <ul className="mt-3 overflow-hidden rounded-[22px] bg-[var(--surface-raised)] sm:mt-4 sm:grid sm:grid-cols-2 sm:gap-3.5 sm:overflow-visible sm:rounded-none sm:bg-transparent">
+          {working.map((person, index) => (
+            <StaffCard
+              key={person.id}
+              person={person}
+              first={index === 0}
+              dict={dict}
+              timezone={unit.timezone}
+              language={language}
+              href={funnelHref(`${here}/servicos`, { day, staffId: person.id, cart })}
+            />
           ))}
         </ul>
+      )}
+
+      {awayLine ? (
+        <p className="mt-4 px-1.5 text-[0.8125rem] leading-[19px] text-[var(--ink-muted)] sm:mt-6 sm:px-0 sm:text-[0.875rem] sm:leading-5">
+          {awayLine}
+        </p>
       ) : null}
-    </FunnelShell>
+
+      <div className="mx-1.5 mt-7 flex items-center justify-between gap-6 border-t border-[var(--line-soft)] pt-4 sm:mx-0 sm:mt-12 sm:pt-[22px]">
+        <Link
+          href={dayHref}
+          className="hidden items-center gap-1.5 text-[0.875rem] font-semibold text-[var(--action-strong)] transition-colors hover:text-[var(--ink)] sm:inline-flex"
+        >
+          <ChevronLeft size={15} strokeWidth={2} aria-hidden />
+          {dict.funnel.changeDay}
+        </Link>
+        <p className="text-[0.8125rem] leading-[19px] text-[var(--ink-muted)] sm:text-right sm:text-[0.875rem] sm:leading-5">
+          {prazo}
+        </p>
+      </div>
+    </FunnelStage>
   )
 }
 
 /**
- * O cartão de uma profissional. O mesmo desenho nos dois estados —
- * muda a cor e some a ligação. Quem não está disponível não vira um
- * cartão diferente: vira o mesmo cartão, apagado, com o motivo onde
- * estaria o tempo livre.
+ * O cartão de quem atende: o retrato (ou as iniciais), o nome, e as
+ * horas em que ainda está livre. «Pouco tempo» só aparece quando é
+ * mesmo pouco; nos outros casos o cartão não comenta.
  */
 function StaffCard({
   person,
+  first,
   dict,
+  timezone,
+  language,
   href,
 }: {
   person: StaffDay
-  dict: Awaited<ReturnType<typeof getDictionary>>
-  href: string | null
+  first: boolean
+  dict: Dict
+  timezone: string
+  language: string
+  href: string
 }) {
-  const reason =
-    person.reason === 'off'
-      ? dict.funnel.staffOff
-      : person.reason === 'closed'
-        ? dict.funnel.staffClosed
-        : dict.funnel.staffFull
-
-  const inside = (
-    <>
-      {/* Sem retrato fica o monograma sobre a cor dela — a mesma que
-          leva na agenda lá dentro. Apagada, perde a cor também: um
-          cartão cinzento com um selo dourado dizia «carrega aqui». */}
-      <span
-        className="size-14 shrink-0 overflow-hidden"
-        style={
-          person.avatarUrl || !href
-            ? undefined
-            : { background: `color-mix(in srgb, ${person.displayColor} 40%, white)` }
-        }
-      >
-        {person.avatarUrl ? (
-          <Photo src={person.avatarUrl} alt={person.publicName} />
-        ) : (
-          <span
-            aria-hidden
-            className={clsx(
-              'flex h-full w-full items-center justify-center',
-              href ? 'text-[var(--ink)]' : 'bg-[var(--surface)] text-[var(--ink-faint)]',
-            )}
-          >
-            <Monogram initials={initialsOf(person.publicName)} className="text-[1.0625rem]" />
-          </span>
-        )}
-      </span>
-
-      <span className="min-w-0 flex-1">
-        <span
-          className={clsx(
-            'block truncate text-[0.9375rem] transition-colors',
-            href ? 'text-[var(--ink)] group-hover:text-[var(--accent)]' : 'text-[var(--ink-faint)]',
-          )}
-        >
-          {person.publicName}
-        </span>
-        {/* Quanto tempo livre lhe resta é conta do motor, não promessa
-            à cliente — ela só vê a hora concreta no passo das horas.
-            Quem não pode atender continua a dizer porquê. */}
-        {!href ? (
-          <span className="mt-1 block text-[0.75rem] text-[var(--ink-faint)] italic">
-            {reason}
-          </span>
-        ) : null}
-      </span>
-    </>
-  )
-
-  const shape =
-    'flex min-h-[5.5rem] items-center gap-4 border px-4 py-3.5 text-left transition-all duration-200'
+  const windows = person.freeWindows
+    .slice(0, WINDOWS_SHOWN)
+    .map((w) => `${formatTime(w.start, timezone, language)}–${formatTime(w.end, timezone, language)}`)
+  const more = person.freeWindows.length - windows.length
+  const little = person.longestFreeMinutes < LITTLE_TIME_MINUTES
 
   return (
     <li>
-      {href ? (
-        <Link
-          href={href}
-          className={clsx(
-            shape,
-            'group w-full border-[var(--line-soft)] bg-[var(--surface-raised)] hover:-translate-y-0.5 hover:border-[var(--accent)] hover:shadow-[var(--shadow-soft)]',
+      {first ? null : <span aria-hidden className="ml-[68px] block h-px bg-[var(--line-soft)] sm:hidden" />}
+      <Link
+        href={href}
+        className="group flex items-center gap-3 py-3.5 pr-4 pl-3.5 transition-[background-color,box-shadow] duration-200 outline-offset-2 hover:bg-[#FFFDF8] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:gap-4 sm:rounded-[22px] sm:bg-[var(--surface-raised)] sm:py-[22px] sm:pr-[26px] sm:pl-[22px] sm:hover:shadow-[0_0_0_1px_rgba(142,111,65,0.28),0_10px_28px_-18px_rgba(34,29,23,0.3)]"
+      >
+        <span className="relative size-[42px] shrink-0 overflow-hidden rounded-full bg-[#F3EBDA] sm:size-[52px]">
+          {person.avatarUrl ? (
+            <Photo src={person.avatarUrl} alt="" />
+          ) : (
+            <span
+              aria-hidden
+              className="flex h-full w-full items-center justify-center text-[0.8125rem] font-semibold tracking-[0.02em] text-[var(--action-strong)] sm:text-[0.875rem]"
+            >
+              {initialsOf(person.publicName)}
+            </span>
           )}
-        >
-          {inside}
-        </Link>
-      ) : (
-        // Sem ligação nenhuma por baixo: não há nada para carregar, e
-        // um cartão que responde ao toque com silêncio é pior do que um
-        // cartão que se vê logo que está fora.
-        <div
-          aria-disabled
-          className={clsx(shape, 'w-full border-[var(--line-soft)] bg-transparent opacity-55')}
-        >
-          {inside}
-        </div>
-      )}
+          {/* O fio dourado vai por cima do retrato, e escurece no hover. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgba(198,169,107,0.5)] transition-shadow group-hover:shadow-[inset_0_0_0_1.5px_var(--accent)]"
+          />
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[0.9375rem] leading-5 font-semibold tracking-[-0.012em] text-[var(--ink)] sm:text-[1.0625rem] sm:leading-6">
+            {person.publicName}
+          </span>
+          <span className="mt-0.5 block text-[0.8125rem] leading-[18px] text-[var(--ink-muted)] sm:mt-[3px] sm:text-[0.875rem] sm:leading-5">
+            {windows.join(' · ')}
+            {more > 0 ? ` · +${more}` : null}
+            {little ? (
+              <span className="font-medium text-[var(--warn)]">
+                {' · '}
+                {dict.funnel.staffLittleTime}
+              </span>
+            ) : null}
+          </span>
+        </span>
+
+        <ChevronRight
+          size={16}
+          strokeWidth={2}
+          aria-hidden
+          className="shrink-0 text-[var(--ink-faint)] transition-colors group-hover:text-[var(--action-strong)]"
+        />
+      </Link>
     </li>
   )
 }

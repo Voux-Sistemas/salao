@@ -238,6 +238,23 @@ export function formatWeekdayShort(
 }
 
 /** "agosto de 2026" — o cabeçalho de um mês inteiro. */
+/** "setembro" — o mês sozinho, por cima de uma semana. */
+export function formatMonthLong(
+  day: IsoDay,
+  timezone: string,
+  language = 'pt',
+): string {
+  return new Intl.DateTimeFormat(localeOf(language), {
+    month: 'long',
+    timeZone: timezone,
+  }).format(dayStart(day, timezone))
+}
+
+/** ["Ana", "Rita"] -> "Ana e Rita", com o «e» da língua da página. */
+export function formatList(items: string[], language = 'pt'): string {
+  return new Intl.ListFormat(localeOf(language), { type: 'conjunction' }).format(items)
+}
+
 export function formatMonthYear(
   day: IsoDay,
   timezone: string,

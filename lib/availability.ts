@@ -877,6 +877,12 @@ export type StaffDay = {
    * minutos aqui mais vinte ali não fazem uma visita de quarenta.
    */
   longestFreeMinutes: number
+  /**
+   * Os bocados livres, por ordem. Só os que chegam a uma fatia da loja:
+   * um buraco de cinco minutos entre duas clientes não é vaga, e
+   * escrevê-lo no ecrã era prometer o que não há.
+   */
+  freeWindows: { start: Date; end: Date }[]
 }
 
 /**
@@ -920,6 +926,7 @@ export async function staffForDay(
     reason: StaffDayProblem,
     freeMinutes: number,
     longestFreeMinutes = 0,
+    freeWindows: { start: Date; end: Date }[] = [],
   ): StaffDay => ({
     id: row.id,
     publicName: row.public_alias ?? row.name,
@@ -930,6 +937,7 @@ export async function staffForDay(
     reason,
     freeMinutes,
     longestFreeMinutes,
+    freeWindows,
   })
 
   // Loja fechada: ninguém trabalha, e o motivo é da casa, não da pessoa.
@@ -1029,7 +1037,10 @@ export async function staffForDay(
     const longest = Math.round(
       free.reduce((top, piece) => Math.max(top, piece.end - piece.start), 0) / 60_000,
     )
-    return shape(row, 'none', minutes, longest)
+    const windows = free
+      .filter((piece) => piece.end - piece.start >= unit.slot_granularity_minutes * 60_000)
+      .map((piece) => ({ start: new Date(piece.start), end: new Date(piece.end) }))
+    return shape(row, 'none', minutes, longest, windows)
   })
 }
 

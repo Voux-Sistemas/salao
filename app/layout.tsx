@@ -19,7 +19,7 @@ const inter = Inter({
 })
 
 /**
- * A LETRA DA EQUIPA — e só dela.
+ * A LETRA DA EQUIPA — e agora também do funil.
  *
  * A montra é uma didone com serifas: é a letra do logótipo e é o que
  * faz a casa parecer a casa. A área da equipa não quer nada disso.
@@ -27,14 +27,15 @@ const inter = Inter({
  * quer o contrário: uma sem-serifa geométrica, com algarismos de
  * largura fixa e o espaçamento fechado.
  *
- * O ficheiro só se descarrega em quem a usa. Nenhuma página pública
- * pede `--font-desk`, portanto a cliente nunca paga por esta letra.
+ * O funil de marcar passa a usá-la, passo a passo, à medida que cada
+ * ecrã é redesenhado: a casa escolheu-a para lá também. Por isso leva o
+ * 400, que é o peso do texto corrido (as horas livres, os avisos).
  */
 const manrope = Manrope({
   subsets: ['latin'],
   variable: '--font-manrope',
   display: 'swap',
-  weight: ['500', '600', '700', '800'],
+  weight: ['400', '500', '600', '700', '800'],
 })
 
 const TITLE = `${BRAND.fallbackName} · ${BRAND.fallbackTagline}`
