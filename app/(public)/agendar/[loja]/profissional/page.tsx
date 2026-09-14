@@ -172,7 +172,7 @@ function StaffCard({
           ) : (
             <span
               aria-hidden
-              className="flex h-full w-full items-center justify-center text-[0.875rem] font-semibold tracking-[0.02em] text-[var(--action-strong)]"
+              className="display flex h-full w-full items-center justify-center text-[1rem] leading-none tracking-[-0.04em] text-[var(--action-strong)] sm:text-[1.0625rem]"
             >
               {initialsOf(person.publicName)}
             </span>
@@ -184,7 +184,7 @@ function StaffCard({
           />
         </span>
 
-        <span className="min-w-0 flex-1 truncate text-[1rem] leading-[22px] font-semibold tracking-[-0.01em] text-[var(--ink)] sm:text-[1.0625rem] sm:leading-6 sm:tracking-[-0.012em]">
+        <span className="min-w-0 flex-1 truncate text-[0.9375rem] leading-[22px] font-medium text-[var(--ink)] sm:text-base sm:leading-6">
           {person.publicName}
         </span>
 

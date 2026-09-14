@@ -31,7 +31,10 @@ const BAND_GROUND =
  *   da pergunta («com quem, neste dia?»), não uma tira solta no corpo.
  * - O rasto é uma frase — «Loja · Dia · Profissional · …» — e no
  *   telemóvel dá lugar à conta do passo.
- * - A letra é a Manrope, a mesma da equipa.
+ * - A letra é a da casa, a mesma dos outros passos: Playfair no título,
+ *   nos números dos dias e nas iniciais; Inter no resto. Chegou a
+ *   experimentar-se a Manrope aqui, e a página parecia de outro site a
+ *   meio da marcação.
  */
 export function FunnelStage({
   step,
@@ -69,7 +72,7 @@ export function FunnelStage({
     .replace('{total}', String(labels.length))
 
   return (
-    <div className="tabular flex min-h-[78vh] flex-col font-[family-name:var(--font-desk)]">
+    <div className="tabular flex min-h-[78vh] flex-col">
       {/* ---------------------------------------------- a faixa --- */}
       <div className="mx-auto w-full max-w-[74.5rem] px-3 pt-1 sm:px-5 sm:pt-2">
         <header
@@ -103,7 +106,7 @@ export function FunnelStage({
               <p className="mt-[22px] hidden text-[0.75rem] leading-4 font-semibold tracking-[0.2em] text-[var(--accent)] uppercase sm:block">
                 {eyebrow}
               </p>
-              <h1 className="animate-rise mx-0.5 mt-3.5 text-[1.5rem] leading-[1.15] font-medium tracking-[-0.028em] text-balance text-[var(--ink)] sm:mx-0 sm:mt-2.5 sm:text-[2.25rem] sm:leading-[1.1] sm:tracking-[-0.03em] lg:text-[2.625rem]">
+              <h1 className="display animate-rise mx-0.5 mt-3 text-[1.5rem] leading-[1.15] text-balance text-[var(--ink)] sm:mx-0 sm:mt-2 sm:text-[2.25rem] sm:leading-[1.1] lg:text-[2.625rem]">
                 {title}
               </h1>
 
@@ -233,12 +236,12 @@ export function BandWeek({
               </span>
               <span
                 className={clsx(
-                  'flex size-[34px] items-center justify-center rounded-full text-[0.9375rem] transition-colors sm:size-11 sm:text-[1.0625rem]',
+                  'display flex size-[34px] items-center justify-center rounded-full text-[1.0625rem] leading-none transition-colors sm:size-11 sm:text-xl',
                   selected
-                    ? 'bg-[#C6A96B] font-bold text-[#1E1811]'
+                    ? 'bg-[#C6A96B] text-[#1E1811]'
                     : off
-                      ? 'font-medium text-[rgba(242,237,226,0.26)]'
-                      : 'font-medium text-[var(--ink)] group-hover:bg-[rgba(242,237,226,0.08)]',
+                      ? 'text-[rgba(242,237,226,0.26)]'
+                      : 'text-[var(--ink)] group-hover:bg-[rgba(242,237,226,0.08)]',
                 )}
               >
                 {value.slice(8, 10)}
