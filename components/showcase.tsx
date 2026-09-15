@@ -115,38 +115,61 @@ async function HouseCard({
   const address = [unit.address_line, sameAsName ? null : unit.city].filter(Boolean).join(', ')
 
   /*
-    A FOTOGRAFIA, E A CASA NUM VIDRO FUMADO POR CIMA.
+    O CARTÃO ESCURO DA CASA — a opção B do mockup «As nossas casas».
 
-    É a opção 1 do mockup «As nossas casas · vidro», e a quarta volta
-    deste cartão. O cartão claro lia-se como uma ficha; o escuro, com a
-    fotografia em cima e uma faixa por baixo, ficou pesado no preto e
-    depois no castanho; a fotografia inteira com o texto num véu não
-    convenceu. Aqui a fotografia ocupa o cartão todo, e a informação vive
-    num painel de vidro a flutuar sobre a parte de baixo: o vidro desfoca
-    a fotografia que tem por trás, e por isso fica com as cores da própria
-    loja em vez de uma cor de fundo.
+    Era um cartão claro com a foto, uma etiqueta quadrada em maiúsculas
+    por cima, e o nome, a morada, duas caixinhas e dois botões por baixo,
+    tudo no creme da página: lia-se como uma ficha, e a casa dizia que
+    era feio. Agora a fotografia fica em cima, limpa e com cantos
+    redondos — sem texto por cima a disputar com o letreiro de Valongo —
+    e por baixo a mesma faixa escura que o funil usa, com os detalhes em
+    ouro. Quem vê a capa já reconhece o desenho quando vai marcar.
+
+    O FUNDO É CAFÉ, E NÃO É CHAPADO. O preto da faixa do funil pesava no
+    meio do creme da página; o castanho liso ficava um bloco de cor; a
+    fotografia inteira e o vidro fumado não convenceram. É o «café com
+    luz» do mockup «As nossas casas · café com profundidade»: o castanho
+    desce de mais claro a mais escuro, com um brilho dourado no canto de
+    cima, uma sombra quente no de baixo e um fio de luz no topo.
   */
   return (
-    <article className="lift group relative h-[432px] overflow-hidden rounded-[28px] bg-[#2A2420] shadow-[0_24px_44px_-26px_rgba(34,29,23,0.5)] sm:h-[500px]">
-      {cover ? (
-        <Photo
-          src={cover.url}
-          alt={cover.alt ?? unit.name}
-          className="absolute inset-0 scale-[1.02] transition-transform duration-700 group-hover:scale-105"
-        />
-      ) : (
-        <span className="absolute inset-0">
+    <article
+      className="band-dark lift group relative flex h-full flex-col overflow-hidden rounded-[26px] shadow-[inset_0_0_0_1px_rgba(211,184,126,0.18),0_26px_46px_-28px_rgba(34,29,23,0.55)]"
+      style={{
+        background:
+          'radial-gradient(420px 260px at 100% 0%, rgba(214,178,112,0.28), rgba(214,178,112,0) 60%), radial-gradient(360px 240px at 0% 100%, rgba(120,84,48,0.35), rgba(120,84,48,0) 65%), linear-gradient(170deg, #4A3A2C 0%, #3A2D22 45%, #2C231B 100%)',
+      }}
+    >
+      {/* O fio de luz no topo do cartão. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{
+          background:
+            'linear-gradient(90deg, rgba(231,204,147,0), rgba(231,204,147,0.45), rgba(231,204,147,0))',
+        }}
+      />
+      <div className="relative mx-2 mt-2 aspect-[16/10] overflow-hidden rounded-[20px] bg-[#2A2420] shadow-[0_10px_24px_-14px_rgba(0,0,0,0.5)]">
+        {cover ? (
+          <Photo
+            src={cover.url}
+            alt={cover.alt ?? unit.name}
+            className="transition-transform duration-700 group-hover:scale-105"
+          />
+        ) : (
           <PhotoFallback seed={unit.name} />
+        )}
+
+        {/* O estado por cima da fotografia, num vidro fumado: lê-se igual
+            sobre a montra clara de Valongo e sobre a parede escura da Maia. */}
+        <span className="absolute top-2.5 left-2.5 inline-flex h-[26px] items-center rounded-full bg-[rgba(20,16,9,0.38)] px-[11px] text-[#F2EDE2] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.18)] backdrop-blur-md">
+          <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
         </span>
-      )}
+      </div>
 
-      <span className="absolute top-3 left-3 inline-flex h-7 items-center rounded-full bg-[rgba(24,19,14,0.35)] px-3 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] backdrop-blur-md">
-        <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
-      </span>
-
-      <div className="absolute inset-x-2.5 bottom-2.5 rounded-[22px] bg-[rgba(24,19,14,0.42)] p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16),0_18px_40px_-20px_rgba(0,0,0,0.45)] backdrop-blur-[18px] backdrop-saturate-[1.2] sm:inset-x-3 sm:bottom-3 sm:p-5">
+      <div className="flex flex-1 flex-col px-[18px] pt-4 pb-[18px] sm:px-6 sm:pt-5 sm:pb-6">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="display text-[1.875rem] leading-[1.05] text-white sm:text-[2.125rem]">
+          <h3 className="display text-[1.875rem] leading-[1.05] text-[#FBF6EC] sm:text-[2.125rem]">
             {unit.name}
           </h3>
           <Link
@@ -159,48 +182,48 @@ async function HouseCard({
         </div>
 
         {address ? (
-          <p className="mt-1.5 flex gap-1.5 text-[0.78125rem] leading-[17px] text-[#EDE6D8] sm:text-[0.8125rem] sm:leading-[19px]">
+          <p className="mt-2 flex gap-1.5 text-[0.78125rem] leading-[17px] text-[#DCCFBC] sm:text-[0.8125rem] sm:leading-[19px]">
             <MapPin size={13} className="mt-0.5 shrink-0 text-[#E7CC93]" aria-hidden />
             <span>{address}</span>
           </p>
         ) : null}
 
         {/* Os dois factos lado a lado, cada rótulo por cima do seu valor. */}
-        <dl className="mt-2.5 grid grid-cols-2 gap-px overflow-hidden rounded-[14px] bg-[rgba(255,255,255,0.14)]">
-          <div className="bg-[rgba(255,255,255,0.10)] px-3 py-2">
-            <dt className="text-[0.59375rem] tracking-[0.18em] text-[rgba(255,255,255,0.62)] uppercase">
+        <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[14px] bg-[rgba(255,255,255,0.10)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+          <div className="bg-[rgba(255,255,255,0.06)] px-3 py-[9px]">
+            <dt className="text-[0.59375rem] tracking-[0.18em] text-[#BFB19C] uppercase">
               {semana ? semana.days : dict.unit.closedNow}
             </dt>
-            <dd className="tabular mt-0.5 text-[0.8125rem] text-white">
+            <dd className="tabular mt-0.5 text-[0.8125rem] text-[#FBF6EC]">
               {semana ? semana.hours : '—'}
             </dd>
           </div>
           {unit.phone ? (
-            <div className="bg-[rgba(255,255,255,0.10)] px-3 py-2">
-              <dt className="text-[0.59375rem] tracking-[0.18em] text-[rgba(255,255,255,0.62)] uppercase">
+            <div className="bg-[rgba(255,255,255,0.06)] px-3 py-[9px]">
+              <dt className="text-[0.59375rem] tracking-[0.18em] text-[#BFB19C] uppercase">
                 {dict.unit.phoneLabel}
               </dt>
-              <dd className="tabular mt-0.5 text-[0.8125rem] text-white">
+              <dd className="tabular mt-0.5 text-[0.8125rem] text-[#FBF6EC]">
                 {/* Sem o +351: numa caixa estreita gasta um quinto da
                     largura para dizer o que toda a gente cá sabe. O link
                     leva-o por dentro, para quem ligar de fora. */}
                 <a
                   href={`tel:${unit.phone.replace(/\s/g, '')}`}
-                  className="toque transition-colors hover:text-[#E7CC93]"
+                  className="toque transition-colors hover:text-[var(--accent)]"
                 >
                   {formatPhone(unit.phone).replace(/^\+351\s*/, '')}
                 </a>
               </dd>
             </div>
           ) : (
-            <div className="bg-[rgba(255,255,255,0.10)]" />
+            <div className="bg-[rgba(255,255,255,0.06)]" />
           )}
         </dl>
 
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3.5 flex gap-2 sm:mt-5">
           <Link
             href={`/agendar/${unit.slug}`}
-            className="botao toque flex h-11 flex-1 items-center justify-center rounded-full bg-[#C6A96B] text-[0.90625rem] font-semibold text-[#1E1811] transition-colors hover:bg-[#D3B87E] sm:h-12 sm:text-[0.9375rem]"
+            className="botao toque flex h-[46px] flex-1 items-center justify-center rounded-full bg-[linear-gradient(180deg,#D2B67B,#BE9F62)] text-[0.90625rem] font-semibold text-[#1E1811] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_10px_22px_-14px_rgba(0,0,0,0.6)] transition-[filter] hover:brightness-105 sm:h-12 sm:text-[0.9375rem]"
           >
             {dict.home.houseBook}
           </Link>
@@ -208,7 +231,7 @@ async function HouseCard({
             href={mapsUrl(unit)}
             target="_blank"
             rel="noreferrer"
-            className="toque inline-flex h-11 shrink-0 items-center gap-[5px] rounded-full px-[15px] text-[0.84375rem] font-medium text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)] transition-colors hover:bg-[rgba(255,255,255,0.08)] sm:h-12 sm:px-5"
+            className="toque inline-flex h-[46px] shrink-0 items-center gap-[5px] rounded-full px-4 text-[0.84375rem] font-medium text-[#FBF6EC] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-colors hover:bg-[rgba(255,255,255,0.06)] sm:h-12 sm:px-5"
           >
             <MapPin size={15} strokeWidth={1.8} aria-hidden />
             {dict.unit.directions}
