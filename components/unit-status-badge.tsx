@@ -11,8 +11,7 @@ import { Badge } from '@/components/ui'
  *
  * Duas formas. A etiqueta (`badge`) é a da montra. O ponto (`dot`) é
  * letra simples com um ponto à frente, sem caixa nem maiúsculas: é a do
- * funil delicado, onde vai por cima da fotografia da loja — e por isso
- * herda a cor de quem o põe.
+ * funil delicado, na lista das lojas. Herda a cor de quem o põe.
  */
 export async function UnitStatusBadge({
   unit,
@@ -47,8 +46,8 @@ export async function UnitStatusBadge({
           aria-hidden
           className={
             status.open
-              ? 'size-1.5 shrink-0 rounded-full bg-[#8FBC85]'
-              : 'size-1.5 shrink-0 rounded-full shadow-[inset_0_0_0_1.5px_#D3B87E]'
+              ? 'size-1.5 shrink-0 rounded-full bg-[var(--ok)]'
+              : 'size-1.5 shrink-0 rounded-full opacity-70 shadow-[inset_0_0_0_1.5px_currentColor]'
           }
         />
         {text}

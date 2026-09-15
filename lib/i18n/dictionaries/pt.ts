@@ -142,6 +142,7 @@ export const pt = {
     /** O que fecha o cartão da loja. Diz o que vem a seguir — o dia —
         em vez de repetir o nome do passo. */
     storeAction: 'Escolher o dia',
+    storeList: 'As nossas lojas',
     dayTitle: 'Que dia lhe dá jeito?',
     daySubtitle: 'Escolha o dia e depois veja quem está de serviço.',
     dayAction: 'Escolher profissional',

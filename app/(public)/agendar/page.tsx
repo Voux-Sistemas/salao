@@ -54,66 +54,85 @@ export default async function ChooseStorePage() {
         <Empty title={dict.unit.noStores} hint={dict.unit.noStoresHint} />
       ) : (
         /*
-          UMA LOJA POR CARTÃO, COM A FOTOGRAFIA EM GRANDE.
+          AS LOJAS COMO AS PROFISSIONAIS: UMA LISTA SÓ.
 
-          É a opção B do mockup «Loja no telemóvel». A primeira versão era
-          uma linha com a foto pequena, uma etiqueta quadrada «ABRE ÀS
-          09:00» em maiúsculas e a morada cortada com reticências — e no
-          telemóvel a casa achou-a grotesca. Aqui a fotografia do salão
-          ocupa o cartão, com o nome e o horário por cima, e a morada
-          inteira por baixo. Escolher uma loja é escolher um sítio, e um
-          sítio reconhece-se pela cara antes da morada.
-
-          O véu escuro no fundo da fotografia é o que deixa ler o nome em
-          branco sobre qualquer foto, clara ou escura.
+          É a opção C do mockup «Loja no telemóvel». Passou por duas antes:
+          uma linha com etiqueta quadrada em maiúsculas e a morada cortada,
+          e cartões com a fotografia em grande e o nome por cima — que
+          ficavam enormes, e em Valongo o nome caía em cima do próprio
+          letreiro da loja. Aqui é o desenho do passo seguinte: no
+          telemóvel um painel com um fio entre as lojas, e a fotografia
+          num círculo pequeno; no monitor um cartão por loja, lado a lado.
         */
-        <div className="flex flex-col gap-2.5 sm:grid sm:grid-cols-2 sm:gap-4">
-          {units.map((unit) => {
-            const cover = covers.get(unit.id)
-            const address = [unit.address_line, unit.city].filter(Boolean).join(', ')
-            return (
-              <Link
-                key={unit.id}
-                href={`/agendar/${unit.slug}`}
-                className="group overflow-hidden rounded-[20px] bg-[var(--surface-raised)] shadow-[0_1px_2px_rgba(34,29,23,0.03)] transition-shadow duration-200 outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:rounded-[22px] sm:hover:shadow-[0_0_0_1px_rgba(142,111,65,0.24),0_14px_32px_-22px_rgba(34,29,23,0.35)]"
-              >
-                <div className="relative h-[150px] overflow-hidden bg-[#2A2420] sm:aspect-[16/9] sm:h-auto">
-                  {cover ? (
-                    <Photo
-                      src={cover.url}
-                      alt={cover.alt ?? unit.name}
-                      className="transition-transform duration-700 group-hover:scale-105"
-                    />
-                  ) : (
-                    <PhotoFallback seed={unit.name} />
-                  )}
-                  <span
-                    aria-hidden
-                    className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,16,9,0)_35%,rgba(20,16,9,0.78)_100%)]"
-                  />
-                  <div className="absolute inset-x-3.5 bottom-3 flex items-end justify-between gap-3 sm:inset-x-5 sm:bottom-4">
-                    <h2 className="display min-w-0 text-[1.375rem] leading-[1.1] text-[#F7F2E8] sm:text-[1.75rem]">
-                      {unit.name}
-                    </h2>
-                    <span className="shrink-0 pb-0.5 text-[#EDE6D8]">
-                      <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
-                    </span>
-                  </div>
-                </div>
+        <>
+          <div className="flex items-center gap-2.5 px-1 sm:gap-3.5 sm:px-0">
+            <h2 className="text-[0.625rem] leading-3 font-medium tracking-[0.18em] whitespace-nowrap text-[var(--accent)] uppercase sm:text-[0.6875rem] sm:leading-[14px]">
+              {dict.funnel.storeList}
+            </h2>
+            <span
+              aria-hidden
+              className="h-px flex-1"
+              style={{
+                background: 'linear-gradient(90deg, rgba(198,169,107,0.4), rgba(198,169,107,0))',
+              }}
+            />
+          </div>
 
-                <div className="flex items-center gap-2.5 px-3.5 pt-2.5 pb-3 sm:px-5 sm:py-3.5">
-                  <p className="min-w-0 flex-1 text-[0.75rem] leading-4 text-[#8A7F6E] sm:text-[0.8125rem] sm:leading-[19px]">
-                    {address}
-                  </p>
-                  <span className="inline-flex shrink-0 items-center gap-0.5 text-[0.78125rem] font-semibold text-[var(--accent)] transition-colors group-hover:text-[var(--action-strong)] sm:text-[0.84375rem]">
-                    {dict.funnel.storeAction}
-                    <ChevronRight size={14} strokeWidth={2} aria-hidden />
-                  </span>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
+          <ul className="mt-2.5 overflow-hidden rounded-[18px] bg-[var(--surface-raised)] shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:mt-3.5 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:rounded-none sm:bg-transparent sm:shadow-none">
+            {units.map((unit, index) => {
+              const cover = covers.get(unit.id)
+              const address = [unit.address_line, unit.city].filter(Boolean).join(', ')
+              return (
+                <li key={unit.id}>
+                  {index > 0 ? (
+                    <span
+                      aria-hidden
+                      className="ml-[72px] block h-px bg-[rgba(34,29,23,0.06)] sm:hidden"
+                    />
+                  ) : null}
+                  <Link
+                    href={`/agendar/${unit.slug}`}
+                    className="group flex items-center gap-3 py-3 pr-4 pl-3 transition-[background-color,box-shadow] duration-200 outline-offset-2 hover:bg-[#FFFDF8] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:gap-3.5 sm:rounded-[18px] sm:bg-[var(--surface-raised)] sm:py-3.5 sm:pr-[18px] sm:pl-3.5 sm:hover:shadow-[0_0_0_1px_rgba(142,111,65,0.24),0_8px_22px_-16px_rgba(34,29,23,0.28)]"
+                  >
+                    <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-[#F3EBDA] sm:size-14">
+                      {cover ? (
+                        <Photo src={cover.url} alt={cover.alt ?? unit.name} />
+                      ) : (
+                        <PhotoFallback seed={unit.name} compact />
+                      )}
+                      {/* O fio dourado vai por cima da fotografia, e escurece no hover. */}
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgba(198,169,107,0.45)] transition-shadow group-hover:shadow-[inset_0_0_0_1px_#A88A57]"
+                      />
+                    </span>
+
+                    <span className="min-w-0 flex-1">
+                      <span className="display block text-[1.0625rem] leading-[1.2] text-[var(--ink)] sm:text-lg">
+                        {unit.name}
+                      </span>
+                      {address ? (
+                        <span className="mt-px block text-[0.75rem] leading-4 text-[#8A7F6E]">
+                          {address}
+                        </span>
+                      ) : null}
+                      <span className="mt-[3px] block text-[#8A7F6E]">
+                        <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
+                      </span>
+                    </span>
+
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={1.8}
+                      aria-hidden
+                      className="shrink-0 text-[#B3A68F] transition-colors group-hover:text-[var(--action-strong)]"
+                    />
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </>
       )}
     </FunnelStage>
   )
