@@ -58,8 +58,11 @@ export function FunnelStage({
    * são as horas em qualquer dia — só o que se desenha.
    */
   picksStaff?: boolean
-  /** A loja, em maiúsculas pequenas por cima do título. */
-  eyebrow: string
+  /**
+   * A loja, em maiúsculas pequenas por cima do título. Sem ela (no passo
+   * da loja, que ainda não tem loja nenhuma) fica só a conta do passo.
+   */
+  eyebrow?: string
   title: string
   /** O passo anterior: o botão «‹ Voltar». */
   back?: { href: string; label: string }
@@ -107,7 +110,7 @@ export function FunnelStage({
             <span className="truncate text-[0.625rem] leading-3 font-semibold tracking-[0.16em] text-[var(--accent)] uppercase sm:hidden">
               {eyebrow}
               <span className="font-medium tracking-[0.04em] text-[#8F8472] normal-case">
-                {' · '}
+                {eyebrow ? ' · ' : null}
                 {count}
               </span>
             </span>
@@ -115,9 +118,13 @@ export function FunnelStage({
 
           <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
             <div className="min-w-0">
-              <p className="mt-5 hidden text-[0.6875rem] leading-[14px] font-semibold tracking-[0.2em] text-[var(--accent)] uppercase sm:block">
-                {eyebrow}
-              </p>
+              {eyebrow ? (
+                <p className="mt-5 hidden text-[0.6875rem] leading-[14px] font-semibold tracking-[0.2em] text-[var(--accent)] uppercase sm:block">
+                  {eyebrow}
+                </p>
+              ) : (
+                <span aria-hidden className="hidden h-2 sm:block" />
+              )}
               <h1 className="display animate-rise mx-0.5 mt-3 text-[1.3125rem] leading-[1.2] text-balance text-[var(--ink)] sm:mx-0 sm:mt-2 sm:text-[1.875rem] sm:leading-[1.15] lg:text-[2.125rem]">
                 {title}
               </h1>
