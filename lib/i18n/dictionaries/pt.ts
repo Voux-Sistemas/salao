@@ -55,7 +55,6 @@ export const pt = {
     subtitle:
       'Escolha o serviço, a profissional e a hora. Sem telefonemas, sem esperas.',
     cta: 'Marcar agora',
-    ctaSecondary: 'As nossas casas',
     heroEyebrow: 'Bem-vinda',
     heroTitle1: 'A beleza tem',
     heroTitleItalic: 'morada',

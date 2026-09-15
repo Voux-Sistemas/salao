@@ -48,7 +48,6 @@ export const es: Dictionary = {
     subtitle:
       'Elige el servicio, la profesional y la hora. Sin llamadas, sin esperas.',
     cta: 'Reservar ahora',
-    ctaSecondary: 'Nuestras casas',
     heroEyebrow: 'Bienvenida',
     heroTitle1: 'La belleza tiene',
     heroTitleItalic: 'dirección',

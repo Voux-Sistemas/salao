@@ -395,27 +395,28 @@ export async function Showcase({ org }: { org: Org }) {
               'radial-gradient(closest-side, color-mix(in srgb, var(--gold) 13%, transparent), transparent)',
           }}
         />
-        <div className="relative mx-auto flex min-h-[92svh] max-w-5xl flex-col items-center justify-center px-5 pb-24 pt-28 text-center sm:px-8">
-          <LogoMark size="xl" className="animate-bloom" />
-          <p className="eyebrow eyebrow-gold animate-rise delay-2 mt-10">
+        <div className="relative mx-auto flex max-w-5xl flex-col items-center justify-center px-5 pt-10 pb-14 text-center sm:min-h-[92svh] sm:px-8 sm:pt-28 sm:pb-24">
+          <LogoMark size="hero" className="animate-bloom" />
+          <p className="eyebrow eyebrow-gold animate-rise delay-2 mt-6 sm:mt-10">
             {cities || dict.home.heroEyebrow}
           </p>
-          <h1 className="display-hero animate-rise delay-3 mt-6 max-w-4xl text-balance">
+          <h1 className="display-hero animate-rise delay-3 mt-4 max-w-4xl text-balance sm:mt-6">
             {dict.home.heroTitle1}{' '}
             <span className="display-italic text-[var(--accent)]">
               {dict.home.heroTitleItalic}
             </span>
             {dict.home.heroTitle2}
           </h1>
-          <p className="animate-rise delay-4 mt-8 max-w-md text-[0.9375rem] leading-relaxed text-[var(--ink-muted)]">
+          <p className="animate-rise delay-4 mt-4 max-w-md text-[0.875rem] leading-relaxed text-[var(--ink-muted)] sm:mt-8 sm:text-[0.9375rem]">
             {dict.home.subtitle}
           </p>
-          <div className="animate-rise delay-5 mt-11 flex flex-wrap items-center justify-center gap-3">
-            <ButtonLink href="/agendar" size="lg">
+          {/* UM BOTÃO SÓ. Havia um segundo, «As nossas casas», que levava
+              à secção logo por baixo: no telemóvel ficava cortado na dobra,
+              com outra largura, e disputava a atenção com o que interessa
+              — marcar. As casas continuam a um gesto de distância. */}
+          <div className="animate-rise delay-5 mt-7 flex w-full justify-center sm:mt-11">
+            <ButtonLink href="/agendar" size="lg" className="w-full max-w-[18rem] sm:w-auto sm:max-w-none">
               {dict.home.cta}
-            </ButtonLink>
-            <ButtonLink href="#casas" size="lg" variant="outline">
-              {dict.home.ctaSecondary}
             </ButtonLink>
           </div>
         </div>

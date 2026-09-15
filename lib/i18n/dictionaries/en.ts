@@ -48,7 +48,6 @@ export const en: Dictionary = {
     subtitle:
       'Pick the service, the professional and the time. No phone calls, no waiting.',
     cta: 'Book now',
-    ctaSecondary: 'Our houses',
     heroEyebrow: 'Welcome',
     heroTitle1: 'Beauty has an',
     heroTitleItalic: 'address',

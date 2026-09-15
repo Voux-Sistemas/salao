@@ -13,11 +13,14 @@ import { BRAND } from '@/lib/branding'
  * desenhado à mão em SVG para escalar sem perder o fio.
  */
 
-const LOGO_SIZE: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
+const LOGO_SIZE: Record<'sm' | 'md' | 'lg' | 'xl' | 'hero', string> = {
   sm: 'h-10 w-10',
   md: 'h-16 w-16',
   lg: 'h-28 w-28',
   xl: 'h-44 w-44 sm:h-56 sm:w-56',
+  // O da capa: no telemóvel o xl levava quase metade do ecrã e empurrava
+  // o botão de marcar para baixo da dobra. No monitor é o mesmo do xl.
+  hero: 'h-36 w-36 sm:h-56 sm:w-56',
 }
 
 export function LogoMark({
