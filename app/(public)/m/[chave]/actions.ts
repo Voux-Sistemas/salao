@@ -27,7 +27,16 @@ import { isValidInstant, isoDay } from '@/lib/time'
 
 export type ManageState = { error: string | null; done: string | null }
 
-export const EMPTY: ManageState = { error: null, done: null }
+/*
+ * NUM FICHEIRO «use server» SÓ SE EXPORTAM FUNÇÕES.
+ *
+ * Vivia aqui um `export const EMPTY` — o estado inicial dos formulários,
+ * que nem sequer era usado. O Next recusa o ficheiro inteiro quando ele
+ * exporta outra coisa que não funções (erro E352, «A "use server" file
+ * can only export async functions»), e a página da marcação caía no
+ * ecrã de contratempo sempre que a cliente a abria para mudar ou
+ * desmarcar. Tipos podem ficar: somem na compilação.
+ */
 
 // ---------------------------------------------------------------------
 // Desmarcar
