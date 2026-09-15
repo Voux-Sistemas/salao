@@ -1,17 +1,12 @@
-import Link from 'next/link'
-import { ChevronRight, MapPin } from 'lucide-react'
 import { sql } from '@/lib/db'
-import { listUnits, type Org, type Unit } from '@/lib/org'
-import { weekDigest, weeklyHours } from '@/lib/hours'
-import { getDictionary, getLanguage, type Dictionary } from '@/lib/i18n'
-import type { Language } from '@/lib/i18n/config'
-import { formatPhone } from '@/lib/text'
+import { listUnits, type Org } from '@/lib/org'
+import { getDictionary, getLanguage } from '@/lib/i18n'
 import { ButtonLink } from '@/components/ui'
 import { LogoMark } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
-import { ScrollDots } from '@/components/scroll-dots'
-import { UnitStatusBadge } from '@/components/unit-status-badge'
-import { Photo, PhotoFallback } from '@/components/photo'
+import { Photo } from '@/components/photo'
+import { FamilyDiscs } from '@/components/family-discs'
+import { HouseCard } from '@/components/house-card'
 
 /**
  * A montra: o primeiro (e às vezes único) contacto de uma cliente com a
@@ -26,15 +21,6 @@ import { Photo, PhotoFallback } from '@/components/photo'
  * é quando ele é um número verdadeiro e não um «a partir de».
  */
 
-type CatalogRow = {
-  category_slug: string
-  category_id: string
-  category_name: string
-  service_id: string
-  name: string
-  description: string | null
-}
-
 type PhotoRow = {
   id: string
   unit_id: string
@@ -44,249 +30,20 @@ type PhotoRow = {
 }
 
 /**
- * As famílias que já têm fotografia em public/fotos/familias.
- *
- * Escrito à mão de propósito: o servidor não vai ao disco perguntar se
- * o ficheiro existe a cada pedido, e uma família sem fotografia mostra
- * o disco de ouro com a inicial em vez de uma imagem partida. Quando
- * chegar a oitava família, acrescenta-se aqui o nome do ficheiro.
- */
-const FAMILY_PHOTOS = new Set([
-  'cabelo',
-  'coloracao',
-  'tratamentos-capilares',
-  'barbearia',
-  'maos-e-pes',
-  'rosto',
-  'corpo',
-])
-
-/**
  * As marcas que entram nos tratamentos da casa. Saíram do preçário —
  * «Tratamento Truss», «Coloração (inoa)», «Tratamento plex» — e não de
  * uma lista de marcas bonitas. Mudar aqui muda a fita.
  */
 const BRANDS = ['Truss', 'Brae', 'L’Oréal', 'Inoa', 'Plex', 'BaByliss']
 
-function mapsUrl(unit: Unit) {
-  const address = [unit.address_line, unit.postal_code, unit.city]
-    .filter(Boolean)
-    .join(', ')
-  return `https://maps.google.com/?q=${encodeURIComponent(address || unit.name)}`
-}
-
-/**
- * A FICHA DE UMA CASA.
- *
- * Tinha o nome escrito duas vezes — a cidade por cima e o nome por
- * baixo, e nesta rede são a mesma palavra —, a morada alinhada à
- * direita em três linhas de margem esquerda irregular, e uma lista de
- * definições que mandava o olho de uma ponta à outra do ecrã em cada
- * linha. Era isso o desarrumado, não a quantidade de coisas.
- *
- * E o horário dizia «hoje». O «hoje» muda conforme a hora a que se olha
- * para ele, e ficava a contradizer o distintivo do estado mesmo quando
- * ambos estavam certos: «abre amanhã às 09:00» por cima de «hoje
- * 09:00–21:00». Passa a dizer a semana, que não muda; o ESTADO vive no
- * distintivo, o HORÁRIO vive na ficha, e nunca se pisam.
- */
-async function HouseCard({
-  unit,
-  cover,
-  dict,
-  language,
-}: {
-  unit: Unit
-  cover: PhotoRow | null
-  dict: Dictionary
-  language: Language
-}) {
-  const digest = weekDigest(
-    await weeklyHours(unit.id),
-    dict.common.weekdaysShort,
-    dict.unit.closedNow,
-  )
-  const open = digest.filter((row) => row.hours !== dict.unit.closedNow)
-  const semana = open[0] ?? null
-
-  // A cidade só se escreve quando não é o próprio nome da casa.
-  const sameAsName =
-    unit.city && unit.city.trim().toLowerCase() === unit.name.trim().toLowerCase()
-  const address = [unit.address_line, sameAsName ? null : unit.city].filter(Boolean).join(', ')
-
-  /*
-    O CARTÃO ESCURO DA CASA — a opção B do mockup «As nossas casas».
-
-    Era um cartão claro com a foto, uma etiqueta quadrada em maiúsculas
-    por cima, e o nome, a morada, duas caixinhas e dois botões por baixo,
-    tudo no creme da página: lia-se como uma ficha, e a casa dizia que
-    era feio. Agora a fotografia fica em cima, limpa e com cantos
-    redondos — sem texto por cima a disputar com o letreiro de Valongo —
-    e por baixo a mesma faixa escura que o funil usa, com os detalhes em
-    ouro. Quem vê a capa já reconhece o desenho quando vai marcar.
-
-    O FUNDO É CAFÉ, E NÃO É CHAPADO. O preto da faixa do funil pesava no
-    meio do creme da página; o castanho liso ficava um bloco de cor; a
-    fotografia inteira e o vidro fumado não convenceram. É o «café com
-    luz» do mockup «As nossas casas · café com profundidade»: o castanho
-    desce de mais claro a mais escuro, com um brilho dourado no canto de
-    cima, uma sombra quente no de baixo e um fio de luz no topo.
-  */
-  return (
-    <article
-      className="band-dark lift group relative flex h-full flex-col overflow-hidden rounded-[26px] shadow-[inset_0_0_0_1px_rgba(211,184,126,0.18),0_26px_46px_-28px_rgba(34,29,23,0.55)]"
-      style={{
-        background:
-          'radial-gradient(420px 260px at 100% 0%, rgba(214,178,112,0.28), rgba(214,178,112,0) 60%), radial-gradient(360px 240px at 0% 100%, rgba(120,84,48,0.35), rgba(120,84,48,0) 65%), linear-gradient(170deg, #4A3A2C 0%, #3A2D22 45%, #2C231B 100%)',
-      }}
-    >
-      {/* O fio de luz no topo do cartão. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{
-          background:
-            'linear-gradient(90deg, rgba(231,204,147,0), rgba(231,204,147,0.45), rgba(231,204,147,0))',
-        }}
-      />
-      <div className="relative mx-2 mt-2 aspect-[16/10] overflow-hidden rounded-[20px] bg-[#2A2420] shadow-[0_10px_24px_-14px_rgba(0,0,0,0.5)]">
-        {cover ? (
-          <Photo
-            src={cover.url}
-            alt={cover.alt ?? unit.name}
-            className="transition-transform duration-700 group-hover:scale-105"
-          />
-        ) : (
-          <PhotoFallback seed={unit.name} />
-        )}
-
-        {/* O estado por cima da fotografia, num vidro fumado: lê-se igual
-            sobre a montra clara de Valongo e sobre a parede escura da Maia. */}
-        <span className="absolute top-2.5 left-2.5 inline-flex h-[26px] items-center rounded-full bg-[rgba(20,16,9,0.38)] px-[11px] text-[#F2EDE2] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.18)] backdrop-blur-md">
-          <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
-        </span>
-      </div>
-
-      <div className="flex flex-1 flex-col px-[18px] pt-4 pb-[18px] sm:px-6 sm:pt-5 sm:pb-6">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="display text-[1.875rem] leading-[1.05] text-[#FBF6EC] sm:text-[2.125rem]">
-            {unit.name}
-          </h3>
-          <Link
-            href={`/loja/${unit.slug}`}
-            className="toque inline-flex shrink-0 items-center gap-0.5 text-[0.78125rem] font-semibold text-[#E7CC93] transition-colors hover:text-[#F3DDB0] sm:text-[0.8125rem]"
-          >
-            {dict.home.houseVisit}
-            <ChevronRight size={13} strokeWidth={2} aria-hidden />
-          </Link>
-        </div>
-
-        {address ? (
-          <p className="mt-2 flex gap-1.5 text-[0.78125rem] leading-[17px] text-[#DCCFBC] sm:text-[0.8125rem] sm:leading-[19px]">
-            <MapPin size={13} className="mt-0.5 shrink-0 text-[#E7CC93]" aria-hidden />
-            <span>{address}</span>
-          </p>
-        ) : null}
-
-        {/* Os dois factos lado a lado, cada rótulo por cima do seu valor. */}
-        <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[14px] bg-[rgba(255,255,255,0.10)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-          <div className="bg-[rgba(255,255,255,0.06)] px-3 py-[9px]">
-            <dt className="text-[0.59375rem] tracking-[0.18em] text-[#BFB19C] uppercase">
-              {semana ? semana.days : dict.unit.closedNow}
-            </dt>
-            <dd className="tabular mt-0.5 text-[0.8125rem] text-[#FBF6EC]">
-              {semana ? semana.hours : '—'}
-            </dd>
-          </div>
-          {unit.phone ? (
-            <div className="bg-[rgba(255,255,255,0.06)] px-3 py-[9px]">
-              <dt className="text-[0.59375rem] tracking-[0.18em] text-[#BFB19C] uppercase">
-                {dict.unit.phoneLabel}
-              </dt>
-              <dd className="tabular mt-0.5 text-[0.8125rem] text-[#FBF6EC]">
-                {/* Sem o +351: numa caixa estreita gasta um quinto da
-                    largura para dizer o que toda a gente cá sabe. O link
-                    leva-o por dentro, para quem ligar de fora. */}
-                <a
-                  href={`tel:${unit.phone.replace(/\s/g, '')}`}
-                  className="toque transition-colors hover:text-[var(--accent)]"
-                >
-                  {formatPhone(unit.phone).replace(/^\+351\s*/, '')}
-                </a>
-              </dd>
-            </div>
-          ) : (
-            <div className="bg-[rgba(255,255,255,0.06)]" />
-          )}
-        </dl>
-
-        <div className="mt-3.5 flex gap-2 sm:mt-5">
-          <Link
-            href={`/agendar/${unit.slug}`}
-            className="botao toque flex h-[46px] flex-1 items-center justify-center rounded-full bg-[linear-gradient(180deg,#D2B67B,#BE9F62)] text-[0.90625rem] font-semibold text-[#1E1811] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_10px_22px_-14px_rgba(0,0,0,0.6)] transition-[filter] hover:brightness-105 sm:h-12 sm:text-[0.9375rem]"
-          >
-            {dict.home.houseBook}
-          </Link>
-          <a
-            href={mapsUrl(unit)}
-            target="_blank"
-            rel="noreferrer"
-            className="toque inline-flex h-[46px] shrink-0 items-center gap-[5px] rounded-full px-4 text-[0.84375rem] font-medium text-[#FBF6EC] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-colors hover:bg-[rgba(255,255,255,0.06)] sm:h-12 sm:px-5"
-          >
-            <MapPin size={15} strokeWidth={1.8} aria-hidden />
-            {dict.unit.directions}
-          </a>
-        </div>
-      </div>
-    </article>
-  )
-}
-
 export async function Showcase({ org }: { org: Org }) {
   // A língua vem antes de tudo o resto: o catálogo sai da base já
   // traduzido, e a consulta precisa de saber para quem escreve.
   const language = await getLanguage()
 
-  const [dict, units, catalog, photos] = await Promise.all([
+  const [dict, units, photos] = await Promise.all([
     getDictionary(),
     listUnits(),
-    // Só o que se mostra: nome, categoria e a linha de descrição. O
-    // preço e a duração ficaram para o funil de marcação — pedi-los aqui
-    // era pagar a travessia para os deitar fora deste lado.
-    sql<CatalogRow[]>`
-      select c.id as category_id,
-             c.slug as category_slug,
-             name_in(${language}, c.name, c.name_en, c.name_es) as category_name,
-             s.id as service_id,
-             name_in(${language}, s.name, s.name_en, s.name_es) as name,
-             name_in(${language}, s.description,
-                     s.description_en, s.description_es) as description
-        from service s
-        join service_category c on c.id = s.category_id and c.is_active
-       where s.org_id = ${org.id} and s.is_active and s.bookable_online
-       /*
-        * E QUE ALGUÉM SAIBA FAZER.
-        *
-        * A montra é uma promessa: o que está aqui, a casa faz. Um
-        * serviço sem ninguém com a habilidade levava a cliente ao
-        * funil para lhe dizer, três ecrãs depois, que não havia
-        * horas — em nenhum dia, para sempre. Aqui a pergunta é da
-        * organização inteira, não de uma loja: basta que alguém o
-        * faça nalguma casa para valer a pena mostrá-lo.
-        */
-       and exists (
-         select 1
-           from staff_skill ss
-           join staff st on st.id = ss.staff_id
-          where ss.service_id = s.id
-            and st.is_active
-            and st.accepts_online_booking
-            and st.org_id = ${org.id}
-       )
-       -- Ordenar pelo nome português mantém a mesma ordem nas três
-       -- línguas, que é o que a casa reconhece ao telefone.
-       order by c.sort_order, c.name, s.sort_order, s.name
-    `,
     // As fotografias das duas casas, pela ordem em que a dona as pôs.
     // Servem três sítios desta página: o fundo do herói, a ficha de
     // cada casa e a galeria — por isso vêm todas numa consulta só.
@@ -324,32 +81,6 @@ export async function Showcase({ org }: { org: Org }) {
     unit,
     cover: coverOf.get(unit.id) ?? null,
   }))
-
-  const categories = new Map<string, { name: string; services: CatalogRow[] }>()
-  for (const row of catalog) {
-    const entry = categories.get(row.category_id) ?? {
-      name: row.category_name,
-      services: [],
-    }
-    entry.services.push(row)
-    categories.set(row.category_id, entry)
-  }
-
-  /*
-   * AS FAMÍLIAS, PARA OS DISCOS.
-   *
-   * O nome sai da base já traduzido; o `slug` não se traduz e é ele que
-   * encontra a fotografia em `public/fotos/familias`. Uma família sem
-   * serviços activos não aparece — um disco que abre uma lista vazia é
-   * pior do que um disco a menos.
-   */
-  const families = [...categories.entries()]
-    .map(([id, entry]) => ({
-      slug: catalog.find((row) => row.category_id === id)?.category_slug ?? '',
-      name: entry.name,
-      count: entry.services.length,
-    }))
-    .filter((family) => family.slug !== '' && family.count > 0)
 
   // «Fale connosco» é o WhatsApp da casa, e é uma conversa que ela
   // começa — não há automatismo nenhum do outro lado, só a mensagem já
@@ -452,96 +183,7 @@ export async function Showcase({ org }: { org: Org }) {
         className="scroll-mt-16 border-t border-[var(--line-soft)]"
       >
         <div className="mx-auto max-w-6xl px-5 pt-10 pb-2 sm:px-8 sm:pt-16 sm:pb-6">
-          {/*
-            UM TÍTULO, E MAIS NADA ESCRITO.
-
-            Aqui estavam três coisas a dizer a mesma: um rótulo em
-            maiúsculas, uma frase de duas linhas, e um botão — tudo
-            antes de se chegar às fotografias. As sete imagens por baixo
-            dizem o que se faz aqui melhor e mais depressa do que
-            qualquer frase, e o botão desceu para depois delas: pedi-lo
-            antes era fazer uma pergunta antes de haver resposta.
-          */}
-          <Reveal>
-            <h2 className="display text-balance text-center text-[1.5rem] leading-tight text-[var(--ink)] sm:text-[2rem]">
-              {dict.home.servicesTitle}
-            </h2>
-          </Reveal>
-
-          {/*
-            No telemóvel as sete não cabem, e espremê-las em duas colunas
-            dava discos do tamanho de uma moeda. Arrastam-se com o dedo,
-            com encaixe — cada família pára no sítio, não a meio.
-          */}
-          <Reveal
-            group
-            className="scrollbar-none -mr-5 mt-6 flex snap-x snap-mandatory gap-[18px] overflow-x-auto pb-2 pr-5 sm:mr-0 sm:mt-9 sm:flex-wrap sm:justify-between sm:gap-5 sm:overflow-visible sm:pr-0"
-          >
-            {families.map((family) => (
-              <Link
-                key={family.slug}
-                href="/servicos"
-                className="toque group w-[5.75rem] shrink-0 snap-start text-center sm:w-[6.5rem]"
-              >
-                <span
-                  className="relative block aspect-square overflow-hidden rounded-full transition-transform duration-500 group-hover:scale-[1.04]"
-                  style={{
-                    boxShadow:
-                      '0 0 0 1px var(--line), 0 0 0 5px var(--surface), 0 0 0 6px color-mix(in srgb, var(--gold) 55%, transparent)',
-                  }}
-                >
-                  {FAMILY_PHOTOS.has(family.slug) ? (
-                    <>
-                      <Photo
-                        src={`/fotos/familias/${family.slug}.jpg`}
-                        alt={family.name}
-                      />
-                      {/* Escurece o fundo do disco: sem isto, uma
-                          fotografia clara encosta no creme da página e o
-                          círculo desaparece. */}
-                      <span
-                        aria-hidden
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            'linear-gradient(to top, color-mix(in srgb, #131009 34%, transparent), transparent 58%)',
-                        }}
-                      />
-                    </>
-                  ) : (
-                    <span
-                      aria-hidden
-                      className="display absolute inset-0 grid place-items-center text-2xl text-[var(--accent)]"
-                      style={{
-                        background:
-                          'linear-gradient(150deg, color-mix(in srgb, var(--gold) 22%, var(--surface-2)), var(--surface-2))',
-                      }}
-                    >
-                      {family.name.slice(0, 1)}
-                    </span>
-                  )}
-                </span>
-
-                {/* O nome guarda duas linhas de altura, para os discos
-                    ficarem todos à mesma altura. O número de serviços de
-                    cada família saiu: não dizia nada a quem escolhe. */}
-                <span className="display mt-2.5 block min-h-[2.4em] text-[0.84375rem] leading-[1.2] text-[var(--ink)] sm:mt-3 sm:text-[0.875rem]">
-                  {family.name}
-                </span>
-              </Link>
-            ))}
-          </Reveal>
-          <ScrollDots className="mt-2 sm:hidden" />
-
-          <div className="mt-4 flex justify-center sm:mt-8">
-            <Link
-              href="/servicos"
-              className="link-slide inline-flex items-center gap-0.5 text-[0.84375rem] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--action-strong)]"
-            >
-              {dict.home.servicesAll}
-              <ChevronRight size={14} strokeWidth={2} aria-hidden />
-            </Link>
-          </div>
+          <FamilyDiscs orgId={org.id} dict={dict} language={language} />
         </div>
       </section>
 
