@@ -28,7 +28,7 @@ export const es: Dictionary = {
     book: 'Reservar',
     account: 'Mi cuenta',
     signIn: 'Entrar',
-    reschedule: 'Cambiar cita',
+    reschedule: 'Área de cliente',
     signOut: 'Salir',
     language: 'Idioma',
   },

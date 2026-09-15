@@ -7,6 +7,7 @@ import { getDictionary, getLanguage, LANGUAGE_TAG } from '@/lib/i18n'
 import { BRAND } from '@/lib/branding'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { LogoSeal } from '@/components/brand'
+import { UserRound } from 'lucide-react'
 import { ButtonLink } from '@/components/ui'
 import { FooterInvite } from '@/components/footer-invite'
 
@@ -124,7 +125,17 @@ export async function PublicChrome({
             </span>
           </Link>
 
-          <nav className="flex shrink-0 items-center gap-1 sm:gap-4">
+          {/*
+            UMA ORDEM, DO MAIS QUIETO AO MAIS FORTE.
+
+            Eram cinco coisas quase da mesma cor e com o mesmo peso —
+            Lojas, Serviços, a pílula cinzenta «Remarcar», «PT · EN · ES»
+            e «Marcar» só com contorno — e não se percebia qual era a
+            principal. Agora: as ligações em cinzento, um fio, a «Área do
+            Cliente» com o ícone de pessoa, a língua em pequeno, e
+            «Marcar» como o único botão cheio.
+          */}
+          <nav className="flex shrink-0 items-center gap-2 sm:gap-5">
             {/*
               «ONDE» E «O QUÊ» SÃO DUAS PERGUNTAS, E CADA UMA TEM A SUA
               PORTA.
@@ -150,38 +161,39 @@ export async function PublicChrome({
                 </Link>
               </>
             ) : null}
+            {!compact ? (
+              <span aria-hidden className="hidden h-5 w-px bg-[var(--line)] md:block" />
+            ) : null}
 
             {/*
-              «REMARCAR» AO LADO DO «MARCAR», E À VISTA EM TODOS OS ECRÃS.
+              A «ÁREA DO CLIENTE», À VISTA EM TODOS OS ECRÃS.
 
-              Era aqui o «Entrar», e levava a um código que não tinha quem o
-              enviasse. Estava escondido no telemóvel — que é justamente
-              onde a cliente o procura. Passa a botão, mais quieto do que o
-              «Marcar» para marcar continuar a ser o principal.
+              Chamava-se «Remarcar», e as clientes procuram-na por este
+              nome. Leva ao mesmo sítio: as marcações guardadas neste
+              telemóvel, ou procurá-las pelo telemóvel e pelo nome. Num
+              ecrã muito estreito fica só o ícone, com o nome para quem o
+              ouve.
             */}
-            <ButtonLink
+            <Link
               href="/remarcar"
-              size="sm"
-              variant="quiet"
-              className="min-h-11 sm:min-h-0"
+              aria-label={dict.nav.reschedule}
+              className="inline-flex min-h-11 items-center gap-1.5 text-[0.8125rem] font-medium text-[var(--ink)] transition-colors hover:text-[var(--accent)] sm:min-h-0 sm:gap-[7px] sm:text-[0.84375rem]"
             >
-              {dict.nav.reschedule}
-            </ButtonLink>
+              <UserRound size={16} strokeWidth={1.8} className="text-[var(--accent)]" aria-hidden />
+              <span className="max-[359px]:hidden">{dict.nav.reschedule}</span>
+            </Link>
 
             <Suspense fallback={null}>
               <LanguageSwitcher current={language} />
             </Suspense>
 
-            {/* O botão continua com o mesmo ar; só o dedo é que ganha
-                mais oito pixéis de altura onde não há rato. */}
-            <ButtonLink
+            {/* O único botão cheio do cabeçalho: marcar é o principal. */}
+            <Link
               href="/agendar"
-              size="sm"
-              variant="outline"
-              className="ml-1 min-h-11 sm:min-h-0"
+              className="botao sheen inline-flex h-9 items-center rounded-full bg-[var(--action)] px-4 text-[0.8125rem] font-semibold text-[var(--action-ink)] transition-all duration-300 select-none hover:-translate-y-px hover:bg-[var(--action-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:translate-y-px sm:h-10 sm:px-[22px] sm:text-[0.84375rem]"
             >
               {dict.nav.book}
-            </ButtonLink>
+            </Link>
           </nav>
         </div>
       </header>
@@ -362,7 +374,7 @@ export async function PublicChrome({
             {/*
               A PORTA DA EQUIPA.
 
-              O «Remarcar» do cabeçalho é da cliente; esta é outra, e
+              A «Área do Cliente» do cabeçalho é da cliente; esta é outra, e
               é a que se abre mais vezes por dia. Aqui em baixo, com
               contorno e um cadeado a dizer de quem é — em cima, ao lado
               do outro «entrar», eram duas portas parecidas a levar a

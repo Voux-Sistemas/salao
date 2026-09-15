@@ -27,7 +27,7 @@ export const pt = {
     book: 'Marcar',
     account: 'A minha conta',
     signIn: 'Entrar',
-    reschedule: 'Remarcar',
+    reschedule: 'Área do Cliente',
     signOut: 'Sair',
     language: 'Língua',
   },

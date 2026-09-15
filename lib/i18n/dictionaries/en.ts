@@ -28,7 +28,7 @@ export const en: Dictionary = {
     book: 'Book',
     account: 'My account',
     signIn: 'Sign in',
-    reschedule: 'Reschedule',
+    reschedule: 'Client area',
     signOut: 'Sign out',
     language: 'Language',
   },
