@@ -290,6 +290,9 @@ export function BandWeek({
             <Link
               key={value}
               href={href(value)}
+              // Sem pré-carregamento: são trinta ligações à vista, e cada uma
+              // pedia a página ao servidor (e à base) só por aparecer no ecrã.
+              prefetch={false}
               aria-current={selected ? 'date' : undefined}
               className={clsx(
                 shape,
@@ -336,6 +339,7 @@ function WeekArrow({
     <Link
       href={href}
       aria-label={label}
+      prefetch={false}
       className={clsx(
         shape,
         'text-[#E9E2D4] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.16)] transition-colors outline-offset-2 hover:bg-[rgba(242,237,226,0.08)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]',

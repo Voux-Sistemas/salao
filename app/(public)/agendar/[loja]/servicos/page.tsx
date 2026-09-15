@@ -536,6 +536,11 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                               // a cada toque — o carrinho muda de endereço,
                               // mas a cliente não está a mudar de sítio.
                               scroll={false}
+                              // Sem pré-carregamento: há dezenas destas linhas no
+                              // ecrã, e cada uma pedia a página ao servidor (e à
+                              // base de dados) só por aparecer. Ver o checkup de
+                              // 2026-09-15.
+                              prefetch={false}
                               // O nome do serviço só existe para quem lê o
                               // ecrã; para quem o ouve, vai no rótulo.
                               aria-label={`${

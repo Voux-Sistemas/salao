@@ -10,8 +10,14 @@ import {
 import { IconBell, IconClose } from '@/components/desk-icons'
 import { SOURCE_LABEL } from '@/lib/status'
 
-/** De meio em meio minuto. Uma marcação não é uma corrida. */
-const INTERVALO = 30_000
+/**
+ * De minuto a minuto. Uma marcação não é uma corrida.
+ *
+ * Era de meio em meio minuto, e cada pergunta são três idas à base
+ * (a sessão, quem é, e as marcações). Um tablet esquecido aberto no
+ * balcão fazia quase nove mil consultas por dia só com isto.
+ */
+const INTERVALO = 60_000
 
 /** Quanto tempo o cartão fica em grande antes de encolher para a fita. */
 const GRANDE = 12_000
@@ -64,11 +70,31 @@ export function NovasMarcacoes() {
       }
     }
 
-    perguntar()
-    const relogio = setInterval(perguntar, INTERVALO)
+    /*
+      SÓ PERGUNTA QUEM ESTÁ A VER. Com o separador escondido — outra
+      aba, o ecrã do tablet apagado — o relógio pára. Ao voltar, pergunta
+      logo, e o «desde» não mudou: o que entrou entretanto aparece na
+      mesma, só não se andou a perguntar enquanto ninguém olhava.
+    */
+    let relogio: ReturnType<typeof setInterval> | null = null
+    const arrancar = () => {
+      if (relogio !== null) return
+      perguntar()
+      relogio = setInterval(perguntar, INTERVALO)
+    }
+    const parar = () => {
+      if (relogio === null) return
+      clearInterval(relogio)
+      relogio = null
+    }
+    const mudou = () => (document.hidden ? parar() : arrancar())
+
+    if (!document.hidden) arrancar()
+    document.addEventListener('visibilitychange', mudou)
     return () => {
       vivo = false
-      clearInterval(relogio)
+      parar()
+      document.removeEventListener('visibilitychange', mudou)
     }
   }, [desde])
 

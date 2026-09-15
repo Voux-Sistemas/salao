@@ -34,6 +34,11 @@ export default function robots(): MetadataRoute.Robots {
         '/agendar/*/horarios',
         '/agendar/*/confirmar',
         '/agendar/*/pronto',
+        // O primeiro passo entra no índice, mas só o endereço limpo. O
+        // calendário liga a cada dia (?d=) e a cada mês (?m=): eram
+        // centenas de endereços que os robôs percorriam um a um, e cada
+        // um calcula a agenda do mês na base de dados.
+        '/agendar/*?',
         // O link que a cliente guarda: um endereço por marcação, cada um
         // a apontar para uma pessoa em concreto. Também vai com
         // `noindex` no cabeçalho — isto poupa-lhes a visita.

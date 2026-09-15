@@ -183,6 +183,9 @@ export function MonthCalendar({
             <Link
               key={valor}
               href={href(valor)}
+              // Sem pré-carregamento: são trinta ligações à vista, e cada uma
+              // pedia a página ao servidor (e à base) só por aparecer no ecrã.
+              prefetch={false}
               aria-current={escolhido ? 'date' : undefined}
               className="group flex h-10 items-center justify-center outline-none sm:h-12"
             >
@@ -250,6 +253,7 @@ function Seta({
     <Link
       href={href}
       aria-label={label}
+      prefetch={false}
       className={clsx(
         moldura,
         'text-[var(--action-strong)] shadow-[inset_0_0_0_1px_rgba(34,29,23,0.14)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_9%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',

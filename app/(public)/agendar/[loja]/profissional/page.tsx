@@ -165,6 +165,8 @@ function StaffCard({
       )}
       <Link
         href={href}
+        // Um cartão por profissional: sem pré-carregamento (ver servicos).
+        prefetch={false}
         className="group flex items-center gap-3 py-[11px] pr-4 pl-3 transition-[background-color,box-shadow] duration-200 outline-offset-2 hover:bg-[#FFFDF8] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:gap-3.5 sm:rounded-[18px] sm:bg-[var(--surface-raised)] sm:py-3.5 sm:pr-[18px] sm:pl-3.5 sm:hover:shadow-[0_0_0_1px_rgba(142,111,65,0.24),0_8px_22px_-16px_rgba(34,29,23,0.28)]"
       >
         <span className="relative size-9 shrink-0 overflow-hidden rounded-full bg-[#F3EBDA] sm:size-[42px]">
