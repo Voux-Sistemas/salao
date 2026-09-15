@@ -7,7 +7,7 @@ import { getDictionary, getLanguage, LANGUAGE_TAG } from '@/lib/i18n'
 import { BRAND } from '@/lib/branding'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { LogoSeal } from '@/components/brand'
-import { UserRound } from 'lucide-react'
+import { MessageCircle, UserRound } from 'lucide-react'
 import { ButtonLink } from '@/components/ui'
 import { FooterInvite } from '@/components/footer-invite'
 
@@ -219,7 +219,21 @@ export async function PublicChrome({
         esta faixa é o degrau que diz que ali acabou de propósito.
       */}
       <footer>
-        <div className="band-dark fundo-casa border-t border-[var(--line-soft)]">
+        {/*
+          O RODAPÉ EM CAFÉ COM LUZ — o mesmo fundo dos cartões das casas da
+          capa, em vez do castanho quase preto. Os tokens de texto do
+          band-dark foram afinados para esse quase preto; num café mais
+          claro o texto esbatido perdia contraste, e por isso sobem aqui.
+        */}
+        <div
+          className="band-dark relative border-t border-[var(--line-soft)]"
+          style={{
+            background:
+              'radial-gradient(520px 320px at 100% 0%, rgba(214,178,112,0.22), rgba(214,178,112,0) 60%), radial-gradient(420px 280px at 0% 100%, rgba(120,84,48,0.3), rgba(120,84,48,0) 65%), linear-gradient(170deg, #4A3A2C 0%, #3A2D22 45%, #2C231B 100%)',
+            ['--ink-muted' as string]: '#CDBFAA',
+            ['--ink-faint' as string]: '#A99C87',
+          }}
+        >
           <div className="mx-auto max-w-6xl px-5 pb-10 pt-12 sm:px-8 sm:pt-14">
             {/* O convite abre o fecho — mas nunca dentro do funil. */}
             <FooterInvite>
@@ -265,10 +279,7 @@ export async function PublicChrome({
               <div>
                 <LogoSeal size="lg" />
 
-                <p className="display mt-5 text-[0.875rem] uppercase tracking-[0.18em] text-[var(--ink)]">
-                  {name}
-                </p>
-                <p className="mt-2.5 max-w-xs text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
+                <p className="mt-3.5 max-w-xs text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
                   {dict.footer.tagline}
                 </p>
               </div>
@@ -306,47 +317,39 @@ export async function PublicChrome({
               </div>
 
               {/*
-                OS QUATRO CAMINHOS.
-
-                O «fale connosco» vem primeiro de propósito: é o único
-                dos quatro que resolve um problema em vez de mostrar uma
-                página. Quem desce até aqui com uma pergunta encontra-o
-                antes de tudo o resto — e sai do site para o WhatsApp,
-                que é a resposta mais rápida que a casa consegue dar.
+                OS QUATRO CAMINHOS, sem o rótulo «Navegar» por cima: quatro
+                ligações não precisam de um título a dizer que são ligações.
+                A «Área do Cliente» vem primeiro, que é o que as clientes
+                vêm procurar ao fundo da página; o WhatsApp fecha, com o
+                ícone a dizer que sai do site.
               */}
-              <nav className="sm:justify-self-end">
-                <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-[var(--ink-faint)]">
-                  {dict.footer.navLabel}
-                </p>
-
-                <div className="mt-4 grid justify-items-start gap-3.5 text-[0.875rem]">
+              <nav aria-label={dict.footer.navLabel} className="sm:justify-self-end">
+                <div className="grid justify-items-start gap-3 text-[0.875rem]">
+                  {[
+                    { href: '/remarcar', label: dict.footer.links.account },
+                    { href: '/loja', label: dict.footer.links.stores },
+                    { href: '/servicos', label: dict.footer.links.services },
+                  ].map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="toque text-[#EDE6D8] transition-colors hover:text-white"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
                   {whatsappHref ? (
                     <a
                       href={whatsappHref}
                       target="_blank"
                       rel="noreferrer"
-                      className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
+                      aria-label={dict.home.contactCta}
+                      className="toque inline-flex items-center gap-1.5 text-[#EDE6D8] transition-colors hover:text-white"
                     >
-                      {dict.home.contactCta}
+                      <MessageCircle size={14} strokeWidth={1.8} aria-hidden />
+                      WhatsApp
                     </a>
                   ) : null}
-
-                  {[
-                    { href: '/loja', label: dict.footer.links.stores },
-                    { href: '/servicos', label: dict.footer.links.services },
-                    {
-                      href: '/remarcar',
-                      label: dict.footer.links.account,
-                    },
-                  ].map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="toque text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
                 </div>
               </nav>
             </div>
