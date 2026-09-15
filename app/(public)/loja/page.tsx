@@ -59,7 +59,7 @@ export default async function StoresPage() {
       {units.length === 0 ? (
         <Empty title={dict.unit.noStores} hint={dict.unit.noStoresHint} />
       ) : (
-        <Reveal group className="grid gap-3.5 sm:gap-6 lg:grid-cols-2">
+        <Reveal group className="grid gap-3.5 sm:gap-6 lg:mx-auto lg:max-w-[62.5rem] lg:grid-cols-2">
           {units.map((unit) => (
             <HouseCard
               key={unit.id}

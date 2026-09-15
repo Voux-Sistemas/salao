@@ -209,7 +209,10 @@ export async function Showcase({ org }: { org: Org }) {
             </p>
           </Reveal>
 
-          <Reveal group className="grid gap-3.5 sm:gap-6 lg:grid-cols-2">
+          {/* No computador os dois cartões ficam numa faixa um pouco mais
+              estreita do que a página: à largura toda, com a fotografia a
+              crescer com eles, cada cartão parecia um cartaz. */}
+          <Reveal group className="grid gap-3.5 sm:gap-6 lg:mx-auto lg:max-w-[62.5rem] lg:grid-cols-2">
             {houses.map(({ unit, cover }) => (
               <HouseCard
                 key={unit.id}

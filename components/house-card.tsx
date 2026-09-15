@@ -76,13 +76,22 @@ export async function HouseCard({
     luz» do mockup «As nossas casas · café com profundidade»: o castanho
     desce de mais claro a mais escuro, com um brilho dourado no canto de
     cima, uma sombra quente no de baixo e um fio de luz no topo.
+
+    MAIS PEQUENO E MAIS LEVE (mockups F e J). Na capa os dois cartões
+    pesavam: letras e botões grandes, e dois blocos castanhos seguidos
+    logo a seguir aos discos claros dos serviços. O desenho ficou igual;
+    desceram as letras (nome 30→25, morada 12,5→11,5, botões 46→40) e o
+    fundo passou a um degradê que começa escuro atrás da fotografia e
+    clareia para caramelo em baixo, onde estão os botões. A sombra ficou
+    mais funda, para o cartão se levantar da página em vez de assentar
+    nela como um bloco.
   */
   return (
     <article
-      className="band-dark lift group relative flex h-full flex-col overflow-hidden rounded-[26px] shadow-[inset_0_0_0_1px_rgba(211,184,126,0.18),0_26px_46px_-28px_rgba(34,29,23,0.55)]"
+      className="band-dark lift group relative flex h-full flex-col overflow-hidden rounded-[24px] shadow-[inset_0_0_0_1px_rgba(222,194,136,0.22),0_34px_56px_-26px_rgba(34,29,23,0.62),0_10px_22px_-12px_rgba(34,29,23,0.30)]"
       style={{
         background:
-          'radial-gradient(420px 260px at 100% 0%, rgba(214,178,112,0.28), rgba(214,178,112,0) 60%), radial-gradient(360px 240px at 0% 100%, rgba(120,84,48,0.35), rgba(120,84,48,0) 65%), linear-gradient(170deg, #4A3A2C 0%, #3A2D22 45%, #2C231B 100%)',
+          'radial-gradient(ellipse 70% 40% at 85% 0%, rgba(214,178,112,0.20), rgba(214,178,112,0) 65%), linear-gradient(180deg, #2A2119 0%, #3B2E23 42%, #5C4834 78%, #6E5740 100%)',
       }}
     >
       {/* O fio de luz no topo do cartão. */}
@@ -91,10 +100,10 @@ export async function HouseCard({
         className="pointer-events-none absolute inset-x-0 top-0 h-px"
         style={{
           background:
-            'linear-gradient(90deg, rgba(231,204,147,0), rgba(231,204,147,0.45), rgba(231,204,147,0))',
+            'linear-gradient(90deg, rgba(231,204,147,0), rgba(231,204,147,0.5), rgba(231,204,147,0))',
         }}
       />
-      <div className="relative mx-2 mt-2 aspect-[16/10] overflow-hidden rounded-[20px] bg-[#2A2420] shadow-[0_10px_24px_-14px_rgba(0,0,0,0.5)]">
+      <div className="relative mx-[7px] mt-[7px] aspect-[16/10] overflow-hidden rounded-[18px] bg-[#2A2420] shadow-[0_10px_24px_-14px_rgba(0,0,0,0.5)]">
         {cover ? (
           /* Enquadrada mais abaixo do que o centro: as fotografias das
              casas são montras, e a meio do corte ficava o letreiro de
@@ -110,48 +119,48 @@ export async function HouseCard({
 
         {/* O estado por cima da fotografia, num vidro fumado: lê-se igual
             sobre a montra clara de Valongo e sobre a parede escura da Maia. */}
-        <span className="absolute top-2.5 left-2.5 inline-flex h-[26px] items-center rounded-full bg-[rgba(20,16,9,0.38)] px-[11px] text-[#F2EDE2] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.18)] backdrop-blur-md">
+        <span className="absolute top-[9px] left-[9px] inline-flex h-6 items-center rounded-full bg-[rgba(20,16,9,0.38)] px-2.5 text-[#F2EDE2] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.18)] backdrop-blur-md">
           <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col px-[18px] pt-4 pb-[18px] sm:px-6 sm:pt-5 sm:pb-6">
+      <div className="flex flex-1 flex-col px-4 pt-[13px] pb-4 sm:px-5 sm:pt-4 sm:pb-5">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="display text-[1.875rem] leading-[1.05] text-[#FBF6EC] sm:text-[2.125rem]">
+          <h3 className="display text-[1.5625rem] leading-[1.05] text-[#FBF6EC] sm:text-[1.75rem]">
             {unit.name}
           </h3>
           <Link
             href={`/loja/${unit.slug}`}
-            className="toque inline-flex shrink-0 items-center gap-0.5 text-[0.78125rem] font-semibold text-[#E7CC93] transition-colors hover:text-[#F3DDB0] sm:text-[0.8125rem]"
+            className="toque inline-flex shrink-0 items-center gap-0.5 text-[0.71875rem] font-semibold text-[#E7CC93] transition-colors hover:text-[#F3DDB0] sm:text-[0.75rem]"
           >
             {dict.home.houseVisit}
-            <ChevronRight size={13} strokeWidth={2} aria-hidden />
+            <ChevronRight size={12} strokeWidth={2} aria-hidden />
           </Link>
         </div>
 
         {address ? (
-          <p className="mt-2 flex gap-1.5 text-[0.78125rem] leading-[17px] text-[#DCCFBC] sm:text-[0.8125rem] sm:leading-[19px]">
-            <MapPin size={13} className="mt-0.5 shrink-0 text-[#E7CC93]" aria-hidden />
+          <p className="mt-[5px] flex gap-1.5 text-[0.71875rem] leading-4 text-[#DCCFBC] sm:mt-1.5 sm:text-[0.75rem] sm:leading-[18px]">
+            <MapPin size={12} className="mt-0.5 shrink-0 text-[#E7CC93]" aria-hidden />
             <span>{address}</span>
           </p>
         ) : null}
 
         {/* Os dois factos lado a lado, cada rótulo por cima do seu valor. */}
-        <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[14px] bg-[rgba(255,255,255,0.10)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-          <div className="bg-[rgba(255,255,255,0.06)] px-3 py-[9px]">
-            <dt className="text-[0.59375rem] tracking-[0.18em] text-[#BFB19C] uppercase">
+        <dl className="mt-2.5 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] sm:mt-[11px] bg-[rgba(255,255,255,0.10)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+          <div className="bg-[rgba(255,255,255,0.06)] px-[11px] py-[7px] sm:px-3 sm:py-2">
+            <dt className="text-[0.53125rem] tracking-[0.18em] text-[#BFB19C] uppercase sm:text-[0.5625rem]">
               {semana ? semana.days : dict.unit.closedNow}
             </dt>
-            <dd className="tabular mt-0.5 text-[0.8125rem] text-[#FBF6EC]">
+            <dd className="tabular mt-px text-[0.75rem] text-[#FBF6EC] sm:text-[0.78125rem]">
               {semana ? semana.hours : '—'}
             </dd>
           </div>
           {unit.phone ? (
-            <div className="bg-[rgba(255,255,255,0.06)] px-3 py-[9px]">
-              <dt className="text-[0.59375rem] tracking-[0.18em] text-[#BFB19C] uppercase">
+            <div className="bg-[rgba(255,255,255,0.06)] px-[11px] py-[7px] sm:px-3 sm:py-2">
+              <dt className="text-[0.53125rem] tracking-[0.18em] text-[#BFB19C] uppercase sm:text-[0.5625rem]">
                 {dict.unit.phoneLabel}
               </dt>
-              <dd className="tabular mt-0.5 text-[0.8125rem] text-[#FBF6EC]">
+              <dd className="tabular mt-px text-[0.75rem] text-[#FBF6EC] sm:text-[0.78125rem]">
                 {/* Sem o +351: numa caixa estreita gasta um quinto da
                     largura para dizer o que toda a gente cá sabe. O link
                     leva-o por dentro, para quem ligar de fora. */}
@@ -168,10 +177,10 @@ export async function HouseCard({
           )}
         </dl>
 
-        <div className="mt-3.5 flex gap-2 sm:mt-5">
+        <div className="mt-3 flex gap-2 sm:mt-[15px]">
           <Link
             href={`/agendar/${unit.slug}`}
-            className="botao toque flex h-[46px] flex-1 items-center justify-center rounded-full bg-[linear-gradient(180deg,#D2B67B,#BE9F62)] text-[0.90625rem] font-semibold text-[#1E1811] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_10px_22px_-14px_rgba(0,0,0,0.6)] transition-[filter] hover:brightness-105 sm:h-12 sm:text-[0.9375rem]"
+            className="botao toque flex h-10 flex-1 items-center justify-center rounded-full bg-[linear-gradient(180deg,#D2B67B,#BE9F62)] text-[0.8125rem] font-semibold text-[#1E1811] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_10px_22px_-14px_rgba(0,0,0,0.6)] transition-[filter] hover:brightness-105 sm:h-[42px] sm:text-[0.875rem]"
           >
             {dict.home.houseBook}
           </Link>
@@ -179,9 +188,9 @@ export async function HouseCard({
             href={mapsUrl(unit)}
             target="_blank"
             rel="noreferrer"
-            className="toque inline-flex h-[46px] shrink-0 items-center gap-[5px] rounded-full px-4 text-[0.84375rem] font-medium text-[#FBF6EC] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-colors hover:bg-[rgba(255,255,255,0.06)] sm:h-12 sm:px-5"
+            className="toque inline-flex h-10 shrink-0 items-center gap-[5px] rounded-full px-3.5 text-[0.78125rem] font-medium text-[#FBF6EC] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-colors hover:bg-[rgba(255,255,255,0.06)] sm:h-[42px] sm:px-4 sm:text-[0.8125rem]"
           >
-            <MapPin size={15} strokeWidth={1.8} aria-hidden />
+            <MapPin size={14} strokeWidth={1.8} aria-hidden />
             {dict.unit.directions}
           </a>
         </div>
