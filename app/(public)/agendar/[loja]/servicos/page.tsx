@@ -34,6 +34,7 @@ import { Empty, Notice } from '@/components/ui'
 import { FunnelStage } from '@/components/funnel-stage'
 import { ServiceGroup } from '@/components/service-group'
 import { Photo } from '@/components/photo'
+import { FAMILY_PHOTOS } from '@/components/family-discs'
 import { initialsOf } from '@/lib/initials'
 
 type Params = {
@@ -274,9 +275,10 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
     ? person.longestFreeMinutes
     : Math.max(0, ...team.map((p) => p.longestFreeMinutes))
 
-  const categories = new Map<string, { name: string; services: ServiceRow[] }>()
+  const categories = new Map<string, { slug: string; name: string; services: ServiceRow[] }>()
   for (const row of bookable) {
     const entry = categories.get(row.category_id) ?? {
+      slug: row.category_slug,
       name: row.category_name,
       services: [],
     }
@@ -398,20 +400,38 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
             />
           ) : (
             <div className="mt-1.5 flex flex-col gap-2 sm:gap-2.5">
-              {categoryList.map((category, groupIndex) => {
+              {categoryList.map((category) => {
                 const chosenHere = category.services.filter((service) =>
                   clean.some((line) => line.serviceId === service.id),
                 ).length
-                // Abre à chegada a categoria onde já se escolheu alguma
-                // coisa — fechá-la era esconder a escolha que ela fez. Com
-                // a visita vazia abre a primeira, para o ecrã nunca chegar
-                // só com títulos.
-                const openAtStart = chosenHere > 0 || (clean.length === 0 && groupIndex === 0)
+                // Abre à chegada só a categoria onde já se escolheu alguma
+                // coisa — fechá-la era esconder a escolha que ela fez.
+                //
+                // As outras chegam todas fechadas. Abria-se a primeira
+                // para o ecrã não chegar só com títulos; com a fotografia
+                // de cada família no cartão, as sete fechadas cabem num
+                // ecrã e dizem o que há melhor do que uma lista aberta.
+                const openAtStart = chosenHere > 0
                 return (
                   <ServiceGroup
                     key={category.name}
                     title={category.name}
-                    count={category.services.length}
+                    media={
+                      FAMILY_PHOTOS.has(category.slug) ? (
+                        <Photo src={`/fotos/familias/${category.slug}.jpg`} alt="" />
+                      ) : (
+                        <span
+                          aria-hidden
+                          className="display absolute inset-0 grid place-items-center text-lg text-[var(--accent)]"
+                          style={{
+                            background:
+                              'linear-gradient(150deg, color-mix(in srgb, var(--gold) 22%, var(--surface-2)), var(--surface-2))',
+                          }}
+                        >
+                          {category.name.slice(0, 1)}
+                        </span>
+                      )
+                    }
                     chosenLabel={
                       chosenHere > 0
                         ? (chosenHere === 1
