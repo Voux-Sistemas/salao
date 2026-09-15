@@ -70,6 +70,7 @@ export const es: Dictionary = {
     finalSubtitle: 'La casa, el servicio y la hora — elegidos en menos de un minuto.',
     storesTitle: 'Nuestros centros',
     servicesTitle: 'Lo que hacemos',
+    servicesAll: 'Ver todos los servicios',
     servicesSubtitle: 'Todo lo que se hace en esta casa, del cabello a las uñas.',
     teamTitle: 'Quién te atiende',
     hoursTitle: 'Horario',

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { listUnits, type Org, type Unit } from '@/lib/org'
 import { weekDigest, weeklyHours } from '@/lib/hours'
@@ -8,6 +9,7 @@ import { formatPhone } from '@/lib/text'
 import { ButtonLink } from '@/components/ui'
 import { LogoMark, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
+import { ScrollDots } from '@/components/scroll-dots'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 import { Photo, PhotoFallback } from '@/components/photo'
 
@@ -443,7 +445,7 @@ export async function Showcase({ org }: { org: Org }) {
         id="servicos"
         className="scroll-mt-16 border-t border-[var(--line-soft)]"
       >
-        <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
+        <div className="mx-auto max-w-6xl px-5 pt-10 pb-2 sm:px-8 sm:pt-16 sm:pb-6">
           {/*
             UM TÍTULO, E MAIS NADA ESCRITO.
 
@@ -467,13 +469,13 @@ export async function Showcase({ org }: { org: Org }) {
           */}
           <Reveal
             group
-            className="scrollbar-none -mr-5 mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 pr-5 sm:mr-0 sm:flex-wrap sm:justify-between sm:overflow-visible sm:pr-0"
+            className="scrollbar-none -mr-5 mt-6 flex snap-x snap-mandatory gap-[18px] overflow-x-auto pb-2 pr-5 sm:mr-0 sm:mt-9 sm:flex-wrap sm:justify-between sm:gap-5 sm:overflow-visible sm:pr-0"
           >
             {families.map((family) => (
               <Link
                 key={family.slug}
                 href="/servicos"
-                className="toque group w-[6.5rem] shrink-0 snap-start text-center"
+                className="toque group w-[5.75rem] shrink-0 snap-start text-center sm:w-[6.5rem]"
               >
                 <span
                   className="relative block aspect-square overflow-hidden rounded-full transition-transform duration-500 group-hover:scale-[1.04]"
@@ -514,27 +516,39 @@ export async function Showcase({ org }: { org: Org }) {
                   )}
                 </span>
 
-                <span className="display mt-3 block min-h-[2.5em] text-[0.875rem] leading-tight text-[var(--ink)]">
+                {/* O nome guarda duas linhas de altura, para os discos
+                    ficarem todos à mesma altura. O número de serviços de
+                    cada família saiu: não dizia nada a quem escolhe. */}
+                <span className="display mt-2.5 block min-h-[2.4em] text-[0.84375rem] leading-[1.2] text-[var(--ink)] sm:mt-3 sm:text-[0.875rem]">
                   {family.name}
-                </span>
-                <span className="tabular mt-1 block text-[0.6875rem] text-[var(--ink-faint)]">
-                  {family.count}
                 </span>
               </Link>
             ))}
           </Reveal>
+          <ScrollDots className="mt-2 sm:hidden" />
 
+          <div className="mt-4 flex justify-center sm:mt-8">
+            <Link
+              href="/servicos"
+              className="link-slide inline-flex items-center gap-0.5 text-[0.84375rem] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--action-strong)]"
+            >
+              {dict.home.servicesAll}
+              <ChevronRight size={14} strokeWidth={2} aria-hidden />
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ------------------------------------------------ manifesto --- */}
-      <section className="mx-auto max-w-3xl px-5 py-16 text-center sm:px-8 sm:py-20">
+      {/* O espaço entre os discos e «A casa» era de quase meio ecrã no
+          telemóvel: parecia que a página tinha acabado. */}
+      <section className="mx-auto max-w-3xl px-5 pt-9 pb-14 text-center sm:px-8 sm:py-20">
         <Reveal>
-          <Ornament />
-          <p className="eyebrow mt-10">{dict.home.manifestoEyebrow}</p>
+          <Ornament className="scale-75 sm:scale-100" />
+          <p className="eyebrow mt-4 sm:mt-10">{dict.home.manifestoEyebrow}</p>
         </Reveal>
         <Reveal delay={120}>
-          <p className="display mt-6 text-balance text-[1.25rem] leading-[1.45] sm:text-[2rem]">
+          <p className="display mt-3 text-balance text-[1.1875rem] leading-[1.45] sm:mt-6 sm:text-[2rem]">
             {dict.home.manifesto}
           </p>
         </Reveal>

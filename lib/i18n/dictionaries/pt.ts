@@ -77,6 +77,7 @@ export const pt = {
     finalSubtitle: 'A casa, o serviço e a hora — escolhidos em menos de um minuto.',
     storesTitle: 'As nossas lojas',
     servicesTitle: 'O que fazemos',
+    servicesAll: 'Ver todos os serviços',
     servicesSubtitle: 'Tudo o que se faz nesta casa, do cabelo às unhas.',
     teamTitle: 'Quem a recebe',
     hoursTitle: 'Horário',
