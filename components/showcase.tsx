@@ -591,32 +591,33 @@ export async function Showcase({ org }: { org: Org }) {
         saber com que produto lhe vão tocar no cabelo, e é a pergunta
         que uma galeria de fotografias não responde.
 
-        PARADAS E LEGÍVEIS.
-
-        Corriam numa fita, em cinzento claro: quase ninguém chegava a ler
-        um nome inteiro. Agora ficam quietas, ao centro, na tinta do texto
-        e separadas por um losango de ouro — como uma lista de casa.
+        A fita anda sozinha e pára quando o rato lhe assenta em cima —
+        para se conseguir ler o nome em que se está a olhar. Quem tiver o
+        sistema a pedir menos movimento vê uma fila parada, que se
+        arrasta com o dedo (ver `.fita-marcas` no globals.css).
       */}
       <section className="border-t border-[var(--line-soft)]">
-        <div className="mx-auto max-w-3xl px-5 pt-7 pb-9 text-center sm:px-8 sm:py-12">
-          <p className="text-[0.78125rem] text-[var(--ink-muted)] sm:text-[0.84375rem]">
+        <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-14">
+          <p className="eyebrow eyebrow-gold mb-7 text-center">
             {dict.home.brandsEyebrow}
           </p>
-          <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 sm:mt-4 sm:gap-x-5">
-            {BRANDS.map((brand, index) => (
-              <li key={brand} className="flex items-center gap-3.5 sm:gap-5">
-                {index > 0 ? (
-                  <span
-                    aria-hidden
-                    className="size-1 rotate-45 bg-[color-mix(in_srgb,var(--accent)_50%,transparent)]"
-                  />
-                ) : null}
-                <span className="display text-xl whitespace-nowrap text-[#4A4238] sm:text-2xl">
-                  {brand}
-                </span>
-              </li>
-            ))}
-          </ul>
+
+          <div className="fita-janela">
+            <div className="fita-marcas">
+              {[0, 1].map((copia) => (
+                <div key={copia} className="fita-grupo" aria-hidden={copia === 1}>
+                  {BRANDS.map((brand) => (
+                    <span
+                      key={brand}
+                      className="display whitespace-nowrap text-xl text-[var(--ink-faint)] sm:text-2xl"
+                    >
+                      {brand}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

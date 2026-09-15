@@ -82,7 +82,7 @@ export const pt = {
     servicesSubtitle: 'Tudo o que se faz nesta casa, do cabelo às unhas.',
     teamTitle: 'Quem a recebe',
     hoursTitle: 'Horário',
-    brandsEyebrow: 'Trabalhamos com',
+    brandsEyebrow: 'Com que trabalhamos',
     galleryEyebrow: 'A casa por dentro',
     galleryTitle: 'Um olhar',
     servicePhotoAlt: 'Fotografia de {service}',

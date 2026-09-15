@@ -75,7 +75,7 @@ export const en: Dictionary = {
     servicesSubtitle: 'Everything this house does, from hair to nails.',
     teamTitle: 'Who will look after you',
     hoursTitle: 'Opening hours',
-    brandsEyebrow: 'We work with',
+    brandsEyebrow: 'What we work with',
     galleryEyebrow: 'Inside the house',
     galleryTitle: 'A closer look',
     servicePhotoAlt: 'Photograph of {service}',
