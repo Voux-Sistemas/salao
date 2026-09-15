@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { CalendarClock, MapPin, Phone } from 'lucide-react'
+import Link from 'next/link'
+import { CalendarClock, Check, MapPin, Phone } from 'lucide-react'
 import {
   clientMayCancel,
   clientMayReschedule,
@@ -16,6 +17,7 @@ import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
 import { DesmarcarPelaChave } from '@/components/manage-forms'
 import { ButtonLink, Empty, Eyebrow, Notice } from '@/components/ui'
 import { LeafRule, Monogram, Ornament } from '@/components/brand'
+import { BAND_GROUND } from '@/components/funnel-stage'
 
 type Params = {
   params: Promise<{ chave: string }>
@@ -79,6 +81,38 @@ export default async function ManagePage({ params, searchParams }: Params) {
 
   const timezone = appointment.unit_timezone
   const day = isoDay(appointment.starts_at, timezone)
+
+  /*
+    DESMARCADA, A PÁGINA MUDA DE ASSUNTO.
+
+    Depois de desmarcar, a página voltava a desenhar o recibo da visita
+    com um aviso «Cancelada» e um botão «Marcar» — parecia que nada tinha
+    acontecido. A confirmação existia, mas vivia dentro do botão de
+    desmarcar, e o botão some assim que a marcação deixa de se poder
+    desmarcar: a página recarrega e a mensagem ia com ele.
+
+    Agora é a própria página que o diz, a partir do estado da marcação:
+    «Está desmarcado.», qual era a hora, e a porta para marcar outra vez.
+    Serve também a quem volta a abrir o link dias depois, e a uma
+    marcação que o salão tenha desmarcado. (Uma remarcação não chega
+    aqui: a chave segue para a marcação nova.)
+  */
+  if (
+    appointment.status === 'cancelled_by_client' ||
+    appointment.status === 'cancelled_by_salon'
+  ) {
+    return (
+      <Desmarcada
+        title={dict.manage.cancelledTitle}
+        line={dict.manage.cancelledLine
+          .replace('{dia}', formatDayLong(day, timezone, language))
+          .replace('{hora}', formatTime(appointment.starts_at, timezone, language))
+          .replace('{loja}', appointment.unit_name)}
+        hint={dict.manage.cancelledHint}
+        action={dict.manage.bookAgain}
+      />
+    )
+  }
   const minutes = Math.round(
     (appointment.ends_at.getTime() - appointment.starts_at.getTime()) / 60_000,
   )
@@ -255,6 +289,61 @@ export default async function ManagePage({ params, searchParams }: Params) {
         <LeafRule className="w-40" />
       </div>
     </Shell>
+  )
+}
+
+/**
+ * O ecrã de uma marcação desmarcada, no desenho do mockup «Marcação
+ * desmarcada»: a faixa escura em painel com um visto dourado e a frase,
+ * e por baixo um cartão com o que fazer a seguir. É o par do recibo de
+ * quando se marca («Está confirmado.»).
+ */
+function Desmarcada({
+  title,
+  line,
+  hint,
+  action,
+}: {
+  title: string
+  line: string
+  hint: string
+  action: string
+}) {
+  return (
+    <div className="flex min-h-[78vh] flex-col">
+      <div className="mx-auto w-full max-w-[74.5rem] px-3 pt-2.5 sm:px-5 sm:pt-4">
+        <header
+          className="band-dark relative overflow-hidden rounded-[20px] px-[18px] py-6 text-center shadow-[inset_0_0_0_1px_rgba(211,184,126,0.14)] sm:rounded-[24px] sm:px-8 sm:pt-[38px] sm:pb-10"
+          style={{ background: BAND_GROUND }}
+        >
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full text-[var(--accent)] shadow-[inset_0_0_0_1px_rgba(211,184,126,0.45),0_0_0_6px_rgba(211,184,126,0.06)] sm:size-[58px]">
+            <Check size={24} strokeWidth={1.8} aria-hidden />
+          </span>
+          <h1 className="display display-italic animate-rise mt-3.5 text-[1.5625rem] leading-[1.1] sm:mt-[18px] sm:text-[2.25rem]">
+            {title}
+          </h1>
+          <p className="animate-fade mx-auto mt-2 max-w-[28rem] text-[0.78125rem] leading-[18px] text-[var(--ink-muted)] sm:mt-2.5 sm:text-[0.875rem] sm:leading-5">
+            {line}
+          </p>
+        </header>
+      </div>
+
+      <div className="flex-1">
+        <div className="mx-auto w-full max-w-[29rem] px-3 pt-3 pb-12 sm:px-0 sm:pt-7 sm:pb-16">
+          <div className="rounded-[18px] bg-[var(--surface-raised)] p-4 text-center shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:rounded-[22px] sm:px-6 sm:py-[22px]">
+            <p className="text-[0.8125rem] leading-5 text-[var(--ink-muted)] sm:text-[0.875rem]">
+              {hint}
+            </p>
+            <Link
+              href="/agendar"
+              className="botao sheen mt-3.5 flex h-[46px] items-center justify-center rounded-full bg-[var(--action)] text-[0.90625rem] font-semibold tracking-[0.01em] text-[var(--action-ink)] shadow-[0_10px_22px_-14px_rgba(111,85,47,0.7)] transition-all duration-300 select-none hover:-translate-y-0.5 hover:bg-[var(--action-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:translate-y-px sm:mt-[18px] sm:h-12 sm:text-[0.9375rem]"
+            >
+              {action}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

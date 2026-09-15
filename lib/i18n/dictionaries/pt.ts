@@ -323,7 +323,9 @@ export const pt = {
     rescheduled: 'Hora mudada. Está tudo confirmado.',
     noSlots: 'Neste dia não há horas livres para esta visita.',
     keep: 'Fica como está',
-    cancelledTitle: 'Marcação desmarcada',
+    cancelledTitle: 'Está desmarcado.',
+    cancelledLine: 'Libertámos a sua hora de {dia}, às {hora}, no salão {loja}.',
+    bookAgain: 'Fazer nova marcação',
     cancelledHint: 'Não precisa de fazer mais nada. Cá a esperamos noutro dia.',
   },
 

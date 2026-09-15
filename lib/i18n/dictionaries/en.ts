@@ -279,7 +279,9 @@ export const en: Dictionary = {
     rescheduled: 'Time changed. All confirmed.',
     noSlots: 'There are no free times for this visit on this day.',
     keep: 'Leave it as it is',
-    cancelledTitle: 'Booking cancelled',
+    cancelledTitle: 'It is cancelled.',
+    cancelledLine: 'We have freed your time on {dia} at {hora}, at our {loja} salon.',
+    bookAgain: 'Book again',
     cancelledHint: 'Nothing else to do. We will see you another day.',
   },
 
