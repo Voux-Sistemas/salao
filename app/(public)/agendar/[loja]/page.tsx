@@ -15,6 +15,7 @@ import {
   today,
   type IsoDay,
   isValidDay,
+  weekdayOf,
 } from '@/lib/time'
 import { DAY_PARAM, first, funnelHref } from '@/lib/cart'
 import { picksStaffOn } from '@/lib/sunday'
@@ -234,18 +235,41 @@ export default async function ChooseDayPage({ params, searchParams }: Params) {
           className="hidden w-px self-stretch bg-[linear-gradient(180deg,transparent,rgba(34,29,23,0.12)_16%,rgba(34,29,23,0.12)_84%,transparent)] lg:block"
         />
 
-        <div className="mt-4 px-1 lg:mt-0 lg:w-[18.75rem] lg:shrink-0 lg:px-0">
+        <div className="mt-3 lg:mt-0 lg:w-[18.75rem] lg:shrink-0">
           <p className="hidden text-[0.6875rem] leading-[14px] font-medium tracking-[0.18em] text-[var(--accent)] uppercase lg:block">
             {dict.funnel.dayChosen}
           </p>
-          <h2 className="display text-[1.0625rem] leading-[1.25] text-[var(--ink)] first-letter:uppercase lg:mt-2 lg:text-2xl lg:leading-[1.2]">
-            {formatDayLong(day, unit.timezone, language)}
-          </h2>
-          {dayLine ? (
-            <p className="mt-[3px] text-[0.78125rem] leading-[18px] text-[var(--ink-muted)] lg:mt-2 lg:text-[0.8125rem] lg:leading-5">
-              {dayLine}
-            </p>
-          ) : null}
+          {/*
+            O DIA NUM CARTÃO PEQUENO (mockup «Dia · a linha da data», C).
+
+            Era um título na letra da casa, a Playfair: grande para o que
+            diz, e com os algarismos a descer abaixo da linha — o «15»
+            parecia torto. Passa a ser a mesma peça que abre o passo dos
+            serviços (o cartão da profissional): um selo à esquerda, aqui
+            com o dia da semana e o número, e duas linhas na letra do texto.
+          */}
+          <div className="flex items-center gap-[11px] rounded-2xl bg-[var(--surface-raised)] py-2 pr-3.5 pl-2 shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:rounded-[18px] sm:py-2.5 sm:pr-5 sm:pl-2.5 lg:mt-2.5">
+            <span
+              aria-hidden
+              className="relative flex size-[38px] shrink-0 flex-col items-center justify-center rounded-full bg-[#F3EBDA] leading-none text-[var(--action-strong)]"
+            >
+              <span className="text-[0.5rem] font-semibold tracking-[0.08em] uppercase">
+                {dict.common.weekdaysShort[weekdayOf(day)]}
+              </span>
+              <span className="tabular mt-px text-[0.875rem] font-semibold">
+                {Number(day.slice(8, 10))}
+              </span>
+              <span className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgba(198,169,107,0.45)]" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[0.875rem] leading-[19px] font-medium text-[var(--ink)] first-letter:uppercase">
+                {formatDayLong(day, unit.timezone, language)}
+              </h2>
+              {dayLine ? (
+                <p className="text-[0.75rem] leading-4 text-[#8A7F6E]">{dayLine}</p>
+              ) : null}
+            </div>
+          </div>
 
           {state === 'ok' ? (
             <>
