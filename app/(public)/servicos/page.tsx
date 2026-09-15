@@ -3,9 +3,10 @@ import { sql } from '@/lib/db'
 import { getOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { env } from '@/lib/env'
-import { ButtonLink } from '@/components/ui'
-import { CollapseGroup } from '@/components/collapse-group'
 import { Reveal } from '@/components/reveal'
+import { Photo } from '@/components/photo'
+import { FAMILY_PHOTOS } from '@/components/family-discs'
+import { ServiceFamily } from '@/components/service-family'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type Row = {
   category_id: string
+  category_slug: string
   category_name: string
   service_id: string
   name: string
@@ -46,6 +48,10 @@ type Row = {
  * SEM PREÇOS, de propósito — foi a casa que o decidiu. Uma ementa sem
  * valores deixa uma pergunta no ar, e a resposta é a marcação: é lá que
  * o preço aparece, já com a loja e a profissional escolhidas.
+ *
+ * E SEM BOTÃO DE MARCAR NO FIM: o rodapé, logo por baixo, abre com
+ * «Reserve o seu momento» e o seu «Marcar agora». Eram dois convites
+ * iguais, um em cima do outro.
  */
 export default async function ServicosPage() {
   const [org, dict, language] = await Promise.all([
@@ -57,6 +63,7 @@ export default async function ServicosPage() {
   const rows = org
     ? await sql<Row[]>`
         select c.id as category_id,
+               c.slug as category_slug,
                name_in(${language}, c.name, c.name_en, c.name_es) as category_name,
                s.id as service_id,
                name_in(${language}, s.name, s.name_en, s.name_es) as name,
@@ -90,63 +97,69 @@ export default async function ServicosPage() {
       `
     : []
 
-  const families = new Map<string, { name: string; services: Row[] }>()
+  const families = new Map<string, { slug: string; name: string; services: Row[] }>()
   for (const row of rows) {
     let family = families.get(row.category_id)
     if (!family) {
-      family = { name: row.category_name, services: [] }
+      family = { slug: row.category_slug, name: row.category_name, services: [] }
       families.set(row.category_id, family)
     }
     family.services.push(row)
   }
 
-  const total = rows.length
-
   return (
-    <div className="mx-auto max-w-3xl px-5 py-16 sm:px-8 sm:py-20">
-      <Reveal>
-        <p className="eyebrow eyebrow-gold">{dict.nav.services}</p>
-        <h1 className="display mt-4 text-[2rem] leading-tight text-[var(--ink)] sm:text-[2.5rem]">
+    <div className="mx-auto max-w-6xl px-3.5 pt-8 pb-10 sm:px-8 sm:pt-16 sm:pb-20">
+      <Reveal className="mb-[18px] text-center sm:mb-10">
+        <h1 className="display text-balance text-[1.625rem] leading-tight text-[var(--ink)] sm:text-[2.5rem]">
           {dict.home.servicesTitle}
         </h1>
-        <p className="mt-4 text-[0.9375rem] leading-relaxed text-[var(--ink-muted)]">
+        <p className="mx-auto mt-1.5 max-w-md text-[0.8125rem] leading-relaxed text-[var(--ink-muted)] sm:mt-3 sm:text-[0.9375rem]">
           {dict.home.servicesSubtitle}
         </p>
       </Reveal>
 
-      {total === 0 ? null : (
-        <>
-          <div className="mt-12 divide-y divide-[var(--line-soft)] border-y border-[var(--line-soft)]">
-            {[...families.values()].map((family) => (
-              <CollapseGroup
-                key={family.name}
-                title={family.name}
-                count={family.services.length}
-              >
-                {family.services.map((service) => (
-                  <li key={service.service_id} className="mt-3.5 first:mt-0">
-                    <p className="text-[0.9375rem] leading-snug text-[var(--ink)]">
-                      {service.name}
-                    </p>
-                    {service.description ? (
-                      <p className="mt-1 max-w-sm text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
-                        {service.description}
-                      </p>
-                    ) : null}
-                  </li>
-                ))}
-              </CollapseGroup>
-            ))}
-          </div>
-
-          {/* A pergunta que uma lista sem preços deixa no ar responde-se
-              aqui, e não noutra página. */}
-          <div className="mt-14 text-center">
-            <ButtonLink href="/agendar" size="lg">
-              {dict.home.cta}
-            </ButtonLink>
-          </div>
-        </>
+      {/* Uma coluna no telemóvel, duas no tablet, três no computador. As
+          colunas de texto (e não uma grelha) deixam cada cartão com a
+          altura da sua lista, sem buracos ao lado dos mais curtos. */}
+      {rows.length === 0 ? null : (
+        <div className="sm:columns-2 sm:gap-4 lg:columns-3">
+          {[...families.values()].map((family) => (
+            <ServiceFamily
+              key={family.slug || family.name}
+              title={family.name}
+              media={
+                FAMILY_PHOTOS.has(family.slug) ? (
+                  <Photo src={`/fotos/familias/${family.slug}.jpg`} alt="" />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="display absolute inset-0 grid place-items-center text-lg text-[var(--accent)]"
+                    style={{
+                      background:
+                        'linear-gradient(150deg, color-mix(in srgb, var(--gold) 22%, var(--surface-2)), var(--surface-2))',
+                    }}
+                  >
+                    {family.name.slice(0, 1)}
+                  </span>
+                )
+              }
+            >
+              {family.services.map((service) => (
+                <li
+                  key={service.service_id}
+                  className="border-t border-[var(--line-soft)] py-2.5 text-[0.875rem] leading-[19px] text-[#4A4238] sm:py-[9px]"
+                >
+                  {service.name}
+                  {service.description ? (
+                    <span className="mt-0.5 block text-[0.75rem] leading-relaxed text-[var(--ink-faint)]">
+                      {service.description}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ServiceFamily>
+          ))}
+        </div>
       )}
     </div>
   )

@@ -1057,7 +1057,7 @@ html:not(.js) .grow-rule {
 }
 
 /* ---------------------------------------------------------------------
-   Preçário: categorias fechadas ao telemóvel (components/price-list.tsx).
+   Serviços: famílias fechadas ao telemóvel (components/service-family.tsx).
    Sessenta e sete serviços de enfiada não se lêem num ecrã de bolso.
    Acima dos 640px cabem duas colunas e não há nada a esconder — e sem
    JavaScript nada se esconde de todo, que a lista tem de estar legível.

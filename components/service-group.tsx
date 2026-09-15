@@ -13,7 +13,7 @@ import { ChevronDown } from 'lucide-react'
  * um único serviço. Agora é um cartão claro: o nome, quantos escolhidos,
  * quantos há, e a seta.
  *
- * Ao contrário do `CollapseGroup` da montra, fecha também no monitor:
+ * Ao contrário do `ServiceFamily` de /servicos, fecha também no monitor:
  * a coluna da visita fica ao lado, e sete categorias abertas de enfiada
  * afastavam-na do que se está a escolher.
  *

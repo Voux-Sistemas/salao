@@ -36,7 +36,7 @@ type CatalogRow = {
  * o disco de ouro com a inicial em vez de uma imagem partida. Quando
  * chegar a oitava família, acrescenta-se aqui o nome do ficheiro.
  */
-const FAMILY_PHOTOS = new Set([
+export const FAMILY_PHOTOS = new Set([
   'cabelo',
   'coloracao',
   'tratamentos-capilares',
