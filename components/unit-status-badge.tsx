@@ -46,7 +46,7 @@ export async function UnitStatusBadge({
           aria-hidden
           className={
             status.open
-              ? 'size-1.5 shrink-0 rounded-full bg-[var(--ok)]'
+              ? 'size-1.5 shrink-0 rounded-full bg-[#6FAE63]'
               : 'size-1.5 shrink-0 rounded-full opacity-70 shadow-[inset_0_0_0_1.5px_currentColor]'
           }
         />
