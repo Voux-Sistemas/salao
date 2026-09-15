@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, MapPin } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { listUnits, type Org, type Unit } from '@/lib/org'
 import { weekDigest, weeklyHours } from '@/lib/hours'
@@ -10,6 +10,7 @@ import { ButtonLink } from '@/components/ui'
 import { LogoMark, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
 import { ScrollDots } from '@/components/scroll-dots'
+import { BAND_GROUND } from '@/components/funnel-stage'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 import { Photo, PhotoFallback } from '@/components/photo'
 
@@ -109,11 +110,28 @@ async function HouseCard({
   const open = digest.filter((row) => row.hours !== dict.unit.closedNow)
   const semana = open[0] ?? null
 
+  // A cidade só se escreve quando não é o próprio nome da casa.
+  const sameAsName =
+    unit.city && unit.city.trim().toLowerCase() === unit.name.trim().toLowerCase()
+  const address = [unit.address_line, sameAsName ? null : unit.city].filter(Boolean).join(', ')
+
+  /*
+    O CARTÃO ESCURO DA CASA — a opção B do mockup «As nossas casas».
+
+    Era um cartão claro com a foto, uma etiqueta quadrada em maiúsculas
+    por cima, e o nome, a morada, duas caixinhas e dois botões por baixo,
+    tudo no creme da página: lia-se como uma ficha, e a casa dizia que
+    era feio. Agora a fotografia fica em cima, limpa e com cantos
+    redondos — sem texto por cima a disputar com o letreiro de Valongo —
+    e por baixo a mesma faixa escura que o funil usa, com os detalhes em
+    ouro. Quem vê a capa já reconhece o desenho quando vai marcar.
+  */
   return (
-    <article className="lift group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-soft)]">
-      {/* A cara da casa antes da morada dela. Quem escolhe entre duas
-          lojas escolhe pelo sítio, não pelo código postal. */}
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--surface)]">
+    <article
+      className="band-dark lift group flex h-full flex-col overflow-hidden rounded-[26px] shadow-[inset_0_0_0_1px_rgba(211,184,126,0.16),0_24px_44px_-26px_rgba(34,29,23,0.55)]"
+      style={{ background: BAND_GROUND }}
+    >
+      <div className="relative mx-2 mt-2 aspect-[16/10] overflow-hidden rounded-[20px] bg-[#2A2420]">
         {cover ? (
           <Photo
             src={cover.url}
@@ -124,78 +142,53 @@ async function HouseCard({
           <PhotoFallback seed={unit.name} />
         )}
 
-        {/*
-          O ESTADO POR CIMA DA FOTOGRAFIA.
-
-          Estava numa caixa ao lado do nome, a empurrar a linha do
-          título e a disputar-lhe a atenção. Aqui é onde o olho já está
-          — e o vidro fumado deixa-o legível sobre qualquer imagem, seja
-          a montra clara de Valongo ou a parede escura da Maia.
-        */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[color-mix(in_srgb,#131009_38%,transparent)] to-transparent to-45%"
-        />
-        {/*
-          O `band-dark` NÃO É DECORAÇÃO AQUI: É O QUE O TORNA LEGÍVEL.
-
-          O Badge pinta-se com a cor do próprio tom sobre transparente,
-          e foi feito para assentar no creme da página. Sobre uma
-          fotografia — a montra clara de Valongo, por exemplo — o tom
-          neutro ficava tinta esbatida sobre fundo esbatido.
-
-          Envolvê-lo em `band-dark` faz os tokens virarem para a paleta
-          escura, e o vidro fumado por baixo dá-lhe um chão constante:
-          o distintivo passa a ler-se igual seja qual for a fotografia.
-        */}
-        <div className="band-dark absolute right-3 top-3 rounded-full border border-[color-mix(in_srgb,var(--ink)_18%,transparent)] bg-[color-mix(in_srgb,var(--surface)_66%,transparent)] px-1 py-0.5 backdrop-blur-md">
-          <UnitStatusBadge unit={unit} dict={dict} language={language} />
-        </div>
+        {/* O estado por cima da fotografia, num vidro fumado: lê-se igual
+            sobre a montra clara de Valongo e sobre a parede escura da Maia. */}
+        <span className="absolute top-2.5 left-2.5 inline-flex h-[26px] items-center rounded-full bg-[rgba(20,16,9,0.38)] px-[11px] text-[#F2EDE2] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.18)] backdrop-blur-md">
+          <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
+        </span>
       </div>
 
-      <div className="flex flex-1 flex-col p-6 sm:p-7">
-        <h3 className="display text-[1.5rem] leading-tight text-[var(--ink)]">
-          {unit.name}
-        </h3>
+      <div className="flex flex-1 flex-col px-[18px] pt-4 pb-[18px] sm:px-6 sm:pt-5 sm:pb-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="display text-[1.875rem] leading-[1.05] text-[#F7F2E8] sm:text-[2.125rem]">
+            {unit.name}
+          </h3>
+          <Link
+            href={`/loja/${unit.slug}`}
+            className="toque inline-flex shrink-0 items-center gap-0.5 text-[0.78125rem] font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-strong)] sm:text-[0.8125rem]"
+          >
+            {dict.home.houseVisit}
+            <ChevronRight size={13} strokeWidth={2} aria-hidden />
+          </Link>
+        </div>
 
-        {/* A morada lê-se como um endereço: alinhada à esquerda, por
-            baixo do nome, e não como uma coluna de números. */}
-        {unit.address_line ? (
-          <p className="mt-2.5 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-            {unit.address_line}
-            <br />
-            {[unit.postal_code, unit.city].filter(Boolean).join(' ')}
+        {address ? (
+          <p className="mt-2 flex gap-1.5 text-[0.78125rem] leading-[17px] text-[var(--ink-muted)] sm:text-[0.8125rem] sm:leading-[19px]">
+            <MapPin size={13} className="mt-0.5 shrink-0 text-[var(--accent)]" aria-hidden />
+            <span>{address}</span>
           </p>
         ) : null}
 
-        <a
-          href={mapsUrl(unit)}
-          target="_blank"
-          rel="noreferrer"
-          className="link-slide toque mt-2 inline-flex w-fit items-center gap-1.5 text-[0.8125rem] text-[var(--accent)]"
-        >
-          {dict.unit.directions}
-          <span aria-hidden className="text-[0.6875rem] opacity-70">
-            ↗
-          </span>
-        </a>
-
-        {/*
-          OS DOIS FACTOS, LADO A LADO.
-
-          Eram uma lista de definições com o rótulo à esquerda e o valor
-          à direita — o olho a saltar de ponta a ponta do ecrã em cada
-          linha. Em duas caixinhas, cada rótulo fica por cima do seu
-          valor e lê-se de uma vez.
-        */}
-        <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--line-soft)] bg-[var(--line-soft)]">
+        {/* Os dois factos lado a lado, cada rótulo por cima do seu valor. */}
+        <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[14px] bg-[rgba(242,237,226,0.08)]">
+          <div className="bg-[rgba(20,16,9,0.6)] px-3 py-[9px]">
+            <dt className="text-[0.59375rem] tracking-[0.18em] text-[#8F8472] uppercase">
+              {semana ? semana.days : dict.unit.closedNow}
+            </dt>
+            <dd className="tabular mt-0.5 text-[0.8125rem] text-[#EDE6D8]">
+              {semana ? semana.hours : '—'}
+            </dd>
+          </div>
           {unit.phone ? (
-            <div className="bg-[var(--surface)] px-3.5 py-3">
-              <dt className="eyebrow">{dict.unit.phoneLabel}</dt>
-              <dd className="tabular mt-1 text-[0.8125rem] text-[var(--ink)]">
+            <div className="bg-[rgba(20,16,9,0.6)] px-3 py-[9px]">
+              <dt className="text-[0.59375rem] tracking-[0.18em] text-[#8F8472] uppercase">
+                {dict.unit.phoneLabel}
+              </dt>
+              <dd className="tabular mt-0.5 text-[0.8125rem] text-[#EDE6D8]">
                 {/* Sem o +351: numa caixa estreita gasta um quinto da
-                    largura para dizer o que toda a gente cá sabe. O
-                    link leva-o por dentro, para quem ligar de fora. */}
+                    largura para dizer o que toda a gente cá sabe. O link
+                    leva-o por dentro, para quem ligar de fora. */}
                 <a
                   href={`tel:${unit.phone.replace(/\s/g, '')}`}
                   className="toque transition-colors hover:text-[var(--accent)]"
@@ -204,38 +197,33 @@ async function HouseCard({
                 </a>
               </dd>
             </div>
-          ) : null}
-
-          <div className="bg-[var(--surface)] px-3.5 py-3">
-            <dt className="eyebrow">
-              {semana ? semana.days : dict.unit.closedNow}
-            </dt>
-            <dd className="tabular mt-1 text-[0.8125rem] text-[var(--ink)]">
-              {semana ? semana.hours : '—'}
-            </dd>
-          </div>
+          ) : (
+            <div className="bg-[rgba(20,16,9,0.6)]" />
+          )}
         </dl>
 
-        {/* As duas acções na forma da casa — a mesma pílula dos
-            serviços e do fecho. */}
-        <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+        <div className="mt-3.5 flex gap-2 sm:mt-5">
           <Link
             href={`/agendar/${unit.slug}`}
-            className="pilula-casa toque justify-center sm:justify-start"
+            className="botao toque flex h-[46px] flex-1 items-center justify-center rounded-full bg-[#C6A96B] text-[0.90625rem] font-semibold text-[#1E1811] transition-colors hover:bg-[#D3B87E] sm:h-12 sm:text-[0.9375rem]"
           >
             {dict.home.houseBook}
           </Link>
-          <Link
-            href={`/loja/${unit.slug}`}
-            className="toque inline-flex h-[2.875rem] items-center justify-center rounded-full border border-[var(--line)] px-6 text-[0.8125rem] font-semibold text-[var(--ink)] transition-colors hover:border-[var(--ink-faint)]"
+          <a
+            href={mapsUrl(unit)}
+            target="_blank"
+            rel="noreferrer"
+            className="toque inline-flex h-[46px] shrink-0 items-center gap-[5px] rounded-full px-4 text-[0.84375rem] font-medium text-[#F2EDE2] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.22)] transition-colors hover:bg-[rgba(242,237,226,0.06)] sm:h-12 sm:px-5"
           >
-            {dict.home.houseVisit}
-          </Link>
+            <MapPin size={15} strokeWidth={1.8} aria-hidden />
+            {dict.unit.directions}
+          </a>
         </div>
       </div>
     </article>
   )
 }
+
 export async function Showcase({ org }: { org: Org }) {
   // A língua vem antes de tudo o resto: o catálogo sai da base já
   // traduzido, e a consulta precisa de saber para quem escreve.
@@ -556,15 +544,19 @@ export async function Showcase({ org }: { org: Org }) {
 
       {/* ------------------------------------------------ as casas ---- */}
       <section id="casas" className="scroll-mt-16 border-t border-[var(--line-soft)]">
-        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
-          <Reveal className="mb-10">
-            <p className="eyebrow eyebrow-gold">{dict.home.storesTitle}</p>
-            <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-[var(--ink-muted)]">
+        <div className="mx-auto max-w-6xl px-3.5 py-10 sm:px-8 sm:py-20">
+          {/* Um título centrado, como o de «O que fazemos»: as duas
+              secções da capa falam da mesma maneira. */}
+          <Reveal className="mb-6 text-center sm:mb-10">
+            <h2 className="display text-balance text-[1.5rem] leading-tight text-[var(--ink)] sm:text-[2rem]">
+              {dict.home.housesHeading}
+            </h2>
+            <p className="mx-auto mt-1.5 max-w-md text-[0.8125rem] leading-relaxed text-[var(--ink-muted)] sm:mt-3 sm:text-[0.9375rem]">
               {dict.unit.listLead}
             </p>
           </Reveal>
 
-          <Reveal group className="grid gap-6 lg:grid-cols-2">
+          <Reveal group className="grid gap-3.5 sm:gap-6 lg:grid-cols-2">
             {houses.map(({ unit, cover }) => (
               <HouseCard
                 key={unit.id}

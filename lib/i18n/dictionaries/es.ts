@@ -57,6 +57,7 @@ export const es: Dictionary = {
       'Entre estas paredes no hay prisa. Hay tiempo, oficio y manos que conocen tu nombre. La ciudad — y el reloj — se quedan fuera.',
     housesEyebrow: 'Dónde estamos',
     housesTitle: 'Las dos casas',
+    housesHeading: 'Nuestras casas',
     houseVisit: 'Conocer la casa',
     houseBook: 'Reservar en esta casa',
     servicesEyebrow: 'La carta',

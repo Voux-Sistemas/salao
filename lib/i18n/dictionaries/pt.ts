@@ -64,6 +64,7 @@ export const pt = {
       'Entre estas paredes não há pressa. Há tempo, ofício e mãos que conhecem o seu nome. A cidade — e o relógio — ficam lá fora.',
     housesEyebrow: 'Onde estamos',
     housesTitle: 'As duas casas',
+    housesHeading: 'As nossas casas',
     houseVisit: 'Conhecer a casa',
     houseBook: 'Marcar nesta casa',
     servicesEyebrow: 'O menu',

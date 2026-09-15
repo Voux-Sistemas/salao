@@ -57,6 +57,7 @@ export const en: Dictionary = {
       'Within these walls there is no hurry. There is time, craft, and hands that know your name. The city — and the clock — stay outside.',
     housesEyebrow: 'Where we are',
     housesTitle: 'The two houses',
+    housesHeading: 'Our houses',
     houseVisit: 'Discover the house',
     houseBook: 'Book at this house',
     servicesEyebrow: 'The menu',
