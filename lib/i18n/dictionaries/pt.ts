@@ -122,8 +122,8 @@ export const pt = {
     addressesLabel: 'Moradas',
     instagram: 'Seguir no Instagram',
     links: {
-      stores: 'As nossas casas',
-      services: 'Os nossos serviços',
+      stores: 'Nossas lojas',
+      services: 'Nossos serviços',
       account: 'Área do Cliente',
       book: 'Marcar hora',
     },

@@ -112,7 +112,7 @@ export const en: Dictionary = {
     addressesLabel: 'Addresses',
     instagram: 'Follow on Instagram',
     links: {
-      stores: 'Our houses',
+      stores: 'Our locations',
       services: 'Our services',
       account: 'Client area',
       book: 'Book now',
