@@ -54,85 +54,70 @@ export default async function ChooseStorePage() {
         <Empty title={dict.unit.noStores} hint={dict.unit.noStoresHint} />
       ) : (
         /*
-          AS LOJAS COMO AS PROFISSIONAIS: UMA LISTA SÓ.
+          CARTÕES BAIXOS, COM A FOTOGRAFIA AO LADO.
 
-          É a opção C do mockup «Loja no telemóvel». Passou por duas antes:
-          uma linha com etiqueta quadrada em maiúsculas e a morada cortada,
-          e cartões com a fotografia em grande e o nome por cima — que
-          ficavam enormes, e em Valongo o nome caía em cima do próprio
-          letreiro da loja. Aqui é o desenho do passo seguinte: no
-          telemóvel um painel com um fio entre as lojas, e a fotografia
-          num círculo pequeno; no monitor um cartão por loja, lado a lado.
+          É a opção D do mockup «Loja no telemóvel», e a quarta tentativa
+          deste ecrã. A linha com a etiqueta quadrada ficou pesada; os
+          cartões com a fotografia em grande e o nome por cima ficaram
+          enormes (e em Valongo o nome caía em cima do letreiro da loja); a
+          lista com a foto num círculo ficou desproporcional — um círculo
+          pequeno ao lado de três linhas de texto. Aqui a fotografia ocupa
+          a altura toda do cartão, numa coluna à esquerda, sem nada escrito
+          por cima, e o texto fica à direita.
         */
-        <>
-          <div className="flex items-center gap-2.5 px-1 sm:gap-3.5 sm:px-0">
-            <h2 className="text-[0.625rem] leading-3 font-medium tracking-[0.18em] whitespace-nowrap text-[var(--accent)] uppercase sm:text-[0.6875rem] sm:leading-[14px]">
-              {dict.funnel.storeList}
-            </h2>
-            <span
-              aria-hidden
-              className="h-px flex-1"
-              style={{
-                background: 'linear-gradient(90deg, rgba(198,169,107,0.4), rgba(198,169,107,0))',
-              }}
-            />
-          </div>
-
-          <ul className="mt-2.5 overflow-hidden rounded-[18px] bg-[var(--surface-raised)] shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:mt-3.5 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:rounded-none sm:bg-transparent sm:shadow-none">
-            {units.map((unit, index) => {
-              const cover = covers.get(unit.id)
-              const address = [unit.address_line, unit.city].filter(Boolean).join(', ')
-              return (
-                <li key={unit.id}>
-                  {index > 0 ? (
-                    <span
-                      aria-hidden
-                      className="ml-[72px] block h-px bg-[rgba(34,29,23,0.06)] sm:hidden"
+        <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3">
+          {units.map((unit) => {
+            const cover = covers.get(unit.id)
+            // A cidade só se escreve quando não é o próprio nome da loja:
+            // «Valongo» por cima de «…, Loja 07, Valongo» dizia-o duas vezes.
+            const sameAsName =
+              unit.city && unit.city.trim().toLowerCase() === unit.name.trim().toLowerCase()
+            const address = [unit.address_line, sameAsName ? null : unit.city]
+              .filter(Boolean)
+              .join(', ')
+            return (
+              <Link
+                key={unit.id}
+                href={`/agendar/${unit.slug}`}
+                className="group flex min-h-[104px] overflow-hidden rounded-[18px] bg-[var(--surface-raised)] shadow-[0_1px_2px_rgba(34,29,23,0.03)] transition-[background-color,box-shadow] duration-200 outline-offset-2 hover:bg-[#FFFDF8] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:min-h-[120px] sm:rounded-[20px] sm:hover:shadow-[0_0_0_1px_rgba(142,111,65,0.24),0_8px_22px_-16px_rgba(34,29,23,0.28)]"
+              >
+                <span className="relative w-[104px] shrink-0 overflow-hidden bg-[#2A2420] sm:w-[140px]">
+                  {cover ? (
+                    <Photo
+                      src={cover.url}
+                      alt={cover.alt ?? unit.name}
+                      className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
                     />
+                  ) : (
+                    <span className="absolute inset-0">
+                      <PhotoFallback seed={unit.name} compact />
+                    </span>
+                  )}
+                </span>
+
+                <span className="flex min-w-0 flex-1 flex-col justify-center px-3.5 py-3 sm:px-5">
+                  <span className="display block text-lg leading-[1.2] text-[var(--ink)] sm:text-xl">
+                    {unit.name}
+                  </span>
+                  {address ? (
+                    <span className="mt-0.5 line-clamp-2 text-[0.75rem] leading-4 text-[#8A7F6E] sm:text-[0.8125rem] sm:leading-[18px]">
+                      {address}
+                    </span>
                   ) : null}
-                  <Link
-                    href={`/agendar/${unit.slug}`}
-                    className="group flex items-center gap-3 py-3 pr-4 pl-3 transition-[background-color,box-shadow] duration-200 outline-offset-2 hover:bg-[#FFFDF8] focus-visible:outline-2 focus-visible:outline-[var(--accent)] sm:gap-3.5 sm:rounded-[18px] sm:bg-[var(--surface-raised)] sm:py-3.5 sm:pr-[18px] sm:pl-3.5 sm:hover:shadow-[0_0_0_1px_rgba(142,111,65,0.24),0_8px_22px_-16px_rgba(34,29,23,0.28)]"
-                  >
-                    <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-[#F3EBDA] sm:size-14">
-                      {cover ? (
-                        <Photo src={cover.url} alt={cover.alt ?? unit.name} />
-                      ) : (
-                        <PhotoFallback seed={unit.name} compact />
-                      )}
-                      {/* O fio dourado vai por cima da fotografia, e escurece no hover. */}
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgba(198,169,107,0.45)] transition-shadow group-hover:shadow-[inset_0_0_0_1px_#A88A57]"
-                      />
-                    </span>
-
-                    <span className="min-w-0 flex-1">
-                      <span className="display block text-[1.0625rem] leading-[1.2] text-[var(--ink)] sm:text-lg">
-                        {unit.name}
-                      </span>
-                      {address ? (
-                        <span className="mt-px block text-[0.75rem] leading-4 text-[#8A7F6E]">
-                          {address}
-                        </span>
-                      ) : null}
-                      <span className="mt-[3px] block text-[#8A7F6E]">
-                        <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
-                      </span>
-                    </span>
-
+                  <span className="mt-[5px] flex items-center justify-between gap-2 text-[#8A7F6E]">
+                    <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
                     <ChevronRight
                       size={14}
                       strokeWidth={1.8}
                       aria-hidden
                       className="shrink-0 text-[#B3A68F] transition-colors group-hover:text-[var(--action-strong)]"
                     />
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </>
+                  </span>
+                </span>
+              </Link>
+            )
+          })}
+        </div>
       )}
     </FunnelStage>
   )

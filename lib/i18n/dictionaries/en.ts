@@ -130,7 +130,6 @@ export const en: Dictionary = {
     storeTitle: 'Where would you like to be seen?',
     storeSubtitle: 'Choose a location to see the available times.',
     storeAction: 'Choose the day',
-    storeList: 'Our salons',
     dayTitle: 'Which day suits you?',
     daySubtitle: 'Pick the day, then see who is working.',
     dayAction: 'Choose professional',
