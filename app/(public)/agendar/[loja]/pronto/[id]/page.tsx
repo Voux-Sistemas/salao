@@ -1,13 +1,14 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { MapPin, Phone } from 'lucide-react'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { chaveDa, getAppointment } from '@/lib/booking'
 import { formatCents } from '@/lib/money'
 import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
-import { ButtonLink, Eyebrow } from '@/components/ui'
-import { LeafRule, LogoStamp, Ornament } from '@/components/brand'
+import { LogoStamp } from '@/components/brand'
+import { BAND_GROUND } from '@/components/funnel-stage'
 import { GuardarNoTelemovel } from '@/components/remarcar-forms'
 import { formatPhone } from '@/lib/text'
 import { serviceNamesFor } from '@/lib/catalog-names'
@@ -31,9 +32,10 @@ export async function generateMetadata(): Promise<Metadata> {
  * O recibo. É a última tela do funil e leva o caminho para a área de
  * conta — a partir daqui a cliente vê e cancela as suas marcações.
  *
- * A tela é deliberadamente celebratória: faixa escura em cima com o
- * carimbo dourado, e por baixo um bilhete em porcelana com tudo o que
- * ela precisa de saber para aparecer à hora certa, no sítio certo.
+ * No desenho do mockup «Marcação feita · delicado»: a faixa escura em
+ * painel de cantos redondos, com o carimbo em pequeno, e por baixo um
+ * bilhete claro com tudo o que ela precisa de saber para aparecer à
+ * hora certa, no sítio certo. Os raminhos decorativos saíram.
  */
 export default async function DonePage({ params }: Params) {
   const { loja, id } = await params
@@ -92,20 +94,15 @@ export default async function DonePage({ params }: Params) {
     : null
 
   return (
-    <div className="flex min-h-[78vh] flex-col">
+    <div className="tabular flex min-h-[78vh] flex-col">
       {/* ------------------------------------------------- o carimbo --- */}
-      <header className="band-dark relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-32 left-1/2 h-72 w-[46rem] -translate-x-1/2 rounded-full opacity-50 blur-3xl"
-          style={{
-            background:
-              'radial-gradient(circle, color-mix(in srgb, var(--gold) 38%, transparent), transparent 70%)',
-          }}
-        />
-        <div className="relative mx-auto max-w-xl px-5 py-16 text-center sm:px-8 sm:py-20">
-          <LogoStamp className="mx-auto h-32 w-32 sm:h-40 sm:w-40" />
-          <h1 className="display display-italic animate-rise delay-3 mt-7 text-[2.1rem] leading-[1.1] sm:text-[2.75rem]">
+      <div className="mx-auto w-full max-w-[74.5rem] px-3 pt-2.5 sm:px-5 sm:pt-4">
+        <header
+          className="band-dark relative overflow-hidden rounded-[20px] px-[18px] py-5 text-center shadow-[inset_0_0_0_1px_rgba(211,184,126,0.14)] sm:rounded-[24px] sm:px-8 sm:pt-8 sm:pb-[34px]"
+          style={{ background: BAND_GROUND }}
+        >
+          <LogoStamp className="mx-auto h-14 w-14 sm:h-[72px] sm:w-[72px]" />
+          <h1 className="display display-italic animate-rise mt-3 text-[1.5625rem] leading-[1.1] sm:mt-[18px] sm:text-[2.25rem]">
             {dict.funnel.doneTitle}
           </h1>
           {/*
@@ -120,48 +117,45 @@ export default async function DonePage({ params }: Params) {
             para terra («em Valongo», «na Maia»), e a frase tem de servir
             às lojas todas sem se enganar em nenhuma.
           */}
-          <p className="animate-fade delay-4 mt-4 text-[0.9375rem] text-[var(--ink-muted)]">
+          <p className="animate-fade mx-auto mt-2 max-w-md text-[0.78125rem] leading-[18px] text-[var(--ink-muted)] sm:mt-2.5 sm:text-[0.875rem] sm:leading-5">
             {dict.funnel.doneSubtitle
               .replace('{loja}', appointment.unit_name)
               .replace('{dia}', formatDayLong(day, timezone, language))
               .replace('{hora}', formatTime(appointment.starts_at, timezone, language))}
           </p>
-          <div className="animate-fade delay-5 mt-8 flex justify-center text-[var(--gold)] opacity-60">
-            <Ornament />
-          </div>
-        </div>
-      </header>
+        </header>
+      </div>
 
       {/* -------------------------------------------------- o bilhete --- */}
       <div className="flex-1">
-        <div className="mx-auto max-w-xl px-5 py-12 sm:px-8 sm:py-16">
-          <div className="border border-[var(--line)] bg-[var(--surface-raised)] shadow-[var(--shadow-warm)]">
-            <div className="h-1 bg-[var(--accent)]" />
-
+        <div className="mx-auto w-full max-w-[35rem] px-3 pt-3 pb-12 sm:px-5 sm:pt-7 sm:pb-16">
+          <div className="overflow-hidden rounded-[18px] bg-[var(--surface-raised)] shadow-[0_1px_2px_rgba(34,29,23,0.03),0_14px_32px_-24px_rgba(34,29,23,0.28)] sm:rounded-[22px]">
             <Row label={dict.funnel.whenLabel}>
-              <span className="display block text-lg leading-snug text-[var(--ink)] first-letter:uppercase">
+              <span className="display block text-[1.0625rem] leading-[1.2] text-[var(--ink)] first-letter:uppercase sm:text-xl">
                 {formatDayLong(day, timezone, language)}
               </span>
-              <span className="tabular mt-1 block text-[var(--accent)]">
+              <span className="mt-[3px] block text-[0.875rem] font-semibold text-[var(--accent)]">
                 {formatTime(appointment.starts_at, timezone, language)}
-                {' · '}
-                {formatDuration(minutes, language)}
+                <span className="font-normal text-[#8A7F6E]">
+                  {' · '}
+                  {formatDuration(minutes, language)}
+                </span>
               </span>
             </Row>
 
             <Row label={dict.funnel.whereLabel}>
-              <span className="display block text-lg text-[var(--ink)]">
+              <span className="display block text-[1.0625rem] leading-[1.2] text-[var(--ink)] sm:text-xl">
                 {appointment.unit_name}
               </span>
               {address ? (
-                <p className="mt-1.5 flex items-start gap-2 text-[0.8125rem] leading-relaxed text-[var(--ink-muted)]">
-                  <MapPin size={14} className="mt-0.5 shrink-0" />
+                <p className="mt-1 flex items-start gap-1.5 text-[0.78125rem] leading-[18px] text-[var(--ink-muted)]">
+                  <MapPin size={13} className="mt-0.5 shrink-0" aria-hidden />
                   {maps ? (
                     <a
                       href={maps}
                       target="_blank"
                       rel="noreferrer"
-                      className="link-slide"
+                      className="underline decoration-[rgba(142,111,65,0.35)] underline-offset-[3px] transition-colors hover:text-[var(--accent)]"
                     >
                       {address}
                     </a>
@@ -171,11 +165,11 @@ export default async function DonePage({ params }: Params) {
                 </p>
               ) : null}
               {unit?.phone ? (
-                <p className="mt-1 flex items-center gap-2 text-[0.8125rem] text-[var(--ink-muted)]">
-                  <Phone size={14} className="shrink-0" />
+                <p className="mt-[3px] flex items-center gap-1.5 text-[0.78125rem] text-[var(--ink-muted)]">
+                  <Phone size={13} className="shrink-0" aria-hidden />
                   <a
                     href={`tel:${unit.phone.replace(/\s/g, '')}`}
-                    className="tabular link-slide"
+                    className="transition-colors hover:text-[var(--accent)]"
                   >
                     {formatPhone(unit.phone)}
                   </a>
@@ -184,38 +178,37 @@ export default async function DonePage({ params }: Params) {
             </Row>
 
             <Row label={dict.funnel.whatLabel}>
-              <ul className="space-y-3">
+              <ul className="space-y-1.5">
                 {appointment.items.map((item) => (
-                  <li key={item.id}>
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-[0.9375rem] text-[var(--ink)]">
+                  <li key={item.id} className="flex items-baseline justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[0.875rem] leading-5 text-[var(--ink)]">
                         {names.get(item.service_id) ?? item.service_name}
-                      </span>
-                      <span className="flex-1 translate-y-[-3px] border-b border-dotted border-[var(--line)]" />
-                      <span className="tabular shrink-0 text-[0.875rem] text-[var(--ink)]">
-                        {formatCents(item.price_cents, org.currency, language)}
-                      </span>
+                      </p>
+                      <p className="text-[0.75rem] leading-[17px] text-[#8A7F6E]">
+                        {formatTime(item.starts_at, timezone, language)}
+                        {/* Ao domingo nao se diz «com quem»: a cliente nao
+                            escolheu ninguem, e o nome que o motor arrumou
+                            por dentro nao e uma promessa. */}
+                        {picksStaffOn(day) ? (
+                          <>
+                            {' · '}
+                            {dict.common.with} {item.staff_public_name}
+                          </>
+                        ) : null}
+                      </p>
                     </div>
-                    <p className="tabular mt-0.5 text-[0.75rem] text-[var(--ink-faint)]">
-                      {formatTime(item.starts_at, timezone, language)}
-                      {/* Ao domingo nao se diz «com quem»: a cliente nao
-                          escolheu ninguem, e o nome que o motor arrumou
-                          por dentro nao e uma promessa. */}
-                      {picksStaffOn(day) ? (
-                        <>
-                          {' · '}
-                          {dict.common.with} {item.staff_public_name}
-                        </>
-                      ) : null}
-                    </p>
+                    <span className="shrink-0 text-[0.875rem] text-[var(--ink)]">
+                      {formatCents(item.price_cents, org.currency, language)}
+                    </span>
                   </li>
                 ))}
               </ul>
             </Row>
 
-            <div className="flex items-baseline justify-between px-6 py-5">
-              <Eyebrow>{dict.common.total}</Eyebrow>
-              <span className="tabular display text-2xl text-[var(--ink)]">
+            <div className="flex items-baseline justify-between bg-[rgba(198,169,107,0.07)] px-4 py-3 sm:px-6 sm:py-4">
+              <span className="text-[0.8125rem] text-[var(--ink-muted)]">{dict.common.total}</span>
+              <span className="text-lg font-semibold tracking-[-0.01em] text-[var(--ink)] sm:text-xl">
                 {formatCents(appointment.total_cents, org.currency, language)}
               </span>
             </div>
@@ -234,33 +227,40 @@ export default async function DonePage({ params }: Params) {
             telemóvel e pelo primeiro nome, no botão «Remarcar».
           */}
           <GuardarNoTelemovel chave={chave} />
-          <div className="mt-9 flex flex-wrap gap-3">
-            <ButtonLink href={chave ? `/m/${chave}` : '/remarcar'} size="lg">
+          <div className="mt-3 flex flex-col gap-2 sm:mt-[18px] sm:flex-row sm:gap-3">
+            <Link
+              href={chave ? `/m/${chave}` : '/remarcar'}
+              className="botao sheen flex h-[46px] items-center justify-center rounded-full bg-[var(--action)] text-[0.90625rem] font-semibold tracking-[0.01em] text-[var(--action-ink)] shadow-[0_10px_22px_-14px_rgba(111,85,47,0.7)] transition-all duration-300 select-none hover:-translate-y-0.5 hover:bg-[var(--action-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:translate-y-px sm:h-12 sm:flex-1 sm:text-[0.9375rem]"
+            >
               {dict.funnel.changeOrCancel}
-            </ButtonLink>
-            <ButtonLink href="/agendar" size="lg" variant="outline">
+            </Link>
+            <Link
+              href="/agendar"
+              className="botao flex h-[46px] items-center justify-center rounded-full text-[0.90625rem] font-medium text-[var(--ink)] shadow-[inset_0_0_0_1px_rgba(111,85,47,0.3)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:h-12 sm:flex-1 sm:text-[0.9375rem]"
+            >
               {dict.funnel.bookAnother}
-            </ButtonLink>
+            </Link>
           </div>
 
           {prazo ? (
-            <p className="mt-5 text-[0.8125rem] text-[var(--ink-faint)]">{prazo}</p>
+            <p className="mt-2.5 text-center text-[0.75rem] leading-[17px] text-[#8A7F6E] sm:mt-3.5">
+              {prazo}
+            </p>
           ) : null}
-
-          <div className="mt-12 flex justify-center text-[var(--line)]">
-            <LeafRule className="w-40" />
-          </div>
         </div>
       </div>
     </div>
   )
 }
 
+/** Uma linha do bilhete: o rótulo em versaletes finos, e o que diz. */
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-[var(--line-soft)] px-6 py-5">
-      <Eyebrow>{label}</Eyebrow>
-      <div className="mt-2">{children}</div>
+    <div className="border-b border-[rgba(34,29,23,0.06)] px-4 py-3 sm:px-6 sm:py-4">
+      <p className="text-[0.625rem] leading-[13px] font-medium tracking-[0.18em] text-[var(--accent)] uppercase sm:text-[0.65625rem]">
+        {label}
+      </p>
+      <div className="mt-1.5">{children}</div>
     </div>
   )
 }

@@ -10,15 +10,15 @@ import { formatMonthLong, formatWeekdayShort, type IsoDay } from '@/lib/time'
  * muito baixo: é luz, não cor. O fio de dentro é o que separa a faixa
  * da porcelana sem precisar de borda.
  */
-const BAND_GROUND =
+export const BAND_GROUND =
   'radial-gradient(640px 300px at 92% -30%, rgba(211,184,126,0.12), rgba(211,184,126,0) 70%), linear-gradient(158deg, #1E1811 0%, #141009 100%)'
 
 /**
  * A MOLDURA LEVE DO FUNIL.
  *
- * É a dos mockups «· delicado» do dia, da profissional, do serviço, da
- * hora e da confirmação, que a casa aprovou — os cinco passos do funil
- * que vêm depois da loja já a usam.
+ * É a dos mockups «· delicado» que a casa aprovou, e os seis passos do
+ * funil já a usam, da loja à confirmação. O recibo (`/pronto`) não tem
+ * passos, mas pede emprestado o `BAND_GROUND` para a sua faixa.
  *
  * O que muda em relação à antiga:
  *
