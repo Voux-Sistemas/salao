@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ChevronRight, MapPin } from 'lucide-react'
+import { ChevronRight, Clock, MapPin, Phone } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { listUnits, type Org, type Unit } from '@/lib/org'
 import { weekDigest, weeklyHours } from '@/lib/hours'
@@ -10,7 +10,6 @@ import { ButtonLink } from '@/components/ui'
 import { LogoMark, Ornament } from '@/components/brand'
 import { Reveal } from '@/components/reveal'
 import { ScrollDots } from '@/components/scroll-dots'
-import { BAND_GROUND } from '@/components/funnel-stage'
 import { UnitStatusBadge } from '@/components/unit-status-badge'
 import { Photo, PhotoFallback } from '@/components/photo'
 
@@ -116,96 +115,71 @@ async function HouseCard({
   const address = [unit.address_line, sameAsName ? null : unit.city].filter(Boolean).join(', ')
 
   /*
-    O CARTÃO ESCURO DA CASA — a opção B do mockup «As nossas casas».
+    A FOTOGRAFIA INTEIRA — a opção A do mockup «As nossas casas».
 
-    Era um cartão claro com a foto, uma etiqueta quadrada em maiúsculas
-    por cima, e o nome, a morada, duas caixinhas e dois botões por baixo,
-    tudo no creme da página: lia-se como uma ficha, e a casa dizia que
-    era feio. Agora a fotografia fica em cima, limpa e com cantos
-    redondos — sem texto por cima a disputar com o letreiro de Valongo —
-    e por baixo a mesma faixa escura que o funil usa, com os detalhes em
-    ouro. Quem vê a capa já reconhece o desenho quando vai marcar.
+    Passou pelo cartão claro (uma ficha, com etiqueta quadrada em
+    maiúsculas) e pelo cartão escuro (a fotografia em cima e uma faixa
+    preta por baixo), que ficou pesado no preto. Aqui a fotografia da casa
+    ocupa o cartão todo, e o texto assenta num véu que só escurece o
+    fundo: em cima fica o salão como ele é, em baixo o nome, a morada, o
+    horário e o que se pode fazer.
   */
+  const glass =
+    'bg-[rgba(20,16,9,0.38)] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.18)] backdrop-blur-md'
+
   return (
-    <article
-      className="band-dark lift group flex h-full flex-col overflow-hidden rounded-[26px] shadow-[inset_0_0_0_1px_rgba(211,184,126,0.16),0_24px_44px_-26px_rgba(34,29,23,0.55)]"
-      style={{ background: BAND_GROUND }}
-    >
-      <div className="relative mx-2 mt-2 aspect-[16/10] overflow-hidden rounded-[20px] bg-[#2A2420]">
-        {cover ? (
-          <Photo
-            src={cover.url}
-            alt={cover.alt ?? unit.name}
-            className="transition-transform duration-700 group-hover:scale-105"
-          />
-        ) : (
+    <article className="lift group relative h-[470px] overflow-hidden rounded-[26px] bg-[#2A2420] shadow-[0_24px_44px_-26px_rgba(34,29,23,0.55)] sm:h-[520px]">
+      {cover ? (
+        <Photo
+          src={cover.url}
+          alt={cover.alt ?? unit.name}
+          className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
+        />
+      ) : (
+        <span className="absolute inset-0">
           <PhotoFallback seed={unit.name} />
-        )}
-
-        {/* O estado por cima da fotografia, num vidro fumado: lê-se igual
-            sobre a montra clara de Valongo e sobre a parede escura da Maia. */}
-        <span className="absolute top-2.5 left-2.5 inline-flex h-[26px] items-center rounded-full bg-[rgba(20,16,9,0.38)] px-[11px] text-[#F2EDE2] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.18)] backdrop-blur-md">
-          <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
         </span>
-      </div>
+      )}
 
-      <div className="flex flex-1 flex-col px-[18px] pt-4 pb-[18px] sm:px-6 sm:pt-5 sm:pb-6">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="display text-[1.875rem] leading-[1.05] text-[#F7F2E8] sm:text-[2.125rem]">
-            {unit.name}
-          </h3>
-          <Link
-            href={`/loja/${unit.slug}`}
-            className="toque inline-flex shrink-0 items-center gap-0.5 text-[0.78125rem] font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-strong)] sm:text-[0.8125rem]"
-          >
-            {dict.home.houseVisit}
-            <ChevronRight size={13} strokeWidth={2} aria-hidden />
-          </Link>
-        </div>
+      {/* O véu: um pouco em cima para o estado se ler, nada no meio para
+          o salão se ver, e escuro em baixo para o texto assentar. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(20,16,9,0.25) 0%, rgba(20,16,9,0) 26%, rgba(20,16,9,0.15) 45%, rgba(20,16,9,0.88) 78%, rgba(20,16,9,0.95) 100%)',
+        }}
+      />
+
+      <span
+        className={`absolute top-3.5 left-3.5 inline-flex h-7 items-center rounded-full px-3 text-[#F2EDE2] ${glass}`}
+      >
+        <UnitStatusBadge unit={unit} dict={dict} language={language} variant="dot" />
+      </span>
+
+      <div className="absolute inset-x-[18px] bottom-[18px] sm:inset-x-6 sm:bottom-6">
+        <h3 className="display text-[2.375rem] leading-none text-[#F7F2E8] sm:text-[2.75rem]">
+          {unit.name}
+        </h3>
 
         {address ? (
-          <p className="mt-2 flex gap-1.5 text-[0.78125rem] leading-[17px] text-[var(--ink-muted)] sm:text-[0.8125rem] sm:leading-[19px]">
-            <MapPin size={13} className="mt-0.5 shrink-0 text-[var(--accent)]" aria-hidden />
+          <p className="mt-2 flex gap-1.5 text-[0.78125rem] leading-[17px] text-[#D9D0C0] sm:text-[0.8125rem]">
+            <MapPin size={13} className="mt-0.5 shrink-0" aria-hidden />
             <span>{address}</span>
           </p>
         ) : null}
+        {semana ? (
+          <p className="tabular mt-1 flex items-center gap-1.5 text-[0.78125rem] text-[#D9D0C0] sm:text-[0.8125rem]">
+            <Clock size={13} className="shrink-0" aria-hidden />
+            {semana.days} · {semana.hours}
+          </p>
+        ) : null}
 
-        {/* Os dois factos lado a lado, cada rótulo por cima do seu valor. */}
-        <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[14px] bg-[rgba(242,237,226,0.08)]">
-          <div className="bg-[rgba(20,16,9,0.6)] px-3 py-[9px]">
-            <dt className="text-[0.59375rem] tracking-[0.18em] text-[#8F8472] uppercase">
-              {semana ? semana.days : dict.unit.closedNow}
-            </dt>
-            <dd className="tabular mt-0.5 text-[0.8125rem] text-[#EDE6D8]">
-              {semana ? semana.hours : '—'}
-            </dd>
-          </div>
-          {unit.phone ? (
-            <div className="bg-[rgba(20,16,9,0.6)] px-3 py-[9px]">
-              <dt className="text-[0.59375rem] tracking-[0.18em] text-[#8F8472] uppercase">
-                {dict.unit.phoneLabel}
-              </dt>
-              <dd className="tabular mt-0.5 text-[0.8125rem] text-[#EDE6D8]">
-                {/* Sem o +351: numa caixa estreita gasta um quinto da
-                    largura para dizer o que toda a gente cá sabe. O link
-                    leva-o por dentro, para quem ligar de fora. */}
-                <a
-                  href={`tel:${unit.phone.replace(/\s/g, '')}`}
-                  className="toque transition-colors hover:text-[var(--accent)]"
-                >
-                  {formatPhone(unit.phone).replace(/^\+351\s*/, '')}
-                </a>
-              </dd>
-            </div>
-          ) : (
-            <div className="bg-[rgba(20,16,9,0.6)]" />
-          )}
-        </dl>
-
-        <div className="mt-3.5 flex gap-2 sm:mt-5">
+        <div className="mt-4 flex items-center gap-2">
           <Link
             href={`/agendar/${unit.slug}`}
-            className="botao toque flex h-[46px] flex-1 items-center justify-center rounded-full bg-[#C6A96B] text-[0.90625rem] font-semibold text-[#1E1811] transition-colors hover:bg-[#D3B87E] sm:h-12 sm:text-[0.9375rem]"
+            className="botao toque flex h-12 flex-1 items-center justify-center rounded-full bg-[#C6A96B] text-[0.9375rem] font-semibold text-[#1E1811] shadow-[0_14px_30px_-18px_rgba(198,169,107,0.9)] transition-colors hover:bg-[#D3B87E]"
           >
             {dict.home.houseBook}
           </Link>
@@ -213,11 +187,32 @@ async function HouseCard({
             href={mapsUrl(unit)}
             target="_blank"
             rel="noreferrer"
-            className="toque inline-flex h-[46px] shrink-0 items-center gap-[5px] rounded-full px-4 text-[0.84375rem] font-medium text-[#F2EDE2] shadow-[inset_0_0_0_1px_rgba(242,237,226,0.22)] transition-colors hover:bg-[rgba(242,237,226,0.06)] sm:h-12 sm:px-5"
+            aria-label={dict.unit.directions}
+            title={dict.unit.directions}
+            className={`toque flex size-12 shrink-0 items-center justify-center rounded-full text-[#F2EDE2] transition-colors hover:bg-[rgba(20,16,9,0.55)] ${glass}`}
           >
-            <MapPin size={15} strokeWidth={1.8} aria-hidden />
-            {dict.unit.directions}
+            <MapPin size={18} strokeWidth={1.8} aria-hidden />
           </a>
+          {unit.phone ? (
+            <a
+              href={`tel:${unit.phone.replace(/\s/g, '')}`}
+              aria-label={`${dict.unit.phoneLabel} ${formatPhone(unit.phone)}`}
+              title={formatPhone(unit.phone)}
+              className={`toque flex size-12 shrink-0 items-center justify-center rounded-full text-[#F2EDE2] transition-colors hover:bg-[rgba(20,16,9,0.55)] ${glass}`}
+            >
+              <Phone size={18} strokeWidth={1.8} aria-hidden />
+            </a>
+          ) : null}
+        </div>
+
+        <div className="mt-3 text-center">
+          <Link
+            href={`/loja/${unit.slug}`}
+            className="toque inline-flex items-center gap-0.5 text-[0.8125rem] font-medium text-[#EDE6D8] transition-colors hover:text-white"
+          >
+            {dict.home.houseVisit}
+            <ChevronRight size={13} strokeWidth={2} aria-hidden />
+          </Link>
         </div>
       </div>
     </article>
