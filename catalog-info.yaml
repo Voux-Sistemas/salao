@@ -1,0 +1,22 @@
+# Ficha do projeto na Central VOUX (catálogo). O sync do GitHub lê este arquivo.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: salao
+  title: "Salão"
+  tags: [nextjs, supabase, netlify]
+  annotations:
+    github.com/project-slug: Voux-Sistemas/salao
+    voux.com.br/responsavel: pietro
+    voux.com.br/tipo: produto
+    supabase.com/project-ref: snfmzvtgbeyirzoutcah
+    netlify.com/site-id: "f478c726-3191-4126-82cc-1410cc6058c7"
+    voux.com.br/dominio: vouxsistemas.pt
+  links:
+    - url: https://nohoraramirez.vouxsistemas.pt
+      title: Produção
+      type: producao
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:voux
