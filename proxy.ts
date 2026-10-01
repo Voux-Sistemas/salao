@@ -63,5 +63,18 @@ export const config = {
         },
       ],
     },
+    {
+      // O seletor de língua é um link em cada página, com o endereço de
+      // volta no ?next=. Os robôs seguiam-no para cada passo do funil, e
+      // cada visita era uma function só para gravar um cookie.
+      source: '/idioma',
+      has: [
+        {
+          type: 'header',
+          key: 'user-agent',
+          value: '.*(meta-externalagent|Bytespider|GPTBot|ClaudeBot|CCBot|PerplexityBot|Amazonbot|AhrefsBot|SemrushBot|PetalBot|HeadlessChrome).*',
+        },
+      ],
+    },
   ],
 }

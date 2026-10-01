@@ -44,6 +44,8 @@ export default function robots(): MetadataRoute.Robots {
         // `noindex` no cabeçalho — isto poupa-lhes a visita.
         '/m/',
         '/remarcar',
+        // O seletor de língua só grava um cookie e volta para trás.
+        '/idioma',
         '/balcao',
       ],
     },
