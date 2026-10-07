@@ -324,6 +324,18 @@ export const pt = {
     cancelledLine: 'Libertámos a sua hora de {dia}, às {hora}, no salão {loja}.',
     bookAgain: 'Fazer nova marcação',
     cancelledHint: 'Não precisa de fazer mais nada. Cá a esperamos noutro dia.',
+    /* Marcar novamente: a visita que já foi, e a desmarcada. O {dia} já
+       chega com o «na»/«no» à frente — sábado e domingo são «no». */
+    visitedTitle: 'Até à próxima.',
+    visitedLine: 'Esteve connosco {dia}, no salão {loja}.',
+    lastTime: 'Da última vez',
+    again: 'Marcar novamente',
+    againWith: 'Com {nome}. Só escolhe o dia e a hora.',
+    againSame: 'Os mesmos serviços, noutro dia.',
+    otherServices: 'Escolher outros serviços',
+    sameAgain: 'Marcar o mesmo noutro dia',
+    sameLine: '{servicos}, com {nome}.',
+    otherBooking: 'Fazer outra marcação',
   },
 
   /* A porta «Remarcar»: sem código e sem salão. */

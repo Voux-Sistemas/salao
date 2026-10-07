@@ -1,19 +1,27 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { CalendarClock, Check, MapPin, Phone } from 'lucide-react'
+import { CalendarClock, Check, MapPin, Phone, RefreshCw } from 'lucide-react'
 import {
   clientMayCancel,
   clientMayReschedule,
+  foiFeita,
   isTerminal,
   marcacaoPelaChave,
 } from '@/lib/booking'
 import { getDictionary, getLanguage } from '@/lib/i18n'
+import { marcarDeNovo } from '@/lib/marcar-de-novo'
 import { formatCents } from '@/lib/money'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { serviceNamesFor } from '@/lib/catalog-names'
 import { picksStaffOn } from '@/lib/sunday'
 import { formatPhone } from '@/lib/text'
-import { formatDayLong, formatDuration, formatTime, isoDay } from '@/lib/time'
+import {
+  formatDayLong,
+  formatDuration,
+  formatTime,
+  isoDay,
+  weekdayOf,
+} from '@/lib/time'
 import { DesmarcarPelaChave } from '@/components/manage-forms'
 import { ButtonLink, Empty, Eyebrow, Notice } from '@/components/ui'
 import { LeafRule, Monogram, Ornament } from '@/components/brand'
@@ -97,10 +105,40 @@ export default async function ManagePage({ params, searchParams }: Params) {
     marcação que o salão tenha desmarcado. (Uma remarcação não chega
     aqui: a chave segue para a marcação nova.)
   */
-  if (
+  const cancelada =
     appointment.status === 'cancelled_by_client' ||
     appointment.status === 'cancelled_by_salon'
-  ) {
+  // A visita que já foi: feita, ou com a hora passada sem ter sido
+  // desmarcada nem dada como falta (a mesma regra do resto da casa).
+  const visitada = !cancelada && foiFeita(appointment.status, appointment.ends_at)
+
+  const names = await serviceNamesFor(
+    appointment.items.map((item) => item.service_id),
+    language,
+  )
+
+  /*
+    MARCAR NOVAMENTE — só depois de a visita ter ido ou de ter sido
+    desmarcada. Só lê: monta um endereço do funil já preenchido, e a
+    marcação nova nasce pelo caminho de sempre. Ver lib/marcar-de-novo.
+    Sem loja activa, ou sem nada que ainda se marque online, fica o
+    botão de sempre para uma marcação nova.
+  */
+  const lojaHref = unit ? `/agendar/${unit.slug}` : '/agendar'
+  const deNovo =
+    (cancelada || visitada) && unit ? await marcarDeNovo(appointment, unit) : null
+  const nomesDeNovo = deNovo
+    ? new Intl.ListFormat(language, { style: 'long', type: 'conjunction' }).format(
+        deNovo.serviceIds.map(
+          (id) =>
+            names.get(id) ??
+            appointment.items.find((item) => item.service_id === id)?.service_name ??
+            '',
+        ),
+      )
+    : ''
+
+  if (cancelada) {
     return (
       <Desmarcada
         title={dict.manage.cancelledTitle}
@@ -110,15 +148,66 @@ export default async function ManagePage({ params, searchParams }: Params) {
           .replace('{loja}', appointment.unit_name)}
         hint={dict.manage.cancelledHint}
         action={dict.manage.bookAgain}
+        again={
+          deNovo
+            ? {
+                href: deNovo.href,
+                label: dict.manage.sameAgain,
+                note: deNovo.staffName
+                  ? dict.manage.sameLine
+                      .replace('{servicos}', nomesDeNovo)
+                      .replace('{nome}', deNovo.staffName)
+                  : `${nomesDeNovo}.`,
+                other: dict.manage.otherBooking,
+                otherHref: lojaHref,
+              }
+            : null
+        }
       />
     )
   }
+
+  if (visitada) {
+    // «na terça-feira», mas «no sábado» e «no domingo». Só o português
+    // precisa disto: nas outras línguas o artigo está no próprio texto.
+    const fimDeSemana = [0, 6].includes(weekdayOf(day))
+    const dia = formatDayLong(day, timezone, language)
+    return (
+      <VisitaFeita
+        title={dict.manage.visitedTitle}
+        line={dict.manage.visitedLine
+          .replace('{dia}', language === 'pt' ? `${fimDeSemana ? 'no' : 'na'} ${dia}` : dia)
+          .replace('{loja}', appointment.unit_name)}
+        eyebrow={dict.manage.lastTime}
+        rows={appointment.items.map((item) => ({
+          id: item.id,
+          service: names.get(item.service_id) ?? item.service_name,
+          // Ao domingo não se diz «com quem» (ver o recibo, mais abaixo).
+          staff: picksStaffOn(day) ? `${dict.common.with} ${item.staff_public_name}` : null,
+        }))}
+        again={
+          deNovo
+            ? {
+                href: deNovo.href,
+                label: dict.manage.again,
+                note: deNovo.staffName
+                  ? dict.manage.againWith.replace('{nome}', deNovo.staffName)
+                  : dict.manage.againSame,
+                other: dict.manage.otherServices,
+                otherHref: lojaHref,
+              }
+            : null
+        }
+        fallback={{
+          href: lojaHref,
+          label: dict.manage.bookAgain,
+        }}
+      />
+    )
+  }
+
   const minutes = Math.round(
     (appointment.ends_at.getTime() - appointment.starts_at.getTime()) / 60_000,
-  )
-  const names = await serviceNamesFor(
-    appointment.items.map((item) => item.service_id),
-    language,
   )
 
   const now = new Date()
@@ -292,22 +381,34 @@ export default async function ManagePage({ params, searchParams }: Params) {
   )
 }
 
+/** O botão cheio dos dois painéis — o mesmo do recibo. */
+const BOTAO =
+  'botao sheen mt-3.5 flex h-[46px] items-center justify-center rounded-full bg-[var(--action)] text-[0.90625rem] font-semibold tracking-[0.01em] text-[var(--action-ink)] shadow-[0_10px_22px_-14px_rgba(111,85,47,0.7)] transition-all duration-300 select-none hover:-translate-y-0.5 hover:bg-[var(--action-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:translate-y-px sm:mt-[18px] sm:h-12 sm:text-[0.9375rem]'
+
+/** O «Marcar novamente» de um painel: o botão, a frase e a porta discreta. */
+type DeNovo = {
+  href: string
+  label: string
+  note: string
+  other: string
+  otherHref: string
+}
+
 /**
- * O ecrã de uma marcação desmarcada, no desenho do mockup «Marcação
- * desmarcada»: a faixa escura em painel com um visto dourado e a frase,
- * e por baixo um cartão com o que fazer a seguir. É o par do recibo de
- * quando se marca («Está confirmado.»).
+ * A faixa escura em painel, com o sinal dourado e a frase, e por baixo
+ * o cartão com o que fazer a seguir. É a moldura do «Está desmarcado.»
+ * e do «Até à próxima.» — o par do recibo de quando se marca.
  */
-function Desmarcada({
+function Painel({
+  icon,
   title,
   line,
-  hint,
-  action,
+  children,
 }: {
+  icon: React.ReactNode
   title: string
   line: string
-  hint: string
-  action: string
+  children: React.ReactNode
 }) {
   return (
     <div className="flex min-h-[78vh] flex-col">
@@ -317,7 +418,7 @@ function Desmarcada({
           style={{ background: BAND_GROUND }}
         >
           <span className="mx-auto flex size-12 items-center justify-center rounded-full text-[var(--accent)] shadow-[inset_0_0_0_1px_rgba(211,184,126,0.45),0_0_0_6px_rgba(211,184,126,0.06)] sm:size-[58px]">
-            <Check size={24} strokeWidth={1.8} aria-hidden />
+            {icon}
           </span>
           <h1 className="display display-italic animate-rise mt-3.5 text-[1.5625rem] leading-[1.1] sm:mt-[18px] sm:text-[2.25rem]">
             {title}
@@ -331,19 +432,124 @@ function Desmarcada({
       <div className="flex-1">
         <div className="mx-auto w-full max-w-[29rem] px-3 pt-3 pb-12 sm:px-0 sm:pt-7 sm:pb-16">
           <div className="rounded-[18px] bg-[var(--surface-raised)] p-4 text-center shadow-[0_1px_2px_rgba(34,29,23,0.03)] sm:rounded-[22px] sm:px-6 sm:py-[22px]">
-            <p className="text-[0.8125rem] leading-5 text-[var(--ink-muted)] sm:text-[0.875rem]">
-              {hint}
-            </p>
-            <Link
-              href="/agendar"
-              className="botao sheen mt-3.5 flex h-[46px] items-center justify-center rounded-full bg-[var(--action)] text-[0.90625rem] font-semibold tracking-[0.01em] text-[var(--action-ink)] shadow-[0_10px_22px_-14px_rgba(111,85,47,0.7)] transition-all duration-300 select-none hover:-translate-y-0.5 hover:bg-[var(--action-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] active:translate-y-px sm:mt-[18px] sm:h-12 sm:text-[0.9375rem]"
-            >
-              {action}
-            </Link>
+            {children}
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * O botão «Marcar novamente» e o que vem com ele. Sem pré-carregamento:
+ * o passo das horas calcula a semana inteira, e só vale a pena quando
+ * ela toca.
+ */
+function BotaoDeNovo({ deNovo }: { deNovo: DeNovo }) {
+  return (
+    <>
+      <Link href={deNovo.href} prefetch={false} className={BOTAO}>
+        {deNovo.label}
+      </Link>
+      <p className="mt-[9px] text-[0.75rem] leading-[18px] text-[#8A7F6E] sm:mt-2.5 sm:text-[0.78125rem]">
+        {deNovo.note}
+      </p>
+      <Link
+        href={deNovo.otherHref}
+        prefetch={false}
+        className="mt-3 inline-block text-[0.78125rem] leading-5 text-[var(--action-strong)] underline decoration-[rgba(111,85,47,0.35)] underline-offset-[3px] transition-colors hover:decoration-[var(--action-strong)] sm:mt-3.5 sm:text-[0.8125rem]"
+      >
+        {deNovo.other}
+      </Link>
+    </>
+  )
+}
+
+/**
+ * O ecrã de uma marcação desmarcada, no desenho do mockup «Marcação
+ * desmarcada». Com «Marcar novamente» (mockup «Marcar novamente · B»),
+ * o botão cheio refaz a mesma marcação noutro dia e a marcação nova
+ * passa a porta discreta por baixo.
+ */
+function Desmarcada({
+  title,
+  line,
+  hint,
+  action,
+  again,
+}: {
+  title: string
+  line: string
+  hint: string
+  action: string
+  again: DeNovo | null
+}) {
+  return (
+    <Painel icon={<Check size={24} strokeWidth={1.8} aria-hidden />} title={title} line={line}>
+      <p className="text-[0.8125rem] leading-5 text-[var(--ink-muted)] sm:text-[0.875rem]">
+        {hint}
+      </p>
+      {again ? (
+        <BotaoDeNovo deNovo={again} />
+      ) : (
+        <Link href="/agendar" className={BOTAO}>
+          {action}
+        </Link>
+      )}
+    </Painel>
+  )
+}
+
+/**
+ * A VISITA QUE JÁ FOI (mockup «Marcar novamente · A»).
+ *
+ * Abria o recibo da visita com «Concluída» e um botão para o início do
+ * funil. Agora diz «Até à próxima.», mostra o que ela fez da última vez
+ * e oferece refazê-lo. Quando nada daquilo se marca online hoje, fica
+ * só o botão de uma marcação nova.
+ */
+function VisitaFeita({
+  title,
+  line,
+  eyebrow,
+  rows,
+  again,
+  fallback,
+}: {
+  title: string
+  line: string
+  eyebrow: string
+  rows: { id: string; service: string; staff: string | null }[]
+  again: DeNovo | null
+  fallback: { href: string; label: string }
+}) {
+  return (
+    <Painel icon={<RefreshCw size={21} strokeWidth={1.7} aria-hidden />} title={title} line={line}>
+      <p className="mb-2 text-left text-[0.65625rem] leading-4 tracking-[0.14em] text-[#A2957F] uppercase sm:mb-2.5 sm:text-[0.6875rem]">
+        {eyebrow}
+      </p>
+      <ul className="divide-y divide-[rgba(34,29,23,0.05)] border-y border-[rgba(34,29,23,0.07)] text-left">
+        {rows.map((row) => (
+          <li key={row.id} className="flex items-baseline gap-2.5 py-2 sm:py-[9px]">
+            <span className="min-w-0 text-[0.84375rem] leading-5 text-[var(--ink)] sm:text-[0.875rem]">
+              {row.service}
+            </span>
+            {row.staff ? (
+              <span className="ml-auto shrink-0 text-[0.78125rem] leading-5 text-[#8A7F6E] sm:text-[0.8125rem]">
+                {row.staff}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {again ? (
+        <BotaoDeNovo deNovo={again} />
+      ) : (
+        <Link href={fallback.href} prefetch={false} className={BOTAO}>
+          {fallback.label}
+        </Link>
+      )}
+    </Painel>
   )
 }
 

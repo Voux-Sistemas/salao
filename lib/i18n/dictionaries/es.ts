@@ -280,6 +280,16 @@ export const es: Dictionary = {
     cancelledLine: 'Hemos liberado su hora del {dia}, a las {hora}, en el salón {loja}.',
     bookAgain: 'Hacer una nueva reserva',
     cancelledHint: 'No tiene que hacer nada más. La esperamos otro día.',
+    visitedTitle: 'Hasta la próxima.',
+    visitedLine: 'Estuvo con nosotros el {dia}, en el salón {loja}.',
+    lastTime: 'La última vez',
+    again: 'Reservar de nuevo',
+    againWith: 'Con {nome}. Solo elige el día y la hora.',
+    againSame: 'Los mismos servicios, otro día.',
+    otherServices: 'Elegir otros servicios',
+    sameAgain: 'Reservar lo mismo otro día',
+    sameLine: '{servicos}, con {nome}.',
+    otherBooking: 'Hacer otra reserva',
   },
 
   /* A porta «Remarcar»: sem código e sem salão. */
