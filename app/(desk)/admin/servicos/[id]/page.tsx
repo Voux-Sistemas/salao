@@ -3,13 +3,16 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { requireOrgScope } from '@/lib/auth/actor'
 import {
+  MAX_SUGGESTIONS,
   getService,
   listCategories,
   listOverrides,
   listRequirements,
   listSkilled,
   listPhotoLibrary,
+  listSuggestions,
   overrideOptions,
+  suggestionOptions,
   type Override,
 } from '@/lib/catalog-admin'
 import { formatCents } from '@/lib/money'
@@ -19,9 +22,11 @@ import {
   OverrideForm,
   RemoveOverride,
   RemoveRequirement,
+  RemoveSuggestion,
   RequirementForm,
   RetireService,
   ServiceForm,
+  SuggestionForm,
 } from '@/components/service-forms'
 import { BackLink, Panel } from '@/components/gestao-panel'
 import { Badge, Divider, Notice } from '@/components/ui'
@@ -49,7 +54,17 @@ export default async function ServicoPage({
   const service = await getService(actor.orgId, id)
   if (!service) notFound()
 
-  const [categories, overrides, options, requirements, types, skilled, photos] =
+  const [
+    categories,
+    overrides,
+    options,
+    requirements,
+    types,
+    skilled,
+    photos,
+    suggestions,
+    suggestable,
+  ] =
     await Promise.all([
       listCategories(actor.orgId),
       listOverrides(service.id),
@@ -58,6 +73,8 @@ export default async function ServicoPage({
       listResourceTypes(actor.orgId),
       listSkilled(service.id),
       listPhotoLibrary(actor.orgId),
+      listSuggestions(service.id, actor.orgId),
+      suggestionOptions(service.id, actor.orgId),
     ])
 
   const online = skilled.filter((person) => person.accepts_online)
@@ -149,6 +166,57 @@ export default async function ServicoPage({
             ))}
           </div>
         ) : null}
+      </Panel>
+
+      {/* --- sugestões na marcação ---------------------------------- */}
+      <Panel
+        title="Sugerir na marcação"
+        hint={`Na marcação online, quem escolher este serviço vê estas sugestões antes de escolher a hora. No máximo ${MAX_SUGGESTIONS}. Só aparecem se a profissional escolhida as fizer e se couberem no dia.`}
+        flush
+      >
+        <div className="px-5 py-5 sm:px-6">
+          <SuggestionForm
+            serviceId={service.id}
+            options={suggestable.filter(
+              (option) => !suggestions.some((row) => row.suggested_id === option.id),
+            )}
+            full={suggestions.length >= MAX_SUGGESTIONS}
+          />
+        </div>
+
+        {suggestions.length > 0 ? (
+          <div className="divide-y divide-[var(--line-soft)] border-t border-[var(--line-soft)]">
+            {suggestions.map((row) => (
+              <div
+                key={row.suggested_id}
+                className="flex items-center gap-3 px-5 py-3 sm:px-6"
+              >
+                <Link
+                  href={`/admin/servicos/${row.suggested_id}`}
+                  className="min-w-0 flex-1 truncate text-sm text-[var(--ink)] underline-offset-4 transition-colors hover:text-[var(--accent)] hover:underline"
+                >
+                  {row.name}
+                </Link>
+                {/* Uma sugestão que já não se pode marcar online não
+                    aparece no funil — diz-se aqui, para não parecer que
+                    está a funcionar. */}
+                {!row.is_active ? (
+                  <Badge tone="bad">Retirado</Badge>
+                ) : !row.bookable_online ? (
+                  <Badge>Só ao balcão</Badge>
+                ) : null}
+                <span className="tabular shrink-0 text-sm text-[var(--ink-muted)]">
+                  {formatCents(row.base_price_cents)} · {formatDuration(row.duration_minutes)}
+                </span>
+                <RemoveSuggestion serviceId={service.id} suggestedId={row.suggested_id} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="border-t border-[var(--line-soft)] px-5 py-3 text-[0.8125rem] text-[var(--ink-faint)] sm:px-6">
+            Nenhuma. Quem escolher este serviço segue direto para a hora.
+          </p>
+        )}
       </Panel>
 
       {/* --- quem o faz --------------------------------------------- */}

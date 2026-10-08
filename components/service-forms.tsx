@@ -5,11 +5,13 @@ import { useFormStatus } from 'react-dom'
 import clsx from 'clsx'
 import { Trash2 } from 'lucide-react'
 import {
+  addSuggestionAction,
   createCategoryAction,
   createServiceAction,
   removeCategoryAction,
   removeOverrideAction,
   removeRequirementAction,
+  removeSuggestionAction,
   renameCategoryAction,
   retireServiceAction,
   saveOverrideAction,
@@ -794,6 +796,77 @@ export function RemoveRequirement({
       <input type="hidden" name="service" value={serviceId} />
       <input type="hidden" name="type" value={typeId} />
       <IconSubmit label="Retirar exigência" />
+    </form>
+  )
+}
+
+/**
+ * SUGESTÕES NA MARCAÇÃO — escolher outro serviço da ementa e juntá-lo.
+ *
+ * Com o máximo atingido, o formulário não se mostra: diz-se porquê, e a
+ * saída é tirar uma das que já lá estão.
+ */
+export function SuggestionForm({
+  serviceId,
+  options,
+  full,
+}: {
+  serviceId: string
+  options: { id: string; name: string }[]
+  full: boolean
+}) {
+  const [state, action] = useActionState<CatalogState, FormData>(
+    addSuggestionAction,
+    EMPTY,
+  )
+
+  if (full) {
+    return (
+      <p className="text-[0.8125rem] text-[var(--ink-muted)]">
+        Já tem as duas sugestões. Para trocar, tire uma em baixo.
+      </p>
+    )
+  }
+  if (options.length === 0) {
+    return (
+      <p className="text-[0.8125rem] text-[var(--ink-muted)]">
+        Não há outros serviços activos para sugerir.
+      </p>
+    )
+  }
+
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="service" value={serviceId} />
+      {state.error ? <Notice tone="bad">{state.error}</Notice> : null}
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        <Field label="Sugerir" htmlFor="suggestion-service" className="w-full sm:w-72">
+          <Select id="suggestion-service" name="suggested">
+            {options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Submit label="Juntar" variant="outline" />
+      </div>
+    </form>
+  )
+}
+
+export function RemoveSuggestion({
+  serviceId,
+  suggestedId,
+}: {
+  serviceId: string
+  suggestedId: string
+}) {
+  return (
+    <form action={removeSuggestionAction}>
+      <input type="hidden" name="service" value={serviceId} />
+      <input type="hidden" name="suggested" value={suggestedId} />
+      <IconSubmit label="Tirar sugestão" />
     </form>
   )
 }

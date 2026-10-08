@@ -171,6 +171,7 @@ export const en: Dictionary = {
     emptyCart: 'You have not chosen a service yet.',
     chooseService: 'Choose',
     addService: 'Add',
+    extrasTitle: 'Add to your visit',
     cartFull: 'You have added the most services one visit can hold. Remove one to choose another.',
     timeTitle: 'When suits you?',
     pickTimeHint: 'Pick a time to confirm.',

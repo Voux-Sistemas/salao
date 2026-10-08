@@ -171,6 +171,7 @@ export const es: Dictionary = {
     emptyCart: 'Todavía no has elegido ningún servicio.',
     chooseService: 'Elegir',
     addService: 'Añadir',
+    extrasTitle: 'Para añadir a su visita',
     cartFull: 'Ya has añadido el máximo de servicios para una visita. Quita uno para elegir otro.',
     timeTitle: '¿Cuándo te viene bien?',
     pickTimeHint: 'Elige una hora para confirmar.',

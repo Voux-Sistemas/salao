@@ -4,12 +4,15 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireOrgScope } from '@/lib/auth/actor'
 import {
+  MAX_SUGGESTIONS,
+  addSuggestion,
   createCategory,
   createService,
   getService,
   removeCategory,
   removeOverride,
   removeRequirement,
+  removeSuggestion,
   renameCategory,
   retireService,
   saveOverride,
@@ -331,5 +334,45 @@ export async function removeRequirementAction(form: FormData): Promise<void> {
   if (!found) return
   const typeId = String(form.get('type') ?? '')
   if (typeId) await removeRequirement(found.service.id, typeId)
+  refresh(found.service.id)
+}
+
+// ---------------------------------------------------------------------
+// Sugestões na marcação
+// ---------------------------------------------------------------------
+
+export async function addSuggestionAction(
+  _previous: CatalogState,
+  form: FormData,
+): Promise<CatalogState> {
+  const found = await reach(String(form.get('service') ?? ''))
+  if (!found) return GONE
+
+  const suggestedId = String(form.get('suggested') ?? '')
+  if (!suggestedId) return { error: 'Escolha o serviço a sugerir.' }
+
+  const result = await addSuggestion(found.actor.orgId, found.service.id, suggestedId)
+  if (!result.ok) {
+    return {
+      error:
+        result.reason === 'full'
+          ? `No máximo ${MAX_SUGGESTIONS} sugestões por serviço. Tire uma antes de juntar outra.`
+          : result.reason === 'self'
+            ? 'Um serviço não se sugere a si próprio.'
+            : result.reason === 'missing'
+              ? 'Esse serviço já não existe.'
+              : 'Não foi possível guardar.',
+    }
+  }
+
+  refresh(found.service.id)
+  return { error: null, done: null }
+}
+
+export async function removeSuggestionAction(form: FormData): Promise<void> {
+  const found = await reach(String(form.get('service') ?? ''))
+  if (!found) return
+  const suggestedId = String(form.get('suggested') ?? '')
+  if (suggestedId) await removeSuggestion(found.service.id, suggestedId)
   refresh(found.service.id)
 }

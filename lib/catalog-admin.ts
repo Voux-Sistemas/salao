@@ -462,6 +462,103 @@ export async function removeRequirement(
 }
 
 // ---------------------------------------------------------------------
+// Sugestões na marcação
+// ---------------------------------------------------------------------
+
+/**
+ * Quem escolhe este serviço no funil vê estes como sugestão, por cima
+ * da barra de «Escolher hora». Duas no máximo: a ideia é um extra, não
+ * uma segunda ementa a meio da marcação.
+ */
+export const MAX_SUGGESTIONS = 2
+
+/** A tabela nasce numa migração própria; antes dela, não há sugestões. */
+const NO_TABLE = '42P01'
+
+export type Suggestion = {
+  suggested_id: string
+  name: string
+  base_price_cents: number
+  duration_minutes: number
+  is_active: boolean
+  bookable_online: boolean
+}
+
+export async function listSuggestions(
+  serviceId: string,
+  orgId: string,
+): Promise<Suggestion[]> {
+  try {
+    return await sql<Suggestion[]>`
+      select ss.suggested_id, s.name, s.base_price_cents, s.duration_minutes,
+             s.is_active, s.bookable_online
+        from service_suggestion ss
+        join service s on s.id = ss.suggested_id
+       where ss.service_id = ${serviceId} and ss.org_id = ${orgId}
+       order by ss.sort_order, ss.created_at
+    `
+  } catch (error) {
+    if (codeOf(error) === NO_TABLE) return []
+    throw error
+  }
+}
+
+/** Os serviços que se podem sugerir: activos, e que não sejam ele próprio. */
+export async function suggestionOptions(
+  serviceId: string,
+  orgId: string,
+): Promise<{ id: string; name: string }[]> {
+  return sql<{ id: string; name: string }[]>`
+    select s.id, s.name
+      from service s
+      join service_category c on c.id = s.category_id
+     where s.org_id = ${orgId} and s.is_active and s.id <> ${serviceId}
+     order by c.sort_order, c.name, s.sort_order, s.name
+  `
+}
+
+export async function addSuggestion(
+  orgId: string,
+  serviceId: string,
+  suggestedId: string,
+): Promise<{ ok: true } | { ok: false; reason: 'self' | 'full' | 'missing' | 'failed' }> {
+  if (!suggestedId || suggestedId === serviceId) return { ok: false, reason: 'self' }
+  try {
+    const existe = await sql<{ id: string }[]>`
+      select id from service
+       where id = ${suggestedId} and org_id = ${orgId} and is_active
+    `
+    if (existe.length === 0) return { ok: false, reason: 'missing' }
+
+    const contagem = await sql<{ n: number }[]>`
+      select count(*)::int as n from service_suggestion where service_id = ${serviceId}
+    `
+    const n = contagem[0]?.n ?? 0
+    if (n >= MAX_SUGGESTIONS) return { ok: false, reason: 'full' }
+
+    await sql`
+      insert into service_suggestion (org_id, service_id, suggested_id, sort_order)
+      values (${orgId}, ${serviceId}, ${suggestedId}, ${n})
+      on conflict (service_id, suggested_id) do nothing
+    `
+    return { ok: true }
+  } catch (error) {
+    console.error('[sugestões]', error)
+    return { ok: false, reason: 'failed' }
+  }
+}
+
+export async function removeSuggestion(
+  serviceId: string,
+  suggestedId: string,
+): Promise<void> {
+  await sql`
+    delete from service_suggestion
+     where service_id = ${serviceId} and suggested_id = ${suggestedId}
+  `
+}
+
+// ---------------------------------------------------------------------
 // Quem o faz
 // ---------------------------------------------------------------------
 

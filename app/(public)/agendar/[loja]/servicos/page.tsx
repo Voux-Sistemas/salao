@@ -2,11 +2,12 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import clsx from 'clsx'
-import { Check, ChevronRight, MessageCircle, Plus, X } from 'lucide-react'
+import { Check, ChevronRight, MessageCircle, Plus, Sparkle, X } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { getUnitBySlug, requireOrg } from '@/lib/org'
 import { fill, getDictionary, getLanguage } from '@/lib/i18n'
 import { staffForDay } from '@/lib/availability'
+import { sugeridosPara } from '@/lib/extras'
 import { formatCents } from '@/lib/money'
 import {
   addDays,
@@ -274,6 +275,50 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
   const longestFree = person
     ? person.longestFreeMinutes
     : Math.max(0, ...team.map((p) => p.longestFreeMinutes))
+
+  /*
+   * OS EXTRAS (mockup «Extras na marcação · B»).
+   *
+   * O que a casa sugere com os serviços escolhidos, num cartão por cima
+   * da barra de «Escolher hora». Só entra o que a própria ementa desta
+   * página já oferece — o que ela faz, o que se marca neste dia — e,
+   * se ainda não estiver na visita, o que cabe no tempo que lhe resta e
+   * no limite do carrinho. Um extra já junto fica no cartão, escolhido,
+   * para se poder tirar ali mesmo. Dois no máximo.
+   *
+   * Juntar e tirar são o mesmo endereço das linhas da ementa: o carrinho
+   * muda no endereço, e nada disto chega ao passo de confirmar.
+   */
+  const sugeridos = await sugeridosPara(
+    org.id,
+    clean.map((line) => line.serviceId),
+  )
+  const extras = sugeridos
+    .flatMap((id) => {
+      const service = byId.get(id)
+      if (!service) return []
+      const at = clean.findIndex((line) => line.serviceId === id)
+      const cabe =
+        clean.length < MAX_CART_LINES &&
+        cartOccupies + gapMin + occupies(service) <= longestFree
+      if (at < 0 && !cabe) return []
+      return [
+        {
+          id: service.id,
+          name: service.name,
+          detail: formatDuration(service.duration_minutes, language),
+          price: `+ ${formatCents(service.price_cents, org.currency, language)}`,
+          chosen: at >= 0,
+          href: funnelHref(`${here}/servicos`, {
+            day,
+            staffId: chosenStaff,
+            cart: at >= 0 ? removeAt(clean, at) : addLine(clean, service.id),
+          }),
+          label: `${at >= 0 ? dict.common.remove : dict.funnel.addService} · ${service.name}`,
+        },
+      ]
+    })
+    .slice(0, 2)
 
   const categories = new Map<string, { slug: string; name: string; services: ServiceRow[] }>()
   for (const row of bookable) {
@@ -634,6 +679,10 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
                   </span>
                 </div>
               </div>
+
+              {extras.length > 0 ? (
+                <Extras title={dict.funnel.extrasTitle} items={extras} variant="aside" />
+              ) : null}
             </>
           )}
 
@@ -664,31 +713,118 @@ export default async function ChooseServicesPage({ params, searchParams }: Param
         cima do rodapé. Qualquer `overflow` num antepassado desfaz isto.
       */}
       {clean.length > 0 ? (
-        <div className="band-dark animate-rise sticky bottom-3 z-40 mt-5 flex items-center gap-3 rounded-[20px] py-2.5 pr-2.5 pl-4 shadow-[inset_0_0_0_1px_rgba(211,184,126,0.14),0_18px_40px_-16px_rgba(20,16,9,0.55)] lg:hidden"
-          style={{
-            background:
-              'radial-gradient(260px 160px at 95% -20%, rgba(211,184,126,0.12), rgba(211,184,126,0) 70%), linear-gradient(158deg, #1E1811 0%, #141009 100%)',
-          }}
-        >
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.6875rem] leading-[14px] text-[var(--ink-muted)]">{visitMeta}</p>
-            <p className="tabular mt-0.5 text-[1.0625rem] leading-[1.15] font-semibold tracking-[-0.01em] text-[var(--ink)]">
-              {total}
-            </p>
-          </div>
-          <Link
-            href={timesHref}
-            className="flex h-[42px] shrink-0 items-center gap-1 rounded-full bg-[#C6A96B] pr-3.5 pl-[18px] text-[0.875rem] font-semibold text-[#1E1811] transition-colors hover:bg-[#D3B87E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D3B87E]"
+        <div className="sticky bottom-3 z-40 mt-5 lg:hidden">
+          {extras.length > 0 ? (
+            <Extras title={dict.funnel.extrasTitle} items={extras} variant="float" />
+          ) : null}
+          <div className="band-dark animate-rise flex items-center gap-3 rounded-[20px] py-2.5 pr-2.5 pl-4 shadow-[inset_0_0_0_1px_rgba(211,184,126,0.14),0_18px_40px_-16px_rgba(20,16,9,0.55)]"
+            style={{
+              background:
+                'radial-gradient(260px 160px at 95% -20%, rgba(211,184,126,0.12), rgba(211,184,126,0) 70%), linear-gradient(158deg, #1E1811 0%, #141009 100%)',
+            }}
           >
-            {dict.funnel.chooseTime}
-            <ChevronRight size={15} strokeWidth={2} aria-hidden />
-          </Link>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[0.6875rem] leading-[14px] text-[var(--ink-muted)]">{visitMeta}</p>
+              <p className="tabular mt-0.5 text-[1.0625rem] leading-[1.15] font-semibold tracking-[-0.01em] text-[var(--ink)]">
+                {total}
+              </p>
+            </div>
+            <Link
+              href={timesHref}
+              className="flex h-[42px] shrink-0 items-center gap-1 rounded-full bg-[#C6A96B] pr-3.5 pl-[18px] text-[0.875rem] font-semibold text-[#1E1811] transition-colors hover:bg-[#D3B87E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D3B87E]"
+            >
+              {dict.funnel.chooseTime}
+              <ChevronRight size={15} strokeWidth={2} aria-hidden />
+            </Link>
+          </div>
         </div>
       ) : null}
     </FunnelStage>
   )
 }
 
+
+/**
+ * O CARTÃO DOS EXTRAS (mockup «Extras na marcação · B»).
+ *
+ * No telemóvel flutua por cima da barra escura de «Escolher hora»; no
+ * monitor vive na coluna da visita, por baixo do total. Cada linha é um
+ * toque: junta o extra à visita, e tocar outra vez tira — o mesmo
+ * círculo de fio que fica em ouro cheio com o visto, como na ementa.
+ */
+function Extras({
+  title,
+  items,
+  variant,
+}: {
+  title: string
+  items: {
+    id: string
+    name: string
+    detail: string
+    price: string
+    chosen: boolean
+    href: string
+    label: string
+  }[]
+  variant: 'float' | 'aside'
+}) {
+  return (
+    <section
+      className={clsx(
+        variant === 'float'
+          ? 'animate-rise mb-2 rounded-[18px] bg-[var(--surface-raised)] px-3.5 pt-3 pb-0.5 shadow-[0_0_0_1px_rgba(142,111,65,0.16),0_14px_32px_-18px_rgba(34,29,23,0.45)]'
+          : 'mt-4 border-t border-[rgba(34,29,23,0.07)] pt-3',
+      )}
+    >
+      <p className="flex items-center gap-1.5 text-[0.65625rem] leading-[14px] font-semibold tracking-[0.12em] text-[var(--accent)] uppercase">
+        <Sparkle size={13} strokeWidth={1.7} aria-hidden />
+        {title}
+      </p>
+      <ul>
+        {items.map((item) => (
+          <li key={item.id}>
+            <Link
+              href={item.href}
+              // O carrinho muda de endereço, mas a cliente não muda de
+              // sítio; e sem pré-carregamento, como as linhas da ementa.
+              scroll={false}
+              prefetch={false}
+              aria-label={item.label}
+              className="group flex items-center gap-3 py-2.5 outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
+            >
+              <span
+                aria-hidden
+                className={clsx(
+                  'flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors',
+                  item.chosen
+                    ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
+                    : 'text-[var(--accent)] shadow-[inset_0_0_0_1px_rgba(142,111,65,0.35)] group-hover:shadow-[inset_0_0_0_1px_var(--accent)]',
+                )}
+              >
+                {item.chosen ? <Check size={12} strokeWidth={2.6} /> : <Plus size={11} strokeWidth={2.2} />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span
+                  className={clsx(
+                    'block text-[0.875rem] leading-5',
+                    item.chosen ? 'font-medium text-[var(--action-strong)]' : 'text-[var(--ink)]',
+                  )}
+                >
+                  {item.name}
+                </span>
+                <span className="block text-[0.75rem] leading-[17px] text-[#8A7F6E]">
+                  {item.detail}
+                </span>
+              </span>
+              <span className="tabular shrink-0 text-[0.875rem] text-[var(--ink)]">{item.price}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
 
 /**
  * OS SERVIÇOS SOB CONSULTA.

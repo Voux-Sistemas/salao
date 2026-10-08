@@ -198,6 +198,9 @@ export const pt = {
     emptyCart: 'Ainda não escolheu nenhum serviço.',
     chooseService: 'Escolher',
     addService: 'Juntar',
+    /* O cartão dos extras, por cima da barra «Escolher hora». «À visita»
+       e não «à coloração»: o nome da família mudava o artigo. */
+    extrasTitle: 'Para juntar à visita',
     cartFull: 'Já juntou o máximo de serviços para uma visita. Retire um para escolher outro.',
     timeTitle: 'Quando lhe dá jeito?',
     pickTimeHint: 'Escolha uma hora para confirmar.',
