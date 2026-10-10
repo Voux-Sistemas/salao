@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { BRAND } from '@/lib/branding'
 import { env } from '@/lib/env'
 
 /*
@@ -47,6 +48,9 @@ export default function robots(): MetadataRoute.Robots {
         '/balcao',
       ],
     },
-    sitemap: `${env.siteUrl}/sitemap.xml`,
+    // A casa de demonstração não se dá a conhecer: sem mapa, e cada
+    // página com `noindex` (ver `indexar` em lib/branding.ts). Os robôs
+    // continuam a poder entrar — é assim que leem o `noindex`.
+    sitemap: BRAND.indexar ? `${env.siteUrl}/sitemap.xml` : undefined,
   }
 }

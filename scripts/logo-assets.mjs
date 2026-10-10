@@ -1,7 +1,7 @@
 /**
  * RECORTA O LOGÓTIPO: de tinta-sobre-papel para tinta-com-transparência.
  *
- * O ficheiro de origem (logo.jpg, na raiz) é um JPEG — preto sobre branco,
+ * O ficheiro de origem (instalacoes/nohora/logo.jpg) é um JPEG — preto sobre branco,
  * sem canal alfa. Durante muito tempo o papel foi dissolvido no browser com
  * `mix-blend-mode`: multiply sobre fundo claro, invert+screen sobre escuro.
  * Funciona, mas é frágil de uma forma que não se vê a olho: qualquer
@@ -22,6 +22,10 @@
  *   public/icon.png       o ícone do separador, 512×512
  *   public/apple-icon.png o mesmo em 180×180, para o ecrã inicial do iOS
  *
+ * Tudo dentro de instalacoes/nohora/. As medidas abaixo (a janela da
+ * grinalda, o grão do papel) são do ficheiro dela: outra casa traz os
+ * PNG já feitos para o public/ da sua pasta.
+ *
  * Correr depois de trocar o logótipo:  npm run logo:assets
  * (o sharp vem com o Next; não é dependência declarada de propósito)
  */
@@ -40,7 +44,8 @@ try {
   process.exit(1)
 }
 
-const SOURCE = path.join(root, 'logo.jpg')
+const PASTA = path.join(root, 'instalacoes', 'nohora')
+const SOURCE = path.join(PASTA, 'logo.jpg')
 
 /**
  * A janela da grinalda, medida à régua no ficheiro de 640×641: a tinta do
@@ -166,7 +171,7 @@ const written = [
 ]
 
 for (const [file, buffer, dims] of written) {
-  await sharp(buffer).toFile(path.join(root, file))
+  await sharp(buffer).toFile(path.join(PASTA, file))
   console.log(
     `${file.padEnd(22)} ${dims.padStart(9)}  ${Math.round(buffer.length / 1024)} kB`,
   )

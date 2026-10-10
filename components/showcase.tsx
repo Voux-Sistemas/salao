@@ -7,6 +7,7 @@ import { Reveal } from '@/components/reveal'
 import { Photo } from '@/components/photo'
 import { FamilyDiscs } from '@/components/family-discs'
 import { HouseCard } from '@/components/house-card'
+import { BRAND } from '@/lib/branding'
 
 /**
  * A montra: o primeiro (e às vezes único) contacto de uma cliente com a
@@ -28,13 +29,6 @@ type PhotoRow = {
   url: string
   alt: string | null
 }
-
-/**
- * As marcas que entram nos tratamentos da casa. Saíram do preçário —
- * «Tratamento Truss», «Coloração (inoa)», «Tratamento plex» — e não de
- * uma lista de marcas bonitas. Mudar aqui muda a fita.
- */
-const BRANDS = ['Truss', 'Brae', 'L’Oréal', 'Inoa', 'Plex', 'BaByliss']
 
 export async function Showcase({ org }: { org: Org }) {
   // A língua vem antes de tudo o resto: o catálogo sai da base já
@@ -240,31 +234,36 @@ export async function Showcase({ org }: { org: Org }) {
         para se conseguir ler o nome em que se está a olhar. Quem tiver o
         sistema a pedir menos movimento vê uma fila parada, que se
         arrasta com o dedo (ver `.fita-marcas` no globals.css).
-      */}
-      <section className="border-t border-[var(--line-soft)]">
-        <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-14">
-          <p className="eyebrow eyebrow-gold mb-7 text-center">
-            {dict.home.brandsEyebrow}
-          </p>
 
-          <div className="fita-janela">
-            <div className="fita-marcas">
-              {[0, 1].map((copia) => (
-                <div key={copia} className="fita-grupo" aria-hidden={copia === 1}>
-                  {BRANDS.map((brand) => (
-                    <span
-                      key={brand}
-                      className="display whitespace-nowrap text-xl text-[var(--ink-faint)] sm:text-2xl"
-                    >
-                      {brand}
-                    </span>
-                  ))}
-                </div>
-              ))}
+        As marcas são de cada instalação (`productBrands`, em
+        lib/branding.ts). Sem nenhuma, a secção não existe.
+      */}
+      {BRAND.productBrands.length > 0 && (
+        <section className="border-t border-[var(--line-soft)]">
+          <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-14">
+            <p className="eyebrow eyebrow-gold mb-7 text-center">
+              {dict.home.brandsEyebrow}
+            </p>
+
+            <div className="fita-janela">
+              <div className="fita-marcas">
+                {[0, 1].map((copia) => (
+                  <div key={copia} className="fita-grupo" aria-hidden={copia === 1}>
+                    {BRAND.productBrands.map((brand) => (
+                      <span
+                        key={brand}
+                        className="display whitespace-nowrap text-xl text-[var(--ink-faint)] sm:text-2xl"
+                      >
+                        {brand}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
     </>
   )

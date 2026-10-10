@@ -6,6 +6,7 @@ import type { Language } from '@/lib/i18n/config'
 import { Reveal } from '@/components/reveal'
 import { ScrollDots } from '@/components/scroll-dots'
 import { Photo } from '@/components/photo'
+import { BRAND } from '@/lib/branding'
 
 /**
  * AS FAMÍLIAS EM DISCOS — «O que fazemos».
@@ -29,22 +30,11 @@ type CatalogRow = {
 }
 
 /**
- * As famílias que já têm fotografia em public/fotos/familias.
- *
- * Escrito à mão de propósito: o servidor não vai ao disco perguntar se
- * o ficheiro existe a cada pedido, e uma família sem fotografia mostra
- * o disco de ouro com a inicial em vez de uma imagem partida. Quando
- * chegar a oitava família, acrescenta-se aqui o nome do ficheiro.
+ * As famílias que já têm fotografia em public/fotos/familias. A lista é
+ * de cada instalação, ao lado das fotografias dela — ver `familyPhotos`
+ * em lib/branding.ts.
  */
-export const FAMILY_PHOTOS = new Set([
-  'cabelo',
-  'coloracao',
-  'tratamentos-capilares',
-  'barbearia',
-  'maos-e-pes',
-  'rosto',
-  'corpo',
-])
+export const FAMILY_PHOTOS = new Set(BRAND.familyPhotos)
 
 export async function FamilyDiscs({
   orgId,

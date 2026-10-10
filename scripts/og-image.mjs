@@ -15,19 +15,25 @@
  * vez obrigava a resolver tipos de letra dentro do SVG — que é onde este
  * género de script costuma partir-se de máquina para máquina.
  *
- * Escreve:
+ * Escreve, na pasta da instalação escolhida (NEXT_PUBLIC_INSTALACAO):
  *   app/opengraph-image.png   1200×630, o tamanho que o WhatsApp,
  *                             o Facebook e o iMessage esperam
+ * a partir do public/logo.png da mesma pasta.
  *
  * Correr depois de trocar o logótipo:  npm run og:image
  * (o sharp vem com o Next; não é dependência declarada de propósito)
  */
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
+import fs from 'node:fs'
 import path from 'node:path'
 
 const require = createRequire(import.meta.url)
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+require('@next/env').loadEnvConfig(root, false, { info() {}, error: console.error })
+const INSTALACAO = process.env.NEXT_PUBLIC_INSTALACAO || 'nohora'
+const PASTA = path.join(root, 'instalacoes', INSTALACAO)
 
 let sharp
 try {
@@ -44,9 +50,23 @@ const HEIGHT = 630
 const PAPER = '#F5F0E6'
 const BRONZE = '#8E6F41'
 
-/** O lockup: grinalda mais nome. 493×466 no ficheiro. */
-const LOCKUP_WIDTH = 380
-const LOCKUP_TOP = 92
+/**
+ * O lockup (grinalda mais nome) cabe numa caixa de 380×360. O da Nohora,
+ * 493×466 no ficheiro, sai com 380×359, como sempre saiu; um lockup mais
+ * alto — o de uma casa com logótipo tipográfico — encolhe pela altura em
+ * vez de pisar o ornamento.
+ */
+const LOCKUP_BOX = { width: 380, height: 360 }
+
+/**
+ * Lockup e ornamento são um grupo, centrado a 323px — onde o da Nohora
+ * sempre esteve: lockup a 92px do topo, ornamento 73px por baixo dele.
+ * Um lockup mais baixo leva o ornamento consigo, em vez de o deixar
+ * pendurado lá em baixo.
+ */
+const CENTRO_GRUPO = 323
+const GAP_ORNAMENT = 73
+const ORNAMENT_H = 30
 
 /** O raminho do `components/brand.tsx`, à escala do cartão. */
 const SPRIG = `
@@ -59,10 +79,17 @@ const SPRIG = `
   <path d="M32 9.6 C 34 12.8, 37 13.4, 39.5 12.3 C 37.8 9.4, 34.8 8.6, 32 9.6 Z" fill="none" stroke="${BRONZE}" stroke-width="0.9" stroke-linejoin="round"/>
 `
 
-const ORNAMENT_Y = 524
 const SPRIG_SCALE = 1.5
 const SPRIG_W = 44 * SPRIG_SCALE
 const GAP = 16
+
+const lockup = await sharp(path.join(PASTA, 'public', 'logo.png'))
+  .resize({ ...LOCKUP_BOX, fit: 'inside' })
+  .toBuffer()
+
+const { width: lockupWidth, height: lockupHeight } = await sharp(lockup).metadata()
+const LOCKUP_TOP = Math.round(CENTRO_GRUPO - (lockupHeight + GAP_ORNAMENT + ORNAMENT_H) / 2)
+const ORNAMENT_Y = LOCKUP_TOP + lockupHeight + GAP_ORNAMENT
 
 const overlay = `
 <svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}">
@@ -87,13 +114,8 @@ const overlay = `
 </svg>
 `
 
-const lockup = await sharp(path.join(root, 'public', 'logo.png'))
-  .resize({ width: LOCKUP_WIDTH })
-  .toBuffer()
-
-const { height: lockupHeight } = await sharp(lockup).metadata()
-
-const out = path.join(root, 'app', 'opengraph-image.png')
+const out = path.join(PASTA, 'app', 'opengraph-image.png')
+fs.mkdirSync(path.dirname(out), { recursive: true })
 
 await sharp({
   create: {
@@ -106,7 +128,7 @@ await sharp({
   .composite([
     {
       input: lockup,
-      left: Math.round((WIDTH - LOCKUP_WIDTH) / 2),
+      left: Math.round((WIDTH - lockupWidth) / 2),
       top: LOCKUP_TOP,
     },
     { input: Buffer.from(overlay), left: 0, top: 0 },
@@ -115,5 +137,5 @@ await sharp({
   .toFile(out)
 
 console.log(
-  `app/opengraph-image.png  ${WIDTH}×${HEIGHT}  (lockup ${LOCKUP_WIDTH}×${lockupHeight} a ${LOCKUP_TOP}px do topo)`,
+  `instalacoes/${INSTALACAO}/app/opengraph-image.png  ${WIDTH}×${HEIGHT}  (lockup ${lockupWidth}×${lockupHeight} a ${LOCKUP_TOP}px do topo)`,
 )

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { BRAND } from '@/lib/branding'
 import { listUnits } from '@/lib/org'
 import { env } from '@/lib/env'
 
@@ -15,6 +16,10 @@ import { env } from '@/lib/env'
 export const dynamic = 'force-dynamic'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // A casa de demonstração fica fora do índice: ver `indexar` em
+  // lib/branding.ts.
+  if (!BRAND.indexar) return []
+
   const base = env.siteUrl.replace(/\/$/, '')
 
   const fixed: MetadataRoute.Sitemap = [

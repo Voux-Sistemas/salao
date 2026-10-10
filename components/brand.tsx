@@ -5,7 +5,7 @@ import { BRAND } from '@/lib/branding'
 /**
  * A MARCA COMO SISTEMA GRÁFICO.
  *
- * O logótipo de origem (logo.jpg, na raiz) é tinta preta sobre papel
+ * O logótipo de origem (logo.jpg, na pasta da instalação) é tinta preta sobre papel
  * branco. O papel é recortado uma vez, fora do browser, por
  * `scripts/logo-assets.mjs` — daí saem os dois PNG com transparência que
  * se usam aqui. Sobre fundo escuro a classe `.logo-ink` limita-se a

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { howLong, type Maintenance } from '@/lib/maintenance'
+import { BRAND } from '@/lib/branding'
 
 /**
  * A PORTA FECHADA.
@@ -19,7 +20,7 @@ export function MaintenanceScreen({
   return (
     <main className="flex min-h-dvh items-center justify-center px-6 py-16">
       <div className="w-full max-w-md text-center">
-        <p className="eyebrow eyebrow-gold">Nohora Ramirez</p>
+        <p className="eyebrow eyebrow-gold">{BRAND.fallbackName}</p>
 
         <h1 className="display mt-4 text-[2rem] leading-tight text-[var(--ink)]">
           Voltamos já

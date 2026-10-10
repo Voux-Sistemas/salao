@@ -3,6 +3,7 @@ import { sql } from '@/lib/db'
 import { getOrg } from '@/lib/org'
 import { getDictionary, getLanguage } from '@/lib/i18n'
 import { env } from '@/lib/env'
+import { BRAND } from '@/lib/branding'
 import { Reveal } from '@/components/reveal'
 import { Photo } from '@/components/photo'
 import { FAMILY_PHOTOS } from '@/components/family-discs'
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const [org, dict] = await Promise.all([getOrg(), getDictionary()])
-  const name = org?.name ?? 'Nohora Ramirez'
+  const name = org?.name ?? BRAND.fallbackName
   return {
     title: dict.nav.services,
     description: dict.footer.tagline,

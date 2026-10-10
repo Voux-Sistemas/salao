@@ -67,6 +67,10 @@ export const metadata: Metadata = {
     template: `%s · ${BRAND.fallbackName}`,
   },
   description: DESCRIPTION,
+  // A casa de demonstração fica fora dos motores de busca (ver `indexar`
+  // em lib/branding.ts). As páginas privadas já o dizem uma a uma; isto
+  // apanha as da montra.
+  robots: BRAND.indexar ? undefined : { index: false, follow: false },
   applicationName: BRAND.legalName,
   // O selo sobre porcelana, não o lockup inteiro: a 16px o nome por baixo
   // da grinalda é uma mancha. Gerado por `npm run logo:assets`.
